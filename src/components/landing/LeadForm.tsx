@@ -39,8 +39,8 @@ const LeadForm = () => {
       setLoading(false);
       // Redirect to catalog
       setTimeout(() => {
-        window.location.href = "/loja.html";
-      }, 1500);
+          window.location.href = "/catalogo";
+        }, 1500);
     }, 800);
   };
 
