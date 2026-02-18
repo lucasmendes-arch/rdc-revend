@@ -47,7 +47,7 @@ const Hero = () => {
                 <ArrowRight className="w-4 h-4" />
               </button>
               <a
-                href="/loja.html"
+                href="/catalogo"
                 className="inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl text-base font-medium border-2 border-border hover:border-gold-border hover:bg-surface-alt transition-all"
               >
                 <ShoppingBag className="w-4 h-4" />
