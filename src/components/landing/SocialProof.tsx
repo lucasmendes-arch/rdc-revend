@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { Star, Quote } from "lucide-react";
 
 const testimonials = [
@@ -31,8 +32,28 @@ const testimonials = [
 ];
 
 const SocialProof = () => {
+  const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            const el = entry.target as HTMLElement;
+            el.style.opacity = "1";
+            el.style.transform = "translateY(0)";
+            observer.unobserve(el);
+          }
+        });
+      },
+      { threshold: 0.1 }
+    );
+    cardRefs.current.forEach((ref) => ref && observer.observe(ref));
+    return () => observer.disconnect();
+  }, []);
+
   return (
-    <section className="py-20 lg:py-28 bg-surface-alt">
+    <section className="py-20 lg:py-28" style={{ background: "#ffffff" }}>
       <div className="container mx-auto px-4 sm:px-6">
         {/* Header */}
         <div className="text-center mb-14 max-w-2xl mx-auto">
@@ -56,7 +77,14 @@ const SocialProof = () => {
           {testimonials.map((t, idx) => (
             <div
               key={idx}
-              className="bg-white rounded-2xl p-6 shadow-card hover:shadow-card-hover hover:-translate-y-0.5 transition-all duration-300 border border-border hover:border-gold-border flex flex-col"
+              ref={(el) => (cardRefs.current[idx] = el)}
+              className="bg-white rounded-2xl p-6 border border-border flex flex-col"
+              style={{
+                opacity: 0,
+                transform: "translateY(20px)",
+                transition: `opacity 0.5s ease ${idx * 100}ms, transform 0.5s ease ${idx * 100}ms`,
+                boxShadow: "var(--shadow-card)",
+              }}
             >
               {/* Quote Icon */}
               <div className="mb-4">

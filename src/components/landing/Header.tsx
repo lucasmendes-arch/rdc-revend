@@ -1,5 +1,4 @@
-import { useState, useEffect } from "react";
-import { LogIn } from "lucide-react";
+import { useEffect, useState } from "react";
 import logo from "@/assets/logo-rei-dos-cachos.png";
 
 const Header = () => {
@@ -18,7 +17,9 @@ const Header = () => {
   return (
     <header
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-        scrolled ? "bg-white/95 backdrop-blur-md shadow-sm border-b border-border" : "bg-white/80 backdrop-blur-sm"
+        scrolled
+          ? "bg-white/95 backdrop-blur-md shadow-sm border-b border-border"
+          : "bg-white/80 backdrop-blur-sm"
       }`}
     >
       <div className="container mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
@@ -27,23 +28,13 @@ const Header = () => {
           <img src={logo} alt="Rei dos Cachos" className="h-12 w-auto" />
         </div>
 
-        {/* Nav Actions */}
-        <div className="flex items-center gap-2 sm:gap-3">
-          <a
-            href="/login"
-            className="hidden sm:flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium btn-gold-outline"
-          >
-            <LogIn className="w-3.5 h-3.5" />
-            Já sou cliente
-          </a>
-          <button
-            onClick={scrollToForm}
-            className="flex items-center gap-1.5 px-4 sm:px-5 py-2 sm:py-2.5 rounded-lg text-sm font-semibold btn-gold text-white"
-          >
-            <span className="hidden sm:inline">Quero Revender</span>
-            <span className="sm:hidden">Revender</span>
-          </button>
-        </div>
+        {/* Single CTA */}
+        <button
+          onClick={scrollToForm}
+          className="flex items-center gap-1.5 px-4 sm:px-5 py-2 sm:py-2.5 rounded-lg text-sm font-semibold btn-gold text-white"
+        >
+          Quero Revender
+        </button>
       </div>
     </header>
   );

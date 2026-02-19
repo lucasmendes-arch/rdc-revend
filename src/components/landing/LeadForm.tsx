@@ -27,7 +27,6 @@ const LeadForm = () => {
     if (!form.nome || !form.whatsapp || !form.email) return;
     setLoading(true);
 
-    // Save to localStorage and create session token
     const token = `rdc_${Date.now()}_${Math.random().toString(36).slice(2)}`;
     const userData = { ...form, token, registeredAt: new Date().toISOString() };
     localStorage.setItem("rdc_user", JSON.stringify(userData));
@@ -37,10 +36,9 @@ const LeadForm = () => {
     setTimeout(() => {
       setSubmitted(true);
       setLoading(false);
-      // Redirect to catalog
       setTimeout(() => {
-          window.location.href = "/catalogo";
-        }, 1500);
+        window.location.href = "/catalogo";
+      }, 1500);
     }, 800);
   };
 
@@ -190,7 +188,7 @@ const LeadForm = () => {
                     </>
                   ) : (
                     <>
-                      Liberar Acesso ao Catálogo
+                      Acessar Meus Preços de Atacado
                       <ArrowRight className="w-4 h-4" />
                     </>
                   )}
