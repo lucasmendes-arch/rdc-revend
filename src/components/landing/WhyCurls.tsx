@@ -13,12 +13,12 @@ const reasons = [
   },
   {
     icon: Heart,
-    title: "Fidelização Total",
-    subtitle: "Quem usa, não troca",
+    title: "Receita Recorrente",
+    subtitle: "Sua cliente volta todo mês",
     description:
-      "Nossas fórmulas garantem definição por até 3 dias. Clientes que experimentam se tornam fiéis — e indicam para amigas.",
-    stat: "3 dias",
-    statLabel: "de definição",
+      "Produtos de uso diário que acabam rápido. Quem começa a usar compra de novo — e você fatura todo mês sem precisar conquistar cliente novo.",
+    stat: "+85%",
+    statLabel: "de recompra",
   },
   {
     icon: Megaphone,

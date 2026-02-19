@@ -3,32 +3,44 @@ import { Calculator, ArrowRight, Gift } from "lucide-react";
 
 const simulations = [
   {
-    invest: "R$ 300",
-    revenue: "R$ 620",
-    multiplier: "2x",
-    bonus: null,
-    highlight: false,
-  },
-  {
-    invest: "R$ 500",
+    package: "Pacote 1 — Iniciante",
+    invest: "R$ 497,99",
+    includes: "Seleção dos itens com maior giro de vendas + E-book Guia de Vendas para Revendedores",
     revenue: "R$ 1.050",
-    multiplier: "2.1x",
+    multiplier: "→ 2.1x",
     bonus: null,
     highlight: false,
+    badge: null,
   },
   {
-    invest: "R$ 1.000",
-    revenue: "R$ 2.200",
-    multiplier: "2.2x",
-    bonus: "🎁 + Kit de Bônus (R$ 120 em produtos grátis)",
-    highlight: true,
-  },
-  {
-    invest: "R$ 2.000",
-    revenue: "R$ 4.600",
-    multiplier: "2.3x",
-    bonus: "🎁 + Kit Premium Grátis + Frete",
+    package: "Pacote 2 — Crescimento",
+    invest: "R$ 1.497,99",
+    includes: "Itens de maior giro + variedades da linha + E-book + Videoaula exclusiva (2h) de técnicas de venda",
+    revenue: "R$ 3.200",
+    multiplier: "→ 2.1x",
+    bonus: null,
     highlight: false,
+    badge: null,
+  },
+  {
+    package: "Pacote 3 — Pro",
+    invest: "R$ 2.997,99",
+    includes: "Itens de maior giro e maior margem + tudo do Pacote 2 + 🚚 Frete Grátis",
+    revenue: "R$ 6.500",
+    multiplier: "→ 2.2x",
+    bonus: "🎁 + Frete Grátis incluso",
+    highlight: true,
+    badge: "⭐ Mais Popular",
+  },
+  {
+    package: "Pacote 4 — Elite",
+    invest: "R$ 4.997,99",
+    includes: "Tudo do Pacote 3 + Kit Expositor Personalizado para PDV (display físico com a identidade visual Rei dos Cachos para montar no seu salão ou loja)",
+    revenue: "R$ 10.500",
+    multiplier: "→ 2.1x",
+    bonus: "🎁 + Expositor Personalizado para seu PDV",
+    highlight: false,
+    badge: "👑 Exclusivo",
   },
 ];
 
@@ -73,17 +85,18 @@ const ProfitSimulator = () => {
             <span className="gradient-gold-text">Pode Faturar</span>
           </h2>
           <p className="text-muted-foreground text-lg">
-            Com margens reais de até 130%, cada real investido vira dois. Veja a simulação:
+            Com margens reais de até 130%, cada real investido vira dois. Escolha seu pacote:
           </p>
         </div>
 
         {/* Simulation Table */}
-        <div className="max-w-3xl mx-auto">
+        <div className="max-w-4xl mx-auto">
           <div className="bg-white rounded-2xl overflow-hidden border border-border shadow-card">
             {/* Table Header */}
-            <div className="grid grid-cols-3 gap-0 bg-foreground text-primary-foreground px-6 py-4">
-              <div className="text-sm font-semibold opacity-70">Você Investe</div>
-              <div className="text-sm font-semibold opacity-70 text-center">Multiplica</div>
+            <div className="grid grid-cols-4 gap-0 bg-foreground text-primary-foreground px-4 py-4">
+              <div className="text-sm font-semibold opacity-70">Pacote</div>
+              <div className="text-sm font-semibold opacity-70 text-center">Você Investe</div>
+              <div className="text-sm font-semibold opacity-70 text-center hidden sm:block">O que inclui</div>
               <div className="text-sm font-semibold opacity-70 text-right">Você Fatura</div>
             </div>
 
@@ -103,24 +116,46 @@ const ProfitSimulator = () => {
                   transition: `opacity 0.5s ease ${idx * 100}ms, transform 0.5s ease ${idx * 100}ms`,
                 }}
               >
-                <div className="grid grid-cols-3 items-center px-6 py-4">
-                  <div className="font-semibold text-foreground text-base">{sim.invest}</div>
-                  <div className="flex justify-center">
-                    <div className="flex items-center gap-1.5">
-                      <ArrowRight className="w-4 h-4 text-gold-text" />
+                <div className="grid grid-cols-4 items-start px-4 py-4 gap-2">
+                  {/* Package name + badge */}
+                  <div className="flex flex-col gap-1">
+                    <span className="font-semibold text-foreground text-sm leading-tight">{sim.package}</span>
+                    {sim.badge && (
+                      <span className={`inline-flex self-start text-xs font-bold px-2 py-0.5 rounded-full ${
+                        sim.highlight
+                          ? "gradient-gold text-white"
+                          : "bg-foreground text-primary-foreground"
+                      }`}>
+                        {sim.badge}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Invest + multiplier */}
+                  <div className="flex flex-col items-center gap-1">
+                    <span className="font-semibold text-foreground text-sm">{sim.invest}</span>
+                    <div className="flex items-center gap-1">
+                      <ArrowRight className="w-3.5 h-3.5 text-gold-text" />
                       <span className="text-xs font-bold text-gold-text bg-gold-light border border-gold-border px-2 py-0.5 rounded-full">
-                        {sim.multiplier}
+                        {sim.multiplier.replace("→ ", "")}
                       </span>
                     </div>
                   </div>
+
+                  {/* Includes */}
+                  <div className="hidden sm:block">
+                    <p className="text-xs text-muted-foreground leading-relaxed">{sim.includes}</p>
+                  </div>
+
+                  {/* Revenue */}
                   <div className="text-right">
-                    <div className={`text-xl font-bold ${sim.highlight ? "gradient-gold-text" : "text-foreground"}`}>
+                    <div className={`text-lg font-bold ${sim.highlight ? "gradient-gold-text" : "text-foreground"}`}>
                       {sim.revenue}
                     </div>
                   </div>
                 </div>
                 {sim.bonus && (
-                  <div className="flex items-center gap-1.5 px-6 pb-3">
+                  <div className="flex items-center gap-1.5 px-4 pb-3">
                     <Gift className="w-3.5 h-3.5 text-gold-text flex-shrink-0" />
                     <span className="text-xs font-medium text-gold-text">{sim.bonus}</span>
                   </div>
