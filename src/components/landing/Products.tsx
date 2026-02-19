@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { ArrowRight, Tag, TrendingUp } from "lucide-react";
 import ativadorImg from "@/assets/product-ativador.jpg";
 import gelatinhaImg from "@/assets/product-gelatina.jpg";
@@ -6,6 +7,7 @@ import kitImg from "@/assets/product-kit.jpg";
 const products = [
   {
     image: ativadorImg,
+    resultAlt: "resultado-ativador-cachos.jpg — cabelo com definição intensa após uso do Ativador de Cachos",
     name: "Ativador de Cachos",
     weight: "1kg — Uso Profissional",
     costPrice: "R$ 38",
@@ -16,6 +18,7 @@ const products = [
   },
   {
     image: gelatinhaImg,
+    resultAlt: "resultado-gelatina-cachos.jpg — cacho definido e sem frizz após uso da Gelatina Definidora",
     name: "Gelatina Definidora",
     weight: "1kg — Extra Forte",
     costPrice: "R$ 32",
@@ -26,6 +29,7 @@ const products = [
   },
   {
     image: kitImg,
+    resultAlt: "resultado-kit-lavatório-pro.jpg — cabelo brilhante e hidratado após uso do Kit Lavatório Pro",
     name: "Kit Lavatório Pro",
     weight: "Shampoo + Condicionador + Máscara",
     costPrice: "R$ 85",
@@ -37,8 +41,28 @@ const products = [
 ];
 
 const Products = () => {
+  const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            const el = entry.target as HTMLElement;
+            el.style.opacity = "1";
+            el.style.transform = "translateY(0)";
+            observer.unobserve(el);
+          }
+        });
+      },
+      { threshold: 0.15 }
+    );
+    cardRefs.current.forEach((ref) => ref && observer.observe(ref));
+    return () => observer.disconnect();
+  }, []);
+
   return (
-    <section className="py-20 lg:py-28 bg-white">
+    <section className="py-20 lg:py-28" style={{ background: "#faf8f3" }}>
       <div className="container mx-auto px-4 sm:px-6">
         {/* Header */}
         <div className="text-center mb-14 max-w-2xl mx-auto">
@@ -63,7 +87,23 @@ const Products = () => {
           {products.map((product, idx) => (
             <div
               key={idx}
-              className="group bg-white rounded-2xl overflow-hidden border border-border hover:border-gold-border shadow-card hover:shadow-card-hover transition-all duration-300 hover:-translate-y-1"
+              ref={(el) => (cardRefs.current[idx] = el)}
+              className="group bg-white rounded-2xl overflow-hidden border border-border shadow-card"
+              style={{
+                opacity: 0,
+                transform: "translateY(20px)",
+                transition: `opacity 0.5s ease ${idx * 100}ms, transform 0.5s ease ${idx * 100}ms, box-shadow 0.25s ease, border-color 0.25s ease`,
+              }}
+              onMouseEnter={(e) => {
+                (e.currentTarget as HTMLElement).style.transform = "translateY(0) scale(1.02)";
+                (e.currentTarget as HTMLElement).style.boxShadow = "0 12px 48px -8px hsl(220 14% 12% / 0.22)";
+                (e.currentTarget as HTMLElement).style.borderColor = "hsl(38 85% 70%)";
+              }}
+              onMouseLeave={(e) => {
+                (e.currentTarget as HTMLElement).style.transform = "translateY(0) scale(1)";
+                (e.currentTarget as HTMLElement).style.boxShadow = "";
+                (e.currentTarget as HTMLElement).style.borderColor = "";
+              }}
             >
               {/* Product Image */}
               <div className="relative bg-surface-alt h-52 overflow-hidden">
@@ -71,6 +111,12 @@ const Products = () => {
                   src={product.image}
                   alt={product.name}
                   className="w-full h-full object-cover object-center transition-transform duration-500 group-hover:scale-105"
+                />
+                {/* Result image placeholder overlay */}
+                <img
+                  src={product.image}
+                  alt={product.resultAlt}
+                  className="absolute inset-0 w-full h-full object-cover object-center opacity-0 group-hover:opacity-100 transition-opacity duration-500"
                 />
                 {/* Tag */}
                 <div className={`absolute top-3 left-3 px-2.5 py-1 rounded-full text-xs font-semibold border ${product.tagColor}`}>
@@ -109,7 +155,7 @@ const Products = () => {
         {/* CTA */}
         <div className="text-center">
           <a
-            href="/loja.html"
+            href="/catalogo"
             className="inline-flex items-center gap-2.5 px-8 py-3.5 rounded-xl font-semibold text-base btn-gold text-white"
           >
             Acessar Catálogo Completo

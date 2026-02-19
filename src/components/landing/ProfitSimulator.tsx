@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { Calculator, ArrowRight, Gift } from "lucide-react";
 
 const simulations = [
@@ -32,12 +33,32 @@ const simulations = [
 ];
 
 const ProfitSimulator = () => {
+  const rowRefs = useRef<(HTMLDivElement | null)[]>([]);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            const el = entry.target as HTMLElement;
+            el.style.opacity = "1";
+            el.style.transform = "translateY(0)";
+            observer.unobserve(el);
+          }
+        });
+      },
+      { threshold: 0.1 }
+    );
+    rowRefs.current.forEach((ref) => ref && observer.observe(ref));
+    return () => observer.disconnect();
+  }, []);
+
   const scrollToForm = () => {
     document.getElementById("cadastro")?.scrollIntoView({ behavior: "smooth" });
   };
 
   return (
-    <section className="py-20 lg:py-28 bg-surface-alt">
+    <section className="py-20 lg:py-28" style={{ background: "#faf8f3" }}>
       <div className="container mx-auto px-4 sm:px-6">
         {/* Header */}
         <div className="text-center mb-14 max-w-2xl mx-auto">
@@ -70,11 +91,17 @@ const ProfitSimulator = () => {
             {simulations.map((sim, idx) => (
               <div
                 key={idx}
-                className={`border-b border-border last:border-b-0 transition-colors ${
+                ref={(el) => (rowRefs.current[idx] = el)}
+                className={`border-b border-border last:border-b-0 ${
                   sim.highlight
                     ? "bg-gold-light border-l-4 border-l-gold"
                     : "hover:bg-surface-alt"
                 }`}
+                style={{
+                  opacity: 0,
+                  transform: "translateY(20px)",
+                  transition: `opacity 0.5s ease ${idx * 100}ms, transform 0.5s ease ${idx * 100}ms`,
+                }}
               >
                 <div className="grid grid-cols-3 items-center px-6 py-4">
                   <div className="font-semibold text-foreground text-base">{sim.invest}</div>

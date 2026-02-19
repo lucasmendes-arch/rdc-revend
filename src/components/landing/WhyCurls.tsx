@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { TrendingUp, Heart, Megaphone } from "lucide-react";
 
 const reasons = [
@@ -31,8 +32,28 @@ const reasons = [
 ];
 
 const WhyCurls = () => {
+  const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            const el = entry.target as HTMLElement;
+            el.style.opacity = "1";
+            el.style.transform = "translateY(0)";
+            observer.unobserve(el);
+          }
+        });
+      },
+      { threshold: 0.15 }
+    );
+    cardRefs.current.forEach((ref) => ref && observer.observe(ref));
+    return () => observer.disconnect();
+  }, []);
+
   return (
-    <section className="py-20 lg:py-28 bg-surface-alt">
+    <section className="py-20 lg:py-28" style={{ background: "#ffffff" }}>
       <div className="container mx-auto px-4 sm:px-6">
         {/* Section Header */}
         <div className="text-center mb-14 max-w-2xl mx-auto">
@@ -57,7 +78,20 @@ const WhyCurls = () => {
             return (
               <div
                 key={idx}
-                className="group bg-white rounded-2xl p-7 shadow-card hover:shadow-card-hover transition-all duration-300 hover:-translate-y-1 border border-border hover:border-gold-border"
+                ref={(el) => (cardRefs.current[idx] = el)}
+                className="group bg-white rounded-2xl p-7 border border-border hover:border-gold-border"
+                style={{
+                  opacity: 0,
+                  transform: "translateY(20px)",
+                  transition: `opacity 0.5s ease ${idx * 100}ms, transform 0.5s ease ${idx * 100}ms, box-shadow 0.3s ease`,
+                  boxShadow: "var(--shadow-card)",
+                }}
+                onMouseEnter={(e) => {
+                  (e.currentTarget as HTMLElement).style.boxShadow = "var(--shadow-card-hover)";
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLElement).style.boxShadow = "var(--shadow-card)";
+                }}
               >
                 {/* Icon */}
                 <div className="mb-5">

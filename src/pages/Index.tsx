@@ -1,41 +1,55 @@
 import Header from "@/components/landing/Header";
+import TrustBar from "@/components/landing/TrustBar";
 import Hero from "@/components/landing/Hero";
 import WhyCurls from "@/components/landing/WhyCurls";
 import Products from "@/components/landing/Products";
 import ProfitSimulator from "@/components/landing/ProfitSimulator";
-import LeadForm from "@/components/landing/LeadForm";
 import SocialProof from "@/components/landing/SocialProof";
+import FAQ from "@/components/landing/FAQ";
+import LeadForm from "@/components/landing/LeadForm";
 import Footer from "@/components/landing/Footer";
+import MobileFloatingCTA from "@/components/landing/MobileFloatingCTA";
 
 const Index = () => {
   return (
-    <div className="min-h-screen bg-background font-sans">
+    <div className="min-h-screen font-sans" style={{ background: "#faf8f3" }}>
       {/* SEO */}
       <title>Rei dos Cachos Pro — Atacado para Salões e Revendedores</title>
-      
-      {/* A: Sticky Header */}
+
+      {/* 1. Sticky Header */}
       <Header />
 
-      {/* B: Hero Section */}
+      {/* 2. Trust Bar */}
+      <div className="pt-16">
+        <TrustBar />
+      </div>
+
+      {/* 3. Hero */}
       <Hero />
 
-      {/* C: Why Curls */}
+      {/* 4. Why Curls */}
       <WhyCurls />
 
-      {/* D: Products Showcase */}
+      {/* 5. Products */}
       <Products />
 
-      {/* E: Profit Simulator */}
+      {/* 6. Profit Simulator */}
       <ProfitSimulator />
 
-      {/* F: Lead Capture Form */}
-      <LeadForm />
-
-      {/* G: Social Proof */}
+      {/* 7. Social Proof */}
       <SocialProof />
+
+      {/* 8. FAQ */}
+      <FAQ />
+
+      {/* 9. Lead Form */}
+      <LeadForm />
 
       {/* Footer */}
       <Footer />
+
+      {/* Mobile Floating CTA */}
+      <MobileFloatingCTA />
     </div>
   );
 };
