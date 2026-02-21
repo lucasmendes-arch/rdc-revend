@@ -4,7 +4,13 @@ const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 
 if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Variáveis de ambiente Supabase não configuradas. Configure VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY em .env.local')
+  console.warn(
+    '⚠️ Supabase não configurado. Configure VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY em .env.local'
+  )
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+// Usar valores placeholder se não configurados (para desenvolvimento)
+const url = supabaseUrl || 'https://placeholder.supabase.co'
+const key = supabaseAnonKey || 'placeholder-key'
+
+export const supabase = createClient(url, key)
