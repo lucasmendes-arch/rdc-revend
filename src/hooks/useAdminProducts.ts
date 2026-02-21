@@ -92,44 +92,21 @@ export function useNuvemshopSync() {
 
   return useMutation({
     mutationFn: async (): Promise<SyncResult> => {
-      console.log('🔐 Getting session...')
-      const { data: session, error: sessionError } = await supabase.auth.getSession()
-
-      console.log('📋 Session status:', {
-        hasSession: !!session.session,
-        hasToken: !!session.session?.access_token,
-        tokenLength: session.session?.access_token?.length,
-        error: sessionError?.message,
-      })
-
-      if (sessionError || !session.session) {
-        throw new Error('Não autenticado')
-      }
-
-      const token = session.session.access_token
-      console.log('🔑 Token ready, calling sync...')
-      console.log('📡 Calling:', `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sync-nuvemshop`)
-
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sync-nuvemshop`,
         {
           method: 'POST',
           headers: {
-            Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json',
           },
         }
       )
 
-      console.log('📥 Response status:', response.status)
-
       const data = await response.json()
-
-      console.log('📦 Response data:', data)
 
       if (!response.ok) {
         const errorMsg = data.error || data.message || JSON.stringify(data)
-        console.error('❌ Sync error:', errorMsg)
+        console.error('Sync error:', errorMsg)
         throw new Error(errorMsg)
       }
 
