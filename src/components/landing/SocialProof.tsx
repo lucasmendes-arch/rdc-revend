@@ -41,13 +41,11 @@ const TestimonialCard = ({
   cardRef: (el: HTMLDivElement | null) => void;
 }) => {
   const [expanded, setExpanded] = useState(false);
-  const maxLines = 2;
-  const isLongText = t.text.split('\n').length > maxLines || t.text.length > 120;
 
   return (
     <div
       ref={cardRef}
-      className="min-w-[calc(100vw-32px)] sm:min-w-0 snap-center bg-white rounded-2xl p-4 sm:p-6 border border-border flex flex-col flex-shrink-0"
+      className="min-w-[calc(100vw-32px)] sm:min-w-0 snap-center bg-white rounded-2xl p-4 sm:p-6 border border-border flex flex-col flex-shrink-0 transition-all duration-300"
       style={{
         opacity: 0,
         transform: "translateY(20px)",
@@ -55,43 +53,44 @@ const TestimonialCard = ({
         boxShadow: "var(--shadow-card)",
       }}
     >
-      <Quote className="w-6 h-6 text-gold-border mb-2" />
+      {/* Quote icon - reduced */}
+      <Quote className="w-4 h-4 text-gold-border mb-2" />
 
-      <div className="flex gap-0.5 mb-3">
-        {Array(t.stars).fill(0).map((_, i) => (
-          <Star key={i} className="w-3.5 h-3.5 text-gold fill-gold" />
-        ))}
-      </div>
-
+      {/* Testimonial text - compact */}
       <p
-        className={`text-sm sm:text-base text-foreground leading-relaxed mb-3 flex-1 ${
-          !expanded && isLongText ? "line-clamp-2" : ""
+        className={`text-sm sm:text-base text-foreground font-medium mb-2 flex-shrink-0 ${
+          !expanded ? "line-clamp-2" : ""
         }`}
-        style={{ lineHeight: "1.5" }}
+        style={{ lineHeight: "1.4" }}
       >
         "{t.text}"
       </p>
 
-      {isLongText && (
-        <button
-          onClick={() => setExpanded(!expanded)}
-          className="text-xs text-gold-text font-semibold hover:text-gold mb-3 text-left"
-        >
-          {expanded ? "Ver menos" : "Ver mais"}
-        </button>
-      )}
+      {/* See more/less button - hit area 44px */}
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="py-2 px-1 text-xs text-gold-text font-semibold hover:text-gold mb-2 text-left min-h-[44px] flex items-center"
+      >
+        {expanded ? "← Ver menos" : "Ver mais →"}
+      </button>
 
-      <div className="bg-gold-light rounded-lg px-2.5 py-1.5 mb-3">
-        <span className="text-xs font-bold text-gold-text">✨ {t.highlight}</span>
+      {/* Highlight badge - compact chip */}
+      <div className="bg-gold-light rounded-full px-2.5 py-1 mb-2 self-start">
+        <span className="text-xs sm:text-sm font-bold text-gold-text">✨ {t.highlight}</span>
       </div>
 
-      <div className="flex items-center gap-2.5 pt-2.5 border-t border-border">
+      {/* Author block - single line info */}
+      <div className="flex items-center gap-2 pt-2 border-t border-border">
         <div className="w-8 h-8 rounded-full gradient-gold flex items-center justify-center flex-shrink-0 shadow-gold">
           <span className="text-xs font-bold text-white">{t.avatar}</span>
         </div>
-        <div>
-          <div className="text-xs sm:text-sm font-bold text-foreground">{t.name}</div>
-          <div className="text-xs text-muted-foreground">{t.role}</div>
+        <div className="flex-1 min-w-0">
+          <div className="text-xs sm:text-sm font-bold text-foreground truncate">{t.name}</div>
+          <div className="flex items-center gap-0.5 text-xs text-muted-foreground">
+            {Array(t.stars).fill(0).map((_, i) => (
+              <Star key={i} className="w-3 h-3 text-gold fill-gold flex-shrink-0" />
+            ))}
+          </div>
         </div>
       </div>
     </div>
@@ -146,7 +145,7 @@ const SocialProof = () => {
         </div>
 
         {/* Mobile: full-width cards | Desktop: grid */}
-        <div className="flex sm:grid sm:grid-cols-3 gap-3 sm:gap-6 overflow-x-auto sm:overflow-visible snap-x snap-mandatory pb-4 sm:pb-0 -mx-4 px-4 sm:mx-0 sm:px-0 mb-10">
+        <div className="flex sm:grid sm:grid-cols-3 gap-3 sm:gap-6 overflow-x-auto sm:overflow-visible snap-x snap-mandatory pb-4 sm:pb-0 -mx-4 px-4 sm:mx-0 sm:px-0 mb-6 sm:mb-10">
           {testimonials.map((t, idx) => (
             <TestimonialCard
               key={idx}
@@ -157,7 +156,7 @@ const SocialProof = () => {
           ))}
         </div>
 
-        <div className="text-center">
+        <div className="text-center mt-4 sm:mt-0">
           <button
             onClick={scrollToForm}
             className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-xl font-semibold text-base btn-gold text-white min-h-[52px]"
