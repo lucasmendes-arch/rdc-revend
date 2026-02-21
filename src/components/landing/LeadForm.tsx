@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { ArrowRight, Lock, CheckCircle2, User, Phone, Mail, CreditCard, ChevronDown } from "lucide-react";
+import { ArrowRight, Lock, CheckCircle2, User, Phone, Mail, CreditCard, ChevronDown, ChevronUp } from "lucide-react";
 
 const LeadForm = () => {
   const [form, setForm] = useState({ nome: "", whatsapp: "", email: "", cpfCnpj: "" });
+  const [errors, setErrors] = useState({ nome: "", whatsapp: "", email: "" });
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [showCpf, setShowCpf] = useState(false);
@@ -25,7 +26,15 @@ const LeadForm = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.nome || !form.whatsapp || !form.email) return;
+    const newErrors = { nome: "", whatsapp: "", email: "" };
+
+    if (!form.nome) newErrors.nome = "Nome é obrigatório";
+    if (!form.whatsapp) newErrors.whatsapp = "WhatsApp é obrigatório";
+    if (!form.email) newErrors.email = "E-mail é obrigatório";
+
+    setErrors(newErrors);
+    if (newErrors.nome || newErrors.whatsapp || newErrors.email) return;
+
     setLoading(true);
 
     const token = `rdc_${Date.now()}_${Math.random().toString(36).slice(2)}`;
@@ -67,6 +76,23 @@ const LeadForm = () => {
   return (
     <section id="cadastro" className="py-14 sm:py-20 lg:py-28 bg-white">
       <div className="container mx-auto px-4">
+        {/* Mobile headline - visible only on mobile */}
+        <div className="lg:hidden mb-8 max-w-md mx-auto text-center">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-gold-border bg-gold-light mb-4">
+            <Lock className="w-3.5 h-3.5 text-gold-text" />
+            <span className="text-xs font-semibold text-gold-text tracking-widest uppercase">
+              Acesso Exclusivo
+            </span>
+          </div>
+          <h2 className="text-2xl sm:text-3xl font-bold text-foreground mb-2 leading-tight">
+            Libere Seu Acesso{" "}
+            <span className="gradient-gold-text">ao Atacado</span>
+          </h2>
+          <p className="text-muted-foreground text-sm leading-relaxed">
+            Preencha o formulário e acesse imediatamente os preços de revendedor.
+          </p>
+        </div>
+
         <div className="max-w-5xl mx-auto">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-16 items-start">
             {/* Left: Info (hidden on mobile, shown on desktop) */}
@@ -125,9 +151,12 @@ const LeadForm = () => {
                       value={form.nome}
                       onChange={handleChange}
                       placeholder="Seu nome ou nome do salão"
-                      className="w-full pl-10 pr-4 py-3 rounded-xl border border-border bg-background text-base text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-gold focus:border-gold-border transition-all min-h-[48px]"
+                      className={`w-full pl-10 pr-4 py-3 rounded-xl border bg-background text-base text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 transition-all min-h-[48px] ${
+                        errors.nome ? "border-red-500 focus:ring-red-500" : "border-border focus:ring-gold focus:border-gold-border"
+                      }`}
                     />
                   </div>
+                  {errors.nome && <p className="text-red-500 text-xs mt-1">{errors.nome}</p>}
                 </div>
 
                 {/* WhatsApp */}
@@ -142,9 +171,12 @@ const LeadForm = () => {
                       value={form.whatsapp}
                       onChange={handleChange}
                       placeholder="(11) 99999-9999"
-                      className="w-full pl-10 pr-4 py-3 rounded-xl border border-border bg-background text-base text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-gold focus:border-gold-border transition-all min-h-[48px]"
+                      className={`w-full pl-10 pr-4 py-3 rounded-xl border bg-background text-base text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 transition-all min-h-[48px] ${
+                        errors.whatsapp ? "border-red-500 focus:ring-red-500" : "border-border focus:ring-gold focus:border-gold-border"
+                      }`}
                     />
                   </div>
+                  {errors.whatsapp && <p className="text-red-500 text-xs mt-1">{errors.whatsapp}</p>}
                 </div>
 
                 {/* Email */}
@@ -159,9 +191,12 @@ const LeadForm = () => {
                       value={form.email}
                       onChange={handleChange}
                       placeholder="seu@email.com"
-                      className="w-full pl-10 pr-4 py-3 rounded-xl border border-border bg-background text-base text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-gold focus:border-gold-border transition-all min-h-[48px]"
+                      className={`w-full pl-10 pr-4 py-3 rounded-xl border bg-background text-base text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 transition-all min-h-[48px] ${
+                        errors.email ? "border-red-500 focus:ring-red-500" : "border-border focus:ring-gold focus:border-gold-border"
+                      }`}
                     />
                   </div>
+                  {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
                 </div>
 
                 {/* CPF/CNPJ - collapsible */}
@@ -175,7 +210,15 @@ const LeadForm = () => {
                     Adicionar CPF/CNPJ (opcional)
                   </button>
                 ) : (
-                  <div>
+                  <div className="border-t border-border pt-4">
+                    <button
+                      type="button"
+                      onClick={() => setShowCpf(false)}
+                      className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors mb-3"
+                    >
+                      <ChevronUp className="w-4 h-4" />
+                      Remover CPF/CNPJ
+                    </button>
                     <label className="block text-sm font-medium text-foreground mb-1.5">
                       CNPJ / CPF <span className="text-muted-foreground font-normal">(opcional)</span>
                     </label>
