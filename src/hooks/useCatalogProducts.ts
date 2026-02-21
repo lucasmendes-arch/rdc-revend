@@ -17,10 +17,17 @@ export function useCatalogProducts() {
       const { data, error } = await supabase
         .from('catalog_products')
         .select('id, name, main_image, price, compare_at_price, description_html')
-        .eq('is_active', true)
         .order('updated_at', { ascending: false })
 
-      if (error) throw error
+      if (error) {
+        console.error('Catalog Products Query Error:', {
+          message: error.message,
+          code: error.code,
+          details: error.details,
+          hint: error.hint,
+        })
+        throw error
+      }
       return (data || []) as PublicProduct[]
     },
     staleTime: 5 * 60 * 1000, // 5 minutos

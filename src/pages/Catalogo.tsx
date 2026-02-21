@@ -4,32 +4,19 @@ import { Link, useNavigate } from "react-router-dom";
 import logo from "@/assets/logo-rei-dos-cachos.png";
 import { supabase } from "@/lib/supabase";
 import { useCatalogProducts } from "@/hooks/useCatalogProducts";
-
-type CartItem = { id: string; name: string; quantity: number; price: number };
+import { useCart } from "@/contexts/CartContext";
 
 const Catalogo = () => {
   const navigate = useNavigate();
   const { data: products = [], isLoading, error } = useCatalogProducts();
+  const { items: cart, addItem, removeItem, total: cartTotal, count: cartCount } = useCart();
   const [search, setSearch] = useState("");
-  const [cart, setCart] = useState<CartItem[]>([]);
   const [cartOpen, setCartOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<typeof products[0] | null>(null);
 
   const filtered = products.filter((p) =>
     p.name.toLowerCase().includes(search.toLowerCase())
   );
-
-  const addToCart = (product: typeof products[0]) => {
-    setCart((prev) => {
-      const existing = prev.find((i) => i.id === product.id);
-      if (existing) return prev.map((i) => i.id === product.id ? { ...i, quantity: i.quantity + 1 } : i);
-      return [...prev, { id: product.id, name: product.name, quantity: 1, price: product.price }];
-    });
-  };
-
-  const removeFromCart = (id: string) => setCart((prev) => prev.filter((i) => i.id !== id));
-  const cartTotal = cart.reduce((sum, i) => sum + i.price * i.quantity, 0);
-  const cartCount = cart.reduce((sum, i) => sum + i.quantity, 0);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -186,7 +173,7 @@ const Catalogo = () => {
 
                       <div className="space-y-2">
                         <button
-                          onClick={() => addToCart(product)}
+                          onClick={() => addItem({ id: product.id, name: product.name, price: product.price })}
                           className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold btn-gold text-white"
                         >
                           <ShoppingCart className="w-3.5 h-3.5" />
@@ -308,7 +295,7 @@ const Catalogo = () => {
               <div className="space-y-2">
                 <button
                   onClick={() => {
-                    addToCart(selectedProduct);
+                    addItem({ id: selectedProduct.id, name: selectedProduct.name, price: selectedProduct.price });
                     setSelectedProduct(null);
                   }}
                   className="w-full flex items-center justify-center gap-2 py-3 rounded-lg text-sm font-semibold btn-gold text-white"
@@ -361,7 +348,7 @@ const Catalogo = () => {
                           {item.quantity}x · R$ {(item.price * item.quantity).toFixed(2)}
                         </p>
                       </div>
-                      <button onClick={() => removeFromCart(item.id)} className="text-muted-foreground hover:text-red-500 transition-colors">
+                      <button onClick={() => removeItem(item.id)} className="text-muted-foreground hover:text-red-500 transition-colors">
                         <X className="w-4 h-4" />
                       </button>
                     </div>
@@ -377,15 +364,16 @@ const Catalogo = () => {
                   <span className="font-semibold text-foreground">Total do Pedido</span>
                   <span className="text-xl font-bold gradient-gold-text">R$ {cartTotal.toFixed(2)}</span>
                 </div>
-                <a
-                  href={`https://wa.me/5500000000000?text=Olá! Quero fazer um pedido no valor de R$ ${cartTotal.toFixed(2)}.%0A${cart.map(i => `- ${i.name} (${i.quantity}x)`).join('%0A')}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                <button
+                  onClick={() => {
+                    setCartOpen(false);
+                    navigate('/checkout');
+                  }}
                   className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-semibold text-base btn-gold text-white"
                 >
-                  Finalizar via WhatsApp
+                  Finalizar Pedido
                   <ArrowRight className="w-4 h-4" />
-                </a>
+                </button>
                 {cartTotal < 300 && (
                   <p className="text-xs text-center text-muted-foreground mt-2">
                     ⚠️ Pedido mínimo: R$ 300 (faltam R$ {(300 - cartTotal).toFixed(2)})
