@@ -19,30 +19,6 @@ interface SyncResult {
   errorMessages: string[];
 }
 
-async function verifyAuth(
-  authHeader: string
-): Promise<{ authenticated: boolean; error: string | null }> {
-  try {
-    const token = authHeader?.replace("Bearer ", "");
-    if (!token) {
-      return { authenticated: false, error: "No authorization header" };
-    }
-
-    // Just check if token exists and has valid format
-    // Token validation is done by Supabase automatically
-    if (token.length > 10) {
-      return { authenticated: true, error: null };
-    }
-
-    return { authenticated: false, error: "Invalid token format" };
-  } catch (err) {
-    return {
-      authenticated: false,
-      error: `Auth error: ${err instanceof Error ? err.message : String(err)}`,
-    };
-  }
-}
-
 async function fetchNuvemshopProducts(
   storeId: string,
   token: string,
@@ -54,19 +30,8 @@ async function fetchNuvemshopProducts(
   const perPage = 50;
 
   try {
-    // Log safe info (last 4 chars of token)
-    const tokenSafe = token.slice(-4);
-    console.log(`📡 Fetching Nuvemshop products:`, {
-      storeId,
-      tokenEndsIn: `****${tokenSafe}`,
-      endpoint: `${NUVEMSHOP_API_URL}/${storeId}/products`,
-    });
-
     while (hasMore) {
       const url = `${NUVEMSHOP_API_URL}/${storeId}/products?page=${page}&per_page=${perPage}`;
-
-      console.log(`🔄 Page ${page}: ${url}`);
-
       const response = await fetch(url, {
         headers: {
           Authentication: `bearer ${token}`,
@@ -75,14 +40,11 @@ async function fetchNuvemshopProducts(
         },
       });
 
-      console.log(`📊 Response Status: ${response.status}`);
-
       if (!response.ok) {
         const errorText = await response.text();
-        console.error(`❌ Nuvemshop Error (${response.status}):`, errorText.substring(0, 200));
         return {
           products: [],
-          error: `Nuvemshop API error: ${response.status} - ${errorText}`,
+          error: `Nuvemshop API error: ${response.status}`,
         };
       }
 
@@ -123,23 +85,18 @@ function mapProduct(
   main_image: string | null;
   is_active: boolean;
 } {
-  // Name: get Portuguese or first available
   const name =
     nuvemshopProduct.name["pt"] ||
     Object.values(nuvemshopProduct.name)[0] ||
     `Product ${nuvemshopProduct.id}`;
 
-  // Description
   const description_html = nuvemshopProduct.description || "";
 
-  // Price: first variant or 0
   const price = nuvemshopProduct.variants?.[0]?.price || 0;
 
-  // Images
   const images = (nuvemshopProduct.images || []).map((img) => img.src);
   const main_image = images[0] || null;
 
-  // Active: published status or default true
   const is_active = nuvemshopProduct.published !== false;
 
   return {
@@ -169,8 +126,7 @@ async function upsertProducts(
     try {
       const mapped = mapProduct(nuvemProduct);
 
-      // Upsert: insert or update if nuvemshop_product_id exists
-      const { data: existing, error: checkError } = await supabase
+      const { data: existing } = await supabase
         .from("catalog_products")
         .select("id")
         .eq("nuvemshop_product_id", mapped.nuvemshop_product_id)
@@ -178,7 +134,6 @@ async function upsertProducts(
 
       let upsertError = null;
       if (existing) {
-        // Update existing
         const { error } = await supabase
           .from("catalog_products")
           .update({
@@ -190,7 +145,6 @@ async function upsertProducts(
         upsertError = error;
         if (!error) result.updated++;
       } else {
-        // Insert new
         const { error } = await supabase.from("catalog_products").insert({
           ...mapped,
           updated_from_source_at: new Date().toISOString(),
@@ -216,35 +170,21 @@ async function upsertProducts(
   return result;
 }
 
-// ============================================================================
-// MAIN EDGE FUNCTION HANDLER
-// ============================================================================
-
-// CORS headers
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization",
-  "Access-Control-Max-Age": "86400",
+  "Access-Control-Allow-Headers": "Content-Type",
 };
 
-console.log("✅ sync-nuvemshop function loaded");
-
 Deno.serve(async (req) => {
-  console.log("📡 Request received:", req.method);
-
-  // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
-    console.log("✅ CORS preflight");
     return new Response(null, {
       status: 204,
       headers: corsHeaders,
     });
   }
 
-  // Only allow POST
   if (req.method !== "POST") {
-    console.log("❌ Method not POST:", req.method);
     return new Response(
       JSON.stringify({ error: "Method not allowed. Use POST." }),
       {
@@ -254,14 +194,9 @@ Deno.serve(async (req) => {
     );
   }
 
-  console.log("🔄 Processing POST request");
-
   try {
-    // Initialize Supabase client with service role (for edge function context)
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-
-    console.log('📡 Sync request received');
 
     if (!supabaseUrl || !supabaseServiceKey) {
       return new Response(
@@ -273,14 +208,8 @@ Deno.serve(async (req) => {
       );
     }
 
-    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // FOR NOW: Use hardcoded user ID (no auth validation)
-    // TODO: Add proper JWT validation later
-    const userId = "6f5bb38e-0607-4314-ba3f-d6b10ea72ed1";
-    console.log('✅ Syncing for user:', userId);
-
-    // Get secrets
     const storeId = Deno.env.get("NUVEMSHOP_STORE_ID");
     const token = Deno.env.get("NUVEMSHOP_ACCESS_TOKEN");
     const userAgent = Deno.env.get("NUVEMSHOP_USER_AGENT");
@@ -288,7 +217,7 @@ Deno.serve(async (req) => {
     if (!storeId || !token || !userAgent) {
       return new Response(
         JSON.stringify({
-          error: "Missing Nuvemshop configuration (secrets not set)",
+          error: "Missing Nuvemshop configuration",
         }),
         {
           status: 500,
@@ -298,7 +227,7 @@ Deno.serve(async (req) => {
     }
 
     // Create sync run
-    const { data: syncRun, error: syncRunError } = await supabaseAdmin
+    const { data: syncRun, error: syncRunError } = await supabase
       .from("catalog_sync_runs")
       .insert({ status: "running" })
       .select()
@@ -306,7 +235,7 @@ Deno.serve(async (req) => {
 
     if (syncRunError || !syncRun) {
       return new Response(
-        JSON.stringify({ error: `Failed to create sync run: ${syncRunError?.message}` }),
+        JSON.stringify({ error: `Failed to create sync run` }),
         {
           status: 500,
           headers: { "Content-Type": "application/json", ...corsHeaders },
@@ -324,8 +253,7 @@ Deno.serve(async (req) => {
     );
 
     if (fetchError) {
-      // Update sync run with error
-      await supabaseAdmin
+      await supabase
         .from("catalog_sync_runs")
         .update({
           status: "error",
@@ -344,10 +272,10 @@ Deno.serve(async (req) => {
     }
 
     // Upsert products
-    const result = await upsertProducts(supabaseAdmin, products);
+    const result = await upsertProducts(supabase, products);
 
     // Update sync run with results
-    const { error: updateError } = await supabaseAdmin
+    await supabase
       .from("catalog_sync_runs")
       .update({
         status: "success",
@@ -362,10 +290,6 @@ Deno.serve(async (req) => {
         finished_at: new Date().toISOString(),
       })
       .eq("id", syncRunId);
-
-    if (updateError) {
-      console.error("Error updating sync run:", updateError);
-    }
 
     return new Response(
       JSON.stringify({
@@ -387,7 +311,7 @@ Deno.serve(async (req) => {
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     return new Response(
-      JSON.stringify({ error: `Unexpected error: ${message}` }),
+      JSON.stringify({ error: `Error: ${message}` }),
       {
         status: 500,
         headers: { "Content-Type": "application/json", ...corsHeaders },
