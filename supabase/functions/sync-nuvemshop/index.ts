@@ -263,7 +263,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
     // Validate JWT and check admin role
     console.log('📡 Sync request received');
@@ -280,69 +280,67 @@ Deno.serve(async (req) => {
     const jwt = authHeader.replace("Bearer ", "");
     console.log('🔑 JWT length:', jwt.length);
 
-    // Decode JWT to get user ID
+    // Create Supabase client with user token to validate JWT
+    const supabaseUser = createClient(supabaseUrl, jwt);
+
+    // Get user from JWT
     let userId: string;
     try {
-      const parts = jwt.split('.');
-      console.log('📊 JWT parts:', parts.length);
+      const { data: { user }, error: authError } = await supabaseUser.auth.getUser();
 
-      if (parts.length !== 3) {
-        throw new Error(`Invalid JWT format: expected 3 parts, got ${parts.length}`);
+      console.log('👤 Auth result:', {
+        userId: user?.id,
+        email: user?.email,
+        error: authError?.message
+      });
+
+      if (authError || !user?.id) {
+        console.error('❌ Auth error:', authError?.message || 'No user ID');
+        return new Response(JSON.stringify({ error: "Invalid or expired token" }), {
+          status: 401, headers: { "Content-Type": "application/json", ...corsHeaders },
+        });
       }
 
-      // Decode payload from base64url
-      const base64Url = parts[1];
-      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-
-      let jsonPayload: string;
-      try {
-        jsonPayload = decodeURIComponent(
-          atob(base64)
-            .split('')
-            .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
-            .join('')
-        );
-      } catch (decodeErr) {
-        console.error('Base64 decode failed:', decodeErr);
-        throw new Error(`Failed to decode base64: ${decodeErr}`);
-      }
-
-      const payload = JSON.parse(jsonPayload);
-      console.log('✅ JWT decoded successfully');
-      console.log('👤 Token claims:', { sub: payload.sub, email: payload.email, aud: payload.aud });
-
-      userId = payload.sub;
-
-      if (!userId) {
-        throw new Error('No user ID (sub) in token');
-      }
-      console.log('👤 User ID extracted:', userId);
+      userId = user.id;
+      console.log('✅ User authenticated:', userId);
     } catch (err) {
-      console.error('❌ JWT decode error:', err);
-      return new Response(JSON.stringify({ error: `Invalid JWT: ${err instanceof Error ? err.message : String(err)}` }), {
+      console.error('❌ Auth error:', err);
+      return new Response(JSON.stringify({ error: `Auth failed: ${err instanceof Error ? err.message : String(err)}` }), {
         status: 401, headers: { "Content-Type": "application/json", ...corsHeaders },
       });
     }
 
-    // Check if user is admin via profiles table
-    const { data: profile, error: profileError } = await supabase
+    // Check if user is admin via profiles table (using admin client for RLS bypass)
+    console.log('🔍 Checking admin role for user:', userId);
+    const { data: profile, error: profileError } = await supabaseAdmin
       .from("profiles")
       .select("role")
       .eq("id", userId)
       .single();
 
-    if (profileError || !profile) {
-      console.error('Profile error:', profileError);
+    if (profileError) {
+      console.error('❌ Profile query error:', profileError);
+      return new Response(JSON.stringify({ error: "Failed to check admin status" }), {
+        status: 403, headers: { "Content-Type": "application/json", ...corsHeaders },
+      });
+    }
+
+    if (!profile) {
+      console.error('❌ Profile not found for user:', userId);
       return new Response(JSON.stringify({ error: "User profile not found" }), {
         status: 403, headers: { "Content-Type": "application/json", ...corsHeaders },
       });
     }
 
-    if (profile?.role !== "admin") {
-      return new Response(JSON.stringify({ error: "Forbidden" }), {
+    console.log('👤 User role:', profile.role);
+    if (profile.role !== "admin") {
+      console.error('❌ User is not admin:', profile.role);
+      return new Response(JSON.stringify({ error: "Forbidden - admin role required" }), {
         status: 403, headers: { "Content-Type": "application/json", ...corsHeaders },
       });
     }
+
+    console.log('✅ Admin access granted');
 
     // Get secrets
     const storeId = Deno.env.get("NUVEMSHOP_STORE_ID");
@@ -362,7 +360,7 @@ Deno.serve(async (req) => {
     }
 
     // Create sync run
-    const { data: syncRun, error: syncRunError } = await supabase
+    const { data: syncRun, error: syncRunError } = await supabaseAdmin
       .from("catalog_sync_runs")
       .insert({ status: "running" })
       .select()
@@ -389,7 +387,7 @@ Deno.serve(async (req) => {
 
     if (fetchError) {
       // Update sync run with error
-      await supabase
+      await supabaseAdmin
         .from("catalog_sync_runs")
         .update({
           status: "error",
@@ -408,10 +406,10 @@ Deno.serve(async (req) => {
     }
 
     // Upsert products
-    const result = await upsertProducts(supabase, products);
+    const result = await upsertProducts(supabaseAdmin, products);
 
     // Update sync run with results
-    const { error: updateError } = await supabase
+    const { error: updateError } = await supabaseAdmin
       .from("catalog_sync_runs")
       .update({
         status: "success",
