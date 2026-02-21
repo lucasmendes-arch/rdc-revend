@@ -4,97 +4,97 @@ import logo from "@/assets/logo-rei-dos-cachos.png";
 
 const Hero = () => {
   const scrollToForm = () => {
-    document.getElementById("cadastro")?.scrollIntoView({ behavior: "smooth" });
+    const form = document.getElementById("cadastro");
+    if (form) {
+      form.scrollIntoView({ behavior: "smooth" });
+      setTimeout(() => {
+        const nameInput = form.querySelector<HTMLInputElement>('input[name="nome"]');
+        nameInput?.focus();
+      }, 600);
+    }
   };
 
   return (
-    <section className="relative w-full min-h-screen flex items-center justify-center overflow-hidden">
-      {/* Full-width background image */}
+    <section className="relative w-full min-h-[100svh] flex items-center justify-center overflow-hidden">
       <img
         src={heroModel}
         alt="Modelo com cachos perfeitos segurando produtos Rei dos Cachos"
         className="absolute inset-0 w-full h-full object-cover object-top"
+        loading="eager"
       />
 
-      {/* Dark overlay */}
-      <div className="absolute inset-0 bg-black/45 pointer-events-none" />
+      {/* Gradient overlay - darker in center for text readability */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          background:
+            "linear-gradient(to bottom, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0.55) 40%, rgba(0,0,0,0.6) 70%, rgba(0,0,0,0.5) 100%)",
+        }}
+      />
 
       {/* Content */}
-      <div className="relative z-10 container mx-auto px-4 sm:px-6 pt-24 pb-16 flex flex-col items-center text-center">
-        {/* Logo inside hero */}
+      <div className="relative z-10 container mx-auto px-4 pt-20 pb-8 sm:pt-24 sm:pb-16 flex flex-col items-center text-center">
+        {/* Logo */}
         <img
           src={logo}
           alt="Rei dos Cachos"
-          className="mb-6 animate-fade-in-up"
+          className="mb-5 animate-fade-in-up"
           style={{
-            width: 120,
+            width: 100,
             filter: "drop-shadow(0 4px 16px rgba(0,0,0,0.45))",
           }}
         />
 
         {/* Badge */}
-        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-white/30 bg-white/10 backdrop-blur-sm mb-6 animate-fade-in-up">
+        <div className="inline-flex items-center px-3 py-1.5 rounded-full border border-white/30 bg-white/10 backdrop-blur-sm mb-5 animate-fade-in-up">
           <span className="text-xs font-semibold text-white/90 tracking-wide uppercase">
             Programa de Revendedores
           </span>
         </div>
 
         {/* Headline */}
-        <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold leading-[1.1] text-white mb-5 max-w-4xl animate-fade-in-up">
-          Lucro Real com a{" "}
-          <span className="gradient-gold-text">Marca Especialista</span>{" "}
-          em Cachos.
+        <h1 className="text-[1.75rem] leading-tight sm:text-5xl lg:text-6xl font-bold text-white mb-4 max-w-4xl animate-fade-in-up">
+          Lucro real com a{" "}
+          <span className="gradient-gold-text">marca especialista</span>{" "}
+          em cachos.
         </h1>
 
         {/* Subheadline */}
-        <p className="text-lg sm:text-xl text-white/85 leading-relaxed max-w-2xl mb-8 animate-fade-in-up animate-delay-100">
+        <p className="text-base sm:text-xl text-white/85 leading-relaxed max-w-2xl mb-6 animate-fade-in-up animate-delay-100">
           Leve a linha profissional Rei dos Cachos para o seu salão ou loja.{" "}
           <strong className="text-white font-semibold">Margens de até 100%</strong> e produtos de alta recorrência.
         </p>
 
-        {/* Stats row */}
-        <div className="flex flex-wrap justify-center gap-4 sm:gap-8 mb-10 animate-fade-in-up animate-delay-200">
-          <div className="flex flex-col items-center">
-            <span className="text-2xl sm:text-3xl font-bold gradient-gold-text">+280</span>
-            <span className="text-xs text-white/70 mt-0.5">Revendedores Ativos</span>
-          </div>
-          <div className="w-px h-10 bg-white/20 hidden sm:block self-center" />
-          <div className="flex flex-col items-center">
-            <span className="text-2xl sm:text-3xl font-bold gradient-gold-text">100%</span>
-            <span className="text-xs text-white/70 mt-0.5">Margem de Lucro</span>
-          </div>
-          <div className="w-px h-10 bg-white/20 hidden sm:block self-center" />
-          <div className="flex flex-col items-center">
-            <span className="text-2xl sm:text-3xl font-bold gradient-gold-text">4.9★</span>
-            <span className="text-xs text-white/70 mt-0.5">Avaliação Média</span>
-          </div>
-        </div>
-
-        {/* Info badges */}
-        <div className="flex flex-wrap justify-center gap-3 mb-8 animate-fade-in-up animate-delay-200">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-white/25 bg-white/10 backdrop-blur-sm text-xs text-white/85 font-medium">
-            🛒 Compra Mínima R$ 500
+        {/* Social proof chips */}
+        <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-3 mb-8 animate-fade-in-up animate-delay-200 w-full sm:w-auto">
+          <span className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full border border-white/25 bg-white/10 backdrop-blur-sm text-sm text-white/90 font-medium w-full sm:w-auto justify-center">
+            👥 +280 revendedores ativos
           </span>
-          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-white/25 bg-white/10 backdrop-blur-sm text-xs text-white/85 font-medium">
-            🚚 Frete Grátis acima de R$ 3.000
+          <span className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full border border-white/25 bg-white/10 backdrop-blur-sm text-sm text-white/90 font-medium w-full sm:w-auto justify-center">
+            📈 Margens de até 100%
+          </span>
+          <span className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full border border-white/25 bg-white/10 backdrop-blur-sm text-sm text-white/90 font-medium w-full sm:w-auto justify-center">
+            💬 Suporte via WhatsApp
           </span>
         </div>
 
-        {/* CTAs */}
-        <div className="flex flex-col items-center gap-3 animate-fade-in-up animate-delay-300">
+        {/* CTA */}
+        <div className="flex flex-col items-center gap-3 animate-fade-in-up animate-delay-300 w-full sm:w-auto">
           <button
             onClick={scrollToForm}
-            className="inline-flex items-center justify-center gap-2.5 px-8 py-4 rounded-xl text-base font-semibold btn-gold text-white text-lg"
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 px-8 py-4 rounded-xl text-base font-semibold btn-gold text-white min-h-[52px]"
           >
-            Quero Revender Agora
+            Acessar Preços de Atacado
             <ArrowRight className="w-5 h-5" />
           </button>
-          <a
-            href="/catalogo"
-            className="text-sm text-white/75 hover:text-white underline underline-offset-4 transition-colors"
+          <button
+            onClick={() => {
+              document.getElementById("como-funciona")?.scrollIntoView({ behavior: "smooth" });
+            }}
+            className="text-sm text-white/70 hover:text-white underline underline-offset-4 transition-colors"
           >
-            Ver Catálogo
-          </a>
+            Ver como funciona
+          </button>
         </div>
       </div>
     </section>

@@ -6,12 +6,19 @@ const Header = () => {
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
-    window.addEventListener("scroll", handleScroll);
+    window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
   const scrollToForm = () => {
-    document.getElementById("cadastro")?.scrollIntoView({ behavior: "smooth" });
+    const form = document.getElementById("cadastro");
+    if (form) {
+      form.scrollIntoView({ behavior: "smooth" });
+      setTimeout(() => {
+        const nameInput = form.querySelector<HTMLInputElement>('input[name="nome"]');
+        nameInput?.focus();
+      }, 600);
+    }
   };
 
   return (
@@ -22,18 +29,13 @@ const Header = () => {
           : "bg-white/80 backdrop-blur-sm"
       }`}
     >
-      <div className="container mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-        {/* Logo */}
-        <div className="flex items-center">
-          <img src={logo} alt="Rei dos Cachos" className="h-12 w-auto" />
-        </div>
-
-        {/* Single CTA */}
+      <div className="container mx-auto px-4 h-14 sm:h-16 flex items-center justify-between">
+        <img src={logo} alt="Rei dos Cachos" className="h-6 sm:h-10 w-auto" />
         <button
           onClick={scrollToForm}
-          className="flex items-center gap-1.5 px-4 sm:px-5 py-2 sm:py-2.5 rounded-lg text-sm font-semibold btn-gold text-white"
+          className="flex items-center gap-1.5 px-4 py-2.5 sm:px-5 sm:py-2.5 rounded-xl text-sm font-semibold btn-gold text-white min-h-[44px]"
         >
-          Quero Revender
+          Quero revender
         </button>
       </div>
     </header>
