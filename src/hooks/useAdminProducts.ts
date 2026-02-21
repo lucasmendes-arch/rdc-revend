@@ -92,11 +92,14 @@ export function useNuvemshopSync() {
 
   return useMutation({
     mutationFn: async (): Promise<SyncResult> => {
+      const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sync-nuvemshop`,
         {
           method: 'POST',
           headers: {
+            'Authorization': `Bearer ${anonKey}`,
             'Content-Type': 'application/json',
           },
         }
