@@ -15,6 +15,7 @@ const products = [
     margin: "+108%",
     tag: "🔥 Mais Vendido",
     tagColor: "bg-red-50 text-red-600 border-red-100",
+    micro: "Alto giro",
   },
   {
     image: gelatinhaImg,
@@ -26,6 +27,7 @@ const products = [
     margin: "+103%",
     tag: "⭐ Top Favorita",
     tagColor: "bg-gold-light text-gold-text border-gold-border",
+    micro: "Recompra alta",
   },
   {
     image: kitImg,
@@ -37,6 +39,7 @@ const products = [
     margin: "+111%",
     tag: "🎁 Kit Premium",
     tagColor: "bg-surface-alt text-foreground border-border",
+    micro: "Alto giro",
   },
 ];
 
@@ -62,65 +65,56 @@ const Products = () => {
   }, []);
 
   return (
-    <section className="py-20 lg:py-28" style={{ background: "#faf8f3" }}>
-      <div className="container mx-auto px-4 sm:px-6">
-        {/* Header */}
-        <div className="text-center mb-14 max-w-2xl mx-auto">
+    <section className="py-14 sm:py-20 lg:py-28" style={{ background: "#ffffff" }}>
+      <div className="container mx-auto px-4">
+        <div className="text-center mb-10 sm:mb-14 max-w-2xl mx-auto">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-gold-border bg-gold-light mb-4">
             <Tag className="w-3.5 h-3.5 text-gold-text" />
             <span className="text-xs font-semibold text-gold-text tracking-widest uppercase">
               Best-Sellers
             </span>
           </div>
-          <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-4">
+          <h2 className="text-2xl sm:text-4xl font-bold text-foreground mb-3">
             Os{" "}
             <span className="gradient-gold-text">Queridinhos</span>{" "}
             das Cacheadas
           </h2>
-          <p className="text-muted-foreground text-lg">
-            Produtos com maior giro de vendas e margem de lucro garantida para o seu negócio.
+          <p className="text-muted-foreground text-base sm:text-lg">
+            Exemplos de itens com alto giro que aparecem nos pacotes.
           </p>
         </div>
 
-        {/* Products Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8 mb-10">
+        {/* Mobile: horizontal scroll | Desktop: grid */}
+        <div className="flex sm:grid sm:grid-cols-3 gap-4 sm:gap-6 lg:gap-8 mb-10 overflow-x-auto sm:overflow-visible snap-x snap-mandatory pb-4 sm:pb-0 -mx-4 px-4 sm:mx-0 sm:px-0">
           {products.map((product, idx) => (
             <div
               key={idx}
               ref={(el) => (cardRefs.current[idx] = el)}
-              className="group bg-white rounded-2xl overflow-hidden border border-border shadow-card"
+              className="min-w-[280px] sm:min-w-0 snap-center group bg-white rounded-2xl overflow-hidden border border-border shadow-card flex-shrink-0 sm:flex-shrink-1 transition-all duration-250 hover:scale-[1.02] hover:shadow-card-hover hover:border-gold-border"
               style={{
                 opacity: 0,
                 transform: "translateY(20px)",
                 transition: `opacity 0.5s ease ${idx * 100}ms, transform 0.5s ease ${idx * 100}ms, box-shadow 0.25s ease, border-color 0.25s ease`,
               }}
-              onMouseEnter={(e) => {
-                (e.currentTarget as HTMLElement).style.transform = "translateY(0) scale(1.02)";
-                (e.currentTarget as HTMLElement).style.boxShadow = "0 12px 48px -8px hsl(220 14% 12% / 0.22)";
-                (e.currentTarget as HTMLElement).style.borderColor = "hsl(38 85% 70%)";
-              }}
-              onMouseLeave={(e) => {
-                (e.currentTarget as HTMLElement).style.transform = "translateY(0) scale(1)";
-                (e.currentTarget as HTMLElement).style.boxShadow = "";
-                (e.currentTarget as HTMLElement).style.borderColor = "";
-              }}
             >
               {/* Product Image */}
-              <div className="relative bg-surface-alt h-52 overflow-hidden">
+              <div className="relative bg-surface-alt h-48 sm:h-52 overflow-hidden">
                 <img
                   src={product.image}
                   alt={product.name}
                   className="w-full h-full object-cover object-center transition-transform duration-500 group-hover:scale-105"
+                  loading="lazy"
                 />
-                {/* Result image placeholder overlay */}
                 <img
                   src={product.image}
                   alt={product.resultAlt}
                   className="absolute inset-0 w-full h-full object-cover object-center opacity-0 group-hover:opacity-100 transition-opacity duration-500"
                 />
-                {/* Tag */}
                 <div className={`absolute top-3 left-3 px-2.5 py-1 rounded-full text-xs font-semibold border ${product.tagColor}`}>
                   {product.tag}
+                </div>
+                <div className="absolute top-3 right-3 px-2 py-0.5 rounded-full text-[10px] font-bold bg-white/90 text-foreground border border-border">
+                  {product.micro}
                 </div>
               </div>
 
@@ -129,8 +123,7 @@ const Products = () => {
                 <h3 className="font-bold text-foreground text-base mb-0.5">{product.name}</h3>
                 <p className="text-xs text-muted-foreground mb-4">{product.weight}</p>
 
-                {/* Price Comparison */}
-                <div className="bg-surface-alt rounded-xl p-3.5 mb-4">
+                <div className="bg-surface-alt rounded-xl p-3.5 mb-2">
                   <div className="flex items-center justify-between mb-2">
                     <div>
                       <div className="text-xs text-muted-foreground mb-0.5">Você paga</div>
@@ -150,20 +143,6 @@ const Products = () => {
               </div>
             </div>
           ))}
-        </div>
-
-        {/* CTA */}
-        <div className="text-center">
-          <a
-            href="/catalogo"
-            className="inline-flex items-center gap-2.5 px-8 py-3.5 rounded-xl font-semibold text-base btn-gold text-white"
-          >
-            Acessar Catálogo Completo
-            <ArrowRight className="w-4 h-4" />
-          </a>
-          <p className="text-sm text-muted-foreground mt-3">
-            +80 produtos disponíveis no catálogo
-          </p>
         </div>
       </div>
     </section>
