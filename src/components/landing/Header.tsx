@@ -1,25 +1,16 @@
 import { useEffect, useState } from "react";
 import logo from "@/assets/logo-rei-dos-cachos.png";
+import { useScrollToForm } from "@/hooks/useScrollToForm";
 
 const Header = () => {
   const [scrolled, setScrolled] = useState(false);
+  const scrollToForm = useScrollToForm();
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
-
-  const scrollToForm = () => {
-    const form = document.getElementById("cadastro");
-    if (form) {
-      form.scrollIntoView({ behavior: "smooth" });
-      setTimeout(() => {
-        const nameInput = form.querySelector<HTMLInputElement>('input[name="nome"]');
-        nameInput?.focus();
-      }, 600);
-    }
-  };
 
   return (
     <header

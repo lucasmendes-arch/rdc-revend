@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { Calculator, ArrowRight, Gift } from "lucide-react";
+import { useScrollToForm } from "@/hooks/useScrollToForm";
 
 const simulations = [
   {
@@ -35,12 +36,12 @@ const simulations = [
     invest: "R$ 2.997,99",
     includes: [
       "Itens de maior giro e maior margem",
-      "Tudo do Pacote 2 + 🚚 Frete Grátis",
+      "Tudo do Pacote 2 + 🎁 10% Bonificação",
     ],
-    includesFull: "Itens de maior giro e maior margem + tudo do Pacote 2 + 🚚 Frete Grátis",
+    includesFull: "Itens de maior giro e maior margem + tudo do Pacote 2 + 🎁 10% em bonificação de produtos",
     revenue: "R$ 6.500",
     multiplier: "2.2x",
-    bonus: "🎁 + Frete Grátis incluso",
+    bonus: "🎁 + 10% em Bonificação",
     highlight: true,
     badge: "⭐ Mais Popular",
   },
@@ -49,19 +50,20 @@ const simulations = [
     invest: "R$ 4.997,99",
     includes: [
       "Tudo do Pacote 3",
-      "Kit Expositor Personalizado para PDV",
+      "🚚 Frete Grátis em todas as compras",
     ],
-    includesFull: "Tudo do Pacote 3 + Kit Expositor Personalizado para PDV (display físico com a identidade visual Rei dos Cachos para montar no seu salão ou loja)",
+    includesFull: "Tudo do Pacote 3 + 🚚 Frete Grátis em todas as compras",
     revenue: "R$ 10.500",
     multiplier: "2.1x",
-    bonus: "🎁 + Expositor Personalizado para seu PDV",
+    bonus: "🚚 + Frete Grátis",
     highlight: false,
-    badge: "👑 Exclusivo",
+    badge: "👑 Elite",
   },
 ];
 
 const ProfitSimulator = () => {
   const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const scrollToForm = useScrollToForm();
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -80,16 +82,6 @@ const ProfitSimulator = () => {
     cardRefs.current.forEach((ref) => ref && observer.observe(ref));
     return () => observer.disconnect();
   }, []);
-
-  const scrollToForm = () => {
-    const form = document.getElementById("cadastro");
-    if (form) {
-      form.scrollIntoView({ behavior: "smooth" });
-      setTimeout(() => {
-        form.querySelector<HTMLInputElement>('input[name="nome"]')?.focus();
-      }, 600);
-    }
-  };
 
   return (
     <section className="py-14 sm:py-20 lg:py-28" style={{ background: "#faf8f3" }}>
@@ -239,14 +231,14 @@ const ProfitSimulator = () => {
           </div>
         </div>
 
-        <p className="text-center text-xs text-muted-foreground mt-4">
+        <p className="text-center text-xs sm:text-sm text-muted-foreground mt-4">
           * Simulação com base nos preços sugeridos de revenda. Resultados podem variar conforme praça e estratégia de venda.
         </p>
 
         <div className="text-center mt-8">
           <button
             onClick={scrollToForm}
-            className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 px-8 py-3.5 rounded-xl font-semibold text-base btn-gold text-white min-h-[48px]"
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 px-8 py-3.5 rounded-xl font-semibold text-base btn-gold text-white min-h-[52px]"
           >
             Acessar Preços de Atacado
             <ArrowRight className="w-4 h-4" />

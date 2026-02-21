@@ -1,14 +1,15 @@
 import { useState } from "react";
 import { ArrowRight } from "lucide-react";
+import { useScrollToForm } from "@/hooks/useScrollToForm";
 
 const faqs = [
   {
     q: "Preciso ter CNPJ para revender?",
-    a: "Não. Aceitamos CPF e CNPJ. Basta preencher o cadastro para acessar o catálogo.",
+    a: "Não. Aceitamos CPF e CNPJ. Basta preencher o cadastro para acessar a tabela de preços.",
   },
   {
     q: "Qual é o pedido mínimo?",
-    a: "O pedido mínimo é de R$ 500. Frete grátis acima de R$ 3.000.",
+    a: "O pedido mínimo é R$ 500. Acima de R$ 3.000, o frete é grátis.",
   },
   {
     q: "Como funciona a entrega?",
@@ -16,7 +17,7 @@ const faqs = [
   },
   {
     q: "Vou receber suporte para vender?",
-    a: "Sim. Você recebe fotos, vídeos, scripts de vendas e suporte direto via WhatsApp.",
+    a: "Sim. Acesso a fotos, vídeos, scripts de vendas e suporte dedicado via WhatsApp.",
   },
   {
     q: "Posso revender online e em salão ao mesmo tempo?",
@@ -63,15 +64,7 @@ const FAQItem = ({ q, a }: { q: string; a: string }) => {
 };
 
 const FAQ = () => {
-  const scrollToForm = () => {
-    const form = document.getElementById("cadastro");
-    if (form) {
-      form.scrollIntoView({ behavior: "smooth" });
-      setTimeout(() => {
-        form.querySelector<HTMLInputElement>('input[name="nome"]')?.focus();
-      }, 600);
-    }
-  };
+  const scrollToForm = useScrollToForm();
 
   return (
     <section className="py-14 sm:py-20 lg:py-28" style={{ background: "#faf8f3" }}>
@@ -100,7 +93,7 @@ const FAQ = () => {
         <div className="text-center">
           <button
             onClick={scrollToForm}
-            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-xl font-semibold text-base btn-gold text-white min-h-[48px]"
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-xl font-semibold text-base btn-gold text-white min-h-[52px]"
           >
             Acessar preços agora
             <ArrowRight className="w-4 h-4" />
