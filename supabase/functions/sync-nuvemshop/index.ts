@@ -266,42 +266,60 @@ Deno.serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Validate JWT and check admin role
+    console.log('📡 Sync request received');
     const authHeader = req.headers.get("Authorization");
+    console.log('🔐 Auth header:', authHeader ? 'Present' : 'Missing');
+
     if (!authHeader?.startsWith("Bearer ")) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      console.error('❌ Invalid auth header format');
+      return new Response(JSON.stringify({ error: "Unauthorized - no bearer token" }), {
         status: 401, headers: { "Content-Type": "application/json", ...corsHeaders },
       });
     }
 
     const jwt = authHeader.replace("Bearer ", "");
+    console.log('🔑 JWT length:', jwt.length);
 
     // Decode JWT to get user ID
     let userId: string;
     try {
       const parts = jwt.split('.');
+      console.log('📊 JWT parts:', parts.length);
+
       if (parts.length !== 3) {
-        throw new Error('Invalid JWT format');
+        throw new Error(`Invalid JWT format: expected 3 parts, got ${parts.length}`);
       }
 
       // Decode payload from base64url
       const base64Url = parts[1];
       const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-      const jsonPayload = decodeURIComponent(
-        atob(base64)
-          .split('')
-          .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
-          .join('')
-      );
+
+      let jsonPayload: string;
+      try {
+        jsonPayload = decodeURIComponent(
+          atob(base64)
+            .split('')
+            .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+            .join('')
+        );
+      } catch (decodeErr) {
+        console.error('Base64 decode failed:', decodeErr);
+        throw new Error(`Failed to decode base64: ${decodeErr}`);
+      }
 
       const payload = JSON.parse(jsonPayload);
+      console.log('✅ JWT decoded successfully');
+      console.log('👤 Token claims:', { sub: payload.sub, email: payload.email, aud: payload.aud });
+
       userId = payload.sub;
 
       if (!userId) {
-        throw new Error('No user ID in token');
+        throw new Error('No user ID (sub) in token');
       }
+      console.log('👤 User ID extracted:', userId);
     } catch (err) {
-      console.error('JWT decode error:', err);
-      return new Response(JSON.stringify({ error: "Invalid JWT format" }), {
+      console.error('❌ JWT decode error:', err);
+      return new Response(JSON.stringify({ error: `Invalid JWT: ${err instanceof Error ? err.message : String(err)}` }), {
         status: 401, headers: { "Content-Type": "application/json", ...corsHeaders },
       });
     }
