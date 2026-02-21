@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { ArrowRight } from "lucide-react";
+import { useScrollToForm } from "@/hooks/useScrollToForm";
 
 const faqs = [
   {
@@ -63,15 +64,7 @@ const FAQItem = ({ q, a }: { q: string; a: string }) => {
 };
 
 const FAQ = () => {
-  const scrollToForm = () => {
-    const form = document.getElementById("cadastro");
-    if (form) {
-      form.scrollIntoView({ behavior: "smooth" });
-      setTimeout(() => {
-        form.querySelector<HTMLInputElement>('input[name="nome"]')?.focus();
-      }, 600);
-    }
-  };
+  const scrollToForm = useScrollToForm();
 
   return (
     <section className="py-14 sm:py-20 lg:py-28" style={{ background: "#faf8f3" }}>
@@ -100,7 +93,7 @@ const FAQ = () => {
         <div className="text-center">
           <button
             onClick={scrollToForm}
-            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-xl font-semibold text-base btn-gold text-white min-h-[48px]"
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-xl font-semibold text-base btn-gold text-white min-h-[52px]"
           >
             Acessar preços agora
             <ArrowRight className="w-4 h-4" />

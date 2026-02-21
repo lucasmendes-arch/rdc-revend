@@ -1,18 +1,10 @@
 import { ArrowRight } from "lucide-react";
 import heroModel from "@/assets/hero-model.jpg";
 import logo from "@/assets/logo-rei-dos-cachos.png";
+import { useScrollToForm } from "@/hooks/useScrollToForm";
 
 const Hero = () => {
-  const scrollToForm = () => {
-    const form = document.getElementById("cadastro");
-    if (form) {
-      form.scrollIntoView({ behavior: "smooth" });
-      setTimeout(() => {
-        const nameInput = form.querySelector<HTMLInputElement>('input[name="nome"]');
-        nameInput?.focus();
-      }, 600);
-    }
-  };
+  const scrollToForm = useScrollToForm();
 
   return (
     <section className="relative w-full min-h-[100svh] flex items-center justify-center overflow-hidden">
@@ -38,9 +30,8 @@ const Hero = () => {
         <img
           src={logo}
           alt="Rei dos Cachos"
-          className="mb-5 animate-fade-in-up"
+          className="w-20 sm:w-28 mb-5 animate-fade-in-up"
           style={{
-            width: 100,
             filter: "drop-shadow(0 4px 16px rgba(0,0,0,0.45))",
           }}
         />
@@ -91,7 +82,7 @@ const Hero = () => {
             onClick={() => {
               document.getElementById("como-funciona")?.scrollIntoView({ behavior: "smooth" });
             }}
-            className="text-sm text-white/70 hover:text-white underline underline-offset-4 transition-colors"
+            className="py-3 px-4 min-h-[44px] text-sm text-white/70 hover:text-white underline underline-offset-4 transition-colors"
           >
             Ver como funciona
           </button>

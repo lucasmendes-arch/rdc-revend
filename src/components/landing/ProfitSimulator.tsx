@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { Calculator, ArrowRight, Gift } from "lucide-react";
+import { useScrollToForm } from "@/hooks/useScrollToForm";
 
 const simulations = [
   {
@@ -62,6 +63,7 @@ const simulations = [
 
 const ProfitSimulator = () => {
   const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const scrollToForm = useScrollToForm();
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -80,16 +82,6 @@ const ProfitSimulator = () => {
     cardRefs.current.forEach((ref) => ref && observer.observe(ref));
     return () => observer.disconnect();
   }, []);
-
-  const scrollToForm = () => {
-    const form = document.getElementById("cadastro");
-    if (form) {
-      form.scrollIntoView({ behavior: "smooth" });
-      setTimeout(() => {
-        form.querySelector<HTMLInputElement>('input[name="nome"]')?.focus();
-      }, 600);
-    }
-  };
 
   return (
     <section className="py-14 sm:py-20 lg:py-28" style={{ background: "#faf8f3" }}>
@@ -239,14 +231,14 @@ const ProfitSimulator = () => {
           </div>
         </div>
 
-        <p className="text-center text-xs text-muted-foreground mt-4">
+        <p className="text-center text-xs sm:text-sm text-muted-foreground mt-4">
           * Simulação com base nos preços sugeridos de revenda. Resultados podem variar conforme praça e estratégia de venda.
         </p>
 
         <div className="text-center mt-8">
           <button
             onClick={scrollToForm}
-            className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 px-8 py-3.5 rounded-xl font-semibold text-base btn-gold text-white min-h-[48px]"
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 px-8 py-3.5 rounded-xl font-semibold text-base btn-gold text-white min-h-[52px]"
           >
             Acessar Preços de Atacado
             <ArrowRight className="w-4 h-4" />
