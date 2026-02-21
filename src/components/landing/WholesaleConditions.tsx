@@ -52,7 +52,7 @@ const WholesaleConditions = () => {
         <div className="text-center">
           <button
             onClick={scrollToForm}
-            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-xl font-semibold text-base btn-gold text-white min-h-[48px]"
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-xl font-semibold text-base btn-gold text-white min-h-[52px]"
           >
             Acessar preços
             <ArrowRight className="w-4 h-4" />

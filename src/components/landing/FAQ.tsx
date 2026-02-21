@@ -5,11 +5,11 @@ import { useScrollToForm } from "@/hooks/useScrollToForm";
 const faqs = [
   {
     q: "Preciso ter CNPJ para revender?",
-    a: "Não. Aceitamos CPF e CNPJ. Basta preencher o cadastro para acessar o catálogo.",
+    a: "Não. Aceitamos CPF e CNPJ. Basta preencher o cadastro para acessar a tabela de preços.",
   },
   {
     q: "Qual é o pedido mínimo?",
-    a: "O pedido mínimo é de R$ 500. Frete grátis acima de R$ 3.000.",
+    a: "O pedido mínimo é R$ 500. Acima de R$ 3.000, o frete é grátis.",
   },
   {
     q: "Como funciona a entrega?",
@@ -17,7 +17,7 @@ const faqs = [
   },
   {
     q: "Vou receber suporte para vender?",
-    a: "Sim. Você recebe fotos, vídeos, scripts de vendas e suporte direto via WhatsApp.",
+    a: "Sim. Acesso a fotos, vídeos, scripts de vendas e suporte dedicado via WhatsApp.",
   },
   {
     q: "Posso revender online e em salão ao mesmo tempo?",
