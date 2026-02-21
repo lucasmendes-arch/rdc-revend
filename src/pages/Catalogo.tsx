@@ -3,49 +3,31 @@ import { ArrowRight, Crown, LogOut, Search, ShoppingCart, Tag, TrendingUp, X } f
 import { Link, useNavigate } from "react-router-dom";
 import logo from "@/assets/logo-rei-dos-cachos.png";
 import { supabase } from "@/lib/supabase";
-import ativadorImg from "@/assets/product-ativador.jpg";
-import gelatinhaImg from "@/assets/product-gelatina.jpg";
-import kitImg from "@/assets/product-kit.jpg";
+import { useCatalogProducts } from "@/hooks/useCatalogProducts";
 
-const categories = ["Todos", "Ativadores", "Finalizadores", "Kits", "Shampoo & Condicionador", "Máscaras"];
-
-const allProducts = [
-  { id: 1, image: ativadorImg, name: "Ativador de Cachos Premium", category: "Ativadores", weight: "1kg", costPrice: 38, sellPrice: 79, margin: 108, tag: "🔥 Mais Vendido", stock: "Em estoque" },
-  { id: 2, image: gelatinhaImg, name: "Gelatina Definidora Extra Forte", category: "Finalizadores", weight: "1kg", costPrice: 32, sellPrice: 65, margin: 103, tag: "⭐ Top Favorita", stock: "Em estoque" },
-  { id: 3, image: kitImg, name: "Kit Lavatório Pro", category: "Kits", weight: "3 itens", costPrice: 85, sellPrice: 179, margin: 111, tag: "🎁 Kit Premium", stock: "Em estoque" },
-  { id: 4, image: ativadorImg, name: "Ativador de Cachos Leve", category: "Ativadores", weight: "500g", costPrice: 22, sellPrice: 45, margin: 104, tag: "", stock: "Em estoque" },
-  { id: 5, image: gelatinhaImg, name: "Gelatina Coco e Manteiga", category: "Finalizadores", weight: "1kg", costPrice: 35, sellPrice: 72, margin: 106, tag: "🆕 Novidade", stock: "Em estoque" },
-  { id: 6, image: kitImg, name: "Kit Hidratação Intensiva", category: "Kits", weight: "2 itens", costPrice: 55, sellPrice: 115, margin: 109, tag: "", stock: "Em estoque" },
-  { id: 7, image: ativadorImg, name: "Shampoo Sem Sulfato", category: "Shampoo & Condicionador", weight: "1L", costPrice: 28, sellPrice: 58, margin: 107, tag: "", stock: "Em estoque" },
-  { id: 8, image: gelatinhaImg, name: "Condicionador Nutritivo", category: "Shampoo & Condicionador", weight: "1L", costPrice: 26, sellPrice: 54, margin: 108, tag: "", stock: "Em estoque" },
-  { id: 9, image: kitImg, name: "Máscara de Hidratação Profunda", category: "Máscaras", weight: "1kg", costPrice: 42, sellPrice: 88, margin: 110, tag: "⭐ Top Favorita", stock: "Em estoque" },
-];
-
-type CartItem = { id: number; name: string; quantity: number; costPrice: number };
+type CartItem = { id: string; name: string; quantity: number; price: number };
 
 const Catalogo = () => {
   const navigate = useNavigate();
+  const { data: products = [], isLoading, error } = useCatalogProducts();
   const [search, setSearch] = useState("");
-  const [activeCategory, setActiveCategory] = useState("Todos");
   const [cart, setCart] = useState<CartItem[]>([]);
   const [cartOpen, setCartOpen] = useState(false);
 
-  const filtered = allProducts.filter((p) => {
-    const matchCat = activeCategory === "Todos" || p.category === activeCategory;
-    const matchSearch = p.name.toLowerCase().includes(search.toLowerCase());
-    return matchCat && matchSearch;
-  });
+  const filtered = products.filter((p) =>
+    p.name.toLowerCase().includes(search.toLowerCase())
+  );
 
-  const addToCart = (product: typeof allProducts[0]) => {
+  const addToCart = (product: typeof products[0]) => {
     setCart((prev) => {
       const existing = prev.find((i) => i.id === product.id);
       if (existing) return prev.map((i) => i.id === product.id ? { ...i, quantity: i.quantity + 1 } : i);
-      return [...prev, { id: product.id, name: product.name, quantity: 1, costPrice: product.costPrice }];
+      return [...prev, { id: product.id, name: product.name, quantity: 1, price: product.price }];
     });
   };
 
-  const removeFromCart = (id: number) => setCart((prev) => prev.filter((i) => i.id !== id));
-  const cartTotal = cart.reduce((sum, i) => sum + i.costPrice * i.quantity, 0);
+  const removeFromCart = (id: string) => setCart((prev) => prev.filter((i) => i.id !== id));
+  const cartTotal = cart.reduce((sum, i) => sum + i.price * i.quantity, 0);
   const cartCount = cart.reduce((sum, i) => sum + i.quantity, 0);
 
   const handleLogout = async () => {
@@ -124,92 +106,112 @@ const Catalogo = () => {
             <span className="text-xs font-semibold text-gold-text tracking-widest uppercase">Preços Exclusivos para Revendedores</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Catálogo Completo</h1>
-          <p className="text-muted-foreground mt-1">{filtered.length} produtos disponíveis</p>
+          <p className="text-muted-foreground mt-1">{isLoading ? "Carregando..." : `${filtered.length} produtos disponíveis`}</p>
         </div>
 
-        {/* Categories */}
-        <div className="flex gap-2 overflow-x-auto pb-2 mb-6 scrollbar-hide">
-          {categories.map((cat) => (
-            <button
-              key={cat}
-              onClick={() => setActiveCategory(cat)}
-                  className={`flex-shrink-0 px-4 py-1.5 rounded-full text-sm font-medium transition-all border ${
-                activeCategory === cat
-                  ? "btn-gold text-white border-transparent"
-                  : "bg-white border-border text-foreground hover:border-gold-border"
-              }`}
-            >
-              {cat}
-            </button>
-          ))}
-        </div>
+        {/* Loading */}
+        {isLoading && (
+          <div className="text-center py-16">
+            <div className="w-8 h-8 border-2 border-gold/30 border-t-gold rounded-full animate-spin mx-auto mb-4" />
+            <p className="text-muted-foreground">Carregando catálogo...</p>
+          </div>
+        )}
+
+        {/* Error */}
+        {error && (
+          <div className="mb-6 p-4 rounded-lg bg-red-50 border border-red-200 text-red-700">
+            <p className="font-medium">Erro ao carregar catálogo</p>
+            <p className="text-sm">{error instanceof Error ? error.message : 'Desconhecido'}</p>
+          </div>
+        )}
 
         {/* Products Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-          {filtered.map((product) => (
-            <div
-              key={product.id}
-              className="group bg-white rounded-2xl overflow-hidden border border-border hover:border-gold-border shadow-card hover:shadow-card-hover transition-all duration-300 hover:-translate-y-1"
-            >
-              {/* Image */}
-              <div className="relative bg-surface-alt h-44 overflow-hidden">
-                <img
-                  src={product.image}
-                  alt={product.name}
-                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                />
-                {product.tag && (
-                  <div className="absolute top-2 left-2 px-2.5 py-1 rounded-full text-xs font-semibold bg-white/90 border border-gold-border text-gold-text">
-                    {product.tag}
-                  </div>
-                )}
-                <div className="absolute top-2 right-2 px-2 py-0.5 rounded-full text-[10px] font-medium bg-green-50 text-green-700 border border-green-100">
-                  {product.stock}
-                </div>
-              </div>
+        {!isLoading && !error && (
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+              {filtered.map((product) => {
+                const margin = product.compare_at_price && product.price > 0
+                  ? Math.round(((product.compare_at_price - product.price) / product.price) * 100)
+                  : null;
 
-              {/* Info */}
-              <div className="p-4">
-                <p className="text-[11px] text-muted-foreground mb-0.5">{product.category} · {product.weight}</p>
-                <h3 className="font-semibold text-foreground text-sm mb-3 leading-snug">{product.name}</h3>
-
-                {/* Pricing */}
-                <div className="bg-surface-alt rounded-xl p-3 mb-3">
-                  <div className="flex items-center justify-between mb-1.5">
-                    <div>
-                      <div className="text-[10px] text-muted-foreground">Você paga</div>
-                      <div className="text-base font-bold text-foreground">R$ {product.costPrice}</div>
+                return (
+                  <div
+                    key={product.id}
+                    className="group bg-white rounded-2xl overflow-hidden border border-border hover:border-gold-border shadow-card hover:shadow-card-hover transition-all duration-300 hover:-translate-y-1"
+                  >
+                    {/* Image */}
+                    <div className="relative bg-surface-alt h-44 overflow-hidden">
+                      {product.main_image ? (
+                        <img
+                          src={product.main_image}
+                          alt={product.name}
+                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-surface-alt to-border">
+                          <ShoppingCart className="w-12 h-12 text-muted-foreground/30" />
+                        </div>
+                      )}
                     </div>
-                    <ArrowRight className="w-3.5 h-3.5 text-gold-text" />
-                    <div className="text-right">
-                      <div className="text-[10px] text-muted-foreground">Vende por</div>
-                      <div className="text-base font-bold gradient-gold-text">R$ {product.sellPrice}</div>
+
+                    {/* Info */}
+                    <div className="p-4">
+                      <h3 className="font-semibold text-foreground text-sm mb-3 leading-snug">{product.name}</h3>
+
+                      {/* Pricing */}
+                      <div className="bg-surface-alt rounded-xl p-3 mb-3">
+                        <div className="flex items-center justify-between mb-1.5">
+                          <div>
+                            <div className="text-[10px] text-muted-foreground">Você paga</div>
+                            <div className="text-base font-bold text-foreground">R$ {product.price.toFixed(2)}</div>
+                          </div>
+                          {product.compare_at_price && (
+                            <>
+                              <ArrowRight className="w-3.5 h-3.5 text-gold-text" />
+                              <div className="text-right">
+                                <div className="text-[10px] text-muted-foreground">Vende por</div>
+                                <div className="text-base font-bold gradient-gold-text">R$ {product.compare_at_price.toFixed(2)}</div>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                        {margin && (
+                          <div className="flex items-center gap-1 pt-1.5 border-t border-border">
+                            <TrendingUp className="w-3 h-3 text-green-600" />
+                            <span className="text-[10px] font-semibold text-green-600">+{margin}% de lucro</span>
+                          </div>
+                        )}
+                      </div>
+
+                      <button
+                        onClick={() => addToCart(product)}
+                        className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold btn-gold text-white"
+                      >
+                        <ShoppingCart className="w-3.5 h-3.5" />
+                        Adicionar ao Pedido
+                      </button>
                     </div>
                   </div>
-                  <div className="flex items-center gap-1 pt-1.5 border-t border-border">
-                    <TrendingUp className="w-3 h-3 text-green-600" />
-                    <span className="text-[10px] font-semibold text-green-600">+{product.margin}% de lucro</span>
-                  </div>
-                </div>
-
-                <button
-                  onClick={() => addToCart(product)}
-                  className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold btn-gold text-white"
-                >
-                  <ShoppingCart className="w-3.5 h-3.5" />
-                  Adicionar ao Pedido
-                </button>
-              </div>
+                );
+              })}
             </div>
-          ))}
-        </div>
 
-        {filtered.length === 0 && (
-          <div className="text-center py-16">
-            <Tag className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-foreground mb-2">Nenhum produto encontrado</h3>
-            <p className="text-muted-foreground text-sm">Tente outra categoria ou palavra-chave.</p>
-          </div>
+            {filtered.length === 0 && products.length > 0 && (
+              <div className="text-center py-16">
+                <Tag className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-foreground mb-2">Nenhum produto encontrado</h3>
+                <p className="text-muted-foreground text-sm">Tente outro termo de busca.</p>
+              </div>
+            )}
+
+            {products.length === 0 && (
+              <div className="text-center py-16">
+                <ShoppingCart className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-foreground mb-2">Catálogo vazio</h3>
+                <p className="text-muted-foreground text-sm">Volte mais tarde para ver os produtos.</p>
+              </div>
+            )}
+          </>
         )}
       </div>
 
@@ -243,7 +245,7 @@ const Catalogo = () => {
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-foreground truncate">{item.name}</p>
                         <p className="text-xs text-muted-foreground">
-                          {item.quantity}x · R$ {(item.costPrice * item.quantity).toFixed(0)}
+                          {item.quantity}x · R$ {(item.price * item.quantity).toFixed(2)}
                         </p>
                       </div>
                       <button onClick={() => removeFromCart(item.id)} className="text-muted-foreground hover:text-red-500 transition-colors">
@@ -260,10 +262,10 @@ const Catalogo = () => {
               <div className="p-5 border-t border-border">
                 <div className="flex items-center justify-between mb-4">
                   <span className="font-semibold text-foreground">Total do Pedido</span>
-                  <span className="text-xl font-bold gradient-gold-text">R$ {cartTotal.toFixed(0)}</span>
+                  <span className="text-xl font-bold gradient-gold-text">R$ {cartTotal.toFixed(2)}</span>
                 </div>
                 <a
-                  href={`https://wa.me/5500000000000?text=Olá! Quero fazer um pedido no valor de R$ ${cartTotal.toFixed(0)}.%0A${cart.map(i => `- ${i.name} (${i.quantity}x)`).join('%0A')}`}
+                  href={`https://wa.me/5500000000000?text=Olá! Quero fazer um pedido no valor de R$ ${cartTotal.toFixed(2)}.%0A${cart.map(i => `- ${i.name} (${i.quantity}x)`).join('%0A')}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-semibold text-base btn-gold text-white"
@@ -273,7 +275,7 @@ const Catalogo = () => {
                 </a>
                 {cartTotal < 300 && (
                   <p className="text-xs text-center text-muted-foreground mt-2">
-                    ⚠️ Pedido mínimo: R$ 300 (faltam R$ {(300 - cartTotal).toFixed(0)})
+                    ⚠️ Pedido mínimo: R$ 300 (faltam R$ {(300 - cartTotal).toFixed(2)})
                   </p>
                 )}
               </div>
