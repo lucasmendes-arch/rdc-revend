@@ -45,12 +45,13 @@ const TestimonialCard = ({
   return (
     <div
       ref={cardRef}
-      className="min-w-[calc(100vw-32px)] sm:min-w-0 snap-center bg-white rounded-2xl p-4 sm:p-6 border border-border flex flex-col flex-shrink-0 transition-all duration-300"
+      className="w-full max-w-full sm:min-w-0 snap-center bg-white rounded-2xl p-4 sm:p-6 border border-border flex flex-col flex-shrink-0 transition-all duration-300 overflow-hidden"
       style={{
         opacity: 0,
         transform: "translateY(20px)",
         transition: `opacity 0.5s ease ${idx * 100}ms, transform 0.5s ease ${idx * 100}ms`,
         boxShadow: "var(--shadow-card)",
+        boxSizing: "border-box",
       }}
     >
       {/* Quote icon - reduced */}
@@ -75,8 +76,8 @@ const TestimonialCard = ({
       </button>
 
       {/* Highlight badge - compact chip */}
-      <div className="bg-gold-light rounded-full px-2.5 py-1 mb-2 self-start">
-        <span className="text-xs sm:text-sm font-bold text-gold-text">✨ {t.highlight}</span>
+      <div className="bg-gold-light rounded-full px-2.5 py-1 mb-2 self-start max-w-full overflow-hidden">
+        <span className="text-xs sm:text-sm font-bold text-gold-text truncate block">✨ {t.highlight}</span>
       </div>
 
       {/* Author block - single line info */}
@@ -129,8 +130,8 @@ const SocialProof = () => {
   };
 
   return (
-    <section className="py-14 sm:py-20 lg:py-28" style={{ background: "#faf8f3" }}>
-      <div className="container mx-auto px-4">
+    <section className="py-14 sm:py-20 lg:py-28 overflow-hidden" style={{ background: "#faf8f3" }}>
+      <div className="container mx-auto px-4 w-full max-w-full" style={{ boxSizing: "border-box" }}>
         <div className="text-center mb-10 sm:mb-14 max-w-2xl mx-auto">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-gold-border bg-gold-light mb-4">
             <Star className="w-3.5 h-3.5 text-gold-text fill-gold-text" />
@@ -145,7 +146,8 @@ const SocialProof = () => {
         </div>
 
         {/* Mobile: full-width cards | Desktop: grid */}
-        <div className="flex sm:grid sm:grid-cols-3 gap-3 sm:gap-6 overflow-x-auto sm:overflow-visible snap-x snap-mandatory pb-4 sm:pb-0 -mx-4 px-4 sm:mx-0 sm:px-0 mb-6 sm:mb-10">
+        <div className="flex sm:grid sm:grid-cols-3 gap-3 sm:gap-6 overflow-x-auto sm:overflow-visible snap-x snap-mandatory pb-4 sm:pb-0 mb-6 sm:mb-10 w-full max-w-full overflow-hidden sm:overflow-visible"
+             style={{ boxSizing: "border-box" }}>
           {testimonials.map((t, idx) => (
             <TestimonialCard
               key={idx}
