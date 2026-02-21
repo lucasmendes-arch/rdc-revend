@@ -24,6 +24,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setUser(session?.user ?? null)
       } catch (error) {
         console.error('Erro ao recuperar sessão:', error)
+        // Se houver erro (ex: Supabase não configurado), continuar como "não autenticado"
+        setSession(null)
+        setUser(null)
       } finally {
         setLoading(false)
       }
@@ -32,14 +35,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     initSession()
 
     // Escutar mudanças na autenticação
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      setSession(session)
-      setUser(session?.user ?? null)
-      setLoading(false)
-    })
+    try {
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+        setSession(session)
+        setUser(session?.user ?? null)
+        setLoading(false)
+      })
 
-    return () => {
-      subscription?.unsubscribe()
+      return () => {
+        subscription?.unsubscribe()
+      }
+    } catch (error) {
+      console.error('Erro ao configurar listener de autenticação:', error)
+      setLoading(false)
+      // Continuar com o app mesmo se não conseguir configurar listener
     }
   }, [])
 
