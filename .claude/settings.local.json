@@ -3,7 +3,13 @@
     "allow": [
       "Bash(wc:*)",
       "Bash(head:*)",
-      "Bash(tail:*)"
+      "Bash(tail:*)",
+      "Bash(cd:*)",
+      "Bash(curl:*)",
+      "Bash(cd /c/Users/becar/rdc-revend && node create-test-user.js 2>&1)",
+      "Bash(cd /c/Users/becar/rdc-revend && node full-diagnosis.js 2>&1)",
+      "Bash(cd /c/Users/becar/rdc-revend && timeout 10 node verify-setup.js 2>&1)",
+      "Bash(cd /c/Users/becar/rdc-revend && npx supabase functions deploy sync-nuvemshop 2>&1)"
     ]
   }
 }

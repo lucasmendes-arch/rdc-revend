@@ -23,12 +23,13 @@ export function useAdminProducts() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('catalog_products')
-        .select('*')
+        .select('id, nuvemshop_product_id, name, description_html, price, compare_at_price, main_image, is_active, source, created_at, updated_at')
         .order('updated_at', { ascending: false })
 
       if (error) throw error
       return (data || []) as CatalogProduct[]
     },
+    staleTime: 1 * 60 * 1000, // 1 minuto
   })
 }
 
@@ -111,7 +112,9 @@ export function useNuvemshopSync() {
       const data = await response.json()
 
       if (!response.ok) {
-        throw new Error(data.error || 'Erro ao sincronizar')
+        const errorMsg = data.error || data.message || JSON.stringify(data)
+        console.error('Sync error:', errorMsg)
+        throw new Error(errorMsg)
       }
 
       return data as SyncResult
