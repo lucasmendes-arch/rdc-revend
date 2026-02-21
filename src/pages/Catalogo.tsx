@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { ArrowRight, Crown, LogOut, Search, ShoppingCart, Tag, TrendingUp, X } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import logo from "@/assets/logo-rei-dos-cachos.png";
+import { supabase } from "@/lib/supabase";
 import ativadorImg from "@/assets/product-ativador.jpg";
 import gelatinhaImg from "@/assets/product-gelatina.jpg";
 import kitImg from "@/assets/product-kit.jpg";
@@ -23,6 +24,7 @@ const allProducts = [
 type CartItem = { id: number; name: string; quantity: number; costPrice: number };
 
 const Catalogo = () => {
+  const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState("Todos");
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -46,10 +48,9 @@ const Catalogo = () => {
   const cartTotal = cart.reduce((sum, i) => sum + i.costPrice * i.quantity, 0);
   const cartCount = cart.reduce((sum, i) => sum + i.quantity, 0);
 
-  const handleLogout = () => {
-    localStorage.removeItem("rdc_authenticated");
-    localStorage.removeItem("rdc_token");
-    window.location.href = "/";
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    navigate("/", { replace: true });
   };
 
   return (
