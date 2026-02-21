@@ -274,19 +274,51 @@ Deno.serve(async (req) => {
     }
 
     const jwt = authHeader.replace("Bearer ", "");
-    const { data: { user }, error: authError } = await supabase.auth.getUser(jwt);
-    if (authError || !user) {
-      return new Response(JSON.stringify({ error: "Invalid token" }), {
+
+    // Decode JWT to get user ID
+    let userId: string;
+    try {
+      const parts = jwt.split('.');
+      if (parts.length !== 3) {
+        throw new Error('Invalid JWT format');
+      }
+
+      // Decode payload from base64url
+      const base64Url = parts[1];
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const jsonPayload = decodeURIComponent(
+        atob(base64)
+          .split('')
+          .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+          .join('')
+      );
+
+      const payload = JSON.parse(jsonPayload);
+      userId = payload.sub;
+
+      if (!userId) {
+        throw new Error('No user ID in token');
+      }
+    } catch (err) {
+      console.error('JWT decode error:', err);
+      return new Response(JSON.stringify({ error: "Invalid JWT format" }), {
         status: 401, headers: { "Content-Type": "application/json", ...corsHeaders },
       });
     }
 
     // Check if user is admin via profiles table
-    const { data: profile } = await supabase
+    const { data: profile, error: profileError } = await supabase
       .from("profiles")
       .select("role")
-      .eq("id", user.id)
+      .eq("id", userId)
       .single();
+
+    if (profileError || !profile) {
+      console.error('Profile error:', profileError);
+      return new Response(JSON.stringify({ error: "User profile not found" }), {
+        status: 403, headers: { "Content-Type": "application/json", ...corsHeaders },
+      });
+    }
 
     if (profile?.role !== "admin") {
       return new Response(JSON.stringify({ error: "Forbidden" }), {
