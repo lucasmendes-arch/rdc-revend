@@ -1,9 +1,16 @@
 import { useState } from "react";
 import { ArrowRight, Crown, Eye, EyeOff, Lock, Mail, ArrowLeft } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import logo from "@/assets/logo-rei-dos-cachos.png";
+import { supabase } from "@/lib/supabase";
+
+interface LocationState {
+  returnTo?: string;
+}
 
 const Login = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
   const [form, setForm] = useState({ email: "", password: "" });
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -14,30 +21,31 @@ const Login = () => {
     setError("");
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError("");
 
-    // Check localStorage for registered user
-    const stored = localStorage.getItem("rdc_user");
-    if (stored) {
-      const userData = JSON.parse(stored);
-      if (userData.email === form.email) {
-        const token = `rdc_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-        localStorage.setItem("rdc_token", token);
-        localStorage.setItem("rdc_authenticated", "true");
-        setTimeout(() => {
-          window.location.href = "/catalogo";
-        }, 800);
+    try {
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: form.email,
+        password: form.password,
+      });
+
+      if (signInError) {
+        setLoading(false);
+        setError("E-mail ou senha incorretos.");
         return;
       }
-    }
 
-    setTimeout(() => {
+      const state = location.state as LocationState | null;
+      const returnTo = state?.returnTo || "/catalogo";
+      navigate(returnTo, { replace: true });
+    } catch (err) {
       setLoading(false);
-      setError("E-mail não encontrado. Faça seu cadastro primeiro.");
-    }, 800);
+      setError("Erro ao fazer login. Tente novamente.");
+      console.error("Erro no login:", err);
+    }
   };
 
   return (
