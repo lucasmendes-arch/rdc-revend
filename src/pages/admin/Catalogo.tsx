@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowLeft, Edit2, Trash2, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react'
-import { useAdminProducts, useUpdateProduct, useDeleteProduct, useNuvemshopSync, CatalogProduct } from '@/hooks/useAdminProducts'
+import { ArrowLeft, Edit2, Trash2, RefreshCw, ChevronLeft, ChevronRight, X } from 'lucide-react'
+import { useAdminProducts, useUpdateProduct, useDeleteProduct, useNuvemshopSync, CatalogProduct, SyncResult } from '@/hooks/useAdminProducts'
 import logo from '@/assets/logo-rei-dos-cachos.png'
 
 export default function AdminCatalogo() {
@@ -15,7 +15,7 @@ export default function AdminCatalogo() {
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
-  const [syncResult, setSyncResult] = useState<any>(null)
+  const [syncResult, setSyncResult] = useState<SyncResult | null>(null)
   const [showSyncResult, setShowSyncResult] = useState(false)
 
   const itemsPerPage = 10
@@ -115,7 +115,15 @@ export default function AdminCatalogo() {
       {/* Sync Result Toast */}
       {showSyncResult && syncResult && (
         <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 bg-white border border-border rounded-xl shadow-lg p-4 max-w-md">
-          <p className="font-semibold text-foreground mb-2">Sincronização concluída!</p>
+          <div className="flex items-start justify-between gap-3 mb-2">
+            <p className="font-semibold text-foreground">Sincronização concluída!</p>
+            <button
+              onClick={() => setShowSyncResult(false)}
+              className="text-muted-foreground hover:text-foreground transition-colors flex-shrink-0"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
           <div className="text-sm text-muted-foreground space-y-1">
             <p>✅ Importados: {syncResult.result.imported}</p>
             <p>🔄 Atualizados: {syncResult.result.updated}</p>

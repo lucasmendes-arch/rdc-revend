@@ -1,6 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.97.0";
 
-const NUVEMSHOP_API_URL = "https://api.nuvemshop.com.br/v1";
+const NUVEMSHOP_API_URL = "https://api.tiendanube.com/v1";
 
 interface NuvemshopProduct {
   id: number;
@@ -87,7 +87,7 @@ async function fetchNuvemshopProducts(
       }
 
       const data = await response.json();
-      const pageProducts = data.result || [];
+      const pageProducts = Array.isArray(data) ? data : (data.result || []);
 
       if (pageProducts.length === 0) {
         hasMore = false;
@@ -223,7 +223,7 @@ async function upsertProducts(
 // CORS headers
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, Authorization",
   "Access-Control-Max-Age": "86400",
 };
@@ -249,9 +249,6 @@ Deno.serve(async (req) => {
   }
 
   try {
-    console.log("📡 Edge Function called!");
-    console.log("Headers:", Object.fromEntries(req.headers));
-
     // Initialize Supabase client with service role (for edge function context)
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
@@ -268,8 +265,34 @@ Deno.serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Skip authentication for now - testing only
-    console.log("✅ Skipping auth check - testing mode");
+    // Validate JWT and check admin role
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401, headers: { "Content-Type": "application/json", ...corsHeaders },
+      });
+    }
+
+    const jwt = authHeader.replace("Bearer ", "");
+    const { data: { user }, error: authError } = await supabase.auth.getUser(jwt);
+    if (authError || !user) {
+      return new Response(JSON.stringify({ error: "Invalid token" }), {
+        status: 401, headers: { "Content-Type": "application/json", ...corsHeaders },
+      });
+    }
+
+    // Check if user is admin via profiles table
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .single();
+
+    if (profile?.role !== "admin") {
+      return new Response(JSON.stringify({ error: "Forbidden" }), {
+        status: 403, headers: { "Content-Type": "application/json", ...corsHeaders },
+      });
+    }
 
     // Get secrets
     const storeId = Deno.env.get("NUVEMSHOP_STORE_ID");

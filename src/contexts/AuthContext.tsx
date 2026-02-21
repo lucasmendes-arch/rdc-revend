@@ -13,25 +13,6 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-async function fetchUserRole(userId: string): Promise<UserRole> {
-  try {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', userId)
-      .single()
-
-    if (error || !data) {
-      return null
-    }
-
-    return data.role as UserRole
-  } catch (error) {
-    console.error('Erro ao buscar role do usuário:', error)
-    return null
-  }
-}
-
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null)
   const [session, setSession] = useState<Session | null>(null)
@@ -39,23 +20,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [role, setRole] = useState<UserRole>(null)
 
   useEffect(() => {
-    // Verificar sessão atual ao montar
     const initSession = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession()
         setSession(session)
         setUser(session?.user ?? null)
 
-        // Se há usuário, buscar seu role
-        if (session?.user?.id) {
-          const userRole = await fetchUserRole(session.user.id)
-          setRole(userRole)
+        // Marcar como admin se for o usuário específico
+        if (session?.user?.email === 'lmendescapelini@gmail.com') {
+          setRole('admin')
         } else {
-          setRole(null)
+          setRole('user')
         }
       } catch (error) {
         console.error('Erro ao recuperar sessão:', error)
-        // Se houver erro (ex: Supabase não configurado), continuar como "não autenticado"
         setSession(null)
         setUser(null)
         setRole(null)
@@ -66,30 +44,23 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     initSession()
 
-    // Escutar mudanças na autenticação
-    try {
-      const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-        setSession(session)
-        setUser(session?.user ?? null)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setSession(session)
+      setUser(session?.user ?? null)
 
-        // Buscar role do novo usuário
-        if (session?.user?.id) {
-          const userRole = await fetchUserRole(session.user.id)
-          setRole(userRole)
-        } else {
-          setRole(null)
-        }
-
-        setLoading(false)
-      })
-
-      return () => {
-        subscription?.unsubscribe()
+      if (session?.user?.email === 'lmendescapelini@gmail.com') {
+        setRole('admin')
+      } else if (session?.user) {
+        setRole('user')
+      } else {
+        setRole(null)
       }
-    } catch (error) {
-      console.error('Erro ao configurar listener de autenticação:', error)
+
       setLoading(false)
-      // Continuar com o app mesmo se não conseguir configurar listener
+    })
+
+    return () => {
+      subscription?.unsubscribe()
     }
   }, [])
 
