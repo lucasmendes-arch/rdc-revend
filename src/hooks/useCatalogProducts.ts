@@ -8,6 +8,7 @@ export interface PublicProduct {
   price: number
   compare_at_price: number | null
   description_html: string | null
+  is_active: boolean
 }
 
 export function useCatalogProducts() {
@@ -16,16 +17,10 @@ export function useCatalogProducts() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('catalog_products')
-        .select('id, name, main_image, price, compare_at_price, description_html')
+        .select('id, name, main_image, price, compare_at_price, description_html, is_active')
         .order('updated_at', { ascending: false })
 
       if (error) {
-        console.error('Catalog Products Query Error:', {
-          message: error.message,
-          code: error.code,
-          details: error.details,
-          hint: error.hint,
-        })
         throw error
       }
       return (data || []) as PublicProduct[]
