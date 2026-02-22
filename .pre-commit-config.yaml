@@ -1,0 +1,51 @@
+# Pre-commit framework configuration
+# Automatically runs security checks before commits
+#
+# Setup:
+#   pip install pre-commit
+#   pre-commit install
+#   pre-commit run --all-files
+#
+# Documentation: https://pre-commit.com
+
+repos:
+  # Pre-commit hooks from the pre-commit framework
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      # Detect private keys (RSA, DSA, EC, PGP, etc.)
+      - id: detect-private-key
+
+      # Check Python syntax
+      - id: check-ast
+
+      # Check YAML syntax
+      - id: check-yaml
+        args: ['--unsafe']
+
+      # Check JSON syntax
+      - id: check-json
+
+      # Ensure files end with newline
+      - id: end-of-file-fixer
+
+      # Trim trailing whitespace
+      - id: trailing-whitespace
+
+      # Prevent gigantic files from being committed
+      - id: check-added-large-files
+        args: ['--maxkb=1000']
+
+      # Check for case conflicts in filenames
+      - id: check-case-conflict
+
+  # Detect secrets using machine learning (Yelp detect-secrets)
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.4.0
+    hooks:
+      - id: detect-secrets
+        args: ['--baseline', '.secrets.baseline']
+        exclude: '.*/tests/.*'
+
+# Automatically run hooks on: git commit, git push (if configured)
+# Skip: git commit --no-verify (NOT RECOMMENDED - defeats the purpose)
