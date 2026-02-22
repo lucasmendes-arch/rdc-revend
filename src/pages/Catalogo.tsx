@@ -60,10 +60,10 @@ interface FilterChipProps {
 }
 
 const FilterChip = ({ label, onRemove }: FilterChipProps) => (
-  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-gold-light text-gold-text border border-gold-border">
+  <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-medium bg-gold-light text-gold-text border border-gold-border whitespace-nowrap">
     {label}
     <button onClick={onRemove} className="ml-0.5 hover:text-red-500 transition-colors">
-      <X className="w-3 h-3" />
+      <X className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
     </button>
   </span>
 );
@@ -274,9 +274,9 @@ const Catalogo = () => {
     <div className="min-h-screen bg-surface-alt">
       {/* Header */}
       <header className="bg-white border-b border-border sticky top-0 z-40">
-        <div className="container mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
+        <div className="container mx-auto px-3 sm:px-4 lg:px-6 h-14 sm:h-16 flex items-center justify-between gap-2 sm:gap-4">
           <Link to="/">
-            <img src={logo} alt="Rei dos Cachos" className="h-12 w-auto" />
+            <img src={logo} alt="Rei dos Cachos" className="h-10 sm:h-12 w-auto flex-shrink-0" />
           </Link>
 
           {/* Search */}
@@ -333,15 +333,15 @@ const Catalogo = () => {
         </div>
 
         {/* Mobile search */}
-        <div className="sm:hidden px-4 pb-3">
+        <div className="sm:hidden px-3 pb-2">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Buscar produtos..."
-              className="w-full pl-9 pr-4 py-2 rounded-lg border border-border bg-white text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-gold"
+              placeholder="Buscar..."
+              className="w-full pl-9 pr-3 py-1.5 rounded-lg border border-border bg-white text-xs sm:text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-gold"
             />
           </div>
         </div>
@@ -349,8 +349,8 @@ const Catalogo = () => {
 
       <div className="flex lg:gap-6">
         {/* Sidebar Filters (Desktop) */}
-        <aside className="hidden lg:block w-64 px-4 pt-8 pb-8">
-          <div className="sticky top-24 bg-white rounded-2xl p-5 border border-border">
+        <aside className="hidden lg:block w-60 px-3 pt-6 pb-6">
+          <div className="sticky top-24 bg-white rounded-2xl p-4 border border-border">
             <h3 className="font-bold text-foreground mb-4">Filtros</h3>
 
             {/* Sort */}
@@ -434,29 +434,29 @@ const Catalogo = () => {
         </aside>
 
         {/* Main Content */}
-        <div className="flex-1 px-4 sm:px-6 py-8">
+        <div className="flex-1 px-3 sm:px-4 lg:px-6 py-4 sm:py-6">
           {/* Page Header */}
-          <div className="mb-6">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-gold-border bg-gold-light mb-3">
-              <Crown className="w-3.5 h-3.5 text-gold-text" />
-              <span className="text-xs font-semibold text-gold-text tracking-widest uppercase">Preços Exclusivos para Revendedores</span>
+          <div className="mb-4">
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border border-gold-border bg-gold-light mb-2">
+              <Crown className="w-3 h-3 text-gold-text" />
+              <span className="text-[10px] sm:text-xs font-semibold text-gold-text tracking-widest uppercase">Exclusivo B2B</span>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Catálogo Completo</h1>
-            <p className="text-muted-foreground mt-1">{isLoading ? "Carregando..." : `${filtered.length} produtos disponíveis`}</p>
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-foreground">Catálogo</h1>
+            <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">{isLoading ? "Carregando..." : `${filtered.length} produtos`}</p>
           </div>
 
           {/* Promo Banner */}
           {!isLoading && !error && (
-            <div className="mb-6 rounded-2xl overflow-hidden">
+            <div className="mb-4 rounded-lg sm:rounded-2xl overflow-hidden">
               <Carousel setApi={setCarouselApi} opts={{ loop: true }}>
                 <CarouselContent>
                   {PROMO_SLIDES.map(slide => (
                     <CarouselItem key={slide.id}>
-                      <div className={`bg-gradient-to-r ${slide.bg} h-28 sm:h-32 flex items-center justify-center gap-4 px-6 rounded-2xl`}>
-                        <span className="text-4xl">{slide.icon}</span>
-                        <div className="text-white">
-                          <div className="font-bold text-lg sm:text-xl">{slide.title}</div>
-                          <div className="text-sm opacity-90">{slide.sub}</div>
+                      <div className={`bg-gradient-to-r ${slide.bg} h-20 sm:h-24 lg:h-28 flex items-center justify-between gap-2 sm:gap-4 px-3 sm:px-4 lg:px-6 rounded-lg sm:rounded-2xl`}>
+                        <span className="text-3xl sm:text-4xl flex-shrink-0">{slide.icon}</span>
+                        <div className="text-white min-w-0">
+                          <div className="font-bold text-sm sm:text-base lg:text-lg leading-tight">{slide.title}</div>
+                          <div className="text-[10px] sm:text-xs opacity-90 leading-tight">{slide.sub}</div>
                         </div>
                       </div>
                     </CarouselItem>
@@ -464,12 +464,12 @@ const Catalogo = () => {
                 </CarouselContent>
               </Carousel>
               {/* Dots */}
-              <div className="flex justify-center gap-1.5 mt-2">
+              <div className="flex justify-center gap-1 mt-1.5">
                 {PROMO_SLIDES.map((_, i) => (
                   <button
                     key={i}
                     onClick={() => carouselApi?.scrollTo(i)}
-                    className={`w-1.5 h-1.5 rounded-full transition-all ${carouselIndex === i ? 'bg-gold w-3' : 'bg-border'}`}
+                    className={`w-1.5 h-1.5 rounded-full transition-all ${carouselIndex === i ? 'bg-gold w-2.5' : 'bg-border'}`}
                   />
                 ))}
               </div>
@@ -478,27 +478,27 @@ const Catalogo = () => {
 
           {/* Active Filter Chips */}
           {activeFiltersCount > 0 && (
-            <div className="flex flex-wrap gap-2 mb-4">
+            <div className="flex flex-wrap gap-1.5 mb-3">
               {debouncedSearch && (
-                <FilterChip label={`Busca: "${debouncedSearch}"`} onRemove={() => setSearch('')} />
+                <FilterChip label={`Busca: "${debouncedSearch.substring(0, 10)}${debouncedSearch.length > 10 ? '...' : ''}"`} onRemove={() => setSearch('')} />
               )}
               {filterMinPrice !== '' && (
-                <FilterChip label={`Custo ≥ R$ ${filterMinPrice}`} onRemove={() => setFilterMinPrice('')} />
+                <FilterChip label={`≥ R$ ${filterMinPrice}`} onRemove={() => setFilterMinPrice('')} />
               )}
               {filterMaxPrice !== '' && (
-                <FilterChip label={`Custo ≤ R$ ${filterMaxPrice}`} onRemove={() => setFilterMaxPrice('')} />
+                <FilterChip label={`≤ R$ ${filterMaxPrice}`} onRemove={() => setFilterMaxPrice('')} />
               )}
               {filterOnlySuggested && (
-                <FilterChip label="Com preço sugerido" onRemove={() => setFilterOnlySuggested(false)} />
+                <FilterChip label="C/ sugestão" onRemove={() => setFilterOnlySuggested(false)} />
               )}
               {filterCategories.map(cat => (
                 <FilterChip key={cat} label={cat} onRemove={() => toggleCategory(cat)} />
               ))}
               <button
                 onClick={clearAllFilters}
-                className="text-xs text-muted-foreground hover:text-red-500 underline ml-1 transition-colors"
+                className="text-[10px] sm:text-xs text-muted-foreground hover:text-red-500 underline ml-0.5 transition-colors"
               >
-                Limpar tudo
+                Limpar
               </button>
             </div>
           )}
@@ -522,7 +522,7 @@ const Catalogo = () => {
           {/* Products Grid */}
           {!isLoading && !error && (
             <>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-2.5 sm:gap-3 lg:gap-4">
                 {filtered.map((product) => {
                   const suggested = getSuggestedPrice(product.price, product.compare_at_price);
                   const profit = product.price > 0
@@ -532,10 +532,10 @@ const Catalogo = () => {
                   return (
                     <div
                       key={product.id}
-                      className="group bg-white rounded-2xl overflow-hidden border border-border hover:border-gold-border shadow-card hover:shadow-card-hover transition-all duration-300 hover:-translate-y-1 flex flex-col"
+                      className="group bg-white rounded-lg sm:rounded-xl overflow-hidden border border-border hover:border-gold-border shadow-card hover:shadow-card-hover transition-all duration-300 hover:-translate-y-0.5 flex flex-col"
                     >
                       {/* Image */}
-                      <div className="relative bg-surface-alt h-44 overflow-hidden flex-shrink-0">
+                      <div className="relative bg-surface-alt h-32 sm:h-40 lg:h-44 overflow-hidden flex-shrink-0">
                         {product.main_image ? (
                           <img
                             src={product.main_image}
@@ -544,62 +544,62 @@ const Catalogo = () => {
                           />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-surface-alt to-border">
-                            <ShoppingCart className="w-12 h-12 text-muted-foreground/30" />
+                            <ShoppingCart className="w-8 sm:w-10 h-8 sm:h-10 text-muted-foreground/30" />
                           </div>
                         )}
                       </div>
 
                       {/* Body */}
-                      <div className="p-4 flex flex-col flex-1">
-                        <h3 className="font-semibold text-foreground text-sm mb-3 leading-snug line-clamp-2 min-h-[2.5rem]">
+                      <div className="p-2.5 sm:p-3 lg:p-4 flex flex-col flex-1">
+                        <h3 className="font-semibold text-foreground text-xs sm:text-sm mb-2 leading-tight line-clamp-2 min-h-[2rem]">
                           {product.name}
                         </h3>
 
                         {/* Pricing */}
-                        <div className="bg-surface-alt rounded-xl p-3 mb-3">
-                          <div className="text-[10px] text-muted-foreground mb-1.5">Custo</div>
-                          <div className="text-base font-bold text-foreground mb-2">R$ {product.price.toFixed(2)}</div>
-                          <div className="border-t border-border pt-2">
-                            <div className="text-[10px] text-muted-foreground mb-0.5">Venda sugerida</div>
-                            <div className="text-base font-bold gradient-gold-text mb-1.5">R$ {suggested.toFixed(2)}</div>
-                            {profit && (
-                              <div className="flex items-center gap-1 pt-1.5 border-t border-border">
-                                <TrendingUp className="w-3 h-3 text-green-600" />
-                                <span className="text-[10px] font-semibold text-green-600">Lucro s/ custo +{profit}%</span>
-                              </div>
-                            )}
+                        <div className="bg-surface-alt rounded-lg sm:rounded-xl p-2 mb-2 text-[9px] sm:text-[10px]">
+                          <div className="text-muted-foreground mb-0.5">Custo</div>
+                          <div className="text-sm sm:text-base font-bold text-foreground mb-1">R$ {product.price.toFixed(2)}</div>
+                          <div className="border-t border-border pt-1 mb-1">
+                            <div className="text-muted-foreground mb-0.5">Venda sug.</div>
+                            <div className="text-sm sm:text-base font-bold gradient-gold-text">R$ {suggested.toFixed(2)}</div>
                           </div>
+                          {profit && (
+                            <div className="flex items-center gap-0.5 pt-1 border-t border-border">
+                              <TrendingUp className="w-2.5 h-2.5 text-green-600" />
+                              <span className="font-semibold text-green-600">+{profit}%</span>
+                            </div>
+                          )}
                         </div>
 
                         {/* Spacer */}
                         <div className="flex-1" />
 
                         {/* Quantity Control */}
-                        <div className="flex items-center gap-2 mb-3">
+                        <div className="flex items-center gap-1.5 mb-2">
                           <button
                             onClick={() => setQty(product.id, getQty(product.id) - 1)}
                             disabled={getQty(product.id) <= 1}
-                            className="w-11 h-11 flex items-center justify-center rounded-lg border border-border bg-white text-muted-foreground hover:bg-surface-alt transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                            className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded border border-border bg-white text-muted-foreground hover:bg-surface-alt transition-colors disabled:opacity-40 disabled:cursor-not-allowed text-sm"
                             aria-label="Diminuir quantidade"
                           >
                             −
                           </button>
-                          <span className="w-8 text-center text-sm font-semibold text-foreground">
+                          <span className="w-6 text-center text-xs sm:text-sm font-semibold text-foreground">
                             {getQty(product.id)}
                           </span>
                           <button
                             onClick={() => setQty(product.id, getQty(product.id) + 1)}
-                            className="w-11 h-11 flex items-center justify-center rounded-lg border border-border bg-white text-muted-foreground hover:bg-surface-alt transition-colors"
+                            className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded border border-border bg-white text-muted-foreground hover:bg-surface-alt transition-colors text-sm"
                             aria-label="Aumentar quantidade"
                           >
                             +
                           </button>
                         </div>
 
-                        <div className="space-y-2">
+                        <div className="space-y-1.5">
                           <button
                             onClick={() => handleAddItem(product)}
-                            className={`w-full flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold text-white transition-all ${
+                            className={`w-full flex items-center justify-center gap-1.5 py-1.5 sm:py-2 rounded text-xs sm:text-sm font-semibold text-white transition-all ${
                               addedId === product.id
                                 ? 'bg-green-600'
                                 : 'btn-gold'
@@ -607,21 +607,21 @@ const Catalogo = () => {
                           >
                             {addedId === product.id ? (
                               <>
-                                <Check className="w-3.5 h-3.5" />
+                                <Check className="w-3 h-3" />
                                 Adicionado!
                               </>
                             ) : (
                               <>
-                                <ShoppingCart className="w-3.5 h-3.5" />
+                                <ShoppingCart className="w-3 h-3" />
                                 Adicionar
                               </>
                             )}
                           </button>
                           <button
                             onClick={() => setSelectedProduct(product)}
-                            className="w-full px-4 py-2 rounded-lg text-sm font-medium border border-border bg-white text-foreground hover:bg-surface-alt transition-colors"
+                            className="w-full px-2 sm:px-3 py-1.5 rounded text-[10px] sm:text-xs font-medium border border-border bg-white text-foreground hover:bg-surface-alt transition-colors"
                           >
-                            Ver detalhes
+                            Detalhes
                           </button>
                         </div>
                       </div>
@@ -654,17 +654,17 @@ const Catalogo = () => {
       {filtersOpen && (
         <div className="fixed inset-0 z-50 lg:hidden flex justify-end">
           <div className="absolute inset-0 bg-foreground/40 backdrop-blur-sm" onClick={() => setFiltersOpen(false)} />
-          <div className="relative bg-white w-full max-w-sm h-full flex flex-col shadow-2xl overflow-y-auto">
+          <div className="relative bg-white w-full sm:max-w-sm h-full flex flex-col shadow-2xl overflow-y-auto">
             {/* Header */}
-            <div className="flex items-center justify-between p-5 border-b border-border sticky top-0 bg-white">
-              <h2 className="font-bold text-foreground text-lg">Filtros</h2>
+            <div className="flex items-center justify-between p-3 sm:p-4 border-b border-border sticky top-0 bg-white">
+              <h2 className="font-bold text-foreground text-base sm:text-lg">Filtros</h2>
               <button onClick={() => setFiltersOpen(false)} className="text-muted-foreground hover:text-foreground">
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             {/* Content */}
-            <div className="flex-1 p-5 space-y-5">
+            <div className="flex-1 p-3 sm:p-4 space-y-3 sm:space-y-4">
               {/* Sort */}
               <div>
                 <label className="text-xs font-semibold text-muted-foreground mb-2 block">Ordenar por</label>
@@ -733,18 +733,18 @@ const Catalogo = () => {
             </div>
 
             {/* Footer */}
-            <div className="p-5 border-t border-border space-y-2">
+            <div className="p-3 sm:p-4 border-t border-border space-y-1.5 sm:space-y-2">
               {activeFiltersCount > 0 && (
                 <button
                   onClick={clearAllFilters}
-                  className="w-full px-3 py-2 rounded-lg bg-surface-alt text-sm font-medium text-foreground hover:bg-border transition-colors"
+                  className="w-full px-2 sm:px-3 py-1.5 sm:py-2 rounded text-xs sm:text-sm font-medium text-foreground bg-surface-alt hover:bg-border transition-colors"
                 >
-                  Limpar filtros
+                  Limpar
                 </button>
               )}
               <button
                 onClick={() => setFiltersOpen(false)}
-                className="w-full px-3 py-2.5 rounded-lg btn-gold text-white text-sm font-semibold"
+                className="w-full px-2 sm:px-3 py-2 sm:py-2.5 rounded btn-gold text-white text-xs sm:text-sm font-semibold"
               >
                 Aplicar
               </button>
@@ -760,18 +760,18 @@ const Catalogo = () => {
             className="absolute inset-0 bg-foreground/40 backdrop-blur-sm"
             onClick={() => setSelectedProduct(null)}
           />
-          <div className="relative bg-white rounded-2xl shadow-lg max-w-md w-full max-h-[90vh] overflow-y-auto">
+          <div className="relative bg-white rounded-lg sm:rounded-2xl shadow-lg w-full sm:max-w-md max-h-[90vh] overflow-y-auto">
             {/* Close button */}
             <button
               onClick={() => setSelectedProduct(null)}
-              className="absolute top-4 right-4 z-10 text-muted-foreground hover:text-foreground transition-colors"
+              className="absolute top-3 sm:top-4 right-3 sm:right-4 z-10 text-muted-foreground hover:text-foreground transition-colors"
             >
               <X className="w-5 h-5" />
             </button>
 
             {/* Image */}
             {selectedProduct.main_image && (
-              <div className="w-full h-48 bg-surface-alt overflow-hidden">
+              <div className="w-full h-40 sm:h-48 bg-surface-alt overflow-hidden">
                 <img
                   src={selectedProduct.main_image}
                   alt={selectedProduct.name}
@@ -781,21 +781,21 @@ const Catalogo = () => {
             )}
 
             {/* Content */}
-            <div className="p-6">
-              <h2 className="text-xl font-bold text-foreground mb-3">
+            <div className="p-3 sm:p-6">
+              <h2 className="text-base sm:text-xl font-bold text-foreground mb-2 sm:mb-3">
                 {selectedProduct.name}
               </h2>
 
               {/* Pricing */}
               {selectedProduct.description_html && (
-                <div className="bg-surface-alt rounded-xl p-4 mb-4">
-                  <div className="text-xs text-muted-foreground mb-1">Custo</div>
-                  <div className="text-lg font-bold text-foreground mb-3">
+                <div className="bg-surface-alt rounded-lg sm:rounded-xl p-3 sm:p-4 mb-3 sm:mb-4 text-xs sm:text-sm">
+                  <div className="text-muted-foreground mb-0.5">Custo</div>
+                  <div className="text-base sm:text-lg font-bold text-foreground mb-2">
                     R$ {selectedProduct.price.toFixed(2)}
                   </div>
-                  <div className="border-t border-border pt-3">
-                    <div className="text-xs text-muted-foreground mb-1">Venda sugerida</div>
-                    <div className="text-lg font-bold gradient-gold-text">
+                  <div className="border-t border-border pt-2">
+                    <div className="text-muted-foreground mb-0.5">Venda sugerida</div>
+                    <div className="text-base sm:text-lg font-bold gradient-gold-text">
                       R$ {getSuggestedPrice(selectedProduct.price, selectedProduct.compare_at_price).toFixed(2)}
                     </div>
                   </div>
@@ -804,11 +804,11 @@ const Catalogo = () => {
 
               {/* Description */}
               {selectedProduct.description_html && (
-                <div className="mb-6">
-                  <h3 className="text-sm font-semibold text-foreground mb-2">
+                <div className="mb-4 sm:mb-6">
+                  <h3 className="text-xs sm:text-sm font-semibold text-foreground mb-1.5 sm:mb-2">
                     Descrição
                   </h3>
-                  <div className="text-sm text-muted-foreground prose prose-sm max-w-none">
+                  <div className="text-xs sm:text-sm text-muted-foreground prose prose-sm max-w-none">
                     <div
                       dangerouslySetInnerHTML={{
                         __html: renderDescription(selectedProduct.description_html),
@@ -819,31 +819,31 @@ const Catalogo = () => {
               )}
 
               {/* Quantity Control */}
-              <div className="flex items-center justify-center gap-3 mb-4 px-3 py-2 bg-surface-alt rounded-lg">
+              <div className="flex items-center justify-center gap-2 mb-3 px-2 py-1.5 sm:py-2 bg-surface-alt rounded">
                 <button
                   onClick={() => setQty(selectedProduct.id, getQty(selectedProduct.id) - 1)}
                   disabled={getQty(selectedProduct.id) <= 1}
-                  className="w-8 h-8 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-white rounded transition-colors disabled:opacity-40 disabled:cursor-not-allowed text-lg"
+                  className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-white rounded transition-colors disabled:opacity-40 disabled:cursor-not-allowed text-sm"
                 >
                   −
                 </button>
-                <span className="text-lg font-semibold text-foreground min-w-[2rem] text-center">{getQty(selectedProduct.id)}</span>
+                <span className="text-sm font-semibold text-foreground min-w-[1.5rem] text-center">{getQty(selectedProduct.id)}</span>
                 <button
                   onClick={() => setQty(selectedProduct.id, getQty(selectedProduct.id) + 1)}
-                  className="w-8 h-8 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-white rounded transition-colors text-lg"
+                  className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-white rounded transition-colors text-sm"
                 >
                   +
                 </button>
               </div>
 
               {/* Action buttons */}
-              <div className="space-y-2">
+              <div className="space-y-1.5 sm:space-y-2">
                 <button
                   onClick={() => {
                     handleAddItem(selectedProduct);
                     setSelectedProduct(null);
                   }}
-                  className={`w-full flex items-center justify-center gap-2 py-3 rounded-lg text-sm font-semibold text-white transition-all ${
+                  className={`w-full flex items-center justify-center gap-1.5 py-2 sm:py-3 rounded text-xs sm:text-sm font-semibold text-white transition-all ${
                     addedId === selectedProduct.id
                       ? 'bg-green-600'
                       : 'btn-gold'
@@ -851,19 +851,19 @@ const Catalogo = () => {
                 >
                   {addedId === selectedProduct.id ? (
                     <>
-                      <Check className="w-4 h-4" />
+                      <Check className="w-3.5 h-3.5" />
                       Adicionado!
                     </>
                   ) : (
                     <>
-                      <ShoppingCart className="w-4 h-4" />
-                      Adicionar ao Pedido
+                      <ShoppingCart className="w-3.5 h-3.5" />
+                      Adicionar
                     </>
                   )}
                 </button>
                 <button
                   onClick={() => setSelectedProduct(null)}
-                  className="w-full px-4 py-2 rounded-lg text-sm font-medium border border-border bg-white text-foreground hover:bg-surface-alt transition-colors"
+                  className="w-full px-3 sm:px-4 py-1.5 sm:py-2 rounded text-xs sm:text-sm font-medium border border-border bg-white text-foreground hover:bg-surface-alt transition-colors"
                 >
                   Fechar
                 </button>
@@ -877,12 +877,12 @@ const Catalogo = () => {
       {cartOpen && (
         <div className="fixed inset-0 z-50 flex justify-end">
           <div className="absolute inset-0 bg-foreground/40 backdrop-blur-sm" onClick={() => setCartOpen(false)} />
-          <div className="relative bg-white w-full max-w-sm h-full flex flex-col shadow-2xl">
+          <div className="relative bg-white w-full sm:max-w-sm h-full flex flex-col shadow-2xl">
             {/* Cart Header */}
-            <div className="flex items-center justify-between p-5 border-b border-border">
-              <div className="flex items-center gap-2">
-                <ShoppingCart className="w-5 h-5 text-gold-text" />
-                <h2 className="font-bold text-foreground text-lg">Meu Pedido</h2>
+            <div className="flex items-center justify-between p-3 sm:p-4 border-b border-border">
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <ShoppingCart className="w-4 sm:w-5 h-4 sm:h-5 text-gold-text" />
+                <h2 className="font-bold text-foreground text-base sm:text-lg">Meu Pedido</h2>
               </div>
               <button onClick={() => setCartOpen(false)} className="text-muted-foreground hover:text-foreground">
                 <X className="w-5 h-5" />
@@ -890,27 +890,27 @@ const Catalogo = () => {
             </div>
 
             {/* Items */}
-            <div className="flex-1 overflow-y-auto p-5">
+            <div className="flex-1 overflow-y-auto p-3 sm:p-4">
               {cart.length === 0 ? (
-                <div className="text-center py-12">
-                  <ShoppingCart className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
-                  <p className="text-muted-foreground text-sm">Nenhum item adicionado ainda.</p>
+                <div className="text-center py-8 sm:py-12">
+                  <ShoppingCart className="w-10 h-10 sm:w-12 sm:h-12 text-muted-foreground mx-auto mb-2 sm:mb-3" />
+                  <p className="text-muted-foreground text-xs sm:text-sm">Nenhum item adicionado ainda.</p>
                 </div>
               ) : (
-                <div className="flex flex-col gap-3">
+                <div className="flex flex-col gap-2">
                   {cart.map((item) => (
-                    <div key={item.id} className="flex gap-3 bg-surface-alt rounded-xl p-3">
+                    <div key={item.id} className="flex gap-2 bg-surface-alt rounded-lg p-2 sm:p-3">
                       {/* Thumbnail */}
                       {item.image && (
                         <img
                           src={item.image}
                           alt={item.name}
-                          className="w-10 h-10 rounded object-cover flex-shrink-0"
+                          className="w-8 h-8 sm:w-10 sm:h-10 rounded object-cover flex-shrink-0"
                         />
                       )}
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-foreground truncate">{item.name}</p>
-                        <p className="text-xs text-muted-foreground">
+                        <p className="text-xs sm:text-sm font-medium text-foreground truncate">{item.name}</p>
+                        <p className="text-[10px] sm:text-xs text-muted-foreground">
                           {item.quantity}x · R$ {(item.price * item.quantity).toFixed(2)}
                         </p>
                       </div>
@@ -925,24 +925,24 @@ const Catalogo = () => {
 
             {/* Footer */}
             {cart.length > 0 && (
-              <div className="p-5 border-t border-border">
-                <div className="flex items-center justify-between mb-4">
-                  <span className="font-semibold text-foreground">Total do Pedido</span>
-                  <span className="text-xl font-bold gradient-gold-text">R$ {cartTotal.toFixed(2)}</span>
+              <div className="p-3 sm:p-4 border-t border-border">
+                <div className="flex items-center justify-between mb-2.5 sm:mb-4">
+                  <span className="font-semibold text-foreground text-sm sm:text-base">Total</span>
+                  <span className="text-lg sm:text-xl font-bold gradient-gold-text">R$ {cartTotal.toFixed(2)}</span>
                 </div>
                 <button
                   onClick={() => {
                     setCartOpen(false);
                     navigate('/checkout');
                   }}
-                  className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-semibold text-base btn-gold text-white"
+                  className="w-full flex items-center justify-center gap-1.5 py-2.5 sm:py-3 rounded-lg sm:rounded-xl font-semibold text-sm sm:text-base btn-gold text-white"
                 >
-                  Finalizar Pedido
-                  <ArrowRight className="w-4 h-4" />
+                  Finalizar
+                  <ArrowRight className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                 </button>
                 {cartTotal < 300 && (
-                  <p className="text-xs text-center text-muted-foreground mt-2">
-                    ⚠️ Pedido mínimo: R$ 300 (faltam R$ {(300 - cartTotal).toFixed(2)})
+                  <p className="text-[10px] sm:text-xs text-center text-muted-foreground mt-1.5 sm:mt-2">
+                    ⚠️ Mínimo: R$ 300 (faltam R$ {(300 - cartTotal).toFixed(2)})
                   </p>
                 )}
               </div>
