@@ -1,17 +1,81 @@
 import { useState, useEffect, useMemo } from "react";
-import { ArrowRight, Check, ChevronDown, Crown, Filter, LogOut, Search, ShoppingCart, Tag, TrendingUp, X } from "lucide-react";
+import { ArrowRight, Check, Crown, Filter, LogOut, Search, ShoppingCart, Tag, TrendingUp, X } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
+import { Carousel, CarouselContent, CarouselItem, type CarouselApi } from "@/components/ui/carousel";
+import { toast } from "sonner";
 import logo from "@/assets/logo-rei-dos-cachos.png";
 import { supabase } from "@/lib/supabase";
 import { useCatalogProducts } from "@/hooks/useCatalogProducts";
 import { useCart } from "@/contexts/CartContext";
 
+// ============================================================================
+// TYPES & CONSTANTS
+// ============================================================================
+
 type SortOption = 'name_asc' | 'name_desc' | 'price_asc' | 'price_desc' | 'profit_desc';
+
+const CATEGORIES = ['Kits', 'Ativador', 'Máscara', 'Shampoo', 'Finalizador', 'Tonalizante'] as const;
+type Category = typeof CATEGORIES[number];
+
+const CATEGORY_KEYWORDS: Record<Category, string[]> = {
+  'Kits': ['kit'],
+  'Ativador': ['ativador', 'ativa'],
+  'Máscara': ['máscara', 'mascara', 'mask', 'hidratação', 'hidratacao'],
+  'Shampoo': ['shampoo', 'xampu'],
+  'Finalizador': ['finalizador', 'leave-in', 'leave in', 'sérum', 'serum', 'óleo', 'oleo'],
+  'Tonalizante': ['tonalizante', 'tônico', 'tonico', 'matiz'],
+};
+
+const PROMO_SLIDES = [
+  { id: 1, bg: 'from-amber-500 to-yellow-400', icon: '🚚', title: 'Frete grátis', sub: 'em pedidos acima de R$ 5.000' },
+  { id: 2, bg: 'from-gold-start to-gold-end', icon: '🛒', title: 'Pedido mínimo', sub: 'R$ 500 para revendedores' },
+  { id: 3, bg: 'from-emerald-500 to-green-400', icon: '💰', title: '10% Cashback', sub: 'em pedidos acima de R$ 3.000' },
+];
+
+// ============================================================================
+// HELPERS
+// ============================================================================
+
+const getCategory = (name: string): Category | null => {
+  const lower = name.toLowerCase();
+  for (const cat of CATEGORIES) {
+    if (CATEGORY_KEYWORDS[cat].some(kw => lower.includes(kw))) return cat;
+  }
+  return null;
+};
+
+// TODO: Remove fallback when all products have compare_at_price populated in DB
+const getSuggestedPrice = (price: number, compareTo: number | null): number => {
+  if (compareTo && compareTo > 0) return compareTo;
+  return Math.round(price * 2 * 100) / 100; // fallback: 2x cost
+};
+
+// ============================================================================
+// COMPONENTS
+// ============================================================================
+
+interface FilterChipProps {
+  label: string;
+  onRemove: () => void;
+}
+
+const FilterChip = ({ label, onRemove }: FilterChipProps) => (
+  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-gold-light text-gold-text border border-gold-border">
+    {label}
+    <button onClick={onRemove} className="ml-0.5 hover:text-red-500 transition-colors">
+      <X className="w-3 h-3" />
+    </button>
+  </span>
+);
 
 const Catalogo = () => {
   const navigate = useNavigate();
   const { data: products = [], isLoading, error } = useCatalogProducts();
   const { items: cart, addItem, updateQty, removeItem, total: cartTotal, count: cartCount } = useCart();
+
+  // ========================================================================
+  // STATE
+  // ========================================================================
 
   // Search and filters state
   const [search, setSearch] = useState("");
@@ -20,13 +84,23 @@ const Catalogo = () => {
   const [filterMinPrice, setFilterMinPrice] = useState<number | ''>('');
   const [filterMaxPrice, setFilterMaxPrice] = useState<number | ''>('');
   const [filterOnlySuggested, setFilterOnlySuggested] = useState(false);
+  const [filterCategories, setFilterCategories] = useState<Category[]>([]);
   const [filtersOpen, setFiltersOpen] = useState(false);
+
+  // Carousel state
+  const [carouselApi, setCarouselApi] = useState<CarouselApi>();
+  const [carouselIndex, setCarouselIndex] = useState(0);
 
   // UI state
   const [cartOpen, setCartOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<typeof products[0] | null>(null);
   const [addedId, setAddedId] = useState<string | null>(null);
+  const [cartBounce, setCartBounce] = useState(false);
   const [quantities, setQuantities] = useState<Record<string, number>>({});
+
+  // ========================================================================
+  // EFFECTS
+  // ========================================================================
 
   // Debounce search
   useEffect(() => {
@@ -34,13 +108,51 @@ const Catalogo = () => {
     return () => clearTimeout(timer);
   }, [search]);
 
-  // Filter and sort logic
+  // Carousel autoplay
+  useEffect(() => {
+    if (!carouselApi) return;
+    carouselApi.on('select', () => setCarouselIndex(carouselApi.selectedScrollSnap()));
+    const interval = setInterval(() => carouselApi.scrollNext(), 5000);
+    return () => clearInterval(interval);
+  }, [carouselApi]);
+
+  // ========================================================================
+  // FILTERS & SORT
+  // ========================================================================
+
+  const toggleCategory = (cat: Category) =>
+    setFilterCategories(prev =>
+      prev.includes(cat) ? prev.filter(c => c !== cat) : [...prev, cat]
+    );
+
+  const clearAllFilters = () => {
+    setSearch('');
+    setSortBy('name_asc');
+    setFilterMinPrice('');
+    setFilterMaxPrice('');
+    setFilterOnlySuggested(false);
+    setFilterCategories([]);
+  };
+
+  const activeFiltersCount = [
+    debouncedSearch !== '',
+    filterMinPrice !== '',
+    filterMaxPrice !== '',
+    filterOnlySuggested,
+    filterCategories.length > 0,
+    sortBy !== 'name_asc',
+  ].filter(Boolean).length;
+
   const filtered = useMemo(() => {
     let result = products.filter(p => {
       if (!p.name.toLowerCase().includes(debouncedSearch.toLowerCase())) return false;
       if (filterOnlySuggested && !p.compare_at_price) return false;
       if (filterMinPrice !== '' && p.price < filterMinPrice) return false;
       if (filterMaxPrice !== '' && p.price > filterMaxPrice) return false;
+      if (filterCategories.length > 0) {
+        const cat = getCategory(p.name);
+        if (cat === null || !filterCategories.includes(cat)) return false;
+      }
       return true;
     });
 
@@ -55,45 +167,69 @@ const Catalogo = () => {
         return result.sort((a, b) => b.price - a.price);
       case 'profit_desc':
         return result.sort((a, b) => {
-          const pa = a.compare_at_price && a.price > 0
-            ? ((a.compare_at_price - a.price) / a.price) * 100
+          const pa = a.price > 0
+            ? ((getSuggestedPrice(a.price, a.compare_at_price) - a.price) / a.price) * 100
             : -1;
-          const pb = b.compare_at_price && b.price > 0
-            ? ((b.compare_at_price - b.price) / b.price) * 100
+          const pb = b.price > 0
+            ? ((getSuggestedPrice(b.price, b.compare_at_price) - b.price) / b.price) * 100
             : -1;
           return pb - pa;
         });
       default:
         return result;
     }
-  }, [products, debouncedSearch, sortBy, filterMinPrice, filterMaxPrice, filterOnlySuggested]);
+  }, [products, debouncedSearch, sortBy, filterMinPrice, filterMaxPrice, filterOnlySuggested, filterCategories]);
 
-  // Helper to clean HTML descriptions
-  const cleanDescription = (html: string): string => {
-    let clean = html.replace(/\{[a-z]{2}:([\s\S]*?)\}/g, '$1');
-    clean = clean.replace(/\\n/g, '<br/>');
-    return clean;
-  };
+  // ========================================================================
+  // HELPERS
+  // ========================================================================
 
-  // Helper to get profit percentage
-  const getProfit = (price: number, suggestedPrice: number | null): number | null => {
-    return suggestedPrice && price > 0
-      ? Math.round(((suggestedPrice - price) / price) * 100)
-      : null;
-  };
-
-  // Helper to get quantity for a product
   const getQty = (id: string) => quantities[id] ?? 1;
   const setQty = (id: string, qty: number) =>
     setQuantities(prev => ({ ...prev, [id]: Math.max(1, qty) }));
 
+  const cleanDescription = (raw: string): string => {
+    let text = raw.trim();
+
+    // 1. Se vier como JSON {"pt":"..."} — extrair campo pt
+    try {
+      const parsed = JSON.parse(text);
+      if (parsed && typeof parsed === 'object' && 'pt' in parsed) {
+        text = String(parsed.pt);
+      }
+    } catch { /* não é JSON, segue */ }
+
+    // 2. Strip {pt:...} Nuvemshop locale wrapping
+    text = text.replace(/\{[a-z]{2}:([\s\S]*?)\}/g, '$1');
+
+    // 3. Converter literal \n para quebra real
+    text = text.replace(/\\n/g, '\n');
+
+    // 4. Remover linhas vazias excessivas (3+ → 1)
+    text = text.replace(/(\n\s*){3,}/g, '\n\n');
+
+    // 5. Remover espaços/tabs no início de cada linha
+    text = text.split('\n').map(l => l.trimStart()).join('\n');
+
+    return text.trim();
+  };
+
+  const renderDescription = (raw: string): string => {
+    const cleaned = cleanDescription(raw);
+    // Se não contiver tags HTML, formatar como parágrafos
+    if (!/<[a-z][\s\S]*>/i.test(cleaned)) {
+      return cleaned.split('\n\n').map(p => `<p>${p.replace(/\n/g, '<br/>')}</p>`).join('');
+    }
+    return cleaned;
+  };
+
   // Handle add to cart with quantity
   const handleAddItem = (product: typeof products[0]) => {
     const qty = getQty(product.id);
-    const existingItem = cart.find(i => i.id === product.id);
+    const existing = cart.find(i => i.id === product.id);
 
-    if (existingItem) {
-      updateQty(product.id, existingItem.quantity + qty);
+    if (existing) {
+      updateQty(product.id, existing.quantity + qty);
     } else {
       addItem({
         id: product.id,
@@ -108,9 +244,19 @@ const Catalogo = () => {
 
     // Visual feedback
     setAddedId(product.id);
-    setTimeout(() => setAddedId(null), 1500);
+    setTimeout(() => setAddedId(null), 800);
 
-    // Reset quantity for this product
+    setCartBounce(true);
+    setTimeout(() => setCartBounce(false), 600);
+
+    toast('Adicionado ao pedido!', {
+      action: {
+        label: 'Ver pedido',
+        onClick: () => setCartOpen(true),
+      },
+      duration: 3000,
+    });
+
     setQty(product.id, 1);
   };
 
@@ -120,14 +266,9 @@ const Catalogo = () => {
     navigate("/", { replace: true });
   };
 
-  // Count active filters
-  const activeFiltersCount = [
-    debouncedSearch !== '',
-    filterMinPrice !== '',
-    filterMaxPrice !== '',
-    filterOnlySuggested,
-    sortBy !== 'name_asc',
-  ].filter(Boolean).length;
+  // ========================================================================
+  // RENDER
+  // ========================================================================
 
   return (
     <div className="min-h-screen bg-surface-alt">
@@ -170,7 +311,7 @@ const Catalogo = () => {
             {/* Cart */}
             <button
               onClick={() => setCartOpen(true)}
-              className="relative flex items-center gap-1.5 px-4 py-2 rounded-lg border border-border bg-white hover:border-gold-border transition-all text-sm font-medium"
+              className={`relative flex items-center gap-1.5 px-4 py-2 rounded-lg border border-border bg-white hover:border-gold-border transition-all text-sm font-medium ${cartBounce ? 'animate-bounce' : ''}`}
             >
               <ShoppingCart className="w-4 h-4" />
               <span className="hidden sm:inline">Pedido</span>
@@ -249,6 +390,24 @@ const Catalogo = () => {
               </div>
             </div>
 
+            {/* Categories */}
+            <div className="mb-5 pb-5 border-b border-border">
+              <label className="text-xs font-semibold text-muted-foreground mb-2 block">Categorias</label>
+              <div className="space-y-1.5">
+                {CATEGORIES.map(cat => (
+                  <label key={cat} className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={filterCategories.includes(cat)}
+                      onChange={() => toggleCategory(cat)}
+                      className="w-4 h-4 rounded border-border text-gold focus:ring-gold"
+                    />
+                    <span className="text-sm text-foreground">{cat}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
             {/* Suggested Price Only */}
             <div className="mb-5">
               <label className="flex items-center gap-2 cursor-pointer">
@@ -265,13 +424,7 @@ const Catalogo = () => {
             {/* Clear filters */}
             {activeFiltersCount > 0 && (
               <button
-                onClick={() => {
-                  setSearch('');
-                  setSortBy('name_asc');
-                  setFilterMinPrice('');
-                  setFilterMaxPrice('');
-                  setFilterOnlySuggested(false);
-                }}
+                onClick={clearAllFilters}
                 className="w-full px-3 py-2 rounded-lg bg-surface-alt text-sm font-medium text-foreground hover:bg-border transition-colors"
               >
                 Limpar filtros
@@ -291,6 +444,64 @@ const Catalogo = () => {
             <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Catálogo Completo</h1>
             <p className="text-muted-foreground mt-1">{isLoading ? "Carregando..." : `${filtered.length} produtos disponíveis`}</p>
           </div>
+
+          {/* Promo Banner */}
+          {!isLoading && !error && (
+            <div className="mb-6 rounded-2xl overflow-hidden">
+              <Carousel setApi={setCarouselApi} opts={{ loop: true }}>
+                <CarouselContent>
+                  {PROMO_SLIDES.map(slide => (
+                    <CarouselItem key={slide.id}>
+                      <div className={`bg-gradient-to-r ${slide.bg} h-28 sm:h-32 flex items-center justify-center gap-4 px-6 rounded-2xl`}>
+                        <span className="text-4xl">{slide.icon}</span>
+                        <div className="text-white">
+                          <div className="font-bold text-lg sm:text-xl">{slide.title}</div>
+                          <div className="text-sm opacity-90">{slide.sub}</div>
+                        </div>
+                      </div>
+                    </CarouselItem>
+                  ))}
+                </CarouselContent>
+              </Carousel>
+              {/* Dots */}
+              <div className="flex justify-center gap-1.5 mt-2">
+                {PROMO_SLIDES.map((_, i) => (
+                  <button
+                    key={i}
+                    onClick={() => carouselApi?.scrollTo(i)}
+                    className={`w-1.5 h-1.5 rounded-full transition-all ${carouselIndex === i ? 'bg-gold w-3' : 'bg-border'}`}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Active Filter Chips */}
+          {activeFiltersCount > 0 && (
+            <div className="flex flex-wrap gap-2 mb-4">
+              {debouncedSearch && (
+                <FilterChip label={`Busca: "${debouncedSearch}"`} onRemove={() => setSearch('')} />
+              )}
+              {filterMinPrice !== '' && (
+                <FilterChip label={`Custo ≥ R$ ${filterMinPrice}`} onRemove={() => setFilterMinPrice('')} />
+              )}
+              {filterMaxPrice !== '' && (
+                <FilterChip label={`Custo ≤ R$ ${filterMaxPrice}`} onRemove={() => setFilterMaxPrice('')} />
+              )}
+              {filterOnlySuggested && (
+                <FilterChip label="Com preço sugerido" onRemove={() => setFilterOnlySuggested(false)} />
+              )}
+              {filterCategories.map(cat => (
+                <FilterChip key={cat} label={cat} onRemove={() => toggleCategory(cat)} />
+              ))}
+              <button
+                onClick={clearAllFilters}
+                className="text-xs text-muted-foreground hover:text-red-500 underline ml-1 transition-colors"
+              >
+                Limpar tudo
+              </button>
+            </div>
+          )}
 
           {/* Loading */}
           {isLoading && (
@@ -313,20 +524,23 @@ const Catalogo = () => {
             <>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
                 {filtered.map((product) => {
-                  const profit = getProfit(product.price, product.compare_at_price);
+                  const suggested = getSuggestedPrice(product.price, product.compare_at_price);
+                  const profit = product.price > 0
+                    ? Math.round(((suggested - product.price) / product.price) * 100)
+                    : null;
 
                   return (
                     <div
                       key={product.id}
-                      className="group bg-white rounded-2xl overflow-hidden border border-border hover:border-gold-border shadow-card hover:shadow-card-hover transition-all duration-300 hover:-translate-y-1"
+                      className="group bg-white rounded-2xl overflow-hidden border border-border hover:border-gold-border shadow-card hover:shadow-card-hover transition-all duration-300 hover:-translate-y-1 flex flex-col"
                     >
                       {/* Image */}
-                      <div className="relative bg-surface-alt h-44 overflow-hidden">
+                      <div className="relative bg-surface-alt h-44 overflow-hidden flex-shrink-0">
                         {product.main_image ? (
                           <img
                             src={product.main_image}
                             alt={product.name}
-                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                            className="w-full h-full object-contain transition-transform duration-500 group-hover:scale-105"
                           />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-surface-alt to-border">
@@ -335,47 +549,48 @@ const Catalogo = () => {
                         )}
                       </div>
 
-                      {/* Info */}
-                      <div className="p-4">
-                        <h3 className="font-semibold text-foreground text-sm mb-3 leading-snug line-clamp-2">{product.name}</h3>
+                      {/* Body */}
+                      <div className="p-4 flex flex-col flex-1">
+                        <h3 className="font-semibold text-foreground text-sm mb-3 leading-snug line-clamp-2 min-h-[2.5rem]">
+                          {product.name}
+                        </h3>
 
                         {/* Pricing */}
                         <div className="bg-surface-alt rounded-xl p-3 mb-3">
-                          <div className="flex items-center justify-between mb-1.5">
-                            <div>
-                              <div className="text-[10px] text-muted-foreground">Custo</div>
-                              <div className="text-base font-bold text-foreground">R$ {product.price.toFixed(2)}</div>
-                            </div>
-                            {product.compare_at_price && (
-                              <>
-                                <ArrowRight className="w-3.5 h-3.5 text-gold-text flex-shrink-0" />
-                                <div className="text-right">
-                                  <div className="text-[10px] text-muted-foreground">Sugerido</div>
-                                  <div className="text-base font-bold gradient-gold-text">R$ {product.compare_at_price.toFixed(2)}</div>
-                                </div>
-                              </>
+                          <div className="text-[10px] text-muted-foreground mb-1.5">Custo</div>
+                          <div className="text-base font-bold text-foreground mb-2">R$ {product.price.toFixed(2)}</div>
+                          <div className="border-t border-border pt-2">
+                            <div className="text-[10px] text-muted-foreground mb-0.5">Venda sugerida</div>
+                            <div className="text-base font-bold gradient-gold-text mb-1.5">R$ {suggested.toFixed(2)}</div>
+                            {profit && (
+                              <div className="flex items-center gap-1 pt-1.5 border-t border-border">
+                                <TrendingUp className="w-3 h-3 text-green-600" />
+                                <span className="text-[10px] font-semibold text-green-600">Lucro s/ custo +{profit}%</span>
+                              </div>
                             )}
                           </div>
-                          {profit && (
-                            <div className="flex items-center gap-1 pt-1.5 border-t border-border">
-                              <TrendingUp className="w-3 h-3 text-green-600" />
-                              <span className="text-[10px] font-semibold text-green-600">Lucro s/ custo +{profit}%</span>
-                            </div>
-                          )}
                         </div>
 
+                        {/* Spacer */}
+                        <div className="flex-1" />
+
                         {/* Quantity Control */}
-                        <div className="flex items-center justify-between gap-2 mb-3 px-2 py-1.5 bg-surface-alt rounded-lg">
+                        <div className="flex items-center gap-2 mb-3">
                           <button
                             onClick={() => setQty(product.id, getQty(product.id) - 1)}
-                            className="w-6 h-6 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-white rounded transition-colors"
+                            disabled={getQty(product.id) <= 1}
+                            className="w-11 h-11 flex items-center justify-center rounded-lg border border-border bg-white text-muted-foreground hover:bg-surface-alt transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                            aria-label="Diminuir quantidade"
                           >
                             −
                           </button>
-                          <span className="text-sm font-medium text-foreground min-w-[1.5rem] text-center">{getQty(product.id)}</span>
+                          <span className="w-8 text-center text-sm font-semibold text-foreground">
+                            {getQty(product.id)}
+                          </span>
                           <button
                             onClick={() => setQty(product.id, getQty(product.id) + 1)}
-                            className="w-6 h-6 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-white rounded transition-colors"
+                            className="w-11 h-11 flex items-center justify-center rounded-lg border border-border bg-white text-muted-foreground hover:bg-surface-alt transition-colors"
+                            aria-label="Aumentar quantidade"
                           >
                             +
                           </button>
@@ -487,6 +702,24 @@ const Catalogo = () => {
                 </div>
               </div>
 
+              {/* Categories */}
+              <div>
+                <label className="text-xs font-semibold text-muted-foreground mb-2 block">Categorias</label>
+                <div className="space-y-1.5">
+                  {CATEGORIES.map(cat => (
+                    <label key={cat} className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={filterCategories.includes(cat)}
+                        onChange={() => toggleCategory(cat)}
+                        className="w-4 h-4 rounded border-border text-gold focus:ring-gold"
+                      />
+                      <span className="text-sm text-foreground">{cat}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
               {/* Suggested Price Only */}
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
@@ -503,13 +736,7 @@ const Catalogo = () => {
             <div className="p-5 border-t border-border space-y-2">
               {activeFiltersCount > 0 && (
                 <button
-                  onClick={() => {
-                    setSearch('');
-                    setSortBy('name_asc');
-                    setFilterMinPrice('');
-                    setFilterMaxPrice('');
-                    setFilterOnlySuggested(false);
-                  }}
+                  onClick={clearAllFilters}
                   className="w-full px-3 py-2 rounded-lg bg-surface-alt text-sm font-medium text-foreground hover:bg-border transition-colors"
                 >
                   Limpar filtros
@@ -548,7 +775,7 @@ const Catalogo = () => {
                 <img
                   src={selectedProduct.main_image}
                   alt={selectedProduct.name}
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-contain"
                 />
               </div>
             )}
@@ -560,35 +787,20 @@ const Catalogo = () => {
               </h2>
 
               {/* Pricing */}
-              <div className="bg-surface-alt rounded-xl p-4 mb-4">
-                <div className="flex items-center justify-between mb-2">
-                  <div>
-                    <div className="text-xs text-muted-foreground">Custo</div>
-                    <div className="text-lg font-bold text-foreground">
-                      R$ {selectedProduct.price.toFixed(2)}
+              {selectedProduct.description_html && (
+                <div className="bg-surface-alt rounded-xl p-4 mb-4">
+                  <div className="text-xs text-muted-foreground mb-1">Custo</div>
+                  <div className="text-lg font-bold text-foreground mb-3">
+                    R$ {selectedProduct.price.toFixed(2)}
+                  </div>
+                  <div className="border-t border-border pt-3">
+                    <div className="text-xs text-muted-foreground mb-1">Venda sugerida</div>
+                    <div className="text-lg font-bold gradient-gold-text">
+                      R$ {getSuggestedPrice(selectedProduct.price, selectedProduct.compare_at_price).toFixed(2)}
                     </div>
                   </div>
-                  {selectedProduct.compare_at_price && (
-                    <>
-                      <ArrowRight className="w-4 h-4 text-gold-text" />
-                      <div className="text-right">
-                        <div className="text-xs text-muted-foreground">Sugerido</div>
-                        <div className="text-lg font-bold gradient-gold-text">
-                          R$ {selectedProduct.compare_at_price.toFixed(2)}
-                        </div>
-                      </div>
-                    </>
-                  )}
                 </div>
-                {getProfit(selectedProduct.price, selectedProduct.compare_at_price) && (
-                  <div className="flex items-center gap-1 pt-2 border-t border-border">
-                    <TrendingUp className="w-3 h-3 text-green-600" />
-                    <span className="text-xs font-semibold text-green-600">
-                      Lucro s/ custo +{getProfit(selectedProduct.price, selectedProduct.compare_at_price)}%
-                    </span>
-                  </div>
-                )}
-              </div>
+              )}
 
               {/* Description */}
               {selectedProduct.description_html && (
@@ -599,7 +811,7 @@ const Catalogo = () => {
                   <div className="text-sm text-muted-foreground prose prose-sm max-w-none">
                     <div
                       dangerouslySetInnerHTML={{
-                        __html: cleanDescription(selectedProduct.description_html),
+                        __html: renderDescription(selectedProduct.description_html),
                       }}
                     />
                   </div>
@@ -610,7 +822,8 @@ const Catalogo = () => {
               <div className="flex items-center justify-center gap-3 mb-4 px-3 py-2 bg-surface-alt rounded-lg">
                 <button
                   onClick={() => setQty(selectedProduct.id, getQty(selectedProduct.id) - 1)}
-                  className="w-8 h-8 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-white rounded transition-colors text-lg"
+                  disabled={getQty(selectedProduct.id) <= 1}
+                  className="w-8 h-8 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-white rounded transition-colors disabled:opacity-40 disabled:cursor-not-allowed text-lg"
                 >
                   −
                 </button>
