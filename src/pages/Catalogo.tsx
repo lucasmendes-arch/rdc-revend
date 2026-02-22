@@ -436,27 +436,27 @@ const Catalogo = () => {
         {/* Main Content */}
         <div className="flex-1 px-3 sm:px-4 lg:px-6 py-4 sm:py-6">
           {/* Page Header */}
-          <div className="mb-4">
-            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border border-gold-border bg-gold-light mb-2">
-              <Crown className="w-3 h-3 text-gold-text" />
-              <span className="text-[10px] sm:text-xs font-semibold text-gold-text tracking-widest uppercase">Exclusivo B2B</span>
+          <div className="mb-3">
+            <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border border-gold-border bg-gold-light mb-1">
+              <Crown className="w-2.5 h-2.5 text-gold-text" />
+              <span className="text-[9px] sm:text-xs font-semibold text-gold-text tracking-wide uppercase">B2B</span>
             </div>
-            <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-foreground">Catálogo</h1>
-            <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">{isLoading ? "Carregando..." : `${filtered.length} produtos`}</p>
+            <h1 className="text-lg sm:text-2xl lg:text-3xl font-bold text-foreground leading-tight">Catálogo</h1>
+            <p className="text-xs sm:text-sm text-muted-foreground mt-0">{isLoading ? "Carregando..." : `${filtered.length} produtos`}</p>
           </div>
 
           {/* Promo Banner */}
           {!isLoading && !error && (
-            <div className="mb-4 rounded-lg sm:rounded-2xl overflow-hidden">
+            <div className="mb-3 -mx-3 sm:mx-0 sm:rounded-lg overflow-hidden">
               <Carousel setApi={setCarouselApi} opts={{ loop: true }}>
                 <CarouselContent>
                   {PROMO_SLIDES.map(slide => (
                     <CarouselItem key={slide.id}>
-                      <div className={`bg-gradient-to-r ${slide.bg} h-20 sm:h-24 lg:h-28 flex items-center justify-between gap-2 sm:gap-4 px-3 sm:px-4 lg:px-6 rounded-lg sm:rounded-2xl`}>
-                        <span className="text-3xl sm:text-4xl flex-shrink-0">{slide.icon}</span>
+                      <div className={`bg-gradient-to-r ${slide.bg} h-24 sm:h-28 lg:h-32 flex items-center justify-between gap-2 px-3 sm:gap-4 sm:px-4 lg:px-6`}>
+                        <span className="text-3.5xl sm:text-4xl flex-shrink-0">{slide.icon}</span>
                         <div className="text-white min-w-0">
-                          <div className="font-bold text-sm sm:text-base lg:text-lg leading-tight">{slide.title}</div>
-                          <div className="text-[10px] sm:text-xs opacity-90 leading-tight">{slide.sub}</div>
+                          <div className="font-bold text-sm sm:text-base lg:text-lg leading-snug">{slide.title}</div>
+                          <div className="text-[9px] sm:text-xs opacity-90 leading-snug">{slide.sub}</div>
                         </div>
                       </div>
                     </CarouselItem>
@@ -464,7 +464,7 @@ const Catalogo = () => {
                 </CarouselContent>
               </Carousel>
               {/* Dots */}
-              <div className="flex justify-center gap-1 mt-1.5">
+              <div className="flex justify-center gap-1 mt-2 sm:mt-2.5">
                 {PROMO_SLIDES.map((_, i) => (
                   <button
                     key={i}
@@ -478,7 +478,7 @@ const Catalogo = () => {
 
           {/* Active Filter Chips */}
           {activeFiltersCount > 0 && (
-            <div className="flex flex-wrap gap-1.5 mb-3">
+            <div className="flex flex-wrap gap-1 mb-2.5">
               {debouncedSearch && (
                 <FilterChip label={`Busca: "${debouncedSearch.substring(0, 10)}${debouncedSearch.length > 10 ? '...' : ''}"`} onRemove={() => setSearch('')} />
               )}
@@ -522,7 +522,7 @@ const Catalogo = () => {
           {/* Products Grid */}
           {!isLoading && !error && (
             <>
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-2.5 sm:gap-3 lg:gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-2 sm:gap-2.5 lg:gap-3">
                 {filtered.map((product) => {
                   const suggested = getSuggestedPrice(product.price, product.compare_at_price);
                   const profit = product.price > 0
@@ -535,7 +535,7 @@ const Catalogo = () => {
                       className="group bg-white rounded-lg sm:rounded-xl overflow-hidden border border-border hover:border-gold-border shadow-card hover:shadow-card-hover transition-all duration-300 hover:-translate-y-0.5 flex flex-col"
                     >
                       {/* Image */}
-                      <div className="relative bg-surface-alt h-32 sm:h-40 lg:h-44 overflow-hidden flex-shrink-0">
+                      <div className="relative bg-surface-alt h-40 sm:h-44 lg:h-48 overflow-hidden flex-shrink-0 flex items-center justify-center">
                         {product.main_image ? (
                           <img
                             src={product.main_image}
@@ -543,63 +543,67 @@ const Catalogo = () => {
                             className="w-full h-full object-contain transition-transform duration-500 group-hover:scale-105"
                           />
                         ) : (
-                          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-surface-alt to-border">
-                            <ShoppingCart className="w-8 sm:w-10 h-8 sm:h-10 text-muted-foreground/30" />
-                          </div>
+                          <ShoppingCart className="w-8 sm:w-9 h-8 sm:h-9 text-muted-foreground/25" />
                         )}
                       </div>
 
                       {/* Body */}
-                      <div className="p-2.5 sm:p-3 lg:p-4 flex flex-col flex-1">
-                        <h3 className="font-semibold text-foreground text-xs sm:text-sm mb-2 leading-tight line-clamp-2 min-h-[2rem]">
+                      <div className="px-2.5 py-2 sm:p-3 lg:p-4 flex flex-col flex-1">
+                        <h3 className="font-semibold text-foreground text-xs sm:text-sm mb-1.5 leading-tight line-clamp-2 min-h-[1.75rem]">
                           {product.name}
                         </h3>
 
-                        {/* Pricing */}
-                        <div className="bg-surface-alt rounded-lg sm:rounded-xl p-2 mb-2 text-[9px] sm:text-[10px]">
-                          <div className="text-muted-foreground mb-0.5">Custo</div>
-                          <div className="text-sm sm:text-base font-bold text-foreground mb-1">R$ {product.price.toFixed(2)}</div>
-                          <div className="border-t border-border pt-1 mb-1">
-                            <div className="text-muted-foreground mb-0.5">Venda sug.</div>
-                            <div className="text-sm sm:text-base font-bold gradient-gold-text">R$ {suggested.toFixed(2)}</div>
+                        {/* Pricing — 2 columns */}
+                        <div className="grid grid-cols-2 gap-2 mb-1.5 text-[9px] sm:text-[10px]">
+                          {/* Custo */}
+                          <div>
+                            <div className="text-muted-foreground">Custo</div>
+                            <div className="text-xs sm:text-sm font-bold text-foreground">R$ {product.price.toFixed(2)}</div>
                           </div>
-                          {profit && (
-                            <div className="flex items-center gap-0.5 pt-1 border-t border-border">
-                              <TrendingUp className="w-2.5 h-2.5 text-green-600" />
-                              <span className="font-semibold text-green-600">+{profit}%</span>
-                            </div>
-                          )}
+                          {/* Venda sugerida */}
+                          <div>
+                            <div className="text-muted-foreground">Venda sug.</div>
+                            <div className="text-xs sm:text-sm font-bold gradient-gold-text">R$ {suggested.toFixed(2)}</div>
+                          </div>
                         </div>
 
+                        {/* Profit - single line */}
+                        {profit && (
+                          <div className="flex items-center gap-0.5 mb-1.5 pb-1 border-b border-border">
+                            <TrendingUp className="w-2 h-2 sm:w-2.5 sm:h-2.5 text-green-600" />
+                            <span className="text-[8px] sm:text-[9px] font-semibold text-green-600">Lucro +{profit}%</span>
+                          </div>
+                        )}
+
                         {/* Spacer */}
-                        <div className="flex-1" />
+                        <div className="flex-1 min-h-1" />
 
                         {/* Quantity Control */}
-                        <div className="flex items-center gap-1.5 mb-2">
+                        <div className="flex items-center gap-1 mb-1.5">
                           <button
                             onClick={() => setQty(product.id, getQty(product.id) - 1)}
                             disabled={getQty(product.id) <= 1}
-                            className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded border border-border bg-white text-muted-foreground hover:bg-surface-alt transition-colors disabled:opacity-40 disabled:cursor-not-allowed text-sm"
+                            className="w-8 h-8 flex items-center justify-center rounded border border-border bg-white text-muted-foreground hover:bg-surface-alt transition-colors disabled:opacity-40 disabled:cursor-not-allowed text-sm font-medium"
                             aria-label="Diminuir quantidade"
                           >
                             −
                           </button>
-                          <span className="w-6 text-center text-xs sm:text-sm font-semibold text-foreground">
+                          <span className="flex-1 text-center text-xs font-semibold text-foreground">
                             {getQty(product.id)}
                           </span>
                           <button
                             onClick={() => setQty(product.id, getQty(product.id) + 1)}
-                            className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded border border-border bg-white text-muted-foreground hover:bg-surface-alt transition-colors text-sm"
+                            className="w-8 h-8 flex items-center justify-center rounded border border-border bg-white text-muted-foreground hover:bg-surface-alt transition-colors text-sm font-medium"
                             aria-label="Aumentar quantidade"
                           >
                             +
                           </button>
                         </div>
 
-                        <div className="space-y-1.5">
+                        <div className="space-y-1">
                           <button
                             onClick={() => handleAddItem(product)}
-                            className={`w-full flex items-center justify-center gap-1.5 py-1.5 sm:py-2 rounded text-xs sm:text-sm font-semibold text-white transition-all ${
+                            className={`w-full flex items-center justify-center gap-1 py-2 rounded text-xs sm:text-sm font-semibold text-white transition-all ${
                               addedId === product.id
                                 ? 'bg-green-600'
                                 : 'btn-gold'
@@ -619,9 +623,9 @@ const Catalogo = () => {
                           </button>
                           <button
                             onClick={() => setSelectedProduct(product)}
-                            className="w-full px-2 sm:px-3 py-1.5 rounded text-[10px] sm:text-xs font-medium border border-border bg-white text-foreground hover:bg-surface-alt transition-colors"
+                            className="w-full px-2 py-1 rounded text-[10px] sm:text-xs font-medium text-gold-text hover:underline transition-colors"
                           >
-                            Detalhes
+                            Ver detalhes →
                           </button>
                         </div>
                       </div>
