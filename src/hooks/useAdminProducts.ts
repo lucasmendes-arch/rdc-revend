@@ -15,6 +15,7 @@ export interface CatalogProduct {
   updated_from_source_at?: string | null
   created_at?: string
   updated_at?: string
+  category_type?: 'alto_giro' | 'maior_margem' | 'recompra_alta' | null
 }
 
 export function useAdminProducts() {
@@ -23,7 +24,7 @@ export function useAdminProducts() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('catalog_products')
-        .select('id, nuvemshop_product_id, name, description_html, price, compare_at_price, main_image, is_active, source, created_at, updated_at')
+        .select('id, nuvemshop_product_id, name, description_html, price, compare_at_price, main_image, is_active, source, created_at, updated_at, category_type')
         .order('updated_at', { ascending: false })
 
       if (error) throw error

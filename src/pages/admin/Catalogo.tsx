@@ -345,6 +345,22 @@ export default function AdminCatalogo() {
                   <span className="text-sm font-medium text-foreground">Ativo</span>
                 </label>
               </div>
+
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1">
+                  Categoria de Destaque (Home)
+                </label>
+                <select
+                  value={editForm.category_type || ''}
+                  onChange={(e) => setEditForm({ ...editForm, category_type: e.target.value || null })}
+                  className="w-full px-3 py-2 rounded-lg border border-border bg-white focus:outline-none focus:ring-2 focus:ring-gold"
+                >
+                  <option value="">Sem classificação</option>
+                  <option value="alto_giro">⚡ Alto Giro (Alto volume de vendas)</option>
+                  <option value="maior_margem">💎 Maior Margem (Maior lucro %)</option>
+                  <option value="recompra_alta">⭐ Recompra Alta (Clientes recompram)</option>
+                </select>
+              </div>
             </div>
 
             <div className="flex gap-3 mt-6">
