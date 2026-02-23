@@ -47,10 +47,9 @@ export function useUpdateProduct() {
         })
         .eq('id', id)
         .select()
-        .single()
 
       if (error) throw error
-      return data as CatalogProduct
+      return (data?.[0] || {}) as CatalogProduct
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-products'] })

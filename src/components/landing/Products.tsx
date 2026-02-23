@@ -2,6 +2,16 @@ import { useEffect, useRef } from "react";
 import { ArrowRight, Tag, TrendingUp } from "lucide-react";
 import { useCatalogProducts } from "@/hooks/useCatalogProducts";
 
+const scrollToForm = () => {
+  const form = document.getElementById("cadastro");
+  if (form) {
+    form.scrollIntoView({ behavior: "smooth" });
+    setTimeout(() => {
+      form.querySelector<HTMLInputElement>('input[name="nome"]')?.focus();
+    }, 600);
+  }
+};
+
 const categoryTags = {
   alto_giro: { tag: "🔥 Mais Vendido", tagColor: "bg-red-50 text-red-600 border-red-100" },
   maior_margem: { tag: "💎 Maior Lucro", tagColor: "bg-gold-light text-gold-text border-gold-border" },
@@ -25,6 +35,7 @@ const Products = () => {
     allProducts.find((p) => p.category_type === "recompra_alta" && p.is_active),
   ].filter(Boolean);
 
+
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
@@ -41,7 +52,7 @@ const Products = () => {
     );
     cardRefs.current.forEach((ref) => ref && observer.observe(ref));
     return () => observer.disconnect();
-  }, []);
+  }, [featuredProducts]);
 
   // Calculate margin percentage
   const getMargin = (price: number, costPrice: number | null) => {
@@ -103,7 +114,7 @@ const Products = () => {
                 }}
               >
                 {/* Product Image */}
-                <div className="relative bg-surface-alt h-48 sm:h-52 overflow-hidden">
+                <div className="relative bg-surface-alt h-56 sm:h-64 overflow-hidden">
                   {product.main_image ? (
                     <img
                       src={product.main_image}
@@ -133,7 +144,7 @@ const Products = () => {
                       <div>
                         <div className="text-xs text-muted-foreground mb-0.5">Você paga</div>
                         <div className="text-lg font-bold text-foreground">
-                          {product.compare_at_price ? formatPrice(product.compare_at_price) : "N/A"}
+                          {formatPrice(product.compare_at_price || product.price * 0.5)}
                         </div>
                       </div>
                       <ArrowRight className="w-4 h-4 text-gold-text" />
@@ -151,6 +162,17 @@ const Products = () => {
               </div>
             );
           })}
+        </div>
+
+        {/* CTA Button */}
+        <div className="text-center mt-10 sm:mt-14">
+          <button
+            onClick={scrollToForm}
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-xl font-semibold text-base btn-gold text-white min-h-[48px]"
+          >
+            Acessar preços de atacado
+            <ArrowRight className="w-4 h-4" />
+          </button>
         </div>
       </div>
     </section>
