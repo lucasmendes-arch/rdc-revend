@@ -1,4 +1,5 @@
-import { Crown, MessageCircle, Shield, Award, FileCheck } from "lucide-react";
+import { MessageCircle, Shield, Award, FileCheck } from "lucide-react";
+import logo from "@/assets/logo-rei-dos-cachos.png";
 
 const trustItems = [
   { icon: Shield, label: "Compra 100% Segura" },
@@ -39,13 +40,7 @@ const Footer = () => {
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
             {/* Brand */}
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-full gradient-gold flex items-center justify-center shadow-gold">
-                <Crown className="w-4 h-4 text-white" />
-              </div>
-              <div>
-                <div className="font-bold text-white text-sm">Rei dos Cachos</div>
-                <div className="text-[10px] font-medium tracking-widest uppercase" style={{ color: "#f5c842" }}>Pro · Atacado</div>
-              </div>
+              <img src={logo} alt="Rei dos Cachos" className="h-8 w-auto" />
             </div>
 
             {/* Contact */}
