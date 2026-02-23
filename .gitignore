@@ -70,5 +70,6 @@ secrets/
 # OS SPECIFIC
 # ============================================================================
 Thumbs.db
+.env.production
 .vercel
 .netlify
