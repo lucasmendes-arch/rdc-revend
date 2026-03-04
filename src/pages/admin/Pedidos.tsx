@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Loader, ChevronDown } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Loader, ChevronDown } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
+import AdminLayout from '@/components/admin/AdminLayout';
 
 interface Order {
   id: string;
@@ -32,7 +33,6 @@ const statusConfig = {
 const statusOptions = ['recebido', 'separacao', 'enviado', 'concluido', 'cancelado'] as const;
 
 const AdminPedidos = () => {
-  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
@@ -92,23 +92,14 @@ const AdminPedidos = () => {
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
 
   return (
-    <div className="min-h-screen bg-surface-alt">
-      {/* Header */}
-      <header className="bg-white border-b border-border sticky top-0 z-40">
-        <div className="container mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
-          <button
-            onClick={() => navigate('/admin/catalogo')}
-            className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            <span className="hidden sm:inline text-sm font-medium">Voltar</span>
-          </button>
-          <h1 className="text-lg font-bold text-foreground">Gestão de Pedidos</h1>
-          <div className="w-8" />
+    <AdminLayout>
+      <div className="bg-white border-b border-border sticky top-0 lg:top-0 z-30">
+        <div className="px-4 sm:px-6 py-4">
+          <h1 className="text-xl sm:text-2xl font-bold text-foreground">Pedidos</h1>
         </div>
-      </header>
+      </div>
 
-      <div className="container mx-auto px-4 sm:px-6 py-8">
+      <div className="px-4 sm:px-6 py-8">
         {isLoading && (
           <div className="text-center py-16">
             <Loader className="w-8 h-8 animate-spin text-gold-text mx-auto mb-4" />
@@ -288,7 +279,7 @@ const AdminPedidos = () => {
           </>
         )}
       </div>
-    </div>
+    </AdminLayout>
   );
 };
 

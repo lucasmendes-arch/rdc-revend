@@ -4,11 +4,13 @@ import { ArrowLeft, Loader, ShoppingCart } from 'lucide-react';
 import { useCart } from '@/contexts/CartContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
+import { useTrackPurchase } from '@/hooks/useSessionTracking';
 
 const Checkout = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { items: cart, total: cartTotal, clearCart } = useCart();
+  const trackPurchase = useTrackPurchase();
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>('');
@@ -118,6 +120,9 @@ const Checkout = () => {
       } catch (err) {
         console.warn('WhatsApp notification error:', err);
       }
+
+      // Track purchase event
+      trackPurchase(cartTotal);
 
       // Clear cart and navigate to success page
       clearCart();

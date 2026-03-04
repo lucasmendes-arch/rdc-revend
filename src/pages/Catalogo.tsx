@@ -7,6 +7,7 @@ import logo from "@/assets/logo-rei-dos-cachos.png";
 import { supabase } from "@/lib/supabase";
 import { useCatalogProducts } from "@/hooks/useCatalogProducts";
 import { useCart } from "@/contexts/CartContext";
+import { useTrackPageView, useTrackAddToCart } from "@/hooks/useSessionTracking";
 
 // ============================================================================
 // TYPES & CONSTANTS
@@ -72,6 +73,8 @@ const Catalogo = () => {
   const navigate = useNavigate();
   const { data: products = [], isLoading, error } = useCatalogProducts();
   const { items: cart, addItem, updateQty, removeItem, total: cartTotal, count: cartCount } = useCart();
+  useTrackPageView('Catálogo');
+  const trackAddToCart = useTrackAddToCart();
 
   // ========================================================================
   // STATE
@@ -241,6 +244,9 @@ const Catalogo = () => {
         updateQty(product.id, qty);
       }
     }
+
+    // Track add to cart
+    trackAddToCart(cartCount + qty);
 
     // Visual feedback
     setAddedId(product.id);

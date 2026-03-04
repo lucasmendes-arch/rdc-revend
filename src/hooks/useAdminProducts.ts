@@ -57,6 +57,37 @@ export function useUpdateProduct() {
   })
 }
 
+export function useCreateProduct() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (product: {
+      name: string
+      price: number
+      compare_at_price?: number | null
+      main_image?: string | null
+      is_active: boolean
+      category_type?: 'alto_giro' | 'maior_margem' | 'recompra_alta' | null
+    }) => {
+      const { data, error } = await supabase
+        .from('catalog_products')
+        .insert({
+          ...product,
+          source: 'manual',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .select()
+
+      if (error) throw error
+      return (data?.[0] || {}) as CatalogProduct
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-products'] })
+    },
+  })
+}
+
 export function useDeleteProduct() {
   const queryClient = useQueryClient()
 
