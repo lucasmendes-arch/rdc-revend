@@ -4,16 +4,16 @@ import { TrendingUp, Heart, Megaphone } from "lucide-react";
 const reasons = [
   {
     icon: TrendingUp,
-    title: "Alta Demanda",
-    subtitle: "Mercado em expansão",
+    title: "Fórmula de Alta Performance",
+    subtitle: "Resultados comprovados",
     description: "70% das brasileiras têm cabelos ondulados ou crespos e buscam produtos especializados.",
     stat: "70%",
     statLabel: "das brasileiras",
   },
   {
     icon: Heart,
-    title: "Receita Recorrente",
-    subtitle: "+85% de recompra",
+    title: "Ativos de Biotecnologia",
+    subtitle: "Ciência a favor dos cachos",
     description: "Produtos de alta recorrência para vender toda semana.",
     stat: "+85%",
     statLabel: "de recompra",
@@ -101,6 +101,10 @@ const WhyCurls = () => {
             );
           })}
         </div>
+
+        <p className="text-center text-sm sm:text-base text-muted-foreground mt-8 font-medium">
+          Testado e aprovado por profissionais em mais de 200 salões.
+        </p>
       </div>
     </section>
   );

@@ -38,10 +38,29 @@ const LeadForm = () => {
     setLoading(true);
 
     const token = `rdc_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-    const userData = { ...form, token, registeredAt: new Date().toISOString() };
+    const registeredAt = new Date().toISOString();
+    const userData = { ...form, token, registeredAt };
     localStorage.setItem("rdc_user", JSON.stringify(userData));
     localStorage.setItem("rdc_token", token);
     localStorage.setItem("rdc_authenticated", "true");
+
+    // Enviar dados para webhook (fire-and-forget)
+    fetch("https://webhook.fiqon.app/webhook/019cb699-cef9-724f-9b43-35b59db12c5e/66fd06ea-361f-48f4-8909-03de418f2c28", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        nome: form.nome,
+        whatsapp: form.whatsapp,
+        email: form.email,
+        cpfCnpj: form.cpfCnpj,
+        registeredAt,
+      }),
+    }).catch(() => {});
+
+    // Disparar evento de Lead no Meta Pixel
+    if (typeof window !== "undefined" && (window as any).fbq) {
+      (window as any).fbq("track", "Lead");
+    }
 
     setTimeout(() => {
       setSubmitted(true);

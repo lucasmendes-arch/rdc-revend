@@ -4,8 +4,8 @@ import { useScrollToForm } from "@/hooks/useScrollToForm";
 
 const faqs = [
   {
-    q: "Preciso ter CNPJ para revender?",
-    a: "Não. Aceitamos CPF e CNPJ. Basta preencher o cadastro para acessar a tabela de preços.",
+    q: "Como funciona o faturamento para CNPJ ou grandes pedidos?",
+    a: "Emitimos nota fiscal para CPF e CNPJ. Para pedidos acima de R$ 3.000, oferecemos condições especiais de faturamento e frete grátis.",
   },
   {
     q: "Qual é o pedido mínimo?",

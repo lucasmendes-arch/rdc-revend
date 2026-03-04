@@ -20,7 +20,7 @@ const Hero = () => {
         className="absolute inset-0 pointer-events-none"
         style={{
           background:
-            "linear-gradient(to bottom, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0.55) 40%, rgba(0,0,0,0.6) 70%, rgba(0,0,0,0.5) 100%)",
+            "linear-gradient(to bottom, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0.6) 40%, rgba(0,0,0,0.7) 70%, rgba(0,0,0,0.6) 100%)",
         }}
       />
 
@@ -45,15 +45,15 @@ const Hero = () => {
 
         {/* Headline */}
         <h1 className="text-[1.75rem] leading-tight sm:text-5xl lg:text-6xl font-bold text-white mb-4 max-w-4xl animate-fade-in-up">
-          Lucro real com a{" "}
-          <span className="gradient-gold-text">marca especialista</span>{" "}
-          em cachos.
+          Transforme seu salão na maior{" "}
+          <span className="gradient-gold-text">referência em cachos</span>{" "}
+          com Rei dos Cachos.
         </h1>
 
         {/* Subheadline */}
         <p className="text-base sm:text-xl text-white/85 leading-relaxed max-w-2xl mb-6 animate-fade-in-up animate-delay-100">
-          Leve a linha profissional Rei dos Cachos para o seu salão ou loja.{" "}
-          <strong className="text-white font-semibold">Margens de até 100%</strong> e produtos de alta recorrência.
+          Produtos de alta performance com{" "}
+          <strong className="text-white font-semibold">até 100% de lucro na revenda</strong>. A tecnologia que suas clientes exigem, com a rentabilidade que seu negócio precisa.
         </p>
 
         {/* Social proof chips */}
@@ -73,9 +73,10 @@ const Hero = () => {
         <div className="flex flex-col items-center gap-3 animate-fade-in-up animate-delay-300 w-full sm:w-auto">
           <button
             onClick={scrollToForm}
+            aria-label="Quero ser um distribuidor Rei dos Cachos"
             className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 px-8 py-4 rounded-xl text-base font-semibold btn-gold text-white min-h-[52px]"
           >
-            Acessar Preços de Atacado
+            QUERO SER UM DISTRIBUIDOR
             <ArrowRight className="w-5 h-5" />
           </button>
           <button

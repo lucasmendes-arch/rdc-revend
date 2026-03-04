@@ -10,6 +10,8 @@ import FAQ from "@/components/landing/FAQ";
 import LeadForm from "@/components/landing/LeadForm";
 import Footer from "@/components/landing/Footer";
 import MobileFloatingCTA from "@/components/landing/MobileFloatingCTA";
+import ProfitTable from "@/components/landing/ProfitTable";
+import WhatsAppButton from "@/components/landing/WhatsAppButton";
 
 const Index = () => {
   return (
@@ -38,7 +40,10 @@ const Index = () => {
       {/* 6. Depoimentos */}
       <SocialProof />
 
-      {/* 7. Condições do Atacado */}
+      {/* 7. Tabela de Lucratividade */}
+      <ProfitTable />
+
+      {/* 8. Condições do Atacado */}
       <WholesaleConditions />
 
       {/* 8. FAQ */}
@@ -52,6 +57,9 @@ const Index = () => {
 
       {/* Mobile Floating CTA */}
       <MobileFloatingCTA />
+
+      {/* WhatsApp Floating Button */}
+      <WhatsAppButton />
 
       {/* Safe area padding for mobile floating CTA */}
       <div className="h-16 md:hidden" />
