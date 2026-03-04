@@ -16,6 +16,7 @@ export interface CatalogProduct {
   created_at?: string
   updated_at?: string
   category_type?: 'alto_giro' | 'maior_margem' | 'recompra_alta' | null
+  is_professional?: boolean
 }
 
 export function useAdminProducts() {
@@ -24,7 +25,7 @@ export function useAdminProducts() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('catalog_products')
-        .select('id, nuvemshop_product_id, name, description_html, price, compare_at_price, main_image, is_active, source, created_at, updated_at, category_type')
+        .select('id, nuvemshop_product_id, name, description_html, price, compare_at_price, main_image, is_active, source, created_at, updated_at, category_type, is_professional')
         .order('updated_at', { ascending: false })
 
       if (error) throw error
@@ -68,6 +69,7 @@ export function useCreateProduct() {
       main_image?: string | null
       is_active: boolean
       category_type?: 'alto_giro' | 'maior_margem' | 'recompra_alta' | null
+      is_professional?: boolean
     }) => {
       const { data, error } = await supabase
         .from('catalog_products')

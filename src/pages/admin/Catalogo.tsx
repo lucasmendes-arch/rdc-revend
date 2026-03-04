@@ -21,6 +21,7 @@ export default function AdminCatalogo() {
     main_image: '',
     is_active: true,
     category_type: null as string | null,
+    is_professional: false,
   })
   const [searchTerm, setSearchTerm] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
@@ -87,9 +88,10 @@ export default function AdminCatalogo() {
         main_image: createForm.main_image || null,
         is_active: createForm.is_active,
         category_type: createForm.category_type as CatalogProduct['category_type'],
+        is_professional: createForm.is_professional,
       })
       setCreating(false)
-      setCreateForm({ name: '', price: 0, compare_at_price: null, main_image: '', is_active: true, category_type: null })
+      setCreateForm({ name: '', price: 0, compare_at_price: null, main_image: '', is_active: true, category_type: null, is_professional: false })
     } catch (err) {
       alert(`Erro ao criar: ${err instanceof Error ? err.message : 'Desconhecido'}`)
     }
@@ -359,6 +361,18 @@ export default function AdminCatalogo() {
               </div>
 
               <div>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={createForm.is_professional}
+                    onChange={(e) => setCreateForm({ ...createForm, is_professional: e.target.checked })}
+                    className="w-4 h-4 rounded border-border"
+                  />
+                  <span className="text-sm font-medium text-foreground">Uso Profissional (Lavatório)</span>
+                </label>
+              </div>
+
+              <div>
                 <label className="block text-sm font-medium text-foreground mb-1">Categoria de Destaque (Home)</label>
                 <select
                   value={createForm.category_type || ''}
@@ -455,6 +469,18 @@ export default function AdminCatalogo() {
                     className="w-4 h-4 rounded border-border"
                   />
                   <span className="text-sm font-medium text-foreground">Ativo</span>
+                </label>
+              </div>
+
+              <div>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={editForm.is_professional || false}
+                    onChange={(e) => setEditForm({ ...editForm, is_professional: e.target.checked })}
+                    className="w-4 h-4 rounded border-border"
+                  />
+                  <span className="text-sm font-medium text-foreground">Uso Profissional (Lavatório)</span>
                 </label>
               </div>
 

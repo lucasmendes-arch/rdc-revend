@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { ArrowRight, Check, Crown, Filter, LogOut, Search, ShoppingCart, Tag, TrendingUp, X } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
-import { Carousel, CarouselContent, CarouselItem, type CarouselApi } from "@/components/ui/carousel";
+import PackageCards from "@/components/catalog/PackageCards";
 import { toast } from "sonner";
 import logo from "@/assets/logo-rei-dos-cachos.png";
 import { supabase } from "@/lib/supabase";
@@ -26,12 +26,6 @@ const CATEGORY_KEYWORDS: Record<Category, string[]> = {
   'Finalizador': ['finalizador', 'leave-in', 'leave in', 'sérum', 'serum', 'óleo', 'oleo'],
   'Tonalizante': ['tonalizante', 'tônico', 'tonico', 'matiz'],
 };
-
-const PROMO_SLIDES = [
-  { id: 1, bg: 'from-amber-500 to-yellow-400', icon: '🚚', title: 'Frete grátis', sub: 'em pedidos acima de R$ 5.000' },
-  { id: 2, bg: 'from-gold-start to-gold-end', icon: '🛒', title: 'Pedido mínimo', sub: 'R$ 500 para revendedores' },
-  { id: 3, bg: 'from-emerald-500 to-green-400', icon: '💰', title: '10% Cashback', sub: 'em pedidos acima de R$ 3.000' },
-];
 
 // ============================================================================
 // HELPERS
@@ -88,11 +82,8 @@ const Catalogo = () => {
   const [filterMaxPrice, setFilterMaxPrice] = useState<number | ''>('');
   const [filterOnlySuggested, setFilterOnlySuggested] = useState(false);
   const [filterCategories, setFilterCategories] = useState<Category[]>([]);
+  const [filterProfessional, setFilterProfessional] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
-
-  // Carousel state
-  const [carouselApi, setCarouselApi] = useState<CarouselApi>();
-  const [carouselIndex, setCarouselIndex] = useState(0);
 
   // UI state
   const [cartOpen, setCartOpen] = useState(false);
@@ -111,14 +102,6 @@ const Catalogo = () => {
     return () => clearTimeout(timer);
   }, [search]);
 
-  // Carousel autoplay
-  useEffect(() => {
-    if (!carouselApi) return;
-    carouselApi.on('select', () => setCarouselIndex(carouselApi.selectedScrollSnap()));
-    const interval = setInterval(() => carouselApi.scrollNext(), 5000);
-    return () => clearInterval(interval);
-  }, [carouselApi]);
-
   // ========================================================================
   // FILTERS & SORT
   // ========================================================================
@@ -135,6 +118,7 @@ const Catalogo = () => {
     setFilterMaxPrice('');
     setFilterOnlySuggested(false);
     setFilterCategories([]);
+    setFilterProfessional(false);
   };
 
   const activeFiltersCount = [
@@ -143,12 +127,14 @@ const Catalogo = () => {
     filterMaxPrice !== '',
     filterOnlySuggested,
     filterCategories.length > 0,
+    filterProfessional,
     sortBy !== 'name_asc',
   ].filter(Boolean).length;
 
   const filtered = useMemo(() => {
     let result = products.filter(p => {
       if (!p.name.toLowerCase().includes(debouncedSearch.toLowerCase())) return false;
+      if (filterProfessional && !p.is_professional) return false;
       if (filterOnlySuggested && !p.compare_at_price) return false;
       if (filterMinPrice !== '' && p.price < filterMinPrice) return false;
       if (filterMaxPrice !== '' && p.price > filterMaxPrice) return false;
@@ -181,7 +167,7 @@ const Catalogo = () => {
       default:
         return result;
     }
-  }, [products, debouncedSearch, sortBy, filterMinPrice, filterMaxPrice, filterOnlySuggested, filterCategories]);
+  }, [products, debouncedSearch, sortBy, filterMinPrice, filterMaxPrice, filterOnlySuggested, filterCategories, filterProfessional]);
 
   // ========================================================================
   // HELPERS
@@ -351,6 +337,35 @@ const Catalogo = () => {
             />
           </div>
         </div>
+
+        {/* Category chips — mobile only */}
+        <div className="sm:hidden overflow-x-auto flex gap-1.5 px-3 pb-2 scrollbar-none">
+          <button
+            onClick={() => setFilterCategories([])}
+            aria-pressed={filterCategories.length === 0}
+            className={`flex-shrink-0 px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
+              filterCategories.length === 0
+                ? 'bg-gold-light border-gold-border text-gold-text'
+                : 'bg-white border-border text-muted-foreground'
+            }`}
+          >
+            Todos
+          </button>
+          {CATEGORIES.map(cat => (
+            <button
+              key={cat}
+              onClick={() => toggleCategory(cat)}
+              aria-pressed={filterCategories.includes(cat)}
+              className={`flex-shrink-0 px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
+                filterCategories.includes(cat)
+                  ? 'bg-gold-light border-gold-border text-gold-text'
+                  : 'bg-white border-border text-muted-foreground'
+              }`}
+            >
+              {cat}
+            </button>
+          ))}
+        </div>
       </header>
 
       <div className="flex lg:gap-6">
@@ -414,6 +429,19 @@ const Catalogo = () => {
               </div>
             </div>
 
+            {/* Uso Profissional */}
+            <div className="mb-5 pb-5 border-b border-border">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={filterProfessional}
+                  onChange={(e) => setFilterProfessional(e.target.checked)}
+                  className="w-4 h-4 rounded border-border text-gold focus:ring-gold"
+                />
+                <span className="text-sm text-foreground font-medium">Uso Profissional</span>
+              </label>
+            </div>
+
             {/* Suggested Price Only */}
             <div className="mb-5">
               <label className="flex items-center gap-2 cursor-pointer">
@@ -451,35 +479,9 @@ const Catalogo = () => {
             <p className="text-xs sm:text-sm text-muted-foreground mt-0">{isLoading ? "Carregando..." : `${filtered.length} produtos`}</p>
           </div>
 
-          {/* Promo Banner */}
-          {!isLoading && !error && (
-            <div className="mb-3 -mx-3 sm:mx-0 sm:rounded-lg overflow-hidden">
-              <Carousel setApi={setCarouselApi} opts={{ loop: true }}>
-                <CarouselContent>
-                  {PROMO_SLIDES.map(slide => (
-                    <CarouselItem key={slide.id}>
-                      <div className={`bg-gradient-to-r ${slide.bg} h-24 sm:h-28 lg:h-32 flex items-center justify-between gap-2 px-3 sm:gap-4 sm:px-4 lg:px-6`}>
-                        <span className="text-3.5xl sm:text-4xl flex-shrink-0">{slide.icon}</span>
-                        <div className="text-white min-w-0">
-                          <div className="font-bold text-sm sm:text-base lg:text-lg leading-snug">{slide.title}</div>
-                          <div className="text-[9px] sm:text-xs opacity-90 leading-snug">{slide.sub}</div>
-                        </div>
-                      </div>
-                    </CarouselItem>
-                  ))}
-                </CarouselContent>
-              </Carousel>
-              {/* Dots */}
-              <div className="flex justify-center gap-1 mt-2 sm:mt-2.5">
-                {PROMO_SLIDES.map((_, i) => (
-                  <button
-                    key={i}
-                    onClick={() => carouselApi?.scrollTo(i)}
-                    className={`w-1.5 h-1.5 rounded-full transition-all ${carouselIndex === i ? 'bg-gold w-2.5' : 'bg-border'}`}
-                  />
-                ))}
-              </div>
-            </div>
+          {/* Package Cards */}
+          {!isLoading && !error && products.length > 0 && (
+            <PackageCards products={products} />
           )}
 
           {/* Active Filter Chips */}
@@ -496,6 +498,9 @@ const Catalogo = () => {
               )}
               {filterOnlySuggested && (
                 <FilterChip label="C/ sugestão" onRemove={() => setFilterOnlySuggested(false)} />
+              )}
+              {filterProfessional && (
+                <FilterChip label="Uso Profissional" onRemove={() => setFilterProfessional(false)} />
               )}
               {filterCategories.map(cat => (
                 <FilterChip key={cat} label={cat} onRemove={() => toggleCategory(cat)} />
@@ -528,116 +533,173 @@ const Catalogo = () => {
           {/* Products Grid */}
           {!isLoading && !error && (
             <>
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-2 sm:gap-2.5 lg:gap-3">
-                {filtered.map((product) => {
-                  const suggested = getSuggestedPrice(product.price, product.compare_at_price);
-                  const profit = product.price > 0
-                    ? Math.round(((suggested - product.price) / product.price) * 100)
-                    : null;
+              {/* Mobile: continuous list card | Desktop: grid */}
+              <div className="bg-white rounded-xl border border-border sm:bg-transparent sm:border-0 sm:rounded-none">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-0 sm:gap-2.5">
+                  {filtered.map((product, idx) => {
+                    const suggested = getSuggestedPrice(product.price, product.compare_at_price);
+                    const profit = product.price > 0
+                      ? Math.round(((suggested - product.price) / product.price) * 100)
+                      : null;
 
-                  return (
-                    <div
-                      key={product.id}
-                      className="group bg-white rounded-lg sm:rounded-xl overflow-hidden border border-border hover:border-gold-border shadow-card hover:shadow-card-hover transition-all duration-300 hover:-translate-y-0.5 flex flex-col"
-                    >
-                      {/* Image */}
-                      <div className="relative bg-surface-alt h-40 sm:h-44 lg:h-48 overflow-hidden flex-shrink-0 flex items-center justify-center">
-                        {product.main_image ? (
-                          <img
-                            src={product.main_image}
-                            alt={product.name}
-                            className="w-full h-full object-contain transition-transform duration-500 group-hover:scale-105"
-                          />
-                        ) : (
-                          <ShoppingCart className="w-8 sm:w-9 h-8 sm:h-9 text-muted-foreground/25" />
-                        )}
-                      </div>
-
-                      {/* Body */}
-                      <div className="px-2.5 py-2 sm:p-3 lg:p-4 flex flex-col flex-1">
-                        <h3 className="font-semibold text-foreground text-xs sm:text-sm mb-1.5 leading-tight line-clamp-2 min-h-[1.75rem]">
-                          {product.name}
-                        </h3>
-
-                        {/* Pricing — 2 columns */}
-                        <div className="grid grid-cols-2 gap-2 mb-1.5 text-[9px] sm:text-[10px]">
-                          {/* Custo */}
-                          <div>
-                            <div className="text-muted-foreground">Custo</div>
-                            <div className="text-xs sm:text-sm font-bold text-foreground">R$ {product.price.toFixed(2)}</div>
-                          </div>
-                          {/* Venda sugerida */}
-                          <div>
-                            <div className="text-muted-foreground">Venda sug.</div>
-                            <div className="text-xs sm:text-sm font-bold gradient-gold-text">R$ {suggested.toFixed(2)}</div>
-                          </div>
+                    return (
+                      <div
+                        key={product.id}
+                        className={`group bg-white overflow-hidden transition-all duration-300 flex
+                          flex-row sm:flex-col
+                          ${idx < filtered.length - 1 ? 'border-b border-border sm:border-b-0' : ''}
+                          sm:rounded-xl sm:border sm:shadow-card sm:hover:shadow-card-hover sm:hover:border-gold-border sm:hover:-translate-y-0.5`}
+                      >
+                        {/* Image — thumbnail on mobile, full on desktop */}
+                        <div
+                          className="relative bg-surface-alt overflow-hidden flex-shrink-0 flex items-center justify-center cursor-pointer
+                            w-20 h-20 m-2 rounded-lg
+                            sm:w-full sm:h-44 lg:h-48 sm:m-0 sm:rounded-none"
+                          onClick={() => setSelectedProduct(product)}
+                        >
+                          {product.main_image ? (
+                            <img
+                              src={product.main_image}
+                              alt={product.name}
+                              className="w-full h-full object-contain transition-transform duration-500 group-hover:scale-105"
+                            />
+                          ) : (
+                            <ShoppingCart className="w-8 sm:w-9 h-8 sm:h-9 text-muted-foreground/25" />
+                          )}
                         </div>
 
-                        {/* Profit - single line */}
-                        {profit && (
-                          <div className="flex items-center gap-0.5 mb-1.5 pb-1 border-b border-border">
-                            <TrendingUp className="w-2 h-2 sm:w-2.5 sm:h-2.5 text-green-600" />
-                            <span className="text-[8px] sm:text-[9px] font-semibold text-green-600">Lucro +{profit}%</span>
+                        {/* Body */}
+                        <div className="flex-1 p-2 sm:p-3 lg:p-4 flex flex-col min-w-0">
+                          <h3 className="font-semibold text-foreground text-xs sm:text-sm mb-1 leading-tight line-clamp-2">
+                            {product.name}
+                          </h3>
+
+                          {product.is_professional && (
+                            <span className="inline-flex items-center gap-1 self-start px-2 py-0.5 rounded-full text-[9px] sm:text-[10px] font-semibold bg-purple-100 text-purple-700 border border-purple-200 mb-1">
+                              Uso Profissional
+                            </span>
+                          )}
+
+                          {product.is_professional ? (
+                            <div className="mb-1 text-[9px] sm:text-[10px]">
+                              <div className="text-muted-foreground">Preço</div>
+                              <div className="text-xs sm:text-sm font-bold text-foreground">R$ {product.price.toFixed(2)}</div>
+                            </div>
+                          ) : (
+                            <>
+                              {/* Desktop: 2 columns pricing */}
+                              <div className="hidden sm:grid grid-cols-2 gap-2 mb-1.5 text-[10px]">
+                                <div>
+                                  <div className="text-muted-foreground">Custo</div>
+                                  <div className="text-sm font-bold text-foreground">R$ {product.price.toFixed(2)}</div>
+                                </div>
+                                <div>
+                                  <div className="text-muted-foreground">Preço de Venda (Sugerido)</div>
+                                  <div className="text-sm font-bold gradient-gold-text">R$ {suggested.toFixed(2)}</div>
+                                </div>
+                              </div>
+
+                              {/* Mobile: inline cost + profit badge */}
+                              <div className="sm:hidden text-[10px] mb-1">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-muted-foreground">Custo</span>
+                                  <span className="text-xs font-bold text-foreground">R$ {product.price.toFixed(2)}</span>
+                                  {profit && (
+                                    <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-green-50 border border-green-200 text-[9px] font-semibold text-green-700">
+                                      +{profit}%
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="text-muted-foreground mt-0.5">
+                                  Preço de Venda (Sugerido) <span className="text-xs font-bold gradient-gold-text">R$ {suggested.toFixed(2)}</span>
+                                </div>
+                              </div>
+
+                              {/* Desktop: profit line */}
+                              {profit && (
+                                <div className="hidden sm:flex items-center gap-0.5 mb-1.5 pb-1 border-b border-border">
+                                  <TrendingUp className="w-2.5 h-2.5 text-green-600" />
+                                  <span className="text-[9px] font-semibold text-green-600">Lucro +{profit}%</span>
+                                </div>
+                              )}
+                            </>
+                          )}
+
+                          {/* Spacer — desktop only */}
+                          <div className="hidden sm:block flex-1 min-h-1" />
+
+                          {/* Quantity + Add — row on mobile, stacked on desktop */}
+                          <div className="flex items-center gap-1.5 sm:flex-col sm:items-stretch sm:gap-1.5">
+                            {/* Quantity Control */}
+                            <div className="flex items-center gap-1">
+                              <button
+                                onClick={() => setQty(product.id, getQty(product.id) - 1)}
+                                disabled={getQty(product.id) <= 1}
+                                className="w-11 h-11 sm:w-8 sm:h-8 flex items-center justify-center rounded border border-border bg-white text-muted-foreground hover:bg-surface-alt transition-colors disabled:opacity-40 disabled:cursor-not-allowed text-sm font-medium"
+                                aria-label="Diminuir quantidade"
+                              >
+                                −
+                              </button>
+                              <input
+                                type="text"
+                                inputMode="numeric"
+                                aria-label="Quantidade"
+                                value={getQty(product.id)}
+                                onChange={(e) => {
+                                  const v = parseInt(e.target.value, 10);
+                                  if (!isNaN(v)) setQty(product.id, v);
+                                }}
+                                onBlur={(e) => {
+                                  const v = parseInt(e.target.value, 10);
+                                  if (isNaN(v) || v < 1) setQty(product.id, 1);
+                                }}
+                                className="w-10 sm:w-8 h-11 sm:h-8 text-center text-xs font-semibold text-foreground border border-border rounded bg-white focus:outline-none focus:ring-1 focus:ring-gold"
+                              />
+                              <button
+                                onClick={() => setQty(product.id, getQty(product.id) + 1)}
+                                className="w-11 h-11 sm:w-8 sm:h-8 flex items-center justify-center rounded border border-border bg-white text-muted-foreground hover:bg-surface-alt transition-colors text-sm font-medium"
+                                aria-label="Aumentar quantidade"
+                              >
+                                +
+                              </button>
+                            </div>
+
+                            {/* Add button */}
+                            <button
+                              onClick={() => handleAddItem(product)}
+                              className={`flex-1 sm:w-full flex items-center justify-center gap-1 py-2 sm:py-2 rounded text-xs font-semibold text-white transition-all uppercase tracking-wide ${
+                                addedId === product.id
+                                  ? 'bg-green-600'
+                                  : 'btn-gold'
+                              }`}
+                            >
+                              {addedId === product.id ? (
+                                <>
+                                  <Check className="w-3 h-3" />
+                                  Adicionado!
+                                </>
+                              ) : (
+                                <>
+                                  <ShoppingCart className="w-3 h-3" />
+                                  <span className="sm:hidden">ADICIONAR</span>
+                                  <span className="hidden sm:inline">ADICIONAR AO PEDIDO</span>
+                                </>
+                              )}
+                            </button>
                           </div>
-                        )}
 
-                        {/* Spacer */}
-                        <div className="flex-1 min-h-1" />
-
-                        {/* Quantity Control */}
-                        <div className="flex items-center gap-1 mb-1.5">
-                          <button
-                            onClick={() => setQty(product.id, getQty(product.id) - 1)}
-                            disabled={getQty(product.id) <= 1}
-                            className="w-8 h-8 flex items-center justify-center rounded border border-border bg-white text-muted-foreground hover:bg-surface-alt transition-colors disabled:opacity-40 disabled:cursor-not-allowed text-sm font-medium"
-                            aria-label="Diminuir quantidade"
-                          >
-                            −
-                          </button>
-                          <span className="flex-1 text-center text-xs font-semibold text-foreground">
-                            {getQty(product.id)}
-                          </span>
-                          <button
-                            onClick={() => setQty(product.id, getQty(product.id) + 1)}
-                            className="w-8 h-8 flex items-center justify-center rounded border border-border bg-white text-muted-foreground hover:bg-surface-alt transition-colors text-sm font-medium"
-                            aria-label="Aumentar quantidade"
-                          >
-                            +
-                          </button>
-                        </div>
-
-                        <div className="space-y-1">
-                          <button
-                            onClick={() => handleAddItem(product)}
-                            className={`w-full flex items-center justify-center gap-1 py-2 rounded text-xs sm:text-sm font-semibold text-white transition-all ${
-                              addedId === product.id
-                                ? 'bg-green-600'
-                                : 'btn-gold'
-                            }`}
-                          >
-                            {addedId === product.id ? (
-                              <>
-                                <Check className="w-3 h-3" />
-                                Adicionado!
-                              </>
-                            ) : (
-                              <>
-                                <ShoppingCart className="w-3 h-3" />
-                                Adicionar
-                              </>
-                            )}
-                          </button>
+                          {/* Details link — desktop only */}
                           <button
                             onClick={() => setSelectedProduct(product)}
-                            className="w-full px-2 py-1 rounded text-[10px] sm:text-xs font-medium text-gold-text hover:underline transition-colors"
+                            className="hidden sm:block w-full px-2 py-1 rounded text-xs font-medium text-gold-text hover:underline transition-colors mt-1"
                           >
                             Ver detalhes →
                           </button>
                         </div>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
               </div>
 
               {filtered.length === 0 && products.length > 0 && (
@@ -730,6 +792,17 @@ const Catalogo = () => {
                 </div>
               </div>
 
+              {/* Uso Profissional */}
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={filterProfessional}
+                  onChange={(e) => setFilterProfessional(e.target.checked)}
+                  className="w-4 h-4 rounded border-border text-gold focus:ring-gold"
+                />
+                <span className="text-sm text-foreground font-medium">Uso Profissional</span>
+              </label>
+
               {/* Suggested Price Only */}
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
@@ -804,7 +877,7 @@ const Catalogo = () => {
                     R$ {selectedProduct.price.toFixed(2)}
                   </div>
                   <div className="border-t border-border pt-2">
-                    <div className="text-muted-foreground mb-0.5">Venda sugerida</div>
+                    <div className="text-muted-foreground mb-0.5">Preço de Venda (Sugerido)</div>
                     <div className="text-base sm:text-lg font-bold gradient-gold-text">
                       R$ {getSuggestedPrice(selectedProduct.price, selectedProduct.compare_at_price).toFixed(2)}
                     </div>
@@ -837,7 +910,20 @@ const Catalogo = () => {
                 >
                   −
                 </button>
-                <span className="text-sm font-semibold text-foreground min-w-[1.5rem] text-center">{getQty(selectedProduct.id)}</span>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={getQty(selectedProduct.id)}
+                  onChange={(e) => {
+                    const v = parseInt(e.target.value, 10);
+                    if (!isNaN(v)) setQty(selectedProduct.id, v);
+                  }}
+                  onBlur={(e) => {
+                    const v = parseInt(e.target.value, 10);
+                    if (isNaN(v) || v < 1) setQty(selectedProduct.id, 1);
+                  }}
+                  className="w-10 text-center text-sm font-semibold text-foreground border border-border rounded bg-white focus:outline-none focus:ring-1 focus:ring-gold"
+                />
                 <button
                   onClick={() => setQty(selectedProduct.id, getQty(selectedProduct.id) + 1)}
                   className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-white rounded transition-colors text-sm"
@@ -867,7 +953,7 @@ const Catalogo = () => {
                   ) : (
                     <>
                       <ShoppingCart className="w-3.5 h-3.5" />
-                      Adicionar
+                      ADICIONAR AO PEDIDO
                     </>
                   )}
                 </button>
