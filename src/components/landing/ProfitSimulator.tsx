@@ -2,7 +2,20 @@ import { useEffect, useRef } from "react";
 import { Calculator, ArrowRight, Gift } from "lucide-react";
 import { useScrollToForm } from "@/hooks/useScrollToForm";
 
-const simulations = [
+interface Simulation {
+  package: string;
+  invest: string;
+  includes: string[];
+  includesFull: string;
+  revenue: string;
+  multiplier: string;
+  bonus: string | null;
+  highlight: boolean;
+  badge: string | null;
+  badgeExtra?: string;
+}
+
+const simulations: Simulation[] = [
   {
     package: "Pacote 1 — Iniciante",
     invest: "R$ 497,99",
@@ -44,6 +57,7 @@ const simulations = [
     bonus: "🎁 + 10% em Bonificação",
     highlight: true,
     badge: "⭐ Mais Popular",
+    badgeExtra: "ESCOLHA DOS ESPECIALISTAS",
   },
   {
     package: "Pacote 4 — Elite",
@@ -108,7 +122,7 @@ const ProfitSimulator = () => {
             <div
               key={idx}
               ref={(el) => (cardRefs.current[idx] = el)}
-              className={`rounded-2xl p-5 border ${
+              className={`rounded-2xl p-8 border ${
                 sim.highlight
                   ? "border-gold bg-gold-light"
                   : "border-border bg-white"
@@ -117,20 +131,27 @@ const ProfitSimulator = () => {
                 opacity: 0,
                 transform: "translateY(20px)",
                 transition: `opacity 0.5s ease ${idx * 100}ms, transform 0.5s ease ${idx * 100}ms`,
-                boxShadow: "var(--shadow-card)",
+                boxShadow: "0 4px 20px rgba(0,0,0,0.05)",
               }}
             >
-              <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
                 <span className="font-bold text-foreground text-base">{sim.package}</span>
-                {sim.badge && (
-                  <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${
-                    sim.highlight
-                      ? "gradient-gold text-white"
-                      : "bg-foreground text-primary-foreground"
-                  }`}>
-                    {sim.badge}
-                  </span>
-                )}
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {sim.badge && (
+                    <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${
+                      sim.highlight
+                        ? "gradient-gold text-white"
+                        : "bg-foreground text-primary-foreground"
+                    }`}>
+                      {sim.badge}
+                    </span>
+                  )}
+                  {sim.badgeExtra && (
+                    <span className="text-xs font-bold px-2.5 py-1 rounded-full border border-gold-border bg-gold-light text-gold-text">
+                      {sim.badgeExtra}
+                    </span>
+                  )}
+                </div>
               </div>
 
               <div className="flex items-center justify-between mb-3">
@@ -198,6 +219,11 @@ const ProfitSimulator = () => {
                         {sim.badge}
                       </span>
                     )}
+                    {sim.badgeExtra && (
+                      <span className="inline-flex self-start text-xs font-bold px-2 py-0.5 rounded-full border border-gold-border bg-gold-light text-gold-text">
+                        {sim.badgeExtra}
+                      </span>
+                    )}
                   </div>
 
                   <div className="flex flex-col items-center gap-1">
@@ -238,9 +264,10 @@ const ProfitSimulator = () => {
         <div className="text-center mt-8">
           <button
             onClick={scrollToForm}
+            aria-label="Garantir estoque com desconto"
             className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 px-8 py-3.5 rounded-xl font-semibold text-base btn-gold text-white min-h-[52px]"
           >
-            Acessar Preços de Atacado
+            GARANTIR ESTOQUE COM DESCONTO
             <ArrowRight className="w-4 h-4" />
           </button>
         </div>

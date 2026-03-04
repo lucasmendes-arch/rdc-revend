@@ -10,11 +10,13 @@ import FAQ from "@/components/landing/FAQ";
 import LeadForm from "@/components/landing/LeadForm";
 import Footer from "@/components/landing/Footer";
 import MobileFloatingCTA from "@/components/landing/MobileFloatingCTA";
+import ProfitTable from "@/components/landing/ProfitTable";
+import WhatsAppButton from "@/components/landing/WhatsAppButton";
 
 const Index = () => {
   return (
     <div className="min-h-screen font-sans" style={{ background: "#faf8f3" }}>
-      <title>Rei dos Cachos Pro — Atacado para Salões e Revendedores</title>
+{/* Title is set in index.html */}
 
       <Header />
 
@@ -38,13 +40,16 @@ const Index = () => {
       {/* 6. Depoimentos */}
       <SocialProof />
 
-      {/* 7. Condições do Atacado */}
+      {/* 7. Tabela de Lucratividade */}
+      <ProfitTable />
+
+      {/* 8. Condições do Atacado */}
       <WholesaleConditions />
 
-      {/* 8. FAQ */}
+      {/* 9. FAQ */}
       <FAQ />
 
-      {/* 9. Cadastro */}
+      {/* 10. Cadastro */}
       <LeadForm />
 
       {/* Footer */}
@@ -52,6 +57,9 @@ const Index = () => {
 
       {/* Mobile Floating CTA */}
       <MobileFloatingCTA />
+
+      {/* WhatsApp Floating Button */}
+      <WhatsAppButton />
 
       {/* Safe area padding for mobile floating CTA */}
       <div className="h-16 md:hidden" />
