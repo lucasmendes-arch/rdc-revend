@@ -21,7 +21,7 @@ const Footer = () => {
               </div>
             ))}
             <a
-              href="https://wa.me/5511999999999"
+              href="https://wa.me/5527996865366"
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-2 px-3 py-1.5 rounded-lg transition-opacity hover:opacity-90"
@@ -46,14 +46,14 @@ const Footer = () => {
             {/* Contact */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-6">
               <a
-                href="https://wa.me/5511999999999"
+                href="https://wa.me/5527996865366"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-2 text-sm transition-colors hover:text-green-300"
                 style={{ color: "#d4d4d4" }}
               >
                 <MessageCircle className="w-4 h-4 text-green-400 flex-shrink-0" />
-                (11) 99999-9999
+                (27) 99686-5366
               </a>
               <span className="text-xs" style={{ color: "#d4d4d4" }}>✉️ contato@reidoscachos.com.br</span>
             </div>
