@@ -1,6 +1,14 @@
 import { useState } from "react";
 import { ArrowRight, Lock, CheckCircle2, User, Phone, Mail, CreditCard, ChevronDown, ChevronUp } from "lucide-react";
 
+declare global {
+  interface Window {
+    fbq?: (...args: unknown[]) => void;
+  }
+}
+
+const WEBHOOK_URL = import.meta.env.VITE_WEBHOOK_URL || "https://webhook.fiqon.app/webhook/019cb699-cef9-724f-9b43-35b59db12c5e/66fd06ea-361f-48f4-8909-03de418f2c28";
+
 const LeadForm = () => {
   const [form, setForm] = useState({ nome: "", whatsapp: "", email: "", cpfCnpj: "" });
   const [errors, setErrors] = useState({ nome: "", whatsapp: "", email: "" });
@@ -14,6 +22,8 @@ const LeadForm = () => {
     if (digits.length <= 7) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
     return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
   };
+
+  const validateEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -29,8 +39,17 @@ const LeadForm = () => {
     const newErrors = { nome: "", whatsapp: "", email: "" };
 
     if (!form.nome) newErrors.nome = "Nome é obrigatório";
-    if (!form.whatsapp) newErrors.whatsapp = "WhatsApp é obrigatório";
-    if (!form.email) newErrors.email = "E-mail é obrigatório";
+    const whatsappDigits = form.whatsapp.replace(/\D/g, "");
+    if (!form.whatsapp) {
+      newErrors.whatsapp = "WhatsApp é obrigatório";
+    } else if (whatsappDigits.length < 10) {
+      newErrors.whatsapp = "Informe um número válido com DDD";
+    }
+    if (!form.email) {
+      newErrors.email = "E-mail é obrigatório";
+    } else if (!validateEmail(form.email)) {
+      newErrors.email = "Informe um e-mail válido";
+    }
 
     setErrors(newErrors);
     if (newErrors.nome || newErrors.whatsapp || newErrors.email) return;
@@ -44,23 +63,28 @@ const LeadForm = () => {
     localStorage.setItem("rdc_token", token);
     localStorage.setItem("rdc_authenticated", "true");
 
-    // Enviar dados para webhook (fire-and-forget)
-    fetch("https://webhook.fiqon.app/webhook/019cb699-cef9-724f-9b43-35b59db12c5e/66fd06ea-361f-48f4-8909-03de418f2c28", {
+    const payload = {
+      nome: form.nome,
+      whatsapp: form.whatsapp,
+      email: form.email,
+      cpfCnpj: form.cpfCnpj,
+      registeredAt,
+    };
+
+    // Enviar dados para webhook com fallback em localStorage
+    fetch(WEBHOOK_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        nome: form.nome,
-        whatsapp: form.whatsapp,
-        email: form.email,
-        cpfCnpj: form.cpfCnpj,
-        registeredAt,
-      }),
-    }).catch(() => {});
+      body: JSON.stringify(payload),
+    }).catch(() => {
+      // Salvar leads que falharam para retry manual
+      const failed = JSON.parse(localStorage.getItem("rdc_failed_leads") || "[]");
+      failed.push(payload);
+      localStorage.setItem("rdc_failed_leads", JSON.stringify(failed));
+    });
 
     // Disparar evento de Lead no Meta Pixel
-    if (typeof window !== "undefined" && (window as any).fbq) {
-      (window as any).fbq("track", "Lead");
-    }
+    window.fbq?.("track", "Lead");
 
     setTimeout(() => {
       setSubmitted(true);

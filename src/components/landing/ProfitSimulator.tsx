@@ -2,7 +2,20 @@ import { useEffect, useRef } from "react";
 import { Calculator, ArrowRight, Gift } from "lucide-react";
 import { useScrollToForm } from "@/hooks/useScrollToForm";
 
-const simulations = [
+interface Simulation {
+  package: string;
+  invest: string;
+  includes: string[];
+  includesFull: string;
+  revenue: string;
+  multiplier: string;
+  bonus: string | null;
+  highlight: boolean;
+  badge: string | null;
+  badgeExtra?: string;
+}
+
+const simulations: Simulation[] = [
   {
     package: "Pacote 1 — Iniciante",
     invest: "R$ 497,99",
@@ -133,7 +146,7 @@ const ProfitSimulator = () => {
                       {sim.badge}
                     </span>
                   )}
-                  {"badgeExtra" in sim && sim.badgeExtra && (
+                  {sim.badgeExtra && (
                     <span className="text-xs font-bold px-2.5 py-1 rounded-full border border-gold-border bg-gold-light text-gold-text">
                       {sim.badgeExtra}
                     </span>
@@ -206,7 +219,7 @@ const ProfitSimulator = () => {
                         {sim.badge}
                       </span>
                     )}
-                    {"badgeExtra" in sim && sim.badgeExtra && (
+                    {sim.badgeExtra && (
                       <span className="inline-flex self-start text-xs font-bold px-2 py-0.5 rounded-full border border-gold-border bg-gold-light text-gold-text">
                         {sim.badgeExtra}
                       </span>

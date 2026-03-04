@@ -16,7 +16,7 @@ import WhatsAppButton from "@/components/landing/WhatsAppButton";
 const Index = () => {
   return (
     <div className="min-h-screen font-sans" style={{ background: "#faf8f3" }}>
-      <title>Rei dos Cachos Pro — Atacado para Salões e Revendedores</title>
+{/* Title is set in index.html */}
 
       <Header />
 
@@ -46,10 +46,10 @@ const Index = () => {
       {/* 8. Condições do Atacado */}
       <WholesaleConditions />
 
-      {/* 8. FAQ */}
+      {/* 9. FAQ */}
       <FAQ />
 
-      {/* 9. Cadastro */}
+      {/* 10. Cadastro */}
       <LeadForm />
 
       {/* Footer */}

@@ -34,22 +34,7 @@ const ProfitTable = () => {
           </p>
         </div>
 
-        {/* Desktop: side by side */}
-        <div className="hidden sm:grid sm:grid-cols-2 gap-6 max-w-4xl mx-auto">
-          <TableCard
-            title="Uso em Bancada"
-            subtitle="Lucro por serviço no salão"
-            data={bancadaData}
-          />
-          <TableCard
-            title="Revenda Direta"
-            subtitle="Lucro por unidade vendida"
-            data={revendaData}
-          />
-        </div>
-
-        {/* Mobile: stacked cards */}
-        <div className="sm:hidden flex flex-col gap-4 max-w-md mx-auto">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 max-w-4xl mx-auto">
           <TableCard
             title="Uso em Bancada"
             subtitle="Lucro por serviço no salão"
