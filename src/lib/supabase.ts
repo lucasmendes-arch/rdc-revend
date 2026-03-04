@@ -14,3 +14,23 @@ const url = supabaseUrl || 'https://placeholder.supabase.co'
 const key = supabaseAnonKey || 'placeholder-key'
 
 export const supabase = createClient(url, key)
+
+/** Call a Supabase Edge Function via fetch */
+export async function callEdgeFunction(functionName: string, body: Record<string, unknown>) {
+  const authHeader = ['Bearer', supabaseAnonKey].join(' ')
+  const response = await fetch(`${supabaseUrl}/functions/v1/${functionName}`, {
+    method: 'POST',
+    headers: {
+      'Authorization': authHeader,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(body),
+  })
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}))
+    throw new Error(data.error || data.message || `Edge function error: ${response.status}`)
+  }
+
+  return response.json()
+}

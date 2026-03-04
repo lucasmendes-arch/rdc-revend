@@ -1,18 +1,27 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
-import { ArrowLeft, Edit2, Trash2, RefreshCw, ChevronLeft, ChevronRight, X } from 'lucide-react'
-import { useAdminProducts, useUpdateProduct, useDeleteProduct, useNuvemshopSync, CatalogProduct, SyncResult } from '@/hooks/useAdminProducts'
-import logo from '@/assets/logo-rei-dos-cachos.png'
+import { Edit2, Trash2, RefreshCw, ChevronLeft, ChevronRight, X, Plus } from 'lucide-react'
+import { useAdminProducts, useUpdateProduct, useDeleteProduct, useCreateProduct, useNuvemshopSync, CatalogProduct, SyncResult } from '@/hooks/useAdminProducts'
+import AdminLayout from '@/components/admin/AdminLayout'
 
 export default function AdminCatalogo() {
   const { data: products = [], isLoading, error } = useAdminProducts()
   const updateMutation = useUpdateProduct()
   const deleteMutation = useDeleteProduct()
+  const createMutation = useCreateProduct()
   const syncMutation = useNuvemshopSync()
 
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editForm, setEditForm] = useState<Partial<CatalogProduct>>({})
   const [deleteId, setDeleteId] = useState<string | null>(null)
+  const [creating, setCreating] = useState(false)
+  const [createForm, setCreateForm] = useState({
+    name: '',
+    price: 0,
+    compare_at_price: null as number | null,
+    main_image: '',
+    is_active: true,
+    category_type: null as string | null,
+  })
   const [searchTerm, setSearchTerm] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
   const [syncResult, setSyncResult] = useState<SyncResult | null>(null)
@@ -65,6 +74,27 @@ export default function AdminCatalogo() {
     }
   }
 
+  const handleCreate = async () => {
+    if (!createForm.name || createForm.price <= 0) {
+      alert('Nome e preço são obrigatórios')
+      return
+    }
+    try {
+      await createMutation.mutateAsync({
+        name: createForm.name,
+        price: createForm.price,
+        compare_at_price: createForm.compare_at_price,
+        main_image: createForm.main_image || null,
+        is_active: createForm.is_active,
+        category_type: createForm.category_type as CatalogProduct['category_type'],
+      })
+      setCreating(false)
+      setCreateForm({ name: '', price: 0, compare_at_price: null, main_image: '', is_active: true, category_type: null })
+    } catch (err) {
+      alert(`Erro ao criar: ${err instanceof Error ? err.message : 'Desconhecido'}`)
+    }
+  }
+
   const handleSync = async () => {
     try {
       const result = await syncMutation.mutateAsync()
@@ -77,21 +107,19 @@ export default function AdminCatalogo() {
   }
 
   return (
-    <div className="min-h-screen bg-surface-alt">
-      {/* Header */}
-      <header className="bg-white border-b border-border sticky top-0 z-30">
-        <div className="container mx-auto px-4 sm:px-6 py-4 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <Link to="/">
-              <img src={logo} alt="Rei dos Cachos" className="h-10 w-auto" />
-            </Link>
-          </div>
-
-          <div className="flex-1">
-            <h1 className="text-xl sm:text-2xl font-bold text-foreground">Painel Admin — Catálogo</h1>
-          </div>
-
+    <AdminLayout>
+      {/* Page Header */}
+      <div className="bg-white border-b border-border sticky top-0 lg:top-0 z-30">
+        <div className="px-4 sm:px-6 py-4 flex items-center justify-between gap-4">
+          <h1 className="text-xl sm:text-2xl font-bold text-foreground">Catálogo</h1>
           <div className="flex items-center gap-2">
+            <button
+              onClick={() => setCreating(true)}
+              className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg bg-green-600 hover:bg-green-700 text-white text-sm font-medium transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              <span className="hidden sm:inline">Novo Produto</span>
+            </button>
             <button
               onClick={handleSync}
               disabled={syncMutation.isPending}
@@ -100,17 +128,9 @@ export default function AdminCatalogo() {
               <RefreshCw className={`w-4 h-4 ${syncMutation.isPending ? 'animate-spin' : ''}`} />
               <span className="hidden sm:inline">Sincronizar</span>
             </button>
-
-            <Link
-              to="/catalogo"
-              className="flex items-center gap-1 px-3 py-2 rounded-lg border border-border bg-white text-foreground hover:bg-surface-alt text-sm"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              <span className="hidden sm:inline">Catálogo</span>
-            </Link>
           </div>
         </div>
-      </header>
+      </div>
 
       {/* Sync Result Toast */}
       {showSyncResult && syncResult && (
@@ -125,17 +145,17 @@ export default function AdminCatalogo() {
             </button>
           </div>
           <div className="text-sm text-muted-foreground space-y-1">
-            <p>✅ Importados: {syncResult.result.imported}</p>
-            <p>🔄 Atualizados: {syncResult.result.updated}</p>
+            <p>Importados: {syncResult.result.imported}</p>
+            <p>Atualizados: {syncResult.result.updated}</p>
             {syncResult.result.errors > 0 && (
-              <p className="text-red-600">❌ Erros: {syncResult.result.errors}</p>
+              <p className="text-red-600">Erros: {syncResult.result.errors}</p>
             )}
           </div>
         </div>
       )}
 
       {/* Main */}
-      <main className="container mx-auto px-4 sm:px-6 py-8">
+      <div className="px-4 sm:px-6 py-8">
         {/* Search */}
         <div className="mb-6">
           <input
@@ -196,9 +216,9 @@ export default function AdminCatalogo() {
                             )}
                             <div className="min-w-0">
                               <p className="font-medium text-foreground truncate">{product.name}</p>
-                              {product.nuvemshop_product_id && (
-                                <p className="text-xs text-muted-foreground">ID: {product.nuvemshop_product_id}</p>
-                              )}
+                              <p className="text-xs text-muted-foreground">
+                                {product.source === 'manual' ? 'Manual' : product.nuvemshop_product_id ? `NS: ${product.nuvemshop_product_id}` : ''}
+                              </p>
                             </div>
                           </div>
                         </td>
@@ -219,7 +239,7 @@ export default function AdminCatalogo() {
                                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                             }`}
                           >
-                            {product.is_active ? '✓ Ativo' : '✗ Pausado'}
+                            {product.is_active ? 'Ativo' : 'Pausado'}
                           </button>
                         </td>
                         <td className="px-4 py-3 text-sm text-right space-x-2">
@@ -255,11 +275,9 @@ export default function AdminCatalogo() {
                 >
                   <ChevronLeft className="w-4 h-4" />
                 </button>
-
                 <div className="text-sm text-muted-foreground">
                   Página {currentPage} de {totalPages}
                 </div>
-
                 <button
                   onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                   disabled={currentPage === totalPages}
@@ -271,17 +289,115 @@ export default function AdminCatalogo() {
             )}
           </>
         )}
-      </main>
+      </div>
+
+      {/* Create Product Dialog */}
+      {creating && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-foreground/40 backdrop-blur-sm"
+            onClick={() => setCreating(false)}
+          />
+          <div className="relative bg-white rounded-2xl shadow-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
+            <h2 className="text-xl font-bold text-foreground mb-4">Novo Produto</h2>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1">Nome *</label>
+                <input
+                  type="text"
+                  value={createForm.name}
+                  onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })}
+                  className="w-full px-3 py-2 rounded-lg border border-border bg-white focus:outline-none focus:ring-2 focus:ring-gold"
+                  placeholder="Nome do produto"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1">Preço de Atacado *</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={createForm.price || ''}
+                  onChange={(e) => setCreateForm({ ...createForm, price: parseFloat(e.target.value) || 0 })}
+                  className="w-full px-3 py-2 rounded-lg border border-border bg-white focus:outline-none focus:ring-2 focus:ring-gold"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1">Preço de Comparação (opcional)</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={createForm.compare_at_price || ''}
+                  onChange={(e) => setCreateForm({ ...createForm, compare_at_price: e.target.value ? parseFloat(e.target.value) : null })}
+                  className="w-full px-3 py-2 rounded-lg border border-border bg-white focus:outline-none focus:ring-2 focus:ring-gold"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1">Imagem Principal (URL)</label>
+                <input
+                  type="text"
+                  value={createForm.main_image}
+                  onChange={(e) => setCreateForm({ ...createForm, main_image: e.target.value })}
+                  className="w-full px-3 py-2 rounded-lg border border-border bg-white focus:outline-none focus:ring-2 focus:ring-gold text-sm"
+                  placeholder="https://..."
+                />
+              </div>
+
+              <div>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={createForm.is_active}
+                    onChange={(e) => setCreateForm({ ...createForm, is_active: e.target.checked })}
+                    className="w-4 h-4 rounded border-border"
+                  />
+                  <span className="text-sm font-medium text-foreground">Ativo</span>
+                </label>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1">Categoria de Destaque (Home)</label>
+                <select
+                  value={createForm.category_type || ''}
+                  onChange={(e) => setCreateForm({ ...createForm, category_type: e.target.value || null })}
+                  className="w-full px-3 py-2 rounded-lg border border-border bg-white focus:outline-none focus:ring-2 focus:ring-gold"
+                >
+                  <option value="">Sem classificação</option>
+                  <option value="alto_giro">Alto Giro</option>
+                  <option value="maior_margem">Maior Margem</option>
+                  <option value="recompra_alta">Recompra Alta</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={handleCreate}
+                disabled={createMutation.isPending}
+                className="flex-1 px-4 py-2.5 rounded-lg bg-green-600 hover:bg-green-700 text-white font-medium disabled:opacity-70 transition-colors"
+              >
+                {createMutation.isPending ? 'Criando...' : 'Criar Produto'}
+              </button>
+              <button
+                onClick={() => setCreating(false)}
+                className="flex-1 px-4 py-2.5 rounded-lg border border-border bg-white text-foreground font-medium hover:bg-surface-alt"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Edit Dialog */}
       {editingId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div
             className="absolute inset-0 bg-foreground/40 backdrop-blur-sm"
-            onClick={() => {
-              setEditingId(null)
-              setEditForm({})
-            }}
+            onClick={() => { setEditingId(null); setEditForm({}) }}
           />
           <div className="relative bg-white rounded-2xl shadow-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
             <h2 className="text-xl font-bold text-foreground mb-4">Editar Produto</h2>
@@ -309,16 +425,12 @@ export default function AdminCatalogo() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-foreground mb-1">
-                  Preço de Comparação (opcional)
-                </label>
+                <label className="block text-sm font-medium text-foreground mb-1">Preço de Comparação (opcional)</label>
                 <input
                   type="number"
                   step="0.01"
                   value={editForm.compare_at_price || ''}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, compare_at_price: e.target.value ? parseFloat(e.target.value) : null })
-                  }
+                  onChange={(e) => setEditForm({ ...editForm, compare_at_price: e.target.value ? parseFloat(e.target.value) : null })}
                   className="w-full px-3 py-2 rounded-lg border border-border bg-white focus:outline-none focus:ring-2 focus:ring-gold"
                 />
               </div>
@@ -347,18 +459,16 @@ export default function AdminCatalogo() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-foreground mb-1">
-                  Categoria de Destaque (Home)
-                </label>
+                <label className="block text-sm font-medium text-foreground mb-1">Categoria de Destaque (Home)</label>
                 <select
                   value={editForm.category_type || ''}
                   onChange={(e) => setEditForm({ ...editForm, category_type: e.target.value || null })}
                   className="w-full px-3 py-2 rounded-lg border border-border bg-white focus:outline-none focus:ring-2 focus:ring-gold"
                 >
                   <option value="">Sem classificação</option>
-                  <option value="alto_giro">⚡ Alto Giro (Alto volume de vendas)</option>
-                  <option value="maior_margem">💎 Maior Margem (Maior lucro %)</option>
-                  <option value="recompra_alta">⭐ Recompra Alta (Clientes recompram)</option>
+                  <option value="alto_giro">Alto Giro</option>
+                  <option value="maior_margem">Maior Margem</option>
+                  <option value="recompra_alta">Recompra Alta</option>
                 </select>
               </div>
             </div>
@@ -372,10 +482,7 @@ export default function AdminCatalogo() {
                 {updateMutation.isPending ? 'Salvando...' : 'Salvar'}
               </button>
               <button
-                onClick={() => {
-                  setEditingId(null)
-                  setEditForm({})
-                }}
+                onClick={() => { setEditingId(null); setEditForm({}) }}
                 className="flex-1 px-4 py-2.5 rounded-lg border border-border bg-white text-foreground font-medium hover:bg-surface-alt"
               >
                 Cancelar
@@ -411,6 +518,6 @@ export default function AdminCatalogo() {
           </div>
         </div>
       )}
-    </div>
+    </AdminLayout>
   )
 }

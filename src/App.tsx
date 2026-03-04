@@ -15,6 +15,9 @@ import PedidoSucesso from "./pages/PedidoSucesso";
 import MeusPedidos from "./pages/MeusPedidos";
 import AdminCatalogo from "./pages/admin/Catalogo";
 import AdminPedidos from "./pages/admin/Pedidos";
+import AdminClientes from "./pages/admin/Clientes";
+import AdminEstoque from "./pages/admin/Estoque";
+import AdminUsuarios from "./pages/admin/Usuarios";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -38,6 +41,9 @@ const App = () => (
                 <Route element={<AdminRoute />}>
                   <Route path="/admin/catalogo" element={<AdminCatalogo />} />
                   <Route path="/admin/pedidos" element={<AdminPedidos />} />
+                  <Route path="/admin/clientes" element={<AdminClientes />} />
+                  <Route path="/admin/estoque" element={<AdminEstoque />} />
+                  <Route path="/admin/usuarios" element={<AdminUsuarios />} />
                 </Route>
               </Route>
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
