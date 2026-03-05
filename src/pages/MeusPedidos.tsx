@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { ChevronDown, ChevronUp, Loader, ShoppingCart, ArrowLeft } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface OrderItem {
   id: string;
@@ -30,11 +31,13 @@ const statusConfig = {
 
 const MeusPedidos = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const { data: orders = [], isLoading, error } = useQuery({
-    queryKey: ['my-orders'],
+    queryKey: ['my-orders', user?.id],
     queryFn: async () => {
+      if (!user) return [];
       const { data, error } = await supabase
         .from('orders')
         .select(
@@ -52,6 +55,7 @@ const MeusPedidos = () => {
           )
         `
         )
+        .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
       if (error) throw error;

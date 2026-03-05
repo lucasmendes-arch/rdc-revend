@@ -228,6 +228,7 @@ serve(async (req) => {
     }
 
     // 9. Decrement stock for products that have inventory records
+    const stockErrors: string[] = []
     for (const item of body.items) {
       const stock = stockMap.get(item.product_id)
       if (stock !== undefined) {
@@ -236,9 +237,20 @@ serve(async (req) => {
           p_qty: item.qty,
         })
         if (stockError) {
-          console.warn(`Stock decrement failed for ${item.product_id}:`, stockError)
+          stockErrors.push(`${item.product_id}: ${stockError.message}`)
         }
       }
+    }
+
+    if (stockErrors.length > 0) {
+      // Rollback: delete order items and order
+      console.error('Stock decrement failed, rolling back order:', stockErrors)
+      await serviceClient.from('order_items').delete().eq('order_id', order.id)
+      await serviceClient.from('orders').delete().eq('id', order.id)
+      return new Response(
+        JSON.stringify({ error: 'Erro ao atualizar estoque. Pedido cancelado, tente novamente.' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
     }
 
     // 10. Fire-and-forget WhatsApp notification
