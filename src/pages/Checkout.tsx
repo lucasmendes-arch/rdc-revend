@@ -18,8 +18,31 @@ const Checkout = () => {
     customer_name: '',
     customer_whatsapp: '',
     customer_email: user?.email || '',
+    cep: '',
+    street: '',
+    number: '',
+    complement: '',
+    neighborhood: '',
+    city: '',
+    state: '',
     notes: '',
   });
+
+  // Pre-fill from profile
+  useEffect(() => {
+    if (user?.id) {
+      supabase.from('profiles').select('*').eq('id', user.id).single()
+        .then(({ data }) => {
+          if (data) {
+            setFormData(prev => ({
+              ...prev,
+              customer_name: data.full_name || prev.customer_name,
+              customer_whatsapp: data.phone?.replace(/\D/g, '') || prev.customer_whatsapp,
+            }));
+          }
+        });
+    }
+  }, [user]);
 
   // Redirect if cart is empty
   useEffect(() => {
@@ -31,7 +54,16 @@ const Checkout = () => {
   if (cart.length === 0) return null;
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
+    let { name, value } = e.target;
+
+    if (name === 'customer_whatsapp') {
+      value = value.replace(/\D/g, ''); // numbers only
+    } else if (name === 'cep') {
+      value = value.replace(/\D/g, '');
+      if (value.length > 5) value = value.replace(/^(\d{5})(\d)/, '$1-$2');
+      if (value.length > 9) value = value.slice(0, 9);
+    }
+
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
@@ -49,8 +81,14 @@ const Checkout = () => {
       }
 
       // Validate required fields
-      if (!formData.customer_name.trim() || !formData.customer_whatsapp.trim() || !formData.customer_email.trim()) {
-        setError('Por favor, preencha todos os campos obrigatórios');
+      if (!formData.customer_name.trim() || !formData.customer_whatsapp.trim() || !formData.customer_email.trim() || !formData.cep || !formData.street || !formData.number || !formData.neighborhood || !formData.city || !formData.state) {
+        setError('Por favor, preencha todos os campos obrigatórios, incluindo o endereço completo.');
+        setLoading(false);
+        return;
+      }
+
+      if (formData.customer_whatsapp.length < 11) {
+        setError('O WhatsApp precisa ter no mínimo 11 números (com DDD).');
         setLoading(false);
         return;
       }
@@ -60,6 +98,14 @@ const Checkout = () => {
         setLoading(false);
         return;
       }
+
+      const addressString = `Endereço de Entrega:
+CEP: ${formData.cep}
+Logradouro: ${formData.street}, ${formData.number} ${formData.complement ? `(${formData.complement})` : ''}
+Bairro: ${formData.neighborhood}
+Cidade/UF: ${formData.city}/${formData.state.toUpperCase()}`;
+
+      const finalNotes = formData.notes ? `${formData.notes}\n\n${addressString}` : addressString;
 
       // Create order via edge function (validates prices server-side)
       const { data: fnData, error: fnError } = await supabase.functions.invoke('create-order', {
@@ -71,12 +117,22 @@ const Checkout = () => {
           customer_name: formData.customer_name,
           customer_whatsapp: formData.customer_whatsapp,
           customer_email: formData.customer_email,
-          notes: formData.notes || undefined,
+          notes: finalNotes,
         },
       });
 
       if (fnError) {
-        throw new Error(fnError.message || 'Erro ao criar pedido');
+        let msg = fnError.message || 'Erro ao criar pedido';
+        try {
+          // Attempt to parse context if Supabase returned the response body in the error
+          if (fnError.context && fnError.context.status) {
+            msg += ` (Status ${fnError.context.status})`;
+          }
+        } catch (e) {
+          // ignore
+        }
+        console.error('Edge Function Error:', fnError);
+        throw new Error(msg);
       }
 
       const result = fnData;
@@ -179,7 +235,44 @@ const Checkout = () => {
                   />
                 </div>
 
-                <div>
+                <h3 className="text-lg font-bold text-foreground mt-8 mb-4 pt-4 border-t border-border">Endereço de Entrega</h3>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-2">CEP *</label>
+                    <input type="text" name="cep" required value={formData.cep} onChange={handleChange} placeholder="00000-000" className="w-full px-4 py-2.5 rounded-lg border border-border bg-white focus:ring-2 focus:ring-gold focus:border-gold-border" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-2">Rua / Logradouro *</label>
+                    <input type="text" name="street" required value={formData.street} onChange={handleChange} placeholder="Av. Principal" className="w-full px-4 py-2.5 rounded-lg border border-border bg-white focus:ring-2 focus:ring-gold" />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-2">Número *</label>
+                    <input type="text" name="number" required value={formData.number} onChange={handleChange} placeholder="123" className="w-full px-4 py-2.5 rounded-lg border border-border bg-white focus:ring-2 focus:ring-gold" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-2">Complemento</label>
+                    <input type="text" name="complement" value={formData.complement} onChange={handleChange} placeholder="Apto 101, Bloco B" className="w-full px-4 py-2.5 rounded-lg border border-border bg-white focus:ring-2 focus:ring-gold" />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-2">Bairro *</label>
+                    <input type="text" name="neighborhood" required value={formData.neighborhood} onChange={handleChange} placeholder="Centro" className="w-full px-4 py-2.5 rounded-lg border border-border bg-white focus:ring-2 focus:ring-gold" />
+                  </div>
+                  <div className="flex gap-4">
+                    <div className="flex-1">
+                      <label className="block text-sm font-medium text-foreground mb-2">Cidade *</label>
+                      <input type="text" name="city" required value={formData.city} onChange={handleChange} placeholder="São Paulo" className="w-full px-4 py-2.5 rounded-lg border border-border bg-white focus:ring-2 focus:ring-gold" />
+                    </div>
+                    <div className="w-24">
+                      <label className="block text-sm font-medium text-foreground mb-2">UF *</label>
+                      <input type="text" name="state" required maxLength={2} value={formData.state} onChange={handleChange} placeholder="SP" className="w-full px-4 py-2.5 rounded-lg border border-border bg-white focus:ring-2 focus:ring-gold uppercase" />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="pt-4 mt-2 border-t border-border">
                   <label className="block text-sm font-medium text-foreground mb-2">
                     Observações
                   </label>
@@ -233,17 +326,20 @@ const Checkout = () => {
                 ))}
               </div>
 
-              <div className="space-y-2">
+              <div className="space-y-3 pb-4">
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Subtotal</span>
+                  <span className="text-muted-foreground">Subtotal dos Produtos</span>
                   <span className="font-medium text-foreground">R$ {cartTotal.toFixed(2)}</span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Frete</span>
-                  <span className="font-medium text-foreground">Grátis</span>
+                  <span className="text-muted-foreground">Estimativa de Frete (20%)</span>
+                  <span className="font-medium text-amber-600">~ R$ {(cartTotal * 0.20).toFixed(2)}</span>
                 </div>
-                <div className="flex items-center justify-between text-lg font-bold pt-3 border-t border-border">
-                  <span className="text-foreground">Total</span>
+                <p className="text-[10px] text-muted-foreground leading-tight text-right mt-1">
+                  * O frete exato será cotado com a transportadora. Este valor estimado <strong className="text-foreground">NÃO</strong> está sendo cobrado/somado no total final deste checkout.
+                </p>
+                <div className="flex items-center justify-between text-lg font-bold pt-4 border-t border-border">
+                  <span className="text-foreground">Total do Pedido</span>
                   <span className="gradient-gold-text">R$ {cartTotal.toFixed(2)}</span>
                 </div>
               </div>

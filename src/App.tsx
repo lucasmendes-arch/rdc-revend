@@ -10,6 +10,7 @@ import { AdminRoute } from "@/components/AdminRoute";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
 import Catalogo from "./pages/Catalogo";
+import Cadastro from "./pages/Cadastro";
 import Checkout from "./pages/Checkout";
 import PedidoSucesso from "./pages/PedidoSucesso";
 import MeusPedidos from "./pages/MeusPedidos";
@@ -33,6 +34,7 @@ const App = () => (
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/login" element={<Login />} />
+              <Route path="/cadastro" element={<Cadastro />} />
               <Route element={<ProtectedRoute />}>
                 <Route path="/catalogo" element={<Catalogo />} />
                 <Route path="/checkout" element={<Checkout />} />

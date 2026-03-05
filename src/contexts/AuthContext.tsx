@@ -49,16 +49,18 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setSession(session)
       setUser(session?.user ?? null)
       initialized.current = true
-      setLoading(false)
 
       if (session?.user) {
-        // Fetch role in background — don't block navigation
+        // Fetch role before finishing loading to avoid route redirects
         fetchRole(session.user.id).then(r => {
           // console.log('[AUTH] role:', r)
           setRole(r)
-        }).catch(() => setRole('user'))
+        }).catch(() => setRole('user')).finally(() => {
+          setLoading(false)
+        })
       } else {
         setRole(null)
+        setLoading(false)
       }
     })
 

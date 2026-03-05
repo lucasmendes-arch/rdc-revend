@@ -103,7 +103,25 @@ export default function Cadastro() {
                 }).eq('id', user.id);
             }
 
-            navigate('/login?registered=true');
+            // 3. Notify via webhook (fiqon → WhatsApp)
+            const webhookUrl = import.meta.env.VITE_WEBHOOK_URL || 'https://webhook.fiqon.app/webhook/019cb699-cef9-724f-9b43-35b59db12c5e/66fd06ea-361f-48f4-8909-03de418f2c28';
+            fetch(webhookUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    event: 'new_registration',
+                    name: formData.name,
+                    email: formData.email,
+                    phone: formData.phone,
+                    document_type: docType,
+                    document: formData.document,
+                    business_type: formData.businessType,
+                    catalog_url: `${window.location.origin}/login`,
+                }),
+            }).catch(err => console.warn('Webhook error:', err));
+
+            // Login automático (email confirmation disabled)
+            navigate('/catalogo', { replace: true });
         } catch (err) {
             setError('Erro ao criar conta. Tente novamente.');
             console.error('Cadastro error:', err);
@@ -222,14 +240,14 @@ export default function Cadastro() {
                                     <button
                                         type="button"
                                         onClick={() => handleDocTypeToggle('CPF')}
-                                        className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${docType === 'CPF' ? 'bg-white shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                                        className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${docType === 'CPF' ? 'bg-amber-100 text-amber-700 shadow-sm border border-amber-300' : 'text-muted-foreground hover:text-foreground'}`}
                                     >
                                         Pessoa Física (CPF)
                                     </button>
                                     <button
                                         type="button"
                                         onClick={() => handleDocTypeToggle('CNPJ')}
-                                        className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${docType === 'CNPJ' ? 'bg-white shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                                        className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${docType === 'CNPJ' ? 'bg-amber-100 text-amber-700 shadow-sm border border-amber-300' : 'text-muted-foreground hover:text-foreground'}`}
                                     >
                                         Pessoa Jurídica (CNPJ)
                                     </button>
@@ -299,16 +317,10 @@ export default function Cadastro() {
                                             className="w-full px-4 py-2.5 rounded-xl border border-input bg-surface focus:outline-none focus:ring-2 focus:ring-amber-300 transition-all text-sm appearance-none"
                                         >
                                             <option value="" disabled>Selecione...</option>
-                                            <option value="1">Apenas eu (1)</option>
-                                            <option value="2">2 funcionários</option>
-                                            <option value="3">3 funcionários</option>
-                                            <option value="4">4 funcionários</option>
-                                            <option value="5">5 funcionários</option>
-                                            <option value="6">6 funcionários</option>
-                                            <option value="7">7 funcionários</option>
-                                            <option value="8">8 funcionários</option>
-                                            <option value="9">9 funcionários</option>
-                                            <option value="10">10 ou mais</option>
+                                            <option value="1-3">De 1 a 3 funcionários</option>
+                                            <option value="4-7">De 4 a 7 funcionários</option>
+                                            <option value="8-10">De 8 a 10 funcionários</option>
+                                            <option value="+10">Mais de 10 funcionários</option>
                                         </select>
                                         <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground">
                                             ▼
@@ -327,10 +339,11 @@ export default function Cadastro() {
                                             className="w-full px-4 py-2.5 rounded-xl border border-input bg-surface focus:outline-none focus:ring-2 focus:ring-amber-300 transition-all text-sm appearance-none"
                                         >
                                             <option value="" disabled>Selecione a faixa...</option>
-                                            <option value="ate_5k">Até R$ 5.000 / mês</option>
-                                            <option value="5k_10k">De R$ 5.001 a R$ 10.000 / mês</option>
-                                            <option value="10k_30k">De R$ 10.001 a R$ 30.000 / mês</option>
-                                            <option value="acima_30k">Acima de R$ 30.000 / mês</option>
+                                            <option value="1k_5k">R$ 1.000 a R$ 5.000 / mês</option>
+                                            <option value="6k_10k">R$ 6.000 a R$ 10.000 / mês</option>
+                                            <option value="10k_30k">R$ 10.000 a R$ 30.000 / mês</option>
+                                            <option value="30k_50k">R$ 30.000 a R$ 50.000 / mês</option>
+                                            <option value="acima_50k">Mais de R$ 50.000 / mês</option>
                                         </select>
                                         <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground">
                                             ▼
