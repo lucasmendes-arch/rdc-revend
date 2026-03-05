@@ -252,7 +252,7 @@ const Checkout = () => {
                 <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
                   <p className="text-xs text-amber-700">
                     ⚠️ Pedido mínimo: R$ 500<br />
-                    Faltam: <strong>R$ {(300 - cartTotal).toFixed(2)}</strong>
+                    Faltam: <strong>R$ {(500 - cartTotal).toFixed(2)}</strong>
                   </p>
                 </div>
               )}
