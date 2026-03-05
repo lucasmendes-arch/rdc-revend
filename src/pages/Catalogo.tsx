@@ -343,11 +343,10 @@ const Catalogo = () => {
           <button
             onClick={() => setFilterCategories([])}
             aria-pressed={filterCategories.length === 0}
-            className={`flex-shrink-0 px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
-              filterCategories.length === 0
-                ? 'bg-gold-light border-gold-border text-gold-text'
-                : 'bg-white border-border text-muted-foreground'
-            }`}
+            className={`flex-shrink-0 px-3 py-1 rounded-full text-xs font-medium border transition-colors ${filterCategories.length === 0
+              ? 'bg-gold-light border-gold-border text-gold-text'
+              : 'bg-white border-border text-muted-foreground'
+              }`}
           >
             Todos
           </button>
@@ -356,11 +355,10 @@ const Catalogo = () => {
               key={cat}
               onClick={() => toggleCategory(cat)}
               aria-pressed={filterCategories.includes(cat)}
-              className={`flex-shrink-0 px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
-                filterCategories.includes(cat)
-                  ? 'bg-gold-light border-gold-border text-gold-text'
-                  : 'bg-white border-border text-muted-foreground'
-              }`}
+              className={`flex-shrink-0 px-3 py-1 rounded-full text-xs font-medium border transition-colors ${filterCategories.includes(cat)
+                ? 'bg-gold-light border-gold-border text-gold-text'
+                : 'bg-white border-border text-muted-foreground'
+                }`}
             >
               {cat}
             </button>
@@ -368,7 +366,7 @@ const Catalogo = () => {
         </div>
       </header>
 
-      <div className="flex lg:gap-6">
+      <div className="flex lg:gap-6 w-full overflow-hidden max-w-[100vw]">
         {/* Sidebar Filters (Desktop) */}
         <aside className="hidden lg:block w-60 px-3 pt-6 pb-6">
           <div className="sticky top-24 bg-white rounded-2xl p-4 border border-border">
@@ -468,7 +466,7 @@ const Catalogo = () => {
         </aside>
 
         {/* Main Content */}
-        <div className="flex-1 px-3 sm:px-4 lg:px-6 py-4 sm:py-6">
+        <div className="flex-1 min-w-0 px-3 sm:px-4 lg:px-6 py-4 sm:py-6 relative z-0">
           {/* Page Header */}
           <div className="mb-3">
             <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border border-gold-border bg-gold-light mb-1">
@@ -628,59 +626,61 @@ const Catalogo = () => {
                           {/* Spacer — desktop only */}
                           <div className="hidden sm:block flex-1 min-h-1" />
 
-                          {/* Quantity + Add — compact row on mobile */}
-                          <div className="flex items-center gap-1.5 mt-auto sm:flex-col sm:items-stretch sm:gap-1.5">
-                            <div className="flex items-center gap-0.5">
-                              <button
-                                onClick={() => setQty(product.id, getQty(product.id) - 1)}
-                                disabled={getQty(product.id) <= 1}
-                                className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded border border-border bg-white text-muted-foreground hover:bg-surface-alt transition-colors disabled:opacity-40 disabled:cursor-not-allowed text-xs font-medium"
-                                aria-label="Diminuir quantidade"
-                              >
-                                −
-                              </button>
-                              <input
-                                type="text"
-                                inputMode="numeric"
-                                aria-label="Quantidade"
-                                value={getQty(product.id)}
-                                onChange={(e) => {
-                                  const v = parseInt(e.target.value, 10);
-                                  if (!isNaN(v)) setQty(product.id, v);
-                                }}
-                                onBlur={(e) => {
-                                  const v = parseInt(e.target.value, 10);
-                                  if (isNaN(v) || v < 1) setQty(product.id, 1);
-                                }}
-                                className="w-8 h-7 sm:w-8 sm:h-8 text-center text-[11px] font-semibold text-foreground border border-border rounded bg-white focus:outline-none focus:ring-1 focus:ring-gold"
-                              />
-                              <button
-                                onClick={() => setQty(product.id, getQty(product.id) + 1)}
-                                className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded border border-border bg-white text-muted-foreground hover:bg-surface-alt transition-colors text-xs font-medium"
-                                aria-label="Aumentar quantidade"
-                              >
-                                +
-                              </button>
+                          <div className="mt-auto pt-2 sm:pt-1 flex flex-col gap-2.5 w-full overflow-hidden">
+                            {/* Quantity Controls */}
+                            <div className="flex items-center justify-start gap-2 w-full">
+                              <span className="text-[11px] font-medium text-muted-foreground mr-1">Qtd:</span>
+                              <div className="flex items-center gap-1">
+                                <button
+                                  onClick={() => setQty(product.id, getQty(product.id) - 1)}
+                                  disabled={getQty(product.id) <= 1}
+                                  className="w-8 h-8 flex items-center justify-center rounded border border-border bg-white text-muted-foreground hover:bg-surface-alt transition-colors disabled:opacity-40 disabled:cursor-not-allowed text-sm font-medium"
+                                  aria-label="Diminuir"
+                                >
+                                  −
+                                </button>
+                                <input
+                                  type="text"
+                                  inputMode="numeric"
+                                  aria-label="Quantidade"
+                                  value={getQty(product.id)}
+                                  onChange={(e) => {
+                                    const v = parseInt(e.target.value, 10);
+                                    if (!isNaN(v)) setQty(product.id, v);
+                                  }}
+                                  onBlur={(e) => {
+                                    const v = parseInt(e.target.value, 10);
+                                    if (isNaN(v) || v < 1) setQty(product.id, 1);
+                                  }}
+                                  className="w-10 h-8 text-center text-xs font-bold text-foreground border border-border rounded bg-white focus:outline-none focus:ring-1 focus:ring-gold"
+                                />
+                                <button
+                                  onClick={() => setQty(product.id, getQty(product.id) + 1)}
+                                  className="w-8 h-8 flex items-center justify-center rounded border border-border bg-white text-muted-foreground hover:bg-surface-alt transition-colors text-sm font-medium"
+                                  aria-label="Aumentar"
+                                >
+                                  +
+                                </button>
+                              </div>
                             </div>
 
+                            {/* Buy Button */}
                             <button
                               onClick={() => handleAddItem(product)}
-                              className={`flex-1 sm:w-full flex items-center justify-center gap-1 py-1.5 sm:py-2 rounded text-[10px] sm:text-xs font-semibold text-white transition-all uppercase tracking-wide ${
-                                addedId === product.id
-                                  ? 'bg-green-600'
-                                  : 'btn-gold'
-                              }`}
+                              className={`w-full flex items-center justify-center gap-1.5 h-9 sm:h-10 rounded-lg text-xs font-bold text-white transition-all uppercase tracking-wide ${addedId === product.id
+                                ? 'bg-green-600'
+                                : 'btn-gold'
+                                }`}
                             >
                               {addedId === product.id ? (
                                 <>
-                                  <Check className="w-3 h-3" />
-                                  <span className="text-[10px]">OK!</span>
+                                  <Check className="w-4 h-4" />
+                                  <span>Adicionado</span>
                                 </>
                               ) : (
                                 <>
-                                  <ShoppingCart className="w-3 h-3" />
-                                  <span className="sm:hidden text-[10px]">ADICIONAR</span>
-                                  <span className="hidden sm:inline">ADICIONAR AO PEDIDO</span>
+                                  <ShoppingCart className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
+                                  <span>Comprar</span>
                                 </>
                               )}
                             </button>
@@ -936,11 +936,10 @@ const Catalogo = () => {
                     handleAddItem(selectedProduct);
                     setSelectedProduct(null);
                   }}
-                  className={`w-full flex items-center justify-center gap-1.5 py-2 sm:py-3 rounded text-xs sm:text-sm font-semibold text-white transition-all ${
-                    addedId === selectedProduct.id
-                      ? 'bg-green-600'
-                      : 'btn-gold'
-                  }`}
+                  className={`w-full flex items-center justify-center gap-1.5 py-2 sm:py-3 rounded text-xs sm:text-sm font-semibold text-white transition-all ${addedId === selectedProduct.id
+                    ? 'bg-green-600'
+                    : 'btn-gold'
+                    }`}
                 >
                   {addedId === selectedProduct.id ? (
                     <>
