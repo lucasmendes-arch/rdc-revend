@@ -15,10 +15,31 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [resetSent, setResetSent] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
     setError("");
+    setResetSent(false);
+  };
+
+  const handleResetPassword = async () => {
+    if (!form.email.trim()) {
+      setError("Digite seu e-mail acima para recuperar a senha.");
+      return;
+    }
+    setResetLoading(true);
+    setError("");
+    const { error: resetError } = await supabase.auth.resetPasswordForEmail(form.email, {
+      redirectTo: `${window.location.origin}/login`,
+    });
+    setResetLoading(false);
+    if (resetError) {
+      setError("Erro ao enviar e-mail de recuperação. Tente novamente.");
+    } else {
+      setResetSent(true);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -89,6 +110,12 @@ const Login = () => {
               </div>
             )}
 
+            {resetSent && (
+              <div className="mb-4 px-4 py-3 rounded-lg bg-green-50 border border-green-100 text-green-700 text-sm">
+                E-mail de recuperação enviado! Verifique sua caixa de entrada.
+              </div>
+            )}
+
             <form onSubmit={handleSubmit} className="flex flex-col gap-4">
               {/* Email */}
               <div>
@@ -135,6 +162,17 @@ const Login = () => {
                 </div>
               </div>
 
+              <div className="flex justify-end -mt-1">
+                <button
+                  type="button"
+                  onClick={handleResetPassword}
+                  disabled={resetLoading}
+                  className="text-xs text-gold-text hover:underline disabled:opacity-50"
+                >
+                  {resetLoading ? "Enviando..." : "Esqueci minha senha"}
+                </button>
+              </div>
+
               {/* Submit */}
               <button
                 type="submit"
@@ -159,7 +197,7 @@ const Login = () => {
               <p className="text-sm text-muted-foreground">
                 Ainda não tem conta?{" "}
                 <Link
-                  to="/#cadastro"
+                  to="/cadastro"
                   className="font-semibold text-gold-text hover:underline"
                 >
                   Cadastre-se gratuitamente
