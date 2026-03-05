@@ -14,35 +14,35 @@ export const PACKAGES: Package[] = [
   {
     id: 1,
     name: 'Iniciante',
-    price: 497.99,
+    price: 520,
     description: 'Ideal para começar a revenda',
-    expectedRevenue: 996,
-    multiplier: '2x',
+    expectedRevenue: 936,
+    multiplier: '1.8x',
   },
   {
     id: 2,
     name: 'Crescimento',
-    price: 1497.99,
+    price: 1510,
     description: 'Para quem já tem clientela',
-    expectedRevenue: 2996,
+    expectedRevenue: 3020,
     multiplier: '2x',
   },
   {
     id: 3,
     name: 'Pro',
-    price: 2997.99,
+    price: 3050,
     description: 'Estoque completo para salões',
-    expectedRevenue: 5996,
-    multiplier: '2x',
+    expectedRevenue: 6862.50,
+    multiplier: '2.25x',
     highlight: true,
   },
   {
     id: 4,
     name: 'Elite',
-    price: 4997.99,
+    price: 5000,
     description: 'Máxima variedade e lucro',
-    expectedRevenue: 9996,
-    multiplier: '2x',
+    expectedRevenue: 12500,
+    multiplier: '2.5x',
   },
 ]
 
@@ -59,7 +59,9 @@ export function selectProductsForPackage(pkg: Package, products: PublicProduct[]
 
   // Add products by priority category
   for (const cat of priority) {
-    const catProducts = eligible.filter(p => p.category_type === cat && !used.has(p.id))
+    const catProducts = eligible
+      .filter(p => p.category_type === cat && !used.has(p.id))
+      .sort((a, b) => a.price - b.price)
     for (const p of catProducts) {
       if (total + p.price > pkg.price) continue
       selected.push(p)
@@ -69,7 +71,9 @@ export function selectProductsForPackage(pkg: Package, products: PublicProduct[]
   }
 
   // Fill remaining with uncategorized products
-  const rest = eligible.filter(p => !used.has(p.id))
+  const rest = eligible
+    .filter(p => !used.has(p.id))
+    .sort((a, b) => a.price - b.price)
   for (const p of rest) {
     if (total + p.price > pkg.price) continue
     selected.push(p)
