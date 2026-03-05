@@ -42,8 +42,8 @@ const Checkout = () => {
 
     try {
       // Validate minimum order value
-      if (cartTotal < 300) {
-        setError(`Pedido mínimo: R$ 300. Você tem R$ ${cartTotal.toFixed(2)}`);
+      if (cartTotal < 500) {
+        setError(`Pedido mínimo: R$ 500. Você tem R$ ${cartTotal.toFixed(2)}`);
         setLoading(false);
         return;
       }
@@ -61,72 +61,32 @@ const Checkout = () => {
         return;
       }
 
-      // Create order
-      const { data: order, error: orderError } = await supabase
-        .from('orders')
-        .insert({
-          user_id: user.id,
-          subtotal: cartTotal,
-          shipping: 0,
-          total: cartTotal,
+      // Create order via edge function (validates prices server-side)
+      const { data: fnData, error: fnError } = await supabase.functions.invoke('create-order', {
+        body: {
+          items: cart.map(item => ({
+            product_id: item.id,
+            qty: item.quantity,
+          })),
           customer_name: formData.customer_name,
           customer_whatsapp: formData.customer_whatsapp,
           customer_email: formData.customer_email,
-          notes: formData.notes || null,
-          status: 'recebido',
-        })
-        .select('id')
-        .single();
+          notes: formData.notes || undefined,
+        },
+      });
 
-      if (orderError || !order) {
-        throw new Error(orderError?.message || 'Erro ao criar pedido');
+      if (fnError) {
+        throw new Error(fnError.message || 'Erro ao criar pedido');
       }
 
-      // Create order items
-      const orderItems = cart.map((item) => ({
-        order_id: order.id,
-        product_name_snapshot: item.name,
-        unit_price_snapshot: item.price,
-        qty: item.quantity,
-        line_total: item.price * item.quantity,
-        product_id: item.id,
-      }));
-
-      const { error: itemsError } = await supabase
-        .from('order_items')
-        .insert(orderItems);
-
-      if (itemsError) {
-        throw new Error(itemsError.message);
-      }
-
-      // Call edge function to send WhatsApp notification (fire-and-forget)
-      try {
-        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-        const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-        if (supabaseUrl && supabaseAnonKey && user.id) {
-          fetch(`${supabaseUrl}/functions/v1/send-order-whatsapp`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${supabaseAnonKey}`,
-            },
-            body: JSON.stringify({ order_id: order.id }),
-          }).catch((err) => {
-            console.warn('Failed to send WhatsApp notification:', err);
-          });
-        }
-      } catch (err) {
-        console.warn('WhatsApp notification error:', err);
-      }
+      const result = fnData;
 
       // Track purchase event
-      trackPurchase(cartTotal);
+      trackPurchase(result.total || cartTotal);
 
       // Clear cart and navigate to success page
       clearCart();
-      navigate(`/pedido/sucesso/${order.id}`, { replace: true });
+      navigate(`/pedido/sucesso/${result.order_id}`, { replace: true });
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Erro ao processar pedido';
       setError(message);
@@ -279,10 +239,10 @@ const Checkout = () => {
                 </div>
               </div>
 
-              {cartTotal < 300 && (
+              {cartTotal < 500 && (
                 <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
                   <p className="text-xs text-amber-700">
-                    ⚠️ Pedido mínimo: R$ 300<br />
+                    ⚠️ Pedido mínimo: R$ 500<br />
                     Faltam: <strong>R$ {(300 - cartTotal).toFixed(2)}</strong>
                   </p>
                 </div>

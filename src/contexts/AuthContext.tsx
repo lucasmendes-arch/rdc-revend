@@ -13,6 +13,21 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
+async function fetchRole(userId: string): Promise<UserRole> {
+  try {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', userId)
+      .single()
+
+    if (error || !data) return 'user'
+    return data.role as UserRole
+  } catch {
+    return 'user'
+  }
+}
+
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null)
   const [session, setSession] = useState<Session | null>(null)
@@ -26,11 +41,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setSession(session)
         setUser(session?.user ?? null)
 
-        // Marcar como admin se for o usuário específico
-        if (session?.user?.email === 'lmendescapelini@gmail.com') {
-          setRole('admin')
+        if (session?.user) {
+          const userRole = await fetchRole(session.user.id)
+          setRole(userRole)
         } else {
-          setRole('user')
+          setRole(null)
         }
       } catch (error) {
         console.error('Erro ao recuperar sessão:', error)
@@ -44,14 +59,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     initSession()
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       setSession(session)
       setUser(session?.user ?? null)
 
-      if (session?.user?.email === 'lmendescapelini@gmail.com') {
-        setRole('admin')
-      } else if (session?.user) {
-        setRole('user')
+      if (session?.user) {
+        const userRole = await fetchRole(session.user.id)
+        setRole(userRole)
       } else {
         setRole(null)
       }
