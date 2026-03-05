@@ -81,6 +81,15 @@ const Checkout = () => {
 
       const result = fnData;
 
+      // Edge function returned an error payload (e.g. stock insufficient)
+      if (result?.error) {
+        const details = result.details as string[] | undefined;
+        const msg = details
+          ? `${result.error}:\n${details.join('\n')}`
+          : result.error;
+        throw new Error(msg);
+      }
+
       // Track purchase event
       trackPurchase(result.total || cartTotal);
 

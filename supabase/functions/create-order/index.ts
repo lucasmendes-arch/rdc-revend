@@ -136,7 +136,43 @@ serve(async (req) => {
 
     subtotal = Math.round(subtotal * 100) / 100
 
-    // 5. Validate minimum order
+    // 5. Check stock availability
+    const { data: inventory, error: inventoryError } = await serviceClient
+      .from('inventory')
+      .select('product_id, quantity')
+      .in('product_id', productIds)
+
+    if (inventoryError) {
+      console.error('Inventory check error:', inventoryError)
+      return new Response(
+        JSON.stringify({ error: 'Erro ao verificar estoque' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // Build stock map (products without inventory records are treated as unlimited)
+    const stockMap = new Map(inventory?.map(i => [i.product_id, i.quantity]) ?? [])
+
+    const outOfStock: string[] = []
+    for (const item of body.items) {
+      const stock = stockMap.get(item.product_id)
+      if (stock !== undefined && stock < item.qty) {
+        const product = priceMap.get(item.product_id)!
+        outOfStock.push(`${product.name} (disponível: ${stock}, solicitado: ${item.qty})`)
+      }
+    }
+
+    if (outOfStock.length > 0) {
+      return new Response(
+        JSON.stringify({
+          error: 'Estoque insuficiente',
+          details: outOfStock,
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // 6. Validate minimum order
     if (subtotal < MIN_ORDER_TOTAL) {
       return new Response(
         JSON.stringify({
@@ -146,7 +182,7 @@ serve(async (req) => {
       )
     }
 
-    // 6. Create order (using service client to bypass RLS — we already verified auth)
+    // 7. Create order (using service client to bypass RLS — we already verified auth)
     const { data: order, error: orderError } = await serviceClient
       .from('orders')
       .insert({
@@ -171,7 +207,7 @@ serve(async (req) => {
       )
     }
 
-    // 7. Create order items
+    // 8. Create order items
     const itemsWithOrderId = orderItems.map(item => ({
       ...item,
       order_id: order.id,
@@ -191,7 +227,21 @@ serve(async (req) => {
       )
     }
 
-    // 8. Fire-and-forget WhatsApp notification
+    // 9. Decrement stock for products that have inventory records
+    for (const item of body.items) {
+      const stock = stockMap.get(item.product_id)
+      if (stock !== undefined) {
+        const { error: stockError } = await serviceClient.rpc('decrement_stock', {
+          p_product_id: item.product_id,
+          p_qty: item.qty,
+        })
+        if (stockError) {
+          console.warn(`Stock decrement failed for ${item.product_id}:`, stockError)
+        }
+      }
+    }
+
+    // 10. Fire-and-forget WhatsApp notification
     try {
       const whatsappUrl = Deno.env.get('UAZAPI_URL')
       const whatsappToken = Deno.env.get('UAZAPI_TOKEN')
@@ -224,7 +274,7 @@ serve(async (req) => {
       console.warn('WhatsApp notification error:', err)
     }
 
-    // 9. Return success
+    // 11. Return success
     return new Response(
       JSON.stringify({ order_id: order.id, total: subtotal }),
       { status: 201, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

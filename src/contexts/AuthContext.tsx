@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from 'react'
+import { createContext, useContext, useEffect, useRef, useState } from 'react'
 import { Session, User } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
 
@@ -19,11 +19,16 @@ async function fetchRole(userId: string): Promise<UserRole> {
       .from('profiles')
       .select('role')
       .eq('id', userId)
-      .single()
+      .maybeSingle()
 
-    if (error || !data) return 'user'
+    if (error) {
+      console.warn('fetchRole error:', error.message)
+      return 'user'
+    }
+    if (!data) return 'user'
     return data.role as UserRole
-  } catch {
+  } catch (e) {
+    console.warn('[AUTH] fetchRole exception:', e)
     return 'user'
   }
 }
@@ -33,48 +38,42 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
   const [role, setRole] = useState<UserRole>(null)
+  const initialized = useRef(false)
 
   useEffect(() => {
-    const initSession = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession()
-        setSession(session)
-        setUser(session?.user ?? null)
+    // Use onAuthStateChange as the single source of truth.
+    // Supabase fires INITIAL_SESSION on mount (replaces getSession).
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      // console.log('[AUTH] event:', event)
 
-        if (session?.user) {
-          const userRole = await fetchRole(session.user.id)
-          setRole(userRole)
-        } else {
-          setRole(null)
-        }
-      } catch (error) {
-        console.error('Erro ao recuperar sessão:', error)
-        setSession(null)
-        setUser(null)
-        setRole(null)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    initSession()
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       setSession(session)
       setUser(session?.user ?? null)
+      initialized.current = true
+      setLoading(false)
 
       if (session?.user) {
-        const userRole = await fetchRole(session.user.id)
-        setRole(userRole)
+        // Fetch role in background — don't block navigation
+        fetchRole(session.user.id).then(r => {
+          // console.log('[AUTH] role:', r)
+          setRole(r)
+        }).catch(() => setRole('user'))
       } else {
         setRole(null)
       }
-
-      setLoading(false)
     })
+
+    // Safety: if onAuthStateChange never fires, unblock after 3s
+    const timeout = setTimeout(() => {
+      if (!initialized.current) {
+        console.warn('Auth timeout — forcing loading=false')
+        initialized.current = true
+        setLoading(false)
+      }
+    }, 3000)
 
     return () => {
       subscription?.unsubscribe()
+      clearTimeout(timeout)
     }
   }, [])
 
