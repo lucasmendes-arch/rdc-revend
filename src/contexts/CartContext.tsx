@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
+import { useAuth } from './AuthContext';
 
 export interface CartItem {
   id: string;
@@ -36,9 +37,40 @@ interface CartProviderProps {
   children: ReactNode;
 }
 
+const USER_KEY = 'rdc-cart-user';
+
 export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
+  const { user } = useAuth();
+  const prevUserRef = useRef<string | null>(null);
+
   // Use lazy initializer to read localStorage only on mount
   const [items, setItems] = useState<CartItem[]>(() => loadCartFromStorage());
+
+  // Clear cart when user changes (login/logout/switch account)
+  useEffect(() => {
+    const currentUserId = user?.id || null;
+    const storedUserId = localStorage.getItem(USER_KEY);
+
+    if (prevUserRef.current === null) {
+      // First render — check if stored user matches current
+      prevUserRef.current = storedUserId;
+      if (storedUserId && storedUserId !== currentUserId) {
+        setItems([]);
+        localStorage.removeItem(STORAGE_KEY);
+      }
+    } else if (prevUserRef.current !== currentUserId) {
+      // User changed during session
+      setItems([]);
+      localStorage.removeItem(STORAGE_KEY);
+    }
+
+    if (currentUserId) {
+      localStorage.setItem(USER_KEY, currentUserId);
+    } else {
+      localStorage.removeItem(USER_KEY);
+    }
+    prevUserRef.current = currentUserId;
+  }, [user?.id]);
 
   // Sync to localStorage whenever items change
   useEffect(() => {
