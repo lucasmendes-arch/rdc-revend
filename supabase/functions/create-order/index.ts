@@ -263,65 +263,74 @@ serve(async (req) => {
       )
     }
 
-    // 10. Create AbacatePay billing (payment link)
+    // 10. Create MercadoPago Checkout Pro preference
     let paymentUrl: string | null = null
-    let billingId: string | null = null
+    let preferenceId: string | null = null
 
     try {
-      const abacateKey = Deno.env.get('ABACATEPAY_API_KEY')
+      const mpAccessToken = Deno.env.get('MERCADOPAGO_ACCESS_TOKEN')
 
-      if (abacateKey) {
+      if (mpAccessToken) {
         const origin = req.headers.get('Origin') || 'https://rdc-revend.vercel.app'
+        const webhookUrl = `${supabaseUrl}/functions/v1/webhook-mercadopago`
 
-        const billingPayload = {
-          frequency: 'ONE_TIME',
-          methods: body.payment_method === 'credit' ? ['CARD'] : ['PIX'],
-          products: orderItems.map(item => ({
-            externalId: item.product_id,
-            name: item.product_name_snapshot,
+        const preferencePayload = {
+          items: orderItems.map(item => ({
+            id: item.product_id,
+            title: item.product_name_snapshot,
             quantity: item.qty,
-            price: Math.round(item.unit_price_snapshot * 100), // centavos
+            unit_price: item.unit_price_snapshot,
+            currency_id: 'BRL',
           })),
-          returnUrl: `${origin}/catalogo`,
-          completionUrl: `${origin}/pedido/sucesso/${order.id}`,
-          customer: {
+          payer: {
             name: body.customer_name.trim(),
-            cellphone: body.customer_whatsapp.trim(),
             email: body.customer_email.trim(),
-            taxId: (body.customer_document || '').replace(/\D/g, ''),
+            phone: { number: body.customer_whatsapp.trim() },
+            identification: body.customer_document ? {
+              type: body.customer_document.replace(/\D/g, '').length > 11 ? 'CNPJ' : 'CPF',
+              number: body.customer_document.replace(/\D/g, ''),
+            } : undefined,
           },
-          metadata: {
-            order_id: order.id,
+          back_urls: {
+            success: `https://rdc-revend.vercel.app/pedido/sucesso/${order.id}`,
+            failure: `https://rdc-revend.vercel.app/catalogo`,
+            pending: `https://rdc-revend.vercel.app/pedido/sucesso/${order.id}`,
           },
+          payment_methods: {
+            excluded_payment_types: [
+              { id: 'ticket' },
+            ],
+          },
+          auto_return: 'approved',
+          external_reference: order.id,
+          notification_url: webhookUrl,
         }
 
-        const abacateRes = await fetch('https://api.abacatepay.com/v1/billing/create', {
+        const mpRes = await fetch('https://api.mercadopago.com/checkout/preferences', {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${abacateKey}`,
+            'Authorization': `Bearer ${mpAccessToken}`,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify(billingPayload),
+          body: JSON.stringify(preferencePayload),
         })
 
-        const abacateData = await abacateRes.json()
+        const mpData = await mpRes.json()
 
-        if (abacateRes.ok && abacateData?.data?.url) {
-          paymentUrl = abacateData.data.url
-          billingId = abacateData.data.id
+        if (mpRes.ok && mpData?.init_point) {
+          paymentUrl = mpData.init_point
+          preferenceId = mpData.id
 
-          // Save billing ID on the order for webhook matching
           await serviceClient
             .from('orders')
-            .update({ payment_id: billingId, status: 'aguardando_pagamento' })
+            .update({ payment_id: preferenceId, status: 'aguardando_pagamento' })
             .eq('id', order.id)
         } else {
-          console.error('AbacatePay billing error:', JSON.stringify(abacateData))
+          console.error('MercadoPago preference error:', JSON.stringify(mpData))
         }
       }
     } catch (err) {
-      console.error('AbacatePay error:', err)
-      // Non-blocking — order is created, payment link just won't be available
+      console.error('MercadoPago error:', err)
     }
 
     // 11. Fire-and-forget WhatsApp notification
