@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useMemo, useRef, useState, useEffect } from 'react'
 import { Check, ShoppingCart, TrendingUp } from 'lucide-react'
 import { toast } from 'sonner'
 import { useNavigate } from 'react-router-dom'
@@ -25,6 +25,9 @@ export default function PackageCards({ products }: PackageCardsProps) {
     })),
     [products]
   )
+
+  // Auto-scroll removed as requested by user
+
 
   const handleScroll = useCallback(() => {
     if (rafRef.current) return
@@ -64,73 +67,70 @@ export default function PackageCards({ products }: PackageCardsProps) {
   }
 
   return (
-    <div className="mb-4 -mx-3 sm:mx-0">
-      {/* overflow-hidden on wrapper prevents page horizontal scroll */}
-      <div className="overflow-hidden">
-        <div
-          ref={scrollRef}
-          onScroll={handleScroll}
-          className="flex gap-4 overflow-x-auto snap-x snap-mandatory scroll-smooth px-4 pt-4 pb-2 sm:pt-0 sm:grid sm:grid-cols-2 lg:grid-cols-4 sm:overflow-visible sm:gap-4 scrollbar-none"
-        >
-          {packageSelections.map(({ pkg, selected }) => (
-            <div
-              key={pkg.id}
-              className={`flex-shrink-0 w-[270px] sm:w-auto snap-start rounded-xl border-2 p-3 sm:p-5 flex flex-col transition-all ${pkg.highlight
-                ? 'border-amber-400 bg-gradient-to-br from-amber-50 to-white shadow-md relative'
-                : 'border-border bg-white shadow-sm hover:border-gold-border'
+    <div className="mb-4 -mx-3 sm:-mx-4 lg:-mx-6 w-[calc(100%+1.5rem)] sm:w-[calc(100%+2rem)] lg:w-[calc(100%+3rem)]">
+      {/* Container extends to the edges of the screen, scroll starts exactly at text alignment */}
+      <div
+        ref={scrollRef}
+        onScroll={handleScroll}
+        className="flex gap-4 sm:gap-6 overflow-x-auto snap-x snap-mandatory scroll-smooth px-3 sm:px-4 lg:px-6 pt-4 pb-4 sm:pt-6 sm:pb-6 scrollbar-none w-full"
+      >
+        {packageSelections.map(({ pkg, selected }) => (
+          <div
+            key={pkg.id}
+            className={`flex-shrink-0 w-[270px] sm:w-auto snap-start rounded-xl border-2 p-3 sm:p-5 flex flex-col transition-all ${pkg.highlight
+              ? 'border-amber-400 bg-gradient-to-br from-amber-50 to-white shadow-md relative'
+              : 'border-border bg-white shadow-sm hover:border-gold-border'
+              }`}
+          >
+            {pkg.highlight && (
+              <span className="absolute -top-3 left-4 px-2.5 py-0.5 rounded-full text-[10px] sm:text-xs font-bold bg-amber-500 text-white whitespace-nowrap z-10 shadow-sm">
+                Mais Popular
+              </span>
+            )}
+
+            <div className="flex flex-col mb-1.5 sm:mb-2">
+              <h3 className="font-extrabold text-[15px] sm:text-lg text-foreground leading-tight">{pkg.name}</h3>
+              <p className="text-[11px] sm:text-sm text-muted-foreground mt-0.5 leading-snug">{pkg.description}</p>
+            </div>
+
+            {/* Price pill */}
+            <div className="mt-1 mb-3">
+              <span className="text-[18px] sm:text-2xl font-black gradient-gold-text">
+                R$ {pkg.price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              </span>
+            </div>
+
+            <div className="space-y-1.5 text-[11px] sm:text-sm text-muted-foreground mb-4">
+              <div className="flex items-center gap-1.5 text-green-700 font-semibold">
+                <TrendingUp className="w-3.5 h-3.5" /> Retorno Estimado: R$ {pkg.expectedRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              </div>
+            </div>
+
+            <div className="flex-1" />
+
+            <button
+              onClick={() => handleSelectPackage(pkg.id)}
+              className={`w-full flex items-center justify-center gap-2 py-2.5 sm:py-3 rounded-lg text-xs sm:text-sm font-bold transition-all tracking-wide ${addedPkgId === pkg.id
+                ? 'bg-green-600 shadow-none text-white'
+                : pkg.highlight
+                  ? 'bg-amber-500 hover:bg-amber-600 shadow-sm text-white'
+                  : 'bg-surface-alt font-semibold text-foreground border border-border hover:bg-gold hover:text-white hover:border-gold'
                 }`}
             >
-              {pkg.highlight && (
-                <span className="absolute -top-3 left-4 px-2.5 py-0.5 rounded-full text-[10px] sm:text-xs font-bold bg-amber-500 text-white whitespace-nowrap z-10 shadow-sm">
-                  Mais Popular
-                </span>
+              {addedPkgId === pkg.id ? (
+                <>
+                  <Check className="w-4 h-4" />
+                  Adicionado!
+                </>
+              ) : (
+                <>
+                  <ShoppingCart className="w-4 h-4" />
+                  Adicionar Plano
+                </>
               )}
-
-              <div className="flex flex-col mb-1.5 sm:mb-2">
-                <h3 className="font-extrabold text-[15px] sm:text-lg text-foreground leading-tight">{pkg.name}</h3>
-                <p className="text-[11px] sm:text-sm text-muted-foreground mt-0.5 leading-snug">{pkg.description}</p>
-              </div>
-
-              {/* Price pill */}
-              <div className="mt-1 mb-3">
-                <span className="text-[18px] sm:text-2xl font-black gradient-gold-text">
-                  R$ {pkg.price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                </span>
-              </div>
-
-              <div className="space-y-1.5 text-[11px] sm:text-sm text-muted-foreground mb-4">
-                <div className="flex items-center gap-1.5"><ShoppingCart className="w-3.5 h-3.5" />{selected.length} produtos inclusos</div>
-                <div className="flex items-center gap-1.5 text-green-700 font-semibold">
-                  <TrendingUp className="w-3.5 h-3.5" /> Retorno Estimado: R$ {pkg.expectedRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                </div>
-              </div>
-
-              <div className="flex-1" />
-
-              <button
-                onClick={() => handleSelectPackage(pkg.id)}
-                className={`w-full flex items-center justify-center gap-2 py-2.5 sm:py-3 rounded-lg text-xs sm:text-sm font-bold text-white transition-all tracking-wide ${addedPkgId === pkg.id
-                  ? 'bg-green-600 shadow-none'
-                  : pkg.highlight
-                    ? 'bg-amber-500 hover:bg-amber-600 shadow-sm'
-                    : 'bg-foreground hover:bg-black/90'
-                  }`}
-              >
-                {addedPkgId === pkg.id ? (
-                  <>
-                    <Check className="w-4 h-4" />
-                    Adicionado!
-                  </>
-                ) : (
-                  <>
-                    <ShoppingCart className="w-4 h-4" />
-                    Adicionar Plano
-                  </>
-                )}
-              </button>
-            </div>
-          ))}
-        </div>
+            </button>
+          </div>
+        ))}
       </div>
 
       {/* Dots — mobile only */}

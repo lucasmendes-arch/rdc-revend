@@ -58,6 +58,7 @@ export function useTrackPageView(pageName?: string) {
 
     window.fbq?.('track', 'ViewContent', {
       content_name: pageName || window.location.pathname,
+      content_type: 'product_group',
     })
   }, [pageName, user])
 }
@@ -66,7 +67,7 @@ export function useTrackAddToCart() {
   const { user } = useAuth()
 
   return useCallback(
-    (cartItemsCount: number) => {
+    (cartItemsCount: number, productName?: string, productPrice?: number) => {
       const sessionId = getSessionId()
 
       upsertSession({
@@ -78,7 +79,38 @@ export function useTrackAddToCart() {
         last_page: window.location.pathname,
       })
 
-      window.fbq?.('track', 'AddToCart')
+      window.fbq?.('track', 'AddToCart', {
+        content_name: productName,
+        value: productPrice,
+        currency: 'BRL',
+        num_items: cartItemsCount,
+      })
+    },
+    [user]
+  )
+}
+
+export function useTrackInitiateCheckout() {
+  const { user } = useAuth()
+
+  return useCallback(
+    (totalValue: number, numItems: number) => {
+      const sessionId = getSessionId()
+
+      upsertSession({
+        session_id: sessionId,
+        status: 'escolhendo',
+        user_id: user?.id || null,
+        email: user?.email || null,
+        cart_items_count: numItems,
+        last_page: '/checkout',
+      })
+
+      window.fbq?.('track', 'InitiateCheckout', {
+        value: totalValue,
+        currency: 'BRL',
+        num_items: numItems,
+      })
     },
     [user]
   )

@@ -1,6 +1,7 @@
 import { useState } from 'react'
-import { Edit2, Trash2, RefreshCw, ChevronLeft, ChevronRight, X, Plus } from 'lucide-react'
+import { Edit2, Trash2, RefreshCw, ChevronLeft, ChevronRight, X, Plus, Filter } from 'lucide-react'
 import { useAdminProducts, useUpdateProduct, useDeleteProduct, useCreateProduct, useNuvemshopSync, CatalogProduct, SyncResult } from '@/hooks/useAdminProducts'
+import { useCategories } from '@/hooks/useCategories'
 import AdminLayout from '@/components/admin/AdminLayout'
 
 export default function AdminCatalogo() {
@@ -9,6 +10,7 @@ export default function AdminCatalogo() {
   const deleteMutation = useDeleteProduct()
   const createMutation = useCreateProduct()
   const syncMutation = useNuvemshopSync()
+  const { data: categories = [] } = useCategories()
 
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editForm, setEditForm] = useState<Partial<CatalogProduct>>({})
@@ -22,16 +24,33 @@ export default function AdminCatalogo() {
     is_active: true,
     category_type: null as string | null,
     is_professional: false,
+    is_highlight: false,
+    category_id: null as string | null,
   })
   const [searchTerm, setSearchTerm] = useState('')
+  const [filterCategory, setFilterCategory] = useState('')
+  const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'paused'>('all')
   const [currentPage, setCurrentPage] = useState(1)
   const [syncResult, setSyncResult] = useState<SyncResult | null>(null)
   const [showSyncResult, setShowSyncResult] = useState(false)
 
-  const itemsPerPage = 10
-  const filteredProducts = products.filter((p) =>
-    p.name.toLowerCase().includes(searchTerm.toLowerCase())
-  )
+  const itemsPerPage = 20
+  const filteredProducts = products
+    .filter((p) => {
+      if (searchTerm && !p.name.toLowerCase().includes(searchTerm.toLowerCase())) return false
+      if (filterCategory && p.category_id !== filterCategory) return false
+      if (filterStatus === 'active' && !p.is_active) return false
+      if (filterStatus === 'paused' && p.is_active) return false
+      return true
+    })
+    .sort((a, b) => {
+      // Active products first, paused last
+      if (a.is_active !== b.is_active) return a.is_active ? -1 : 1
+      return a.name.localeCompare(b.name)
+    })
+
+  const activeCount = products.filter(p => p.is_active).length
+  const pausedCount = products.filter(p => !p.is_active).length
   const totalPages = Math.ceil(filteredProducts.length / itemsPerPage)
   const paginatedProducts = filteredProducts.slice(
     (currentPage - 1) * itemsPerPage,
@@ -46,7 +65,18 @@ export default function AdminCatalogo() {
   const handleSaveEdit = async () => {
     if (!editingId) return
     try {
-      await updateMutation.mutateAsync({ id: editingId, ...editForm })
+      await updateMutation.mutateAsync({
+        id: editingId,
+        name: editForm.name,
+        price: editForm.price,
+        compare_at_price: editForm.compare_at_price,
+        main_image: editForm.main_image,
+        is_active: editForm.is_active,
+        category_type: editForm.category_type,
+        is_professional: editForm.is_professional,
+        is_highlight: editForm.is_highlight,
+        category_id: editForm.category_id,
+      })
       setEditingId(null)
       setEditForm({})
     } catch (err) {
@@ -62,6 +92,17 @@ export default function AdminCatalogo() {
       })
     } catch (err) {
       alert(`Erro ao atualizar: ${err instanceof Error ? err.message : 'Desconhecido'}`)
+    }
+  }
+
+  const handleUpdateCategory = async (productId: string, newCategoryId: string) => {
+    try {
+      await updateMutation.mutateAsync({
+        id: productId,
+        category_id: newCategoryId || null,
+      })
+    } catch (err) {
+      alert(`Erro ao atualizar categoria: ${err instanceof Error ? err.message : 'Desconhecido'}`)
     }
   }
 
@@ -89,9 +130,11 @@ export default function AdminCatalogo() {
         is_active: createForm.is_active,
         category_type: createForm.category_type as CatalogProduct['category_type'],
         is_professional: createForm.is_professional,
+        is_highlight: createForm.is_highlight,
+        category_id: createForm.category_id,
       })
       setCreating(false)
-      setCreateForm({ name: '', price: 0, compare_at_price: null, main_image: '', is_active: true, category_type: null, is_professional: false })
+      setCreateForm({ name: '', price: 0, compare_at_price: null, main_image: '', is_active: true, category_type: null, is_professional: false, is_highlight: false, category_id: null })
     } catch (err) {
       alert(`Erro ao criar: ${err instanceof Error ? err.message : 'Desconhecido'}`)
     }
@@ -158,8 +201,8 @@ export default function AdminCatalogo() {
 
       {/* Main */}
       <div className="px-4 sm:px-6 py-8">
-        {/* Search */}
-        <div className="mb-6">
+        {/* Search & Filters */}
+        <div className="mb-6 space-y-3">
           <input
             type="text"
             placeholder="Buscar produtos..."
@@ -170,6 +213,56 @@ export default function AdminCatalogo() {
             }}
             className="w-full px-4 py-2.5 rounded-lg border border-border bg-white text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-gold"
           />
+
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Status filter */}
+            <div className="flex rounded-lg border border-border overflow-hidden text-xs font-medium">
+              <button
+                onClick={() => { setFilterStatus('all'); setCurrentPage(1) }}
+                className={`px-3 py-1.5 transition-colors ${filterStatus === 'all' ? 'bg-foreground text-white' : 'bg-white text-foreground hover:bg-surface-alt'}`}
+              >
+                Todos ({products.length})
+              </button>
+              <button
+                onClick={() => { setFilterStatus('active'); setCurrentPage(1) }}
+                className={`px-3 py-1.5 border-l border-border transition-colors ${filterStatus === 'active' ? 'bg-green-600 text-white' : 'bg-white text-foreground hover:bg-surface-alt'}`}
+              >
+                Ativos ({activeCount})
+              </button>
+              <button
+                onClick={() => { setFilterStatus('paused'); setCurrentPage(1) }}
+                className={`px-3 py-1.5 border-l border-border transition-colors ${filterStatus === 'paused' ? 'bg-gray-600 text-white' : 'bg-white text-foreground hover:bg-surface-alt'}`}
+              >
+                Pausados ({pausedCount})
+              </button>
+            </div>
+
+            {/* Category filter */}
+            <select
+              value={filterCategory}
+              onChange={(e) => { setFilterCategory(e.target.value); setCurrentPage(1) }}
+              className="px-3 py-1.5 rounded-lg border border-border bg-white text-xs font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-gold"
+            >
+              <option value="">Todas categorias</option>
+              {categories.map(c => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+
+            {/* Clear filters */}
+            {(filterCategory || filterStatus !== 'all' || searchTerm) && (
+              <button
+                onClick={() => { setSearchTerm(''); setFilterCategory(''); setFilterStatus('all'); setCurrentPage(1) }}
+                className="text-xs text-muted-foreground hover:text-red-500 underline transition-colors"
+              >
+                Limpar filtros
+              </button>
+            )}
+
+            <span className="text-xs text-muted-foreground ml-auto">
+              {filteredProducts.length} produto{filteredProducts.length !== 1 ? 's' : ''}
+            </span>
+          </div>
         </div>
 
         {/* Error */}
@@ -195,54 +288,75 @@ export default function AdminCatalogo() {
             {/* Table */}
             <div className="bg-white rounded-xl border border-border shadow-card overflow-hidden">
               <div className="overflow-x-auto">
-                <table className="w-full">
+                <table className="w-full min-w-[800px]">
                   <thead>
                     <tr className="border-b border-border bg-surface-alt">
-                      <th className="px-4 py-3 text-left text-sm font-semibold text-foreground">Produto</th>
-                      <th className="px-4 py-3 text-left text-sm font-semibold text-foreground">Preço</th>
-                      <th className="px-4 py-3 text-center text-sm font-semibold text-foreground">Status</th>
-                      <th className="px-4 py-3 text-right text-sm font-semibold text-foreground">Ações</th>
+                      <th className="px-4 py-4 text-left text-sm font-semibold text-foreground">Produto</th>
+                      <th className="px-4 py-4 text-left text-sm font-semibold text-foreground">Preço</th>
+                      <th className="px-4 py-4 text-left text-sm font-semibold text-foreground">Categoria</th>
+                      <th className="px-4 py-4 text-center text-sm font-semibold text-foreground">Status</th>
+                      <th className="px-4 py-4 text-right text-sm font-semibold text-foreground">Ações</th>
                     </tr>
                   </thead>
                   <tbody>
                     {paginatedProducts.map((product, index) => (
-                      <tr key={product.id} className={index % 2 === 0 ? '' : 'bg-surface-alt/50'}>
-                        <td className="px-4 py-3 text-sm">
-                          <div className="flex gap-3">
-                            {product.main_image && (
+                      <tr key={product.id} className={`hover:bg-surface-alt/80 transition-colors border-b border-border/50 ${index % 2 === 0 ? '' : 'bg-surface-alt/30'}`}>
+                        <td className="px-4 py-4">
+                          <div className="flex items-center gap-4">
+                            {product.main_image ? (
                               <img
                                 src={product.main_image}
                                 alt={product.name}
-                                className="w-10 h-10 rounded object-cover"
+                                className="w-14 h-14 sm:w-16 sm:h-16 rounded-lg object-cover border border-border shadow-sm flex-shrink-0"
                               />
+                            ) : (
+                              <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-lg bg-surface-alt border border-border flex items-center justify-center flex-shrink-0">
+                                <span className="text-xs text-muted-foreground">S/ Img</span>
+                              </div>
                             )}
-                            <div className="min-w-0">
-                              <p className="font-medium text-foreground truncate">{product.name}</p>
+                            <div className="min-w-0 pr-2">
+                              <p className="font-bold text-foreground text-sm sm:text-base leading-snug mb-1">{product.name}</p>
                               <p className="text-xs text-muted-foreground">
                                 {product.source === 'manual' ? 'Manual' : product.nuvemshop_product_id ? `NS: ${product.nuvemshop_product_id}` : ''}
                               </p>
                             </div>
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-sm text-foreground font-medium">
+                        <td className="px-4 py-4 text-foreground font-black text-sm sm:text-base whitespace-nowrap">
                           R$ {product.price.toFixed(2)}
                           {product.compare_at_price && (
-                            <div className="text-xs text-muted-foreground line-through">
+                            <div className="text-xs text-muted-foreground font-medium line-through mt-0.5">
                               R$ {product.compare_at_price.toFixed(2)}
                             </div>
                           )}
                         </td>
+                        <td className="px-4 py-4">
+                          <select
+                            value={product.category_id || ''}
+                            onChange={(e) => handleUpdateCategory(product.id, e.target.value)}
+                            className="bg-amber-50 text-amber-800 border-amber-200 hover:border-amber-300 hover:bg-amber-100 rounded-lg px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-semibold transition-all cursor-pointer outline-none focus:ring-2 focus:ring-amber-500/30 max-w-[140px] sm:max-w-full truncate"
+                          >
+                            <option value="">Sem categoria</option>
+                            {categories.map((c) => (
+                              <option key={c.id} value={c.id}>{c.name}</option>
+                            ))}
+                          </select>
+                        </td>
                         <td className="px-4 py-3 text-sm text-center">
                           <button
                             onClick={() => handleToggleActive(product)}
-                            className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold transition-all ${
-                              product.is_active
-                                ? 'bg-green-100 text-green-700 hover:bg-green-200'
-                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                            }`}
+                            className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold transition-all ${product.is_active
+                              ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                              }`}
                           >
                             {product.is_active ? 'Ativo' : 'Pausado'}
                           </button>
+                          {product.is_highlight && (
+                            <span className="inline-block mt-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-[10px] font-bold">
+                              Destaque
+                            </span>
+                          )}
                         </td>
                         <td className="px-4 py-3 text-sm text-right space-x-2">
                           <button
@@ -373,13 +487,27 @@ export default function AdminCatalogo() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-foreground mb-1">Categoria de Destaque (Home)</label>
+                <label className="block text-sm font-medium text-foreground mb-1">Categoria</label>
+                <select
+                  value={createForm.category_id || ''}
+                  onChange={(e) => setCreateForm({ ...createForm, category_id: e.target.value || null })}
+                  className="w-full px-3 py-2 rounded-lg border border-border bg-white focus:outline-none focus:ring-2 focus:ring-gold"
+                >
+                  <option value="">Sem categoria</option>
+                  {categories.map(c => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1">Classificacao de Destaque</label>
                 <select
                   value={createForm.category_type || ''}
                   onChange={(e) => setCreateForm({ ...createForm, category_type: e.target.value || null })}
                   className="w-full px-3 py-2 rounded-lg border border-border bg-white focus:outline-none focus:ring-2 focus:ring-gold"
                 >
-                  <option value="">Sem classificação</option>
+                  <option value="">Sem classificacao</option>
                   <option value="alto_giro">Alto Giro</option>
                   <option value="maior_margem">Maior Margem</option>
                   <option value="recompra_alta">Recompra Alta</option>
@@ -485,13 +613,27 @@ export default function AdminCatalogo() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-foreground mb-1">Categoria de Destaque (Home)</label>
+                <label className="block text-sm font-medium text-foreground mb-1">Categoria</label>
                 <select
-                  value={editForm.category_type || ''}
-                  onChange={(e) => setEditForm({ ...editForm, category_type: e.target.value || null })}
+                  value={editForm.category_id || ''}
+                  onChange={(e) => setEditForm({ ...editForm, category_id: e.target.value || null })}
                   className="w-full px-3 py-2 rounded-lg border border-border bg-white focus:outline-none focus:ring-2 focus:ring-gold"
                 >
-                  <option value="">Sem classificação</option>
+                  <option value="">Sem categoria</option>
+                  {categories.map(c => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1">Classificacao de Destaque</label>
+                <select
+                  value={editForm.category_type || ''}
+                  onChange={(e) => setEditForm({ ...editForm, category_type: e.target.value as any || null })}
+                  className="w-full px-3 py-2 rounded-lg border border-border bg-white focus:outline-none focus:ring-2 focus:ring-gold"
+                >
+                  <option value="">Sem classificacao</option>
                   <option value="alto_giro">Alto Giro</option>
                   <option value="maior_margem">Maior Margem</option>
                   <option value="recompra_alta">Recompra Alta</option>

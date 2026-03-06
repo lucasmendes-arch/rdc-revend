@@ -92,7 +92,8 @@ export default function AdminEstoque() {
             />
           </div>
           <p className="text-xs text-muted-foreground mt-2">
-            A planilha deve ter as colunas: nome_produto, sku, quantidade, quantidade_minima
+            Colunas: <strong>nome_produto</strong> (obrig.), sku, quantidade, quantidade_minima, preco, preco_revenda, foto, categoria.
+            Produtos novos na planilha serao criados automaticamente (precisam ter preco).
           </p>
         </div>
 

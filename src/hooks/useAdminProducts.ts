@@ -17,6 +17,9 @@ export interface CatalogProduct {
   updated_at?: string
   category_type?: 'alto_giro' | 'maior_margem' | 'recompra_alta' | null
   is_professional?: boolean
+  is_highlight?: boolean
+  category_id?: string | null
+  category?: { id: string; name: string } | null
 }
 
 export function useAdminProducts() {
@@ -25,11 +28,15 @@ export function useAdminProducts() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('catalog_products')
-        .select('id, nuvemshop_product_id, name, description_html, price, compare_at_price, main_image, is_active, source, created_at, updated_at, category_type, is_professional')
+        .select('id, nuvemshop_product_id, name, description_html, price, compare_at_price, main_image, is_active, source, created_at, updated_at, category_type, is_professional, is_highlight, category_id, categories(id, name)')
         .order('updated_at', { ascending: false })
 
       if (error) throw error
-      return (data || []) as CatalogProduct[]
+      return (data || []).map((p: any) => ({
+        ...p,
+        category: p.categories ?? null,
+        categories: undefined,
+      })) as CatalogProduct[]
     },
     staleTime: 1 * 60 * 1000, // 1 minuto
   })
@@ -39,7 +46,7 @@ export function useUpdateProduct() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async ({ id, ...updates }: { id: string; [key: string]: any }) => {
+    mutationFn: async ({ id, ...updates }: { id: string;[key: string]: any }) => {
       const { data, error } = await supabase
         .from('catalog_products')
         .update({
@@ -70,6 +77,8 @@ export function useCreateProduct() {
       is_active: boolean
       category_type?: 'alto_giro' | 'maior_margem' | 'recompra_alta' | null
       is_professional?: boolean
+      is_highlight?: boolean
+      category_id?: string | null
     }) => {
       const { data, error } = await supabase
         .from('catalog_products')

@@ -2,8 +2,9 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { CartProvider } from "@/contexts/CartContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { AdminRoute } from "@/components/AdminRoute";
@@ -19,11 +20,14 @@ import AdminPedidos from "./pages/admin/Pedidos";
 import AdminClientes from "./pages/admin/Clientes";
 import AdminEstoque from "./pages/admin/Estoque";
 import AdminUsuarios from "./pages/admin/Usuarios";
+import AdminCategorias from "./pages/admin/Categorias";
+import AdminUpsell from "./pages/admin/Upsell";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
 const App = () => (
+  <ErrorBoundary>
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
@@ -41,11 +45,14 @@ const App = () => (
                 <Route path="/pedido/sucesso/:id" element={<PedidoSucesso />} />
                 <Route path="/meus-pedidos" element={<MeusPedidos />} />
                 <Route element={<AdminRoute />}>
+                  <Route path="/admin" element={<Navigate to="/admin/catalogo" replace />} />
                   <Route path="/admin/catalogo" element={<AdminCatalogo />} />
                   <Route path="/admin/pedidos" element={<AdminPedidos />} />
                   <Route path="/admin/clientes" element={<AdminClientes />} />
                   <Route path="/admin/estoque" element={<AdminEstoque />} />
                   <Route path="/admin/usuarios" element={<AdminUsuarios />} />
+                  <Route path="/admin/categorias" element={<AdminCategorias />} />
+                  <Route path="/admin/upsell" element={<AdminUpsell />} />
                 </Route>
               </Route>
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
@@ -56,6 +63,7 @@ const App = () => (
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
+  </ErrorBoundary>
 );
 
 export default App;

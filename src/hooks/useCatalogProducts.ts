@@ -11,6 +11,9 @@ export interface PublicProduct {
   is_active: boolean
   is_professional: boolean
   category_type: 'alto_giro' | 'maior_margem' | 'recompra_alta' | null
+  is_highlight: boolean
+  category_id: string | null
+  category: { id: string; name: string; slug: string; sort_order: number } | null
 }
 
 export function useCatalogProducts() {
@@ -19,15 +22,20 @@ export function useCatalogProducts() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('catalog_products')
-        .select('id, name, main_image, price, compare_at_price, description_html, is_active, category_type, is_professional')
+        .select('id, name, main_image, price, compare_at_price, description_html, is_active, category_type, is_professional, is_highlight, category_id, categories(id, name, slug, sort_order)')
         .eq('is_active', true)
         .order('updated_at', { ascending: false })
 
       if (error) {
         throw error
       }
-      return (data || []) as PublicProduct[]
+      // Supabase returns the join as `categories` (table name), remap to `category`
+      return (data || []).map((p: any) => ({
+        ...p,
+        category: p.categories ?? null,
+        categories: undefined,
+      })) as PublicProduct[]
     },
-    staleTime: 5 * 60 * 1000, // 5 minutos
+    staleTime: 5 * 60 * 1000,
   })
 }

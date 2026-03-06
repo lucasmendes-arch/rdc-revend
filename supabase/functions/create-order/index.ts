@@ -1,9 +1,19 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+const ALLOWED_ORIGINS = [
+  'https://rdc-revend.vercel.app',
+  'http://localhost:8080',
+  'http://localhost:5173',
+]
+
+function getCorsHeaders(req: Request) {
+  const origin = req.headers.get('Origin') || ''
+  const allowedOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0]
+  return {
+    'Access-Control-Allow-Origin': allowedOrigin,
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  }
 }
 
 const MIN_ORDER_TOTAL = 500
@@ -23,7 +33,7 @@ interface OrderRequest {
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
+    return new Response('ok', { headers: getCorsHeaders(req) })
   }
 
   try {
@@ -32,7 +42,7 @@ serve(async (req) => {
     if (!authHeader) {
       return new Response(
         JSON.stringify({ error: 'Token de autenticação ausente' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 401, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
       )
     }
 
@@ -54,7 +64,7 @@ serve(async (req) => {
     if (authError || !user) {
       return new Response(
         JSON.stringify({ error: 'Usuário não autenticado' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 401, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
       )
     }
 
@@ -64,14 +74,14 @@ serve(async (req) => {
     if (!body.items || body.items.length === 0) {
       return new Response(
         JSON.stringify({ error: 'Carrinho vazio' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 400, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
       )
     }
 
     if (!body.customer_name?.trim() || !body.customer_whatsapp?.trim() || !body.customer_email?.trim()) {
       return new Response(
         JSON.stringify({ error: 'Nome, WhatsApp e email são obrigatórios' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 400, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
       )
     }
 
@@ -80,7 +90,7 @@ serve(async (req) => {
       if (!item.product_id || !item.qty || item.qty < 1 || !Number.isInteger(item.qty)) {
         return new Response(
           JSON.stringify({ error: `Quantidade inválida para produto ${item.product_id}` }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          { status: 400, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
         )
       }
     }
@@ -96,7 +106,7 @@ serve(async (req) => {
     if (productsError || !products) {
       return new Response(
         JSON.stringify({ error: 'Erro ao buscar produtos' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 500, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
       )
     }
 
@@ -108,13 +118,13 @@ serve(async (req) => {
       if (!product) {
         return new Response(
           JSON.stringify({ error: `Produto não encontrado: ${item.product_id}` }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          { status: 400, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
         )
       }
       if (!product.is_active) {
         return new Response(
           JSON.stringify({ error: `Produto indisponível: ${product.name}` }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          { status: 400, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
         )
       }
     }
@@ -146,7 +156,7 @@ serve(async (req) => {
       console.error('Inventory check error:', inventoryError)
       return new Response(
         JSON.stringify({ error: 'Erro ao verificar estoque' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 500, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
       )
     }
 
@@ -168,7 +178,7 @@ serve(async (req) => {
           error: 'Estoque insuficiente',
           details: outOfStock,
         }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 400, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
       )
     }
 
@@ -178,7 +188,7 @@ serve(async (req) => {
         JSON.stringify({
           error: `Pedido mínimo: R$ ${MIN_ORDER_TOTAL}. Seu total: R$ ${subtotal.toFixed(2)}`,
         }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 400, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
       )
     }
 
@@ -203,7 +213,7 @@ serve(async (req) => {
       console.error('Order creation error:', orderError)
       return new Response(
         JSON.stringify({ error: 'Erro ao criar pedido' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 500, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
       )
     }
 
@@ -223,7 +233,7 @@ serve(async (req) => {
       await serviceClient.from('orders').delete().eq('id', order.id)
       return new Response(
         JSON.stringify({ error: 'Erro ao criar itens do pedido' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 500, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
       )
     }
 
@@ -249,11 +259,72 @@ serve(async (req) => {
       await serviceClient.from('orders').delete().eq('id', order.id)
       return new Response(
         JSON.stringify({ error: 'Erro ao atualizar estoque. Pedido cancelado, tente novamente.' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 500, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
       )
     }
 
-    // 10. Fire-and-forget WhatsApp notification
+    // 10. Create AbacatePay billing (payment link)
+    let paymentUrl: string | null = null
+    let billingId: string | null = null
+
+    try {
+      const abacateKey = Deno.env.get('ABACATEPAY_API_KEY')
+
+      if (abacateKey) {
+        const origin = req.headers.get('Origin') || 'https://rdc-revend.vercel.app'
+
+        const billingPayload = {
+          frequency: 'ONE_TIME',
+          methods: body.payment_method === 'credit' ? ['CARD'] : ['PIX'],
+          products: orderItems.map(item => ({
+            externalId: item.product_id,
+            name: item.product_name_snapshot,
+            quantity: item.qty,
+            price: Math.round(item.unit_price_snapshot * 100), // centavos
+          })),
+          returnUrl: `${origin}/catalogo`,
+          completionUrl: `${origin}/pedido/sucesso/${order.id}`,
+          customer: {
+            name: body.customer_name.trim(),
+            cellphone: body.customer_whatsapp.trim(),
+            email: body.customer_email.trim(),
+            taxId: (body.customer_document || '').replace(/\D/g, ''),
+          },
+          metadata: {
+            order_id: order.id,
+          },
+        }
+
+        const abacateRes = await fetch('https://api.abacatepay.com/v1/billing/create', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${abacateKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(billingPayload),
+        })
+
+        const abacateData = await abacateRes.json()
+
+        if (abacateRes.ok && abacateData?.data?.url) {
+          paymentUrl = abacateData.data.url
+          billingId = abacateData.data.id
+
+          // Save billing ID on the order for webhook matching
+          await serviceClient
+            .from('orders')
+            .update({ payment_id: billingId, status: 'aguardando_pagamento' })
+            .eq('id', order.id)
+        } else {
+          console.error('AbacatePay billing error:', JSON.stringify(abacateData))
+        }
+      }
+    } catch (err) {
+      console.error('AbacatePay error:', err)
+      // Non-blocking — order is created, payment link just won't be available
+    }
+
+    // 11. Fire-and-forget WhatsApp notification
     try {
       const whatsappUrl = Deno.env.get('UAZAPI_URL')
       const whatsappToken = Deno.env.get('UAZAPI_TOKEN')
@@ -273,6 +344,7 @@ serve(async (req) => {
           itemsList,
           '',
           `💰 *Total: R$ ${subtotal.toFixed(2)}*`,
+          paymentUrl ? `💳 Link: ${paymentUrl}` : '',
           body.notes ? `📝 ${body.notes}` : '',
         ].filter(Boolean).join('\n')
 
@@ -286,16 +358,16 @@ serve(async (req) => {
       console.warn('WhatsApp notification error:', err)
     }
 
-    // 11. Return success
+    // 12. Return success with payment URL
     return new Response(
-      JSON.stringify({ order_id: order.id, total: subtotal }),
-      { status: 201, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      JSON.stringify({ order_id: order.id, total: subtotal, payment_url: paymentUrl }),
+      { status: 201, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
     )
   } catch (err) {
     console.error('Unexpected error:', err)
     return new Response(
       JSON.stringify({ error: 'Erro interno do servidor' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { status: 500, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
     )
   }
 })

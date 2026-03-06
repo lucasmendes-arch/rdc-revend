@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import DOMPurify from "dompurify";
 import { ArrowRight, Check, Crown, Filter, LogOut, Search, ShoppingCart, Tag, Trash2, TrendingUp, X, PackageSearch, ShieldCheck } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import PackageCards from "@/components/catalog/PackageCards";
@@ -10,6 +11,7 @@ import logo from "@/assets/logo-rei-dos-cachos.png";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCatalogProducts } from "@/hooks/useCatalogProducts";
+import { useCategories, Category } from "@/hooks/useCategories";
 import { useCart } from "@/contexts/CartContext";
 import { useTrackPageView, useTrackAddToCart } from "@/hooks/useSessionTracking";
 
@@ -19,29 +21,9 @@ import { useTrackPageView, useTrackAddToCart } from "@/hooks/useSessionTracking"
 
 type SortOption = 'name_asc' | 'name_desc' | 'price_asc' | 'price_desc' | 'profit_desc';
 
-const CATEGORIES = ['Kits', 'Ativador', 'Máscara', 'Shampoo', 'Finalizador', 'Tonalizante'] as const;
-type Category = typeof CATEGORIES[number];
-
-const CATEGORY_KEYWORDS: Record<Category, string[]> = {
-  'Kits': ['kit'],
-  'Ativador': ['ativador', 'ativa'],
-  'Máscara': ['máscara', 'mascara', 'mask', 'hidratação', 'hidratacao'],
-  'Shampoo': ['shampoo', 'xampu'],
-  'Finalizador': ['finalizador', 'leave-in', 'leave in', 'sérum', 'serum', 'óleo', 'oleo'],
-  'Tonalizante': ['tonalizante', 'tônico', 'tonico', 'matiz'],
-};
-
 // ============================================================================
 // HELPERS
 // ============================================================================
-
-const getCategory = (name: string): Category | null => {
-  const lower = name.toLowerCase();
-  for (const cat of CATEGORIES) {
-    if (CATEGORY_KEYWORDS[cat].some(kw => lower.includes(kw))) return cat;
-  }
-  return null;
-};
 
 // TODO: Remove fallback when all products have compare_at_price populated in DB
 const getSuggestedPrice = (price: number, compareTo: number | null): number => {
@@ -70,6 +52,7 @@ const FilterChip = ({ label, onRemove }: FilterChipProps) => (
 const Catalogo = () => {
   const navigate = useNavigate();
   const { data: products = [], isLoading, error } = useCatalogProducts();
+  const { data: dbCategories = [] } = useCategories();
   const { items: cart, addItem, updateQty, removeItem, clearCart, total: cartTotal, count: cartCount } = useCart();
   const { role } = useAuth();
   useTrackPageView('Catálogo');
@@ -86,7 +69,7 @@ const Catalogo = () => {
   const [filterMinPrice, setFilterMinPrice] = useState<number | ''>('');
   const [filterMaxPrice, setFilterMaxPrice] = useState<number | ''>('');
   const [filterOnlySuggested, setFilterOnlySuggested] = useState(false);
-  const [filterCategories, setFilterCategories] = useState<Category[]>([]);
+  const [filterCategories, setFilterCategories] = useState<string[]>([]);
   const [filterProfessional, setFilterProfessional] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
 
@@ -111,9 +94,9 @@ const Catalogo = () => {
   // FILTERS & SORT
   // ========================================================================
 
-  const toggleCategory = (cat: Category) =>
+  const toggleCategory = (catId: string) =>
     setFilterCategories(prev =>
-      prev.includes(cat) ? prev.filter(c => c !== cat) : [...prev, cat]
+      prev.includes(catId) ? prev.filter(c => c !== catId) : [...prev, catId]
     );
 
   const clearAllFilters = () => {
@@ -144,8 +127,7 @@ const Catalogo = () => {
       if (filterMinPrice !== '' && p.price < filterMinPrice) return false;
       if (filterMaxPrice !== '' && p.price > filterMaxPrice) return false;
       if (filterCategories.length > 0) {
-        const cat = getCategory(p.name);
-        if (cat === null || !filterCategories.includes(cat)) return false;
+        if (!p.category_id || !filterCategories.includes(p.category_id)) return false;
       }
       return true;
     });
@@ -237,7 +219,7 @@ const Catalogo = () => {
     }
 
     // Track add to cart
-    trackAddToCart(cartCount + qty);
+    trackAddToCart(cartCount + qty, product.name, product.price * qty);
 
     // Visual feedback
     setAddedId(product.id);
@@ -260,7 +242,7 @@ const Catalogo = () => {
   // Handle logout
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    navigate("/", { replace: true });
+    navigate("/login", { replace: true });
   };
 
   // ========================================================================
@@ -274,9 +256,9 @@ const Catalogo = () => {
         <div className="container mx-auto px-3 sm:px-4 lg:px-6 py-2 sm:h-16 flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4">
 
           <div className="flex items-center justify-between w-full sm:w-auto">
-            <Link to="/">
+            <div className="select-none pointer-events-none">
               <img src={logo} alt="Rei dos Cachos" className="h-8 sm:h-12 w-auto flex-shrink-0 brightness-0 invert" />
-            </Link>
+            </div>
 
             {/* Mobile Actions in Header Row */}
             <div className="flex items-center gap-1.5 sm:hidden text-white">
@@ -437,15 +419,15 @@ const Catalogo = () => {
             <div className="mb-5 pb-5 border-b border-border">
               <label className="text-xs font-semibold text-muted-foreground mb-2 block">Categorias</label>
               <div className="space-y-1.5">
-                {CATEGORIES.map(cat => (
-                  <label key={cat} className="flex items-center gap-2 cursor-pointer">
+                {dbCategories.map(cat => (
+                  <label key={cat.id} className="flex items-center gap-2 cursor-pointer">
                     <input
                       type="checkbox"
-                      checked={filterCategories.includes(cat)}
-                      onChange={() => toggleCategory(cat)}
+                      checked={filterCategories.includes(cat.id)}
+                      onChange={() => toggleCategory(cat.id)}
                       className="w-4 h-4 rounded border-border text-gold focus:ring-gold"
                     />
-                    <span className="text-sm text-foreground">{cat}</span>
+                    <span className="text-sm text-foreground">{cat.name}</span>
                   </label>
                 ))}
               </div>
@@ -495,7 +477,7 @@ const Catalogo = () => {
           <div className="pt-4 sm:hidden">
             <PromoBanner onClick={() => document.getElementById('kits-section')?.scrollIntoView({ behavior: 'smooth' })} />
             <CategoryBubbles
-              categories={CATEGORIES}
+              categories={dbCategories}
               activeCategories={filterCategories}
               onToggleCategory={toggleCategory}
             />
@@ -504,9 +486,10 @@ const Catalogo = () => {
             {!isLoading && !error && filtered.length > 0 && (
               <CompactProductCarousel
                 title="Destaques para você"
-                products={filtered.slice(0, 6)} // Show up to 6 highlighted products
+                products={products.filter(p => p.is_highlight)}
                 cartAddedId={addedId}
                 getQty={getQty}
+                setQty={setQty}
                 onAdd={handleAddItem}
                 onSelect={setSelectedProduct}
                 getSuggestedPrice={getSuggestedPrice}
@@ -533,7 +516,7 @@ const Catalogo = () => {
                     <div className="bg-amber-100 p-1 rounded">
                       <PackageSearch className="w-4 h-4 text-amber-600" />
                     </div>
-                    <h2 className="text-[14px] font-bold text-foreground">Kits Vantajosos</h2>
+                    <h2 className="text-[14px] font-bold text-foreground">Seleção dos Mais Vendidos</h2>
                   </div>
                 </div>
 
@@ -545,9 +528,9 @@ const Catalogo = () => {
 
             {/* All Products Title Mobile */}
             {!isLoading && !error && filtered.length > 0 && (
-              <div className="sm:hidden flex items-center gap-1.5 mb-4 mt-4">
-                <div className="w-1 h-4 bg-amber-500 rounded-full"></div>
-                <h2 className="text-[15px] font-bold text-foreground">Aproveite e leve também</h2>
+              <div className="flex items-center gap-1.5 mb-4 mt-8">
+                <div className="w-1 h-5 bg-amber-500 rounded-full"></div>
+                <h2 className="text-[16px] sm:text-lg font-bold text-foreground">Aproveite e leve também</h2>
               </div>
             )}
             {activeFiltersCount > 0 && (
@@ -567,9 +550,10 @@ const Catalogo = () => {
                 {filterProfessional && (
                   <FilterChip label="Uso Profissional" onRemove={() => setFilterProfessional(false)} />
                 )}
-                {filterCategories.map(cat => (
-                  <FilterChip key={cat} label={cat} onRemove={() => toggleCategory(cat)} />
-                ))}
+                {filterCategories.map(catId => {
+                  const cat = dbCategories.find(c => c.id === catId);
+                  return cat ? <FilterChip key={catId} label={cat.name} onRemove={() => toggleCategory(catId)} /> : null;
+                })}
                 <button
                   onClick={clearAllFilters}
                   className="text-[10px] sm:text-xs text-muted-foreground hover:text-red-500 underline ml-0.5 transition-colors"
@@ -598,169 +582,28 @@ const Catalogo = () => {
             {/* Products Grid */}
             {!isLoading && !error && (
               <>
-                {/* Mobile: continuous list card | Desktop: grid */}
-                <div className="bg-white rounded-xl border border-border sm:bg-transparent sm:border-0 sm:rounded-none">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-0 sm:gap-2.5">
-                    {filtered.map((product, idx) => {
-                      const suggested = getSuggestedPrice(product.price, product.compare_at_price);
-                      const profit = product.price > 0
-                        ? Math.round(((suggested - product.price) / product.price) * 100)
-                        : null;
+                {/* Category Carousels */}
+                <div className="flex flex-col gap-6 sm:gap-8 mb-8">
+                  {dbCategories.map(category => {
+                    const categoryProducts = filtered.filter(p => p.category_id === category.id);
 
-                      return (
-                        <div
-                          key={product.id}
-                          className={`group bg-white overflow-hidden transition-all duration-300 flex
-                          flex-row sm:flex-col
-                          ${idx < filtered.length - 1 ? 'border-b border-border sm:border-b-0' : ''}
-                          sm:rounded-xl sm:border sm:shadow-card sm:hover:shadow-card-hover sm:hover:border-gold-border sm:hover:-translate-y-0.5`}
-                        >
-                          {/* Image — thumbnail on mobile, full on desktop */}
-                          <div
-                            className="relative bg-surface-alt overflow-hidden flex-shrink-0 flex items-center justify-center cursor-pointer
-                            w-20 h-20 m-2 rounded-lg
-                            sm:w-full sm:h-44 lg:h-48 sm:m-0 sm:rounded-none"
-                            onClick={() => setSelectedProduct(product)}
-                          >
-                            {product.main_image ? (
-                              <img
-                                src={product.main_image}
-                                alt={product.name}
-                                className="w-full h-full object-contain transition-transform duration-500 group-hover:scale-105"
-                              />
-                            ) : (
-                              <ShoppingCart className="w-8 sm:w-9 h-8 sm:h-9 text-muted-foreground/25" />
-                            )}
-                          </div>
+                    if (categoryProducts.length === 0) return null;
 
-                          {/* Body */}
-                          <div className="flex-1 p-2 sm:p-3 lg:p-4 flex flex-col min-w-0">
-                            <h3 className="font-semibold text-foreground text-xs sm:text-sm mb-1 leading-tight line-clamp-2">
-                              {product.name}
-                            </h3>
-
-                            {product.is_professional && (
-                              <span className="inline-flex items-center gap-1 self-start px-2 py-0.5 rounded-full text-[9px] sm:text-[10px] font-semibold bg-purple-100 text-purple-700 border border-purple-200 mb-1">
-                                Uso Profissional
-                              </span>
-                            )}
-
-                            {product.is_professional ? (
-                              <div className="mb-1 text-[9px] sm:text-[10px]">
-                                <div className="text-muted-foreground">Preço</div>
-                                <div className="text-xs sm:text-sm font-bold text-foreground">R$ {product.price.toFixed(2)}</div>
-                              </div>
-                            ) : (
-                              <>
-                                {/* Desktop: 2 columns pricing */}
-                                <div className="hidden sm:grid grid-cols-2 gap-2 mb-1.5 text-[10px]">
-                                  <div>
-                                    <div className="text-muted-foreground">Custo</div>
-                                    <div className="text-sm font-bold text-foreground">R$ {product.price.toFixed(2)}</div>
-                                  </div>
-                                  <div>
-                                    <div className="text-muted-foreground">Preço de Venda (Sugerido)</div>
-                                    <div className="text-sm font-bold gradient-gold-text">R$ {suggested.toFixed(2)}</div>
-                                  </div>
-                                </div>
-
-                                {/* Mobile: inline cost + profit badge */}
-                                <div className="sm:hidden text-[10px] mb-1">
-                                  <div className="flex items-center gap-1.5">
-                                    <span className="text-muted-foreground">Custo</span>
-                                    <span className="text-xs font-bold text-foreground">R$ {product.price.toFixed(2)}</span>
-                                    {profit && (
-                                      <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-green-50 border border-green-200 text-[9px] font-semibold text-green-700">
-                                        +{profit}%
-                                      </span>
-                                    )}
-                                  </div>
-                                  <div className="text-muted-foreground mt-0.5">
-                                    Preço de Venda (Sugerido) <span className="text-xs font-bold gradient-gold-text">R$ {suggested.toFixed(2)}</span>
-                                  </div>
-                                </div>
-
-                                {/* Desktop: profit line */}
-                                {profit && (
-                                  <div className="hidden sm:flex items-center gap-0.5 mb-1.5 pb-1 border-b border-border">
-                                    <TrendingUp className="w-2.5 h-2.5 text-green-600" />
-                                    <span className="text-[9px] font-semibold text-green-600">Lucro +{profit}%</span>
-                                  </div>
-                                )}
-                              </>
-                            )}
-
-                            {/* Spacer — desktop only */}
-                            <div className="hidden sm:block flex-1 min-h-1" />
-
-                            {/* Quantity + Add — compact row on mobile */}
-                            <div className="flex items-center gap-1.5 mt-auto sm:flex-col sm:items-stretch sm:gap-1.5">
-                              <div className="flex items-center gap-0.5">
-                                <button
-                                  onClick={() => setQty(product.id, getQty(product.id) - 1)}
-                                  disabled={getQty(product.id) <= 1}
-                                  className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded border border-border bg-white text-muted-foreground hover:bg-surface-alt transition-colors disabled:opacity-40 disabled:cursor-not-allowed text-xs font-medium"
-                                  aria-label="Diminuir quantidade"
-                                >
-                                  −
-                                </button>
-                                <input
-                                  type="text"
-                                  inputMode="numeric"
-                                  aria-label="Quantidade"
-                                  value={getQty(product.id)}
-                                  onChange={(e) => {
-                                    const v = parseInt(e.target.value, 10);
-                                    if (!isNaN(v)) setQty(product.id, v);
-                                  }}
-                                  onBlur={(e) => {
-                                    const v = parseInt(e.target.value, 10);
-                                    if (isNaN(v) || v < 1) setQty(product.id, 1);
-                                  }}
-                                  className="w-8 h-7 sm:w-8 sm:h-8 text-center text-[11px] font-semibold text-foreground border border-border rounded bg-white focus:outline-none focus:ring-1 focus:ring-gold"
-                                />
-                                <button
-                                  onClick={() => setQty(product.id, getQty(product.id) + 1)}
-                                  className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded-lg border border-border bg-white text-muted-foreground hover:bg-surface-alt transition-colors text-xs font-medium"
-                                  aria-label="Aumentar quantidade"
-                                >
-                                  +
-                                </button>
-                              </div>
-
-                              <button
-                                onClick={() => handleAddItem(product)}
-                                className={`flex-1 sm:w-full flex items-center justify-center gap-1 py-1.5 sm:py-2 rounded-lg text-[10px] sm:text-xs font-semibold text-white transition-all uppercase tracking-wide ${addedId === product.id
-                                  ? 'bg-green-600'
-                                  : 'btn-gold'
-                                  }`}
-                              >
-                                {addedId === product.id ? (
-                                  <>
-                                    <Check className="w-3 h-3" />
-                                    <span className="text-[10px]">OK!</span>
-                                  </>
-                                ) : (
-                                  <>
-                                    <ShoppingCart className="w-3 h-3" />
-                                    <span className="sm:hidden text-[10px]">ADICIONAR</span>
-                                    <span className="hidden sm:inline">ADICIONAR AO PEDIDO</span>
-                                  </>
-                                )}
-                              </button>
-                            </div>
-
-                            <button
-                              onClick={() => setSelectedProduct(product)}
-                              className="hidden sm:block w-full px-2 py-1 rounded text-xs font-medium text-gold-text hover:underline transition-colors mt-1"
-                            >
-                              Ver detalhes →
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
+                    return (
+                      <div key={category.id} className="w-full">
+                        <CompactProductCarousel
+                          title={category.name}
+                          products={categoryProducts}
+                          cartAddedId={addedId}
+                          getQty={getQty}
+                          setQty={setQty}
+                          onAdd={handleAddItem}
+                          onSelect={setSelectedProduct}
+                          getSuggestedPrice={getSuggestedPrice}
+                        />
+                      </div>
+                    );
+                  })}
                 </div>
 
                 {filtered.length === 0 && products.length > 0 && (
@@ -839,15 +682,15 @@ const Catalogo = () => {
                 <div>
                   <label className="text-xs font-semibold text-muted-foreground mb-2 block">Categorias</label>
                   <div className="space-y-1.5">
-                    {CATEGORIES.map(cat => (
-                      <label key={cat} className="flex items-center gap-2 cursor-pointer">
+                    {dbCategories.map(cat => (
+                      <label key={cat.id} className="flex items-center gap-2 cursor-pointer">
                         <input
                           type="checkbox"
-                          checked={filterCategories.includes(cat)}
-                          onChange={() => toggleCategory(cat)}
+                          checked={filterCategories.includes(cat.id)}
+                          onChange={() => toggleCategory(cat.id)}
                           className="w-4 h-4 rounded border-border text-gold focus:ring-gold"
                         />
-                        <span className="text-sm text-foreground">{cat}</span>
+                        <span className="text-sm text-foreground">{cat.name}</span>
                       </label>
                     ))}
                   </div>
@@ -919,6 +762,7 @@ const Catalogo = () => {
                   <img
                     src={selectedProduct.main_image}
                     alt={selectedProduct.name}
+                    loading="lazy"
                     className="w-full h-full object-contain"
                   />
                 </div>
@@ -955,7 +799,7 @@ const Catalogo = () => {
                     <div className="text-xs sm:text-sm text-muted-foreground prose prose-sm max-w-none">
                       <div
                         dangerouslySetInnerHTML={{
-                          __html: renderDescription(selectedProduct.description_html),
+                          __html: DOMPurify.sanitize(renderDescription(selectedProduct.description_html)),
                         }}
                       />
                     </div>

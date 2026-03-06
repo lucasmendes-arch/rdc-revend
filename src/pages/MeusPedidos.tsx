@@ -58,10 +58,14 @@ const MeusPedidos = () => {
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error("Erro Supabase MeusPedidos:", error);
+        throw new Error(error.message || 'Erro ao buscar no Supabase');
+      }
       return (data || []) as Order[];
     },
     staleTime: 2 * 60 * 1000, // 2 minutes
+    retry: false, // Don't retry, show error immediately
   });
 
   const toggleExpanded = (id: string) => {

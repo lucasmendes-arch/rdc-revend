@@ -74,16 +74,9 @@ const Login = () => {
       {/* Header */}
       <header className="bg-white border-b border-border px-4 sm:px-6 h-16 flex items-center">
         <div className="container mx-auto flex items-center justify-between">
-          <Link to="/">
+          <div className="select-none pointer-events-none">
             <img src={logo} alt="Rei dos Cachos" className="h-12 w-auto" />
-          </Link>
-          <Link
-            to="/"
-            className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Voltar ao início
-          </Link>
+          </div>
         </div>
       </header>
 
