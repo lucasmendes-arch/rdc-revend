@@ -66,9 +66,15 @@ export default function CompactProductCarousel({
                                 </h3>
 
                                 <div className="mt-auto">
-                                    <div className="text-[10px] sm:text-xs md:text-sm lg:text-[15px] text-green-700 font-bold mb-0.5 sm:mb-1">
-                                        Revenda: R$ {suggested.toFixed(2)}
-                                    </div>
+                                    {product.is_professional ? (
+                                        <div className="text-[10px] sm:text-xs md:text-sm lg:text-[15px] font-bold mb-0.5 sm:mb-1 opacity-0 pointer-events-none" aria-hidden="true">
+                                            Revenda: -
+                                        </div>
+                                    ) : (
+                                        <div className="text-[10px] sm:text-xs md:text-sm lg:text-[15px] text-green-700 font-bold mb-0.5 sm:mb-1">
+                                            Revenda: R$ {suggested.toFixed(2)}
+                                        </div>
+                                    )}
                                     <div className="text-sm sm:text-base md:text-[17px] lg:text-[18px] font-bold text-foreground mb-2 sm:mb-3">
                                         R$ {product.price.toFixed(2)}
                                     </div>
