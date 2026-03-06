@@ -1,7 +1,8 @@
-import { useState } from 'react'
-import { Edit2, Trash2, RefreshCw, ChevronLeft, ChevronRight, X, Plus, Filter } from 'lucide-react'
+import { useState, useRef } from 'react'
+import { Edit2, Trash2, RefreshCw, ChevronLeft, ChevronRight, X, Plus, Filter, Upload, ImageIcon } from 'lucide-react'
 import { useAdminProducts, useUpdateProduct, useDeleteProduct, useCreateProduct, useNuvemshopSync, CatalogProduct, SyncResult } from '@/hooks/useAdminProducts'
 import { useCategories } from '@/hooks/useCategories'
+import { useImageUpload } from '@/hooks/useImageUpload'
 import AdminLayout from '@/components/admin/AdminLayout'
 
 export default function AdminCatalogo() {
@@ -33,6 +34,9 @@ export default function AdminCatalogo() {
   const [currentPage, setCurrentPage] = useState(1)
   const [syncResult, setSyncResult] = useState<SyncResult | null>(null)
   const [showSyncResult, setShowSyncResult] = useState(false)
+  const { upload, uploading } = useImageUpload()
+  const createFileRef = useRef<HTMLInputElement>(null)
+  const editFileRef = useRef<HTMLInputElement>(null)
 
   const itemsPerPage = 20
   const filteredProducts = products
@@ -452,14 +456,50 @@ export default function AdminCatalogo() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-foreground mb-1">Imagem Principal (URL)</label>
-                <input
-                  type="text"
-                  value={createForm.main_image}
-                  onChange={(e) => setCreateForm({ ...createForm, main_image: e.target.value })}
-                  className="w-full px-3 py-2 rounded-lg border border-border bg-white focus:outline-none focus:ring-2 focus:ring-gold text-sm"
-                  placeholder="https://..."
-                />
+                <label className="block text-sm font-medium text-foreground mb-1">Imagem Principal</label>
+                <div className="space-y-2">
+                  {createForm.main_image && (
+                    <div className="relative w-24 h-24">
+                      <img src={createForm.main_image} alt="Preview" className="w-24 h-24 rounded-lg object-cover border border-border" />
+                      <button
+                        type="button"
+                        onClick={() => setCreateForm({ ...createForm, main_image: '' })}
+                        className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  )}
+                  <input
+                    ref={createFileRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/gif"
+                    className="hidden"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0]
+                      if (!file) return
+                      try {
+                        const url = await upload(file)
+                        setCreateForm({ ...createForm, main_image: url })
+                      } catch (err) {
+                        alert(`Erro no upload: ${err instanceof Error ? err.message : 'Desconhecido'}`)
+                      }
+                      e.target.value = ''
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => createFileRef.current?.click()}
+                    disabled={uploading}
+                    className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border bg-white hover:bg-surface-alt text-sm font-medium text-foreground transition-colors disabled:opacity-60"
+                  >
+                    {uploading ? (
+                      <><RefreshCw className="w-4 h-4 animate-spin" /> Enviando...</>
+                    ) : (
+                      <><Upload className="w-4 h-4" /> Enviar imagem</>
+                    )}
+                  </button>
+                </div>
               </div>
 
               <div>
@@ -578,14 +618,50 @@ export default function AdminCatalogo() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-foreground mb-1">Imagem Principal (URL)</label>
-                <input
-                  type="text"
-                  value={editForm.main_image || ''}
-                  onChange={(e) => setEditForm({ ...editForm, main_image: e.target.value })}
-                  className="w-full px-3 py-2 rounded-lg border border-border bg-white focus:outline-none focus:ring-2 focus:ring-gold text-sm"
-                  placeholder="https://..."
-                />
+                <label className="block text-sm font-medium text-foreground mb-1">Imagem Principal</label>
+                <div className="space-y-2">
+                  {editForm.main_image && (
+                    <div className="relative w-24 h-24">
+                      <img src={editForm.main_image} alt="Preview" className="w-24 h-24 rounded-lg object-cover border border-border" />
+                      <button
+                        type="button"
+                        onClick={() => setEditForm({ ...editForm, main_image: '' })}
+                        className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  )}
+                  <input
+                    ref={editFileRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/gif"
+                    className="hidden"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0]
+                      if (!file) return
+                      try {
+                        const url = await upload(file)
+                        setEditForm({ ...editForm, main_image: url })
+                      } catch (err) {
+                        alert(`Erro no upload: ${err instanceof Error ? err.message : 'Desconhecido'}`)
+                      }
+                      e.target.value = ''
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => editFileRef.current?.click()}
+                    disabled={uploading}
+                    className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border bg-white hover:bg-surface-alt text-sm font-medium text-foreground transition-colors disabled:opacity-60"
+                  >
+                    {uploading ? (
+                      <><RefreshCw className="w-4 h-4 animate-spin" /> Enviando...</>
+                    ) : (
+                      <><Upload className="w-4 h-4" /> Enviar imagem</>
+                    )}
+                  </button>
+                </div>
               </div>
 
               <div>

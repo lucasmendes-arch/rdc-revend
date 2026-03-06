@@ -187,13 +187,7 @@ Deno.serve(async (req) => {
         if (row.foto && row.foto !== existing.main_image) {
           updates.main_image = row.foto;
         }
-        if (row.categoria) {
-          const catId = categoryMap.get(row.categoria.toLowerCase().trim());
-          if (catId && catId !== existing.category_id) {
-            updates.category_id = catId;
-          }
-        }
-
+        // Categoria NAO e atualizada pelo sync — gerenciada apenas pelo admin
         if (Object.keys(updates).length > 0) {
           updates.updated_at = new Date().toISOString();
           const { error } = await supabase
