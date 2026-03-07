@@ -5,7 +5,7 @@ import { useCart } from '@/contexts/CartContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useActiveUpsell } from '@/hooks/useUpsell';
 import { supabase } from '@/lib/supabase';
-import { useTrackPurchase, useTrackInitiateCheckout } from '@/hooks/useSessionTracking';
+import { useTrackInitiateCheckout } from '@/hooks/useSessionTracking';
 import { isValidDocument } from '@/utils/validateDocument';
 
 type Step = 1 | 2 | 3 | 4;
@@ -28,7 +28,6 @@ const Checkout = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { items: cart, total: cartTotal, clearCart, addItem, count: cartCount } = useCart();
-  const trackPurchase = useTrackPurchase();
   const trackInitiateCheckout = useTrackInitiateCheckout();
   const { data: upsellOffer } = useActiveUpsell();
 
@@ -257,7 +256,8 @@ const Checkout = () => {
         throw new Error(details ? `${fnData.error}:\n${details.join('\n')}` : fnData.error);
       }
 
-      trackPurchase(fnData.total || cartTotal);
+      // NOTE: 'comprou' status should only be set when payment is confirmed by the gateway
+      // The order starts as 'aguardando_pagamento' and will be updated by the webhook
       clearCart();
 
       // If AbacatePay returned a payment URL, redirect to it

@@ -90,6 +90,13 @@ export default function AdminFinanceiro() {
 
     const goalPct = monthlyGoal > 0 ? Math.min((monthRevenue / monthlyGoal) * 100, 100) : 0
 
+    // Daily target to reach goal
+    const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()
+    const todayDay = now.getDate()
+    const daysRemaining = Math.max(lastDayOfMonth - todayDay + 1, 1) // include today
+    const remainingGoal = Math.max(monthlyGoal - monthRevenue, 0)
+    const dailyTarget = remainingGoal / daysRemaining
+
     const pendingTotal = pendingOrders.reduce((sum, o) => sum + Number(o.total), 0)
 
     // Custom date filter
@@ -141,7 +148,7 @@ export default function AdminFinanceiro() {
       todayCount: todayOrders.length,
       weekCount: weekOrders.length,
       monthCount: monthOrders.length,
-      avgTicket, goalPct,
+      avgTicket, goalPct, dailyTarget, daysRemaining, remainingGoal,
       pendingOrders, pendingTotal,
       chartData, topProducts,
       customOrders, customRevenue,
@@ -255,6 +262,26 @@ export default function AdminFinanceiro() {
               <span>R$ {fmt(stats.monthRevenue)} faturado</span>
               <span className="font-bold text-foreground">{stats.goalPct.toFixed(1)}%</span>
             </div>
+
+            {/* Daily Target */}
+            {stats.remainingGoal > 0 && (
+              <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <TrendingUp className="w-4 h-4 text-amber-600 flex-shrink-0" />
+                  <span className="text-xs font-semibold text-amber-800">Meta diária para bater a meta:</span>
+                </div>
+                <div className="text-right">
+                  <span className="text-lg font-black text-amber-700">R$ {fmt(stats.dailyTarget)}</span>
+                  <span className="text-[10px] text-amber-600 ml-1">/ dia</span>
+                  <p className="text-[10px] text-amber-600">Faltam R$ {fmt(stats.remainingGoal)} em {stats.daysRemaining} dia{stats.daysRemaining !== 1 ? 's' : ''}</p>
+                </div>
+              </div>
+            )}
+            {stats.remainingGoal <= 0 && (
+              <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg flex items-center gap-2">
+                <span className="text-sm font-bold text-green-700">🎉 Meta do mês atingida! Parabéns!</span>
+              </div>
+            )}
           </div>
 
           {/* === CUSTOM DATE FILTER === */}

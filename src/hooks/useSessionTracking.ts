@@ -83,9 +83,10 @@ async function upsertSession(data: {
 }
 
 export function useTrackPageView(pageName?: string) {
-  const { user } = useAuth()
+  const { user, role } = useAuth()
 
   useEffect(() => {
+    if (role === 'admin') return // don't track admin sessions
     const sessionId = getSessionId()
 
     upsertSession({
@@ -100,14 +101,15 @@ export function useTrackPageView(pageName?: string) {
       content_name: pageName || window.location.pathname,
       content_type: 'product_group',
     })
-  }, [pageName, user])
+  }, [pageName, user, role])
 }
 
 export function useTrackProductView() {
-  const { user } = useAuth()
+  const { user, role } = useAuth()
 
   return useCallback(
     (productName: string) => {
+      if (role === 'admin') return
       const sessionId = getSessionId()
 
       upsertSession({
@@ -118,15 +120,16 @@ export function useTrackProductView() {
         last_page: productName,
       })
     },
-    [user]
+    [user, role]
   )
 }
 
 export function useTrackAddToCart() {
-  const { user } = useAuth()
+  const { user, role } = useAuth()
 
   return useCallback(
     (cartItemsCount: number, productName?: string, productPrice?: number) => {
+      if (role === 'admin') return
       const sessionId = getSessionId()
 
       upsertSession({
@@ -145,15 +148,16 @@ export function useTrackAddToCart() {
         num_items: cartItemsCount,
       })
     },
-    [user]
+    [user, role]
   )
 }
 
 export function useTrackInitiateCheckout() {
-  const { user } = useAuth()
+  const { user, role } = useAuth()
 
   return useCallback(
     (totalValue: number, numItems: number) => {
+      if (role === 'admin') return
       const sessionId = getSessionId()
 
       upsertSession({
@@ -171,15 +175,16 @@ export function useTrackInitiateCheckout() {
         num_items: numItems,
       })
     },
-    [user]
+    [user, role]
   )
 }
 
 export function useTrackPurchase() {
-  const { user } = useAuth()
+  const { user, role } = useAuth()
 
   return useCallback(
     (total: number) => {
+      if (role === 'admin') return
       const sessionId = getSessionId()
 
       upsertSession({
@@ -195,6 +200,6 @@ export function useTrackPurchase() {
         currency: 'BRL',
       })
     },
-    [user]
+    [user, role]
   )
 }
