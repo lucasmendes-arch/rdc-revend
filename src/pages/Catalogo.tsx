@@ -14,7 +14,6 @@ import { useCatalogProducts } from "@/hooks/useCatalogProducts";
 import { useCategories, Category } from "@/hooks/useCategories";
 import { useCart } from "@/contexts/CartContext";
 import { useTrackPageView, useTrackAddToCart, useTrackProductView } from "@/hooks/useSessionTracking";
-import { img } from "@/lib/imageOptimizer";
 
 // ============================================================================
 // TYPES & CONSTANTS
@@ -783,7 +782,7 @@ const Catalogo = () => {
               {selectedProduct.main_image && (
                 <div className="w-full h-40 sm:h-48 bg-surface-alt overflow-hidden">
                   <img
-                    src={img.detail(selectedProduct.main_image)}
+                    src={selectedProduct.main_image}
                     alt={selectedProduct.name}
                     loading="lazy"
                     className="w-full h-full object-contain"

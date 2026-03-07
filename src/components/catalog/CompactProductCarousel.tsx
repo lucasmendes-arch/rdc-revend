@@ -1,6 +1,5 @@
 import { Check, ShoppingCart } from 'lucide-react'
 import type { PublicProduct } from '@/hooks/useCatalogProducts'
-import { img } from '@/lib/imageOptimizer'
 
 interface CompactProductCarouselProps {
     title: string
@@ -72,7 +71,7 @@ export default function CompactProductCarousel({
                             >
                                 {product.main_image ? (
                                     <img
-                                        src={img.card(product.main_image)}
+                                        src={product.main_image}
                                         alt={product.name}
                                         loading="lazy"
                                         className="w-full h-full object-contain mix-blend-multiply transition-transform duration-500 group-hover:scale-105"
