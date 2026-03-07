@@ -78,69 +78,130 @@ export default function PackageCards({ products }: PackageCardsProps) {
         onScroll={handleScroll}
         className="flex gap-4 sm:gap-6 overflow-x-auto snap-x snap-mandatory scroll-smooth px-3 sm:px-4 lg:px-6 pt-4 pb-4 sm:pt-6 sm:pb-6 scrollbar-none w-full"
       >
-        {packageSelections.map(({ pkg, selected }) => (
-          <div
-            key={pkg.id}
-            className={`flex-shrink-0 w-[270px] sm:w-auto snap-start rounded-xl border-2 p-3 sm:p-5 flex flex-col transition-all ${pkg.highlight
-              ? 'border-amber-400 bg-gradient-to-br from-amber-50 to-white shadow-md relative'
-              : 'border-border bg-white shadow-sm hover:border-gold-border'
-              }`}
-          >
-            {pkg.highlight && (
-              <span className="absolute -top-3 left-4 px-2.5 py-0.5 rounded-full text-[10px] sm:text-xs font-bold bg-amber-500 text-white whitespace-nowrap z-10 shadow-sm">
-                Mais Popular
-              </span>
-            )}
+        {packageSelections.map(({ pkg, selected }) => {
+          const pkgTotal = selected.reduce((sum, item) => sum + (item.product.id !== 'not_found' ? item.product.price : 0) * item.qty, 0);
+          const totalItems = selected.reduce((sum, item) => sum + item.qty, 0);
+          const multiplierValue = parseFloat(pkg.multiplier.replace('x', ''));
+          const dynamicRevenue = pkgTotal * multiplierValue;
 
-            <div className="flex flex-col mb-1.5 sm:mb-2">
-              <h3 className="font-extrabold text-[15px] sm:text-lg text-foreground leading-tight">{pkg.name}</h3>
-              <p className="text-[11px] sm:text-sm text-muted-foreground mt-0.5 leading-snug">{pkg.description}</p>
-            </div>
-
-            {/* Price pill */}
-            <div className="mt-1 mb-3">
-              <span className="text-[18px] sm:text-2xl font-black gradient-gold-text">
-                R$ {pkg.price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-              </span>
-            </div>
-
-            <div className="space-y-1.5 text-[11px] sm:text-sm text-muted-foreground mb-4">
-              <div className="flex items-center gap-1.5 text-green-700 font-semibold">
-                <TrendingUp className="w-3.5 h-3.5" /> Retorno Estimado: R$ {pkg.expectedRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-              </div>
-            </div>
-
-            <div className="flex-1" />
-
-            <button
-              onClick={() => handleSelectPackage(pkg.id)}
-              className={`w-full flex items-center justify-center gap-2 py-2.5 sm:py-3 rounded-lg text-xs sm:text-sm font-bold transition-all tracking-wide ${addedPkgId === pkg.id
-                ? 'bg-green-600 shadow-none text-white'
-                : pkg.highlight
-                  ? 'bg-amber-500 hover:bg-amber-600 shadow-sm text-white'
-                  : 'bg-surface-alt font-semibold text-foreground border border-border hover:bg-gold hover:text-white hover:border-gold'
+          return (
+            <div
+              key={pkg.id}
+              className={`flex-shrink-0 w-[270px] sm:w-auto snap-start rounded-xl border-2 p-3 sm:p-5 flex flex-col transition-all ${pkg.highlight
+                ? 'border-amber-400 bg-gradient-to-br from-amber-50 to-white shadow-md relative'
+                : 'border-border bg-white shadow-sm hover:border-gold-border'
                 }`}
             >
-              {addedPkgId === pkg.id ? (
-                <>
-                  <Check className="w-4 h-4" />
-                  Adicionado!
-                </>
-              ) : (
-                <>
-                  <ShoppingCart className="w-4 h-4" />
-                  Adicionar Pacote
-                </>
+              {pkg.highlight && (
+                <span className="absolute -top-3 left-4 px-2.5 py-0.5 rounded-full text-[10px] sm:text-xs font-bold bg-amber-500 text-white whitespace-nowrap z-10 shadow-sm">
+                  Mais Popular
+                </span>
               )}
-            </button>
-            <button
-              onClick={() => setDetailsPkgId(pkg.id)}
-              className="w-full mt-2 py-2 text-xs font-bold text-muted-foreground hover:text-gold transition-colors underline bg-transparent border-none"
-            >
-              Ver + detalhes
-            </button>
-          </div>
-        ))}
+
+              <div className="flex flex-col mb-1.5 sm:mb-2">
+                <h3 className="font-extrabold text-[15px] sm:text-lg text-foreground leading-tight">{pkg.name}</h3>
+                <p className="text-[11px] sm:text-sm text-muted-foreground mt-0.5 leading-snug">{pkg.description}</p>
+                <span className="text-[11px] sm:text-xs font-bold text-amber-600 mt-1">
+                  {pkg.displayProductCount} Produtos Inclusos
+                </span>
+              </div>
+
+              {/* Price pill */}
+              <div className="mt-1 mb-3">
+                <span className="text-[18px] sm:text-2xl font-black gradient-gold-text">
+                  R$ {pkgTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                </span>
+              </div>
+
+              {(() => {
+                const uniqueImages = Array.from(
+                  new Set(
+                    selected
+                      .filter(item => item.product.id !== 'not_found' && item.product.main_image)
+                      .map(item => item.product.main_image)
+                  )
+                );
+
+                if (uniqueImages.length === 0) return null;
+
+                // Deterministic shuffle based on pkg.id so each package looks visually distinct
+                const shuffled = [...uniqueImages];
+                let seed = pkg.id;
+                for (let i = shuffled.length - 1; i > 0; i--) {
+                  seed = (seed * 16807) % 2147483647;
+                  const j = seed % (i + 1);
+                  [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+                }
+
+                const displayImages = shuffled.slice(0, 4);
+                const remaining = uniqueImages.length - 4;
+
+                return (
+                  <div className="flex items-center mt-2 mb-4 pl-2">
+                    <div className="flex -space-x-3">
+                      {displayImages.map((img, i) => (
+                        <div
+                          key={i}
+                          className="w-8 h-8 rounded-full border-2 border-white bg-white overflow-hidden shadow-sm relative z-0 hover:z-10 hover:scale-110 transition-transform"
+                          style={{ zIndex: displayImages.length - i }}
+                        >
+                          <img src={img} alt="Produto" className="w-full h-full object-cover" />
+                        </div>
+                      ))}
+                      {remaining > 0 && (
+                        <div
+                          className="w-8 h-8 rounded-full border-2 border-white bg-surface-alt text-muted-foreground flex items-center justify-center text-[10px] font-bold shadow-sm relative z-0"
+                        >
+                          +{remaining}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
+
+              <div className="space-y-1.5 text-[11px] sm:text-sm text-muted-foreground mb-4">
+                <div className="flex items-center gap-1.5 text-green-700 font-semibold leading-tight">
+                  <TrendingUp className="w-3.5 h-3.5 shrink-0" />
+                  <span>
+                    Potencial de retorno estimado*{' '}
+                    <span className="whitespace-nowrap">R$ {dynamicRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex-1" />
+
+              <button
+                onClick={() => handleSelectPackage(pkg.id)}
+                className={`w-full flex items-center justify-center gap-2 py-2.5 sm:py-3 rounded-lg text-xs sm:text-sm font-bold transition-all tracking-wide ${addedPkgId === pkg.id
+                  ? 'bg-green-600 shadow-none text-white'
+                  : pkg.highlight
+                    ? 'bg-amber-500 hover:bg-amber-600 shadow-sm text-white'
+                    : 'bg-surface-alt font-semibold text-foreground border border-border hover:bg-gold hover:text-white hover:border-gold'
+                  }`}
+              >
+                {addedPkgId === pkg.id ? (
+                  <>
+                    <Check className="w-4 h-4" />
+                    Adicionado!
+                  </>
+                ) : (
+                  <>
+                    <ShoppingCart className="w-4 h-4" />
+                    Adicionar Pacote
+                  </>
+                )}
+              </button>
+              <button
+                onClick={() => setDetailsPkgId(pkg.id)}
+                className="w-full mt-2 py-2 text-xs font-bold text-muted-foreground hover:text-gold transition-colors underline bg-transparent border-none"
+              >
+                Ver + detalhes
+              </button>
+            </div>
+          )
+        })}
       </div>
 
       {/* Dots — mobile only */}
@@ -154,6 +215,10 @@ export default function PackageCards({ products }: PackageCardsProps) {
               }`}
           />
         ))}
+      </div>
+
+      <div className="mt-4 sm:mt-6 px-4 sm:px-0 text-[10px] sm:text-xs text-muted-foreground leading-relaxed text-center max-w-3xl mx-auto">
+        * Valores estimados com base em preços médios de revenda praticados no mercado. Resultados podem variar conforme localidade, clientela e dedicação do revendedor. Não constitui garantia de lucro.
       </div>
 
       {detailsPkgId !== null && (
@@ -170,7 +235,7 @@ export default function PackageCards({ products }: PackageCardsProps) {
                   <div className="flex items-center justify-between p-4 sm:p-5 border-b border-border bg-surface">
                     <div>
                       <h3 className="font-bold text-lg text-foreground">Kit {entry.pkg.name}</h3>
-                      <p className="text-sm text-muted-foreground">{totalItems} Produtos Inclusos</p>
+                      <p className="text-sm text-muted-foreground">{entry.pkg.displayProductCount} Produtos Inclusos</p>
                     </div>
                     <button onClick={() => setDetailsPkgId(null)} className="p-2 text-muted-foreground hover:bg-surface-alt rounded-full transition-colors">
                       <X className="w-5 h-5" />
@@ -201,7 +266,7 @@ export default function PackageCards({ products }: PackageCardsProps) {
                       <tfoot className="border-t-2 border-border font-bold text-foreground">
                         <tr>
                           <td colSpan={3} className="py-3 px-3 text-right">Total do Pacote</td>
-                          <td className="py-3 px-3 text-right text-base text-gold-text">R$ {entry.pkg.price.toFixed(2)}</td>
+                          <td className="py-3 px-3 text-right text-base text-gold-text">R$ {entry.selected.reduce((sum, item) => sum + (item.product.id !== 'not_found' ? item.product.price : 0) * item.qty, 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
                         </tr>
                       </tfoot>
                     </table>

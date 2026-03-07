@@ -473,14 +473,31 @@ const Catalogo = () => {
 
         {/* Main Content */}
         <div className="flex-1 min-w-0 pb-20 sm:pb-6 w-full max-w-full">
-          {/* Mobile Only: Promo Banner & Category Bubbles */}
+          {/* Mobile Only: Promo Banner */}
           <div className="pt-4 sm:hidden">
             <PromoBanner onClick={() => document.getElementById('kits-section')?.scrollIntoView({ behavior: 'smooth' })} />
-            <CategoryBubbles
-              categories={dbCategories}
-              activeCategories={filterCategories}
-              onToggleCategory={toggleCategory}
-            />
+          </div>
+
+          {/* Mobile Only: Seleção dos Mais Vendidos */}
+          {!isLoading && !error && products.length > 0 && (
+            <div className="pt-2 px-3 sm:hidden">
+              <div id="kits-section" className="flex items-center justify-between mb-4 mt-2">
+                <div className="flex items-center gap-1.5">
+                  <div className="bg-amber-100 p-1 rounded">
+                    <PackageSearch className="w-4 h-4 text-amber-600" />
+                  </div>
+                  <h2 className="text-[14px] font-bold text-foreground">Seleção dos Mais Vendidos</h2>
+                </div>
+              </div>
+
+              <div className="mb-4">
+                <PackageCards products={products} />
+              </div>
+            </div>
+          )}
+
+          {/* Mobile Only: Destaques & Rest */}
+          <div className="pt-0 sm:hidden">
 
             {/* Mobile Only: Compact Product Carousel for Featured Items */}
             {!isLoading && !error && filtered.length > 0 && (
@@ -508,27 +525,27 @@ const Catalogo = () => {
               <p className="text-xs sm:text-sm text-muted-foreground mt-0">{isLoading ? "Carregando..." : `${filtered.length} produtos disponíveis`}</p>
             </div>
 
-            {/* Package Cards Header (Mobile) */}
+            {/* Package Cards Header (Desktop Only, since Mobile was moved to top) */}
             {!isLoading && !error && products.length > 0 && (
-              <>
-                <div id="kits-section" className="sm:hidden flex items-center justify-between mb-4 mt-6">
-                  <div className="flex items-center gap-1.5">
-                    <div className="bg-amber-100 p-1 rounded">
-                      <PackageSearch className="w-4 h-4 text-amber-600" />
-                    </div>
-                    <h2 className="text-[14px] font-bold text-foreground">Seleção dos Mais Vendidos</h2>
-                  </div>
-                </div>
-
+              <div className="hidden sm:block">
                 <div className="mb-8">
                   <PackageCards products={products} />
                 </div>
-              </>
+              </div>
             )}
+
+            {/* Category Bubbles - Moved right above 'Aproveite e leve também' */}
+            <div className="sm:hidden mb-2 mt-4 -mx-3">
+              <CategoryBubbles
+                categories={dbCategories}
+                activeCategories={filterCategories}
+                onToggleCategory={toggleCategory}
+              />
+            </div>
 
             {/* All Products Title Mobile */}
             {!isLoading && !error && filtered.length > 0 && (
-              <div className="flex items-center gap-1.5 mb-4 mt-8">
+              <div className="flex items-center gap-1.5 mb-4 mt-4 sm:mt-8">
                 <div className="w-1 h-5 bg-amber-500 rounded-full"></div>
                 <h2 className="text-[16px] sm:text-lg font-bold text-foreground">Aproveite e leve também</h2>
               </div>
