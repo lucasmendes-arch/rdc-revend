@@ -161,6 +161,36 @@ serve(async (req) => {
         console.log(`Order ${orderId} updated to: ${orderStatus}`)
       }
 
+      // When payment is confirmed, update the client_sessions funnel to 'comprou'
+      if (orderStatus === 'pago') {
+        // Get user_id from the order to find their session
+        const { data: orderData } = await serviceClient
+          .from('orders')
+          .select('user_id')
+          .eq('id', orderId)
+          .maybeSingle()
+
+        if (orderData?.user_id) {
+          // Find the most recent session for this user and update to 'comprou'
+          const { error: sessionError } = await serviceClient
+            .from('client_sessions')
+            .update({
+              status: 'comprou',
+              updated_at: new Date().toISOString(),
+            })
+            .eq('user_id', orderData.user_id)
+            .in('status', ['visitou', 'visualizou_produto', 'adicionou_carrinho', 'iniciou_checkout'])
+            .order('updated_at', { ascending: false })
+            .limit(1)
+
+          if (sessionError) {
+            console.warn('Failed to update session to comprou:', sessionError)
+          } else {
+            console.log(`Session updated to comprou for user ${orderData.user_id}`)
+          }
+        }
+      }
+
       // Restore stock when payment is rejected or cancelled
       if (orderStatus === 'cancelado') {
         const { error: stockError } = await serviceClient.rpc('restore_order_stock', {
