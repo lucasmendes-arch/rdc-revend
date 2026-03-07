@@ -21,7 +21,7 @@ export interface Package {
 export const PACKAGES: Package[] = [
   {
     id: 1,
-    name: 'Iniciante',
+    name: 'Cachinhos',
     price: 500,
     description: 'Ideal para começar a revenda',
     expectedRevenue: 900,
@@ -38,7 +38,7 @@ export const PACKAGES: Package[] = [
   },
   {
     id: 2,
-    name: 'Crescimento',
+    name: 'Cachos em Alta',
     price: 1500,
     description: 'Para quem já tem clientela',
     expectedRevenue: 3000,
@@ -61,7 +61,7 @@ export const PACKAGES: Package[] = [
   },
   {
     id: 3,
-    name: 'Pro',
+    name: 'Profissional dos Cachos',
     price: 3000,
     description: 'Estoque completo para salões',
     expectedRevenue: 6750,
@@ -94,7 +94,7 @@ export const PACKAGES: Package[] = [
   },
   {
     id: 4,
-    name: 'Elite',
+    name: 'Império dos Cachos',
     price: 5000,
     description: 'Máxima variedade e lucro',
     expectedRevenue: 12500,
