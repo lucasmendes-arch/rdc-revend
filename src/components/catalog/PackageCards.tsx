@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom'
 import { PACKAGES, selectProductsForPackage } from '@/config/packages'
 import { useCart } from '@/contexts/CartContext'
 import type { PublicProduct } from '@/hooks/useCatalogProducts'
+import { img } from '@/lib/imageOptimizer'
 
 interface PackageCardsProps {
   products: PublicProduct[]
@@ -139,13 +140,13 @@ export default function PackageCards({ products }: PackageCardsProps) {
                 return (
                   <div className="flex items-center mt-2 mb-4 sm:mb-6 pl-2 sm:pl-3">
                     <div className="flex -space-x-3.5 sm:-space-x-4">
-                      {displayImages.map((img, i) => (
+                      {displayImages.map((imgUrl, i) => (
                         <div
                           key={i}
                           className="w-8 h-8 sm:w-10 sm:h-10 shrink-0 rounded-full border-2 border-white bg-white overflow-hidden shadow-sm relative hover:scale-110 transition-transform"
                           style={{ zIndex: i }}
                         >
-                          <img src={img} alt="Produto" className="w-full h-full object-cover" />
+                          <img src={img.avatar(imgUrl)} alt="Produto" className="w-full h-full object-cover" />
                         </div>
                       ))}
                       {remaining > 0 && (
