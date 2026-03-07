@@ -11,7 +11,7 @@ const WhatsAppButton = () => {
   }, []);
 
   return (
-    <div className="fixed z-50 bottom-24 right-6 md:bottom-10 md:right-12 flex items-end gap-3 pointer-events-none">
+    <div className="fixed z-50 bottom-32 right-6 md:bottom-10 md:right-12 flex items-end gap-3 pointer-events-none">
 
       {/* Helper Popup */}
       <div

@@ -31,9 +31,13 @@ export function useActiveUpsell() {
       if (error) throw error
       if (!data) return null
 
+      // Supabase FK join may return an object or an array depending on relation type
+      const raw = (data as any).catalog_products;
+      const product = Array.isArray(raw) ? raw[0] ?? null : raw ?? null;
+
       return {
         ...data,
-        product: (data as any).catalog_products ?? null,
+        product,
         catalog_products: undefined,
       } as UpsellOffer
     },

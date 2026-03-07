@@ -104,10 +104,9 @@ const Checkout = () => {
   const upsellInCart = upsellOffer?.product ? cart.some(i => i.id === upsellOffer.product!.id) : false;
   const showUpsellStep = upsellOffer?.product && !upsellInCart && !upsellAdded && !upsellSkipped;
 
-  // Shipping = 20% of subtotal (including upsell if added)
-  const upsellAmount = upsellAdded && upsellOffer ? upsellOffer.discounted_price * (upsellOffer.quantity || 1) : 0;
-  const shippingEstimate = Math.round((cartTotal + upsellAmount) * 0.20 * 100) / 100;
-  const orderTotal = Math.round((cartTotal + upsellAmount + shippingEstimate) * 100) / 100;
+  // Shipping = 20% of subtotal (cartTotal already includes upsell if added via addItem)
+  const shippingEstimate = Math.round(cartTotal * 0.20 * 100) / 100;
+  const orderTotal = Math.round((cartTotal + shippingEstimate) * 100) / 100;
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     let { name, value } = e.target;

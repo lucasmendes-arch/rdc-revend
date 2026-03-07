@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { ArrowLeft, CheckCircle2, ChevronRight, Crown, Building2, Store, User, Mail, Lock } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import logo from "@/assets/logo-rei-dos-cachos.png";
@@ -12,6 +12,12 @@ export default function Cadastro() {
     const navigate = useNavigate();
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const errorRef = useRef<HTMLDivElement>(null);
+
+    const showError = (msg: string) => {
+        setError(msg);
+        setTimeout(() => errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
+    };
 
     // Form State
     const [docType, setDocType] = useState<DocumentType>('CPF');
@@ -63,7 +69,7 @@ export default function Cadastro() {
 
         try {
             if (formData.password.length < 6) {
-                setError('A senha deve ter pelo menos 6 caracteres.');
+                showError('A senha deve ter pelo menos 6 caracteres.');
                 setLoading(false);
                 return;
             }
@@ -71,12 +77,12 @@ export default function Cadastro() {
             // Validate document checksum
             const docDigits = formData.document.replace(/\D/g, '');
             if (docType === 'CPF' && !isValidCPF(docDigits)) {
-                setError('CPF inválido. Verifique os dígitos.');
+                showError('CPF inválido. Verifique os dígitos.');
                 setLoading(false);
                 return;
             }
             if (docType === 'CNPJ' && !isValidCNPJ(docDigits)) {
-                setError('CNPJ inválido. Verifique os dígitos.');
+                showError('CNPJ inválido. Verifique os dígitos.');
                 setLoading(false);
                 return;
             }
@@ -92,9 +98,9 @@ export default function Cadastro() {
 
             if (signUpError) {
                 if (signUpError.message.includes('already registered')) {
-                    setError('Este e-mail já está cadastrado. Faça login.');
+                    showError('Este e-mail já está cadastrado. Faça login.');
                 } else {
-                    setError(signUpError.message);
+                    showError(signUpError.message);
                 }
                 setLoading(false);
                 return;
@@ -182,7 +188,7 @@ export default function Cadastro() {
                         </h2>
 
                         {error && (
-                            <div className="mb-4 px-4 py-3 rounded-lg bg-red-50 border border-red-100 text-red-600 text-sm">
+                            <div ref={errorRef} className="mb-4 px-4 py-3 rounded-lg bg-red-50 border border-red-100 text-red-600 text-sm">
                                 {error}
                             </div>
                         )}
@@ -254,14 +260,14 @@ export default function Cadastro() {
                                     <button
                                         type="button"
                                         onClick={() => handleDocTypeToggle('CPF')}
-                                        className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${docType === 'CPF' ? 'bg-amber-100 text-amber-700 shadow-sm border border-amber-300' : 'text-muted-foreground hover:text-foreground'}`}
+                                        className={`flex-1 py-1.5 text-xs sm:text-sm font-semibold rounded-lg transition-all ${docType === 'CPF' ? 'bg-amber-100 text-amber-700 shadow-sm border border-amber-300' : 'text-muted-foreground hover:text-foreground'}`}
                                     >
                                         Pessoa Física (CPF)
                                     </button>
                                     <button
                                         type="button"
                                         onClick={() => handleDocTypeToggle('CNPJ')}
-                                        className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${docType === 'CNPJ' ? 'bg-amber-100 text-amber-700 shadow-sm border border-amber-300' : 'text-muted-foreground hover:text-foreground'}`}
+                                        className={`flex-1 py-1.5 text-xs sm:text-sm font-semibold rounded-lg transition-all ${docType === 'CNPJ' ? 'bg-amber-100 text-amber-700 shadow-sm border border-amber-300' : 'text-muted-foreground hover:text-foreground'}`}
                                     >
                                         Pessoa Jurídica (CNPJ)
                                     </button>
