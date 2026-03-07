@@ -146,11 +146,45 @@ serve(async (req) => {
 
     subtotal = Math.round(subtotal * 100) / 100
 
-    // 5. Check stock availability
+    // 5. Resolve kit components — kits decrement component stock, not kit stock
+    const { data: kitComponents } = await serviceClient
+      .from('kit_components')
+      .select('kit_product_id, component_product_id, quantity')
+      .in('kit_product_id', productIds)
+
+    // Build kit -> components map
+    const kitMap = new Map<string, { component_product_id: string; quantity: number }[]>()
+    for (const kc of kitComponents || []) {
+      if (!kitMap.has(kc.kit_product_id)) kitMap.set(kc.kit_product_id, [])
+      kitMap.get(kc.kit_product_id)!.push({ component_product_id: kc.component_product_id, quantity: kc.quantity })
+    }
+
+    // Build list of all product IDs we need stock for (components + non-kit products)
+    const stockCheckIds = new Set<string>()
+    // Track what to decrement: product_id -> total qty needed
+    const stockDecrements = new Map<string, number>()
+
+    for (const item of body.items) {
+      const components = kitMap.get(item.product_id)
+      if (components && components.length > 0) {
+        // Kit: decrement each component
+        for (const comp of components) {
+          const needed = comp.quantity * item.qty
+          stockCheckIds.add(comp.component_product_id)
+          stockDecrements.set(comp.component_product_id, (stockDecrements.get(comp.component_product_id) || 0) + needed)
+        }
+      } else {
+        // Regular product: decrement itself
+        stockCheckIds.add(item.product_id)
+        stockDecrements.set(item.product_id, (stockDecrements.get(item.product_id) || 0) + item.qty)
+      }
+    }
+
+    // 6. Check stock availability
     const { data: inventory, error: inventoryError } = await serviceClient
       .from('inventory')
       .select('product_id, quantity')
-      .in('product_id', productIds)
+      .in('product_id', Array.from(stockCheckIds))
 
     if (inventoryError) {
       console.error('Inventory check error:', inventoryError)
@@ -163,12 +197,25 @@ serve(async (req) => {
     // Build stock map (products without inventory records are treated as unlimited)
     const stockMap = new Map(inventory?.map(i => [i.product_id, i.quantity]) ?? [])
 
+    // Also need a name map for component products (for error messages)
+    const componentIds = Array.from(stockCheckIds).filter(id => !priceMap.has(id))
+    let componentNameMap = new Map<string, string>()
+    if (componentIds.length > 0) {
+      const { data: compProducts } = await serviceClient
+        .from('catalog_products')
+        .select('id, name')
+        .in('id', componentIds)
+      for (const p of compProducts || []) {
+        componentNameMap.set(p.id, p.name)
+      }
+    }
+
     const outOfStock: string[] = []
-    for (const item of body.items) {
-      const stock = stockMap.get(item.product_id)
-      if (stock !== undefined && stock < item.qty) {
-        const product = priceMap.get(item.product_id)!
-        outOfStock.push(`${product.name} (disponível: ${stock}, solicitado: ${item.qty})`)
+    for (const [productId, needed] of stockDecrements) {
+      const stock = stockMap.get(productId)
+      if (stock !== undefined && stock < needed) {
+        const name = priceMap.get(productId)?.name || componentNameMap.get(productId) || productId
+        outOfStock.push(`${name} (disponível: ${stock}, necessário: ${needed})`)
       }
     }
 
@@ -237,17 +284,17 @@ serve(async (req) => {
       )
     }
 
-    // 9. Decrement stock for products that have inventory records
+    // 9. Decrement stock for all affected products (components for kits, direct for regular)
     const stockErrors: string[] = []
-    for (const item of body.items) {
-      const stock = stockMap.get(item.product_id)
+    for (const [productId, qty] of stockDecrements) {
+      const stock = stockMap.get(productId)
       if (stock !== undefined) {
         const { error: stockError } = await serviceClient.rpc('decrement_stock', {
-          p_product_id: item.product_id,
-          p_qty: item.qty,
+          p_product_id: productId,
+          p_qty: qty,
         })
         if (stockError) {
-          stockErrors.push(`${item.product_id}: ${stockError.message}`)
+          stockErrors.push(`${productId}: ${stockError.message}`)
         }
       }
     }

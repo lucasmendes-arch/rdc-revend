@@ -66,7 +66,7 @@ export default function CompactProductCarousel({
                                 </h3>
 
                                 <div className="mt-auto">
-                                    {product.is_professional ? (
+                                    {product.is_professional || title.toLowerCase().includes('profissional') ? (
                                         <div className="text-[10px] sm:text-xs md:text-sm lg:text-[15px] font-bold mb-0.5 sm:mb-1 opacity-0 pointer-events-none" aria-hidden="true">
                                             Revenda: -
                                         </div>

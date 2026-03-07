@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useRef, useState, useEffect } from 'react'
-import { Check, ShoppingCart, TrendingUp } from 'lucide-react'
+import { Check, ShoppingCart, TrendingUp, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { useNavigate } from 'react-router-dom'
 import { PACKAGES, selectProductsForPackage } from '@/config/packages'
@@ -17,6 +17,7 @@ export default function PackageCards({ products }: PackageCardsProps) {
   const rafRef = useRef<number | null>(null)
   const [activeIndex, setActiveIndex] = useState(0)
   const [addedPkgId, setAddedPkgId] = useState<number | null>(null)
+  const [detailsPkgId, setDetailsPkgId] = useState<number | null>(null)
 
   const packageSelections = useMemo(
     () => PACKAGES.map(pkg => ({
@@ -50,15 +51,18 @@ export default function PackageCards({ products }: PackageCardsProps) {
       return
     }
 
-    for (const p of entry.selected) {
-      addItem({ id: p.id, name: p.name, price: p.price, image: p.main_image })
+    let addedCount = 0
+    for (const item of entry.selected) {
+      if (item.product.id === 'not_found') continue
+      addItem({ id: item.product.id, name: item.product.name, price: item.product.price, image: item.product.main_image }, item.qty)
+      addedCount += item.qty
     }
 
     // Green feedback
     setAddedPkgId(pkgId)
     setTimeout(() => setAddedPkgId(null), 1200)
 
-    toast.success(`${entry.selected.length} produtos adicionados ao carrinho!`, {
+    toast.success(`${addedCount} produtos adicionados ao carrinho!`, {
       action: {
         label: 'Ver Pedido',
         onClick: () => navigate('/checkout'),
@@ -125,9 +129,15 @@ export default function PackageCards({ products }: PackageCardsProps) {
               ) : (
                 <>
                   <ShoppingCart className="w-4 h-4" />
-                  Adicionar Plano
+                  Adicionar Pacote
                 </>
               )}
+            </button>
+            <button
+              onClick={() => setDetailsPkgId(pkg.id)}
+              className="w-full mt-2 py-2 text-xs font-bold text-muted-foreground hover:text-gold transition-colors underline bg-transparent border-none"
+            >
+              Ver + detalhes
             </button>
           </div>
         ))}
@@ -145,6 +155,81 @@ export default function PackageCards({ products }: PackageCardsProps) {
           />
         ))}
       </div>
+
+      {detailsPkgId !== null && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setDetailsPkgId(null)} />
+          <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[85vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            {(() => {
+              const entry = packageSelections.find(e => e.pkg.id === detailsPkgId)
+              if (!entry) return null
+              const totalItems = entry.selected.reduce((sum, item) => sum + item.qty, 0)
+
+              return (
+                <>
+                  <div className="flex items-center justify-between p-4 sm:p-5 border-b border-border bg-surface">
+                    <div>
+                      <h3 className="font-bold text-lg text-foreground">Kit {entry.pkg.name}</h3>
+                      <p className="text-sm text-muted-foreground">{totalItems} Produtos Inclusos</p>
+                    </div>
+                    <button onClick={() => setDetailsPkgId(null)} className="p-2 text-muted-foreground hover:bg-surface-alt rounded-full transition-colors">
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+                  <div className="p-4 sm:p-5 overflow-y-auto flex-1 bg-white">
+                    <table className="w-full text-sm text-left">
+                      <thead className="text-[11px] uppercase tracking-wider text-muted-foreground border-b border-border bg-surface-alt font-bold">
+                        <tr>
+                          <th className="py-2.5 px-3 rounded-tl-lg">Produto</th>
+                          <th className="py-2.5 px-3 text-center">Und.</th>
+                          <th className="py-2.5 px-3 text-right">Preço</th>
+                          <th className="py-2.5 px-3 text-right rounded-tr-lg">Total</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border">
+                        {entry.selected.map((item, idx) => (
+                          <tr key={idx} className="hover:bg-surface/50 transition-colors">
+                            <td className="py-3 px-3 font-medium text-foreground text-xs">{item.product.id === 'not_found' ? `${item.originalName} (Sem estoque)` : item.product.name}</td>
+                            <td className="py-3 px-3 text-center text-muted-foreground text-xs">{item.qty}x</td>
+                            <td className="py-3 px-3 text-right text-muted-foreground text-xs tabular-nums">R$ {item.product.price.toFixed(2)}</td>
+                            <td className="py-3 px-3 text-right font-semibold text-foreground text-xs tabular-nums opacity-90">
+                              {item.product.id === 'not_found' ? '-' : `R$ ${(item.product.price * item.qty).toFixed(2)}`}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                      <tfoot className="border-t-2 border-border font-bold text-foreground">
+                        <tr>
+                          <td colSpan={3} className="py-3 px-3 text-right">Total do Pacote</td>
+                          <td className="py-3 px-3 text-right text-base text-gold-text">R$ {entry.pkg.price.toFixed(2)}</td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+                  <div className="p-4 sm:p-5 border-t border-border bg-surface flex justify-end gap-3">
+                    <button
+                      onClick={() => setDetailsPkgId(null)}
+                      className="px-4 py-2 text-sm font-semibold text-muted-foreground hover:text-foreground hover:bg-surface-alt rounded-lg transition-colors"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      onClick={() => {
+                        handleSelectPackage(entry.pkg.id);
+                        setDetailsPkgId(null);
+                      }}
+                      className="w-full sm:w-auto px-6 py-2.5 bg-gold text-white font-bold rounded-lg shadow-sm hover:-translate-y-0.5 transition-transform flex items-center justify-center gap-2"
+                    >
+                      <ShoppingCart className="w-4 h-4" />
+                      Adicionar {entry.pkg.name}
+                    </button>
+                  </div>
+                </>
+              )
+            })()}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
