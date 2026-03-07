@@ -121,7 +121,7 @@ const Checkout = () => {
       name: upsellOffer.product.name,
       price: upsellOffer.discounted_price,
       image: upsellOffer.product.main_image,
-    });
+    }, upsellOffer.quantity || 1);
     setUpsellAdded(true);
     setStep(3);
   };
@@ -439,15 +439,21 @@ const Checkout = () => {
 
                     <div className="flex flex-col sm:flex-row items-center sm:items-baseline gap-2 sm:gap-4 justify-center sm:justify-start">
                       <span className="text-sm font-medium text-muted-foreground line-through decoration-red-500/50">
-                        De R$ {upsellOffer.product.price.toFixed(2)}
+                        De R$ {upsellOffer.product.price.toFixed(2)} {upsellOffer.quantity > 1 ? 'cada' : ''}
                       </span>
                       <div className="flex items-baseline gap-1">
-                        <span className="text-sm font-bold text-foreground">Por</span>
+                        <span className="text-sm font-bold text-foreground">{upsellOffer.quantity > 1 ? `${upsellOffer.quantity}x` : 'Por'}</span>
                         <span className="text-3xl font-black gradient-gold-text">
                           R$ {upsellOffer.discounted_price.toFixed(2)}
                         </span>
+                        {upsellOffer.quantity > 1 && <span className="text-sm text-foreground font-medium">cada</span>}
                       </div>
                     </div>
+                    {upsellOffer.quantity > 1 && (
+                      <p className="text-center sm:text-left text-sm font-bold text-foreground mt-2">
+                        Total: R$ {(upsellOffer.discounted_price * upsellOffer.quantity).toFixed(2)}
+                      </p>
+                    )}
                   </div>
                 </div>
 
@@ -587,20 +593,20 @@ const Checkout = () => {
 
               {upsellAdded && upsellOffer?.product && (
                 <div className="flex items-center justify-between text-sm text-green-600 font-medium">
-                  <span>{upsellOffer.title}</span>
-                  <span>+ R$ {upsellOffer.discounted_price.toFixed(2)}</span>
+                  <span>{upsellOffer.quantity > 1 ? `${upsellOffer.quantity}x ` : ''}{upsellOffer.title}</span>
+                  <span>+ R$ {(upsellOffer.discounted_price * (upsellOffer.quantity || 1)).toFixed(2)}</span>
                 </div>
               )}
 
               <div className="flex items-center justify-between text-sm text-slate-600 bg-slate-50 p-2 rounded">
                 <span>Frete</span>
-                <span>+ R$ {((cartTotal + (upsellAdded && upsellOffer ? upsellOffer.discounted_price : 0)) * 0.20).toFixed(2)}</span>
+                <span>+ R$ {((cartTotal + (upsellAdded && upsellOffer ? upsellOffer.discounted_price * (upsellOffer.quantity || 1) : 0)) * 0.20).toFixed(2)}</span>
               </div>
 
               <div className="flex items-center justify-between text-lg font-bold pt-3 border-t border-border">
                 <span className="text-foreground">Total do Pedido</span>
                 <span className="gradient-gold-text">
-                  R$ {((cartTotal + (upsellAdded && upsellOffer ? upsellOffer.discounted_price : 0)) * 1.20).toFixed(2)}
+                  R$ {((cartTotal + (upsellAdded && upsellOffer ? upsellOffer.discounted_price * (upsellOffer.quantity || 1) : 0)) * 1.20).toFixed(2)}
                 </span>
               </div>
               <p className="text-[10px] text-muted-foreground mt-1 text-center">

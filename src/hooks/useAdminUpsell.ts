@@ -7,6 +7,7 @@ export interface AdminUpsellOffer {
   title: string
   description: string | null
   discounted_price: number
+  quantity: number
   is_active: boolean
   created_at: string
   product: { id: string; name: string; price: number; main_image: string | null } | null
@@ -18,7 +19,7 @@ export function useAdminUpsells() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('upsell_offers')
-        .select('id, product_id, title, description, discounted_price, is_active, created_at, catalog_products(id, name, price, main_image)')
+        .select('id, product_id, title, description, discounted_price, quantity, is_active, created_at, catalog_products(id, name, price, main_image)')
         .order('created_at', { ascending: false })
 
       if (error) throw error
@@ -35,7 +36,7 @@ export function useAdminUpsells() {
 export function useCreateUpsell() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async (offer: { product_id: string; title: string; description?: string; discounted_price: number; is_active: boolean }) => {
+    mutationFn: async (offer: { product_id: string; title: string; description?: string; discounted_price: number; quantity: number; is_active: boolean }) => {
       // If activating, deactivate others first
       if (offer.is_active) {
         await supabase.from('upsell_offers').update({ is_active: false }).eq('is_active', true)
@@ -58,7 +59,7 @@ export function useCreateUpsell() {
 export function useUpdateUpsell() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async ({ id, ...updates }: { id: string; title?: string; description?: string; discounted_price?: number; is_active?: boolean; product_id?: string }) => {
+    mutationFn: async ({ id, ...updates }: { id: string; title?: string; description?: string; discounted_price?: number; quantity?: number; is_active?: boolean; product_id?: string }) => {
       // If activating, deactivate others first
       if (updates.is_active) {
         await supabase.from('upsell_offers').update({ is_active: false }).eq('is_active', true)

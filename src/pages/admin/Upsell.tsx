@@ -14,7 +14,7 @@ export default function AdminUpsell() {
   const [creating, setCreating] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [deleteId, setDeleteId] = useState<string | null>(null)
-  const [form, setForm] = useState({ product_id: '', title: '', description: '', discounted_price: 0, is_active: true })
+  const [form, setForm] = useState({ product_id: '', title: '', description: '', discounted_price: 0, quantity: 1, is_active: true })
 
   const activeProducts = products.filter(p => p.is_active)
 
@@ -29,10 +29,11 @@ export default function AdminUpsell() {
         title: form.title.trim(),
         description: form.description.trim() || undefined,
         discounted_price: form.discounted_price,
+        quantity: form.quantity,
         is_active: form.is_active,
       })
       setCreating(false)
-      setForm({ product_id: '', title: '', description: '', discounted_price: 0, is_active: true })
+      setForm({ product_id: '', title: '', description: '', discounted_price: 0, quantity: 1, is_active: true })
     } catch (err) {
       alert(`Erro: ${err instanceof Error ? err.message : 'Desconhecido'}`)
     }
@@ -45,6 +46,7 @@ export default function AdminUpsell() {
       title: offer.title,
       description: offer.description || '',
       discounted_price: offer.discounted_price,
+      quantity: offer.quantity || 1,
       is_active: offer.is_active,
     })
   }
@@ -58,6 +60,7 @@ export default function AdminUpsell() {
         title: form.title.trim(),
         description: form.description.trim(),
         discounted_price: form.discounted_price,
+        quantity: form.quantity,
         is_active: form.is_active,
       })
       setEditingId(null)
@@ -95,7 +98,7 @@ export default function AdminUpsell() {
             <p className="text-sm text-muted-foreground">Ofertas especiais exibidas no checkout</p>
           </div>
           <button
-            onClick={() => { setCreating(true); setForm({ product_id: '', title: '', description: '', discounted_price: 0, is_active: true }) }}
+            onClick={() => { setCreating(true); setForm({ product_id: '', title: '', description: '', discounted_price: 0, quantity: 1, is_active: true }) }}
             className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg bg-green-600 hover:bg-green-700 text-white text-sm font-medium transition-colors"
           >
             <Plus className="w-4 h-4" />
@@ -137,10 +140,16 @@ export default function AdminUpsell() {
                       <p className="text-sm text-muted-foreground">{offer.product?.name}</p>
                       {offer.description && <p className="text-xs text-muted-foreground mt-1">{offer.description}</p>}
                       <div className="flex items-center gap-3 mt-2">
+                        {offer.quantity > 1 && (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-700">{offer.quantity}x</span>
+                        )}
                         {offer.product && (
                           <span className="text-xs text-muted-foreground line-through">R$ {offer.product.price.toFixed(2)}</span>
                         )}
-                        <span className="text-lg font-black gradient-gold-text">R$ {offer.discounted_price.toFixed(2)}</span>
+                        <span className="text-lg font-black gradient-gold-text">R$ {offer.discounted_price.toFixed(2)} {offer.quantity > 1 ? 'cada' : ''}</span>
+                        {offer.quantity > 1 && (
+                          <span className="text-xs font-bold text-foreground">= R$ {(offer.discounted_price * offer.quantity).toFixed(2)}</span>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -219,7 +228,20 @@ export default function AdminUpsell() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-foreground mb-1">Preco com Desconto *</label>
+                <label className="block text-sm font-medium text-foreground mb-1">Quantidade *</label>
+                <input
+                  type="number"
+                  min={1}
+                  value={form.quantity}
+                  onChange={(e) => setForm({ ...form, quantity: parseInt(e.target.value) || 1 })}
+                  className="w-full px-3 py-2 rounded-lg border border-border bg-white focus:outline-none focus:ring-2 focus:ring-gold"
+                  placeholder="Ex: 10"
+                />
+                <p className="text-xs text-muted-foreground mt-1">Quantidade de unidades na oferta (ex: 10 ampolas)</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1">Preco Unitario com Desconto *</label>
                 <div className="flex items-center gap-3">
                   <input
                     type="number"
@@ -234,6 +256,11 @@ export default function AdminUpsell() {
                     </span>
                   )}
                 </div>
+                {form.quantity > 1 && form.discounted_price > 0 && (
+                  <p className="text-sm font-bold text-foreground mt-1">
+                    Total: {form.quantity}x R$ {form.discounted_price.toFixed(2)} = R$ {(form.quantity * form.discounted_price).toFixed(2)}
+                  </p>
+                )}
               </div>
 
               <label className="flex items-center gap-2 cursor-pointer">

@@ -7,6 +7,7 @@ export interface UpsellOffer {
   title: string
   description: string | null
   discounted_price: number
+  quantity: number
   is_active: boolean
   product: {
     id: string
@@ -22,7 +23,7 @@ export function useActiveUpsell() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('upsell_offers')
-        .select('id, product_id, title, description, discounted_price, is_active, catalog_products(id, name, price, main_image)')
+        .select('id, product_id, title, description, discounted_price, quantity, is_active, catalog_products(id, name, price, main_image)')
         .eq('is_active', true)
         .limit(1)
         .maybeSingle()
