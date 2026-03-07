@@ -1,6 +1,70 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
+// HMAC-SHA256 signature verification for MercadoPago webhooks
+async function verifySignature(req: Request, dataId: string): Promise<boolean> {
+  const secret = Deno.env.get('MERCADOPAGO_WEBHOOK_SECRET')
+  if (!secret) {
+    console.warn('MERCADOPAGO_WEBHOOK_SECRET not set — skipping signature check')
+    // If secret is not configured yet, fall back to verifying payment via API (existing behavior)
+    return true
+  }
+
+  const xSignature = req.headers.get('x-signature')
+  const xRequestId = req.headers.get('x-request-id')
+
+  if (!xSignature || !xRequestId) {
+    console.error('Missing x-signature or x-request-id headers')
+    return false
+  }
+
+  // Parse signature: "ts=1234567890,v1=abcdef..."
+  const parts: Record<string, string> = {}
+  for (const part of xSignature.split(',')) {
+    const [key, ...valueParts] = part.split('=')
+    parts[key.trim()] = valueParts.join('=').trim()
+  }
+
+  const ts = parts['ts']
+  const v1 = parts['v1']
+
+  if (!ts || !v1) {
+    console.error('Invalid x-signature format:', xSignature)
+    return false
+  }
+
+  // Reject if timestamp is older than 5 minutes (replay attack prevention)
+  const signatureAge = Date.now() - parseInt(ts) * 1000
+  if (signatureAge > 5 * 60 * 1000) {
+    console.error('Webhook signature too old:', signatureAge, 'ms')
+    return false
+  }
+
+  // Build the signed template: id:<data.id>;request-id:<x-request-id>;ts:<ts>;
+  const template = `id:${dataId};request-id:${xRequestId};ts:${ts};`
+
+  // Compute HMAC-SHA256
+  const encoder = new TextEncoder()
+  const key = await crypto.subtle.importKey(
+    'raw',
+    encoder.encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  )
+  const signature = await crypto.subtle.sign('HMAC', key, encoder.encode(template))
+  const computed = Array.from(new Uint8Array(signature))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('')
+
+  if (computed !== v1) {
+    console.error('Webhook signature mismatch. Expected:', computed, 'Got:', v1)
+    return false
+  }
+
+  return true
+}
+
 serve(async (req) => {
   if (req.method !== 'POST') {
     return new Response('Method not allowed', { status: 405 })
@@ -26,7 +90,17 @@ serve(async (req) => {
       })
     }
 
-    // Query MercadoPago for payment details
+    // Verify webhook signature (prevents forged payment confirmations)
+    const isValid = await verifySignature(req, String(paymentId))
+    if (!isValid) {
+      console.error('Webhook signature verification FAILED for payment:', paymentId)
+      return new Response(JSON.stringify({ error: 'Invalid signature' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    }
+
+    // Query MercadoPago for payment details (double-check: never trust webhook body for status)
     const mpAccessToken = Deno.env.get('MERCADOPAGO_ACCESS_TOKEN')
     if (!mpAccessToken) {
       console.error('MERCADOPAGO_ACCESS_TOKEN not set')
@@ -85,6 +159,18 @@ serve(async (req) => {
         console.error('Failed to update order:', updateError)
       } else {
         console.log(`Order ${orderId} updated to: ${orderStatus}`)
+      }
+
+      // Restore stock when payment is rejected or cancelled
+      if (orderStatus === 'cancelado') {
+        const { error: stockError } = await serviceClient.rpc('restore_order_stock', {
+          p_order_id: orderId,
+        })
+        if (stockError) {
+          console.error('Failed to restore stock for order:', orderId, stockError)
+        } else {
+          console.log(`Stock restored for cancelled order ${orderId}`)
+        }
       }
 
       // WhatsApp notification for approved payments

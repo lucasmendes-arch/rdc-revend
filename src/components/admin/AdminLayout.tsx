@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { Package, ShoppingCart, Users, Warehouse, UserCog, Menu, X, ExternalLink, Tag, Zap } from 'lucide-react'
+import { Package, ShoppingCart, Users, Warehouse, UserCog, Menu, X, ExternalLink, Tag, Zap, DollarSign } from 'lucide-react'
 import logo from '@/assets/logo-rei-dos-cachos.png'
 
 const navItems = [
   { label: 'Catálogo', path: '/admin/catalogo', icon: Package },
   { label: 'Pedidos', path: '/admin/pedidos', icon: ShoppingCart },
+  { label: 'Financeiro', path: '/admin/financeiro', icon: DollarSign },
   { label: 'Clientes', path: '/admin/clientes', icon: Users },
   { label: 'Estoque', path: '/admin/estoque', icon: Warehouse },
   { label: 'Categorias', path: '/admin/categorias', icon: Tag },

@@ -9,7 +9,20 @@
       "Bash(cd /c/Users/becar/rdc-revend && node create-test-user.js 2>&1)",
       "Bash(cd /c/Users/becar/rdc-revend && node full-diagnosis.js 2>&1)",
       "Bash(cd /c/Users/becar/rdc-revend && timeout 10 node verify-setup.js 2>&1)",
-      "Bash(cd /c/Users/becar/rdc-revend && npx supabase functions deploy sync-nuvemshop 2>&1)"
+      "Bash(cd /c/Users/becar/rdc-revend && npx supabase functions deploy sync-nuvemshop 2>&1)",
+      "Bash(cd /c/Users/becar/rdc-revend && npx supabase db push 2>&1)",
+      "Bash(cd /c/Users/becar/rdc-revend && npx supabase functions deploy create-order 2>&1)",
+      "Bash(grep:*)",
+      "Bash(ls:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npm run:*)",
+      "Bash(npx supabase:*)",
+      "WebFetch(domain:www.mercadopago.com.br)",
+      "WebFetch(domain:github.com)",
+      "WebSearch"
     ]
-  }
+  },
+  "disabledMcpjsonServers": [
+    "mercadopago"
+  ]
 }

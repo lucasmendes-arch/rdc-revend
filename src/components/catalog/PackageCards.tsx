@@ -76,7 +76,7 @@ export default function PackageCards({ products }: PackageCardsProps) {
       <div
         ref={scrollRef}
         onScroll={handleScroll}
-        className="flex gap-4 sm:gap-6 overflow-x-auto snap-x snap-mandatory scroll-smooth px-3 sm:px-4 lg:px-6 pt-4 pb-4 sm:pt-6 sm:pb-6 scrollbar-none w-full"
+        className="flex gap-4 sm:gap-6 overflow-x-auto snap-x snap-mandatory scroll-smooth px-3 sm:px-4 pl-4 lg:px-8 pt-4 pb-4 sm:pt-6 sm:pb-6 scrollbar-none w-full"
       >
         {packageSelections.map(({ pkg, selected }) => {
           const pkgTotal = selected.reduce((sum, item) => sum + (item.product.id !== 'not_found' ? item.product.price : 0) * item.qty, 0);
@@ -87,7 +87,7 @@ export default function PackageCards({ products }: PackageCardsProps) {
           return (
             <div
               key={pkg.id}
-              className={`flex-shrink-0 w-[270px] sm:w-auto snap-start rounded-xl border-2 p-3 sm:p-5 flex flex-col transition-all ${pkg.highlight
+              className={`flex-shrink-0 w-[270px] sm:w-[300px] lg:w-[260px] xl:w-[280px] snap-start rounded-xl border-2 p-3 sm:p-4 flex flex-col transition-all ${pkg.highlight
                 ? 'border-amber-400 bg-gradient-to-br from-amber-50 to-white shadow-md relative'
                 : 'border-border bg-white shadow-sm hover:border-gold-border'
                 }`}
@@ -98,9 +98,9 @@ export default function PackageCards({ products }: PackageCardsProps) {
                 </span>
               )}
 
-              <div className="flex flex-col mb-1.5 sm:mb-2">
-                <h3 className="font-extrabold text-[15px] sm:text-lg text-foreground leading-tight">{pkg.name}</h3>
-                <p className="text-[11px] sm:text-sm text-muted-foreground mt-0.5 leading-snug">{pkg.description}</p>
+              <div className="flex flex-col mb-1.5 sm:mb-2 mt-1">
+                <h3 className="font-extrabold text-[14px] sm:text-[16px] text-foreground leading-tight">{pkg.name}</h3>
+                <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 leading-snug">{pkg.description}</p>
                 <span className="text-[11px] sm:text-xs font-bold text-amber-600 mt-1">
                   {pkg.displayProductCount} Produtos Inclusos
                 </span>
@@ -133,24 +133,25 @@ export default function PackageCards({ products }: PackageCardsProps) {
                   [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
                 }
 
-                const displayImages = shuffled.slice(0, 4);
-                const remaining = uniqueImages.length - 4;
+                const displayImages = shuffled.slice(0, 5);
+                const remaining = pkg.displayProductCount - displayImages.length;
 
                 return (
-                  <div className="flex items-center mt-2 mb-4 pl-2">
-                    <div className="flex -space-x-3">
+                  <div className="flex items-center mt-2 mb-4 sm:mb-6 pl-2 sm:pl-3">
+                    <div className="flex -space-x-3.5 sm:-space-x-4">
                       {displayImages.map((img, i) => (
                         <div
                           key={i}
-                          className="w-8 h-8 rounded-full border-2 border-white bg-white overflow-hidden shadow-sm relative z-0 hover:z-10 hover:scale-110 transition-transform"
-                          style={{ zIndex: displayImages.length - i }}
+                          className="w-8 h-8 sm:w-10 sm:h-10 shrink-0 rounded-full border-2 border-white bg-white overflow-hidden shadow-sm relative hover:scale-110 transition-transform"
+                          style={{ zIndex: i }}
                         >
                           <img src={img} alt="Produto" className="w-full h-full object-cover" />
                         </div>
                       ))}
                       {remaining > 0 && (
                         <div
-                          className="w-8 h-8 rounded-full border-2 border-white bg-surface-alt text-muted-foreground flex items-center justify-center text-[10px] font-bold shadow-sm relative z-0"
+                          className="w-8 h-8 sm:w-10 sm:h-10 shrink-0 rounded-full border-2 border-white bg-surface-alt text-muted-foreground flex items-center justify-center text-[10px] sm:text-xs font-bold shadow-sm relative"
+                          style={{ zIndex: 10 }}
                         >
                           +{remaining}
                         </div>
@@ -160,7 +161,7 @@ export default function PackageCards({ products }: PackageCardsProps) {
                 );
               })()}
 
-              <div className="space-y-1.5 text-[11px] sm:text-sm text-muted-foreground mb-4">
+              <div className="space-y-1 text-[10px] sm:text-xs text-muted-foreground mb-3">
                 <div className="flex items-center gap-1.5 text-green-700 font-semibold leading-tight">
                   <TrendingUp className="w-3.5 h-3.5 shrink-0" />
                   <span>
@@ -174,7 +175,7 @@ export default function PackageCards({ products }: PackageCardsProps) {
 
               <button
                 onClick={() => handleSelectPackage(pkg.id)}
-                className={`w-full flex items-center justify-center gap-2 py-2.5 sm:py-3 rounded-lg text-xs sm:text-sm font-bold transition-all tracking-wide ${addedPkgId === pkg.id
+                className={`w-full flex items-center justify-center gap-2 py-2 sm:py-2.5 rounded-lg text-xs font-bold transition-all tracking-wide ${addedPkgId === pkg.id
                   ? 'bg-green-600 shadow-none text-white'
                   : pkg.highlight
                     ? 'bg-amber-500 hover:bg-amber-600 shadow-sm text-white'
@@ -204,8 +205,8 @@ export default function PackageCards({ products }: PackageCardsProps) {
         })}
       </div>
 
-      {/* Dots — mobile only */}
-      <div className="flex items-center justify-center gap-1.5 mt-2 sm:hidden" aria-hidden="true">
+      {/* Dots */}
+      <div className="flex items-center justify-center gap-1.5 mt-2" aria-hidden="true">
         {PACKAGES.map((_, i) => (
           <div
             key={i}

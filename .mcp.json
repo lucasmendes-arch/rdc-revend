@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "mercadopago": {
+      "command": "node",
+      "args": ["C:/Users/becar/demo-mercadopago-mcp-server/build/index.js"],
+      "env": {
+        "CLIENT_ID": "49297574-b430-4300-b16b-121e8cd61bfb",
+        "CLIENT_SECRET": "not-needed-for-docs-search"
+      }
+    }
+  }
+}

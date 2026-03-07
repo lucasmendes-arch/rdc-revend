@@ -3,6 +3,7 @@ import { ArrowLeft, CheckCircle2, ChevronRight, Crown, Building2, Store, User, M
 import { Link, useNavigate } from "react-router-dom";
 import logo from "@/assets/logo-rei-dos-cachos.png";
 import { supabase } from "@/lib/supabase";
+import { isValidCPF, isValidCNPJ } from "@/utils/validateDocument";
 
 type DocumentType = 'CPF' | 'CNPJ';
 type BusinessType = 'salao' | 'revenda' | 'loja' | '';
@@ -63,6 +64,19 @@ export default function Cadastro() {
         try {
             if (formData.password.length < 6) {
                 setError('A senha deve ter pelo menos 6 caracteres.');
+                setLoading(false);
+                return;
+            }
+
+            // Validate document checksum
+            const docDigits = formData.document.replace(/\D/g, '');
+            if (docType === 'CPF' && !isValidCPF(docDigits)) {
+                setError('CPF inválido. Verifique os dígitos.');
+                setLoading(false);
+                return;
+            }
+            if (docType === 'CNPJ' && !isValidCNPJ(docDigits)) {
+                setError('CNPJ inválido. Verifique os dígitos.');
                 setLoading(false);
                 return;
             }

@@ -8,7 +8,7 @@ import AdminLayout from '@/components/admin/AdminLayout';
 
 interface Order {
   id: string;
-  status: 'recebido' | 'separacao' | 'enviado' | 'concluido' | 'cancelado';
+  status: 'recebido' | 'aguardando_pagamento' | 'pago' | 'separacao' | 'enviado' | 'entregue' | 'concluido' | 'cancelado' | 'expirado';
   total: number;
   customer_name: string;
   customer_whatsapp: string;
@@ -19,18 +19,23 @@ interface Order {
     product_name_snapshot: string;
     qty: number;
     line_total: number;
+    catalog_products?: any;
   }>;
 }
 
-const statusConfig = {
+const statusConfig: Record<string, { label: string; color: string }> = {
   recebido: { label: 'Recebido', color: 'bg-blue-100 text-blue-700' },
+  aguardando_pagamento: { label: 'Aguardando Pgto', color: 'bg-orange-100 text-orange-700' },
+  pago: { label: 'Pago', color: 'bg-emerald-100 text-emerald-700' },
   separacao: { label: 'Separação', color: 'bg-yellow-100 text-yellow-700' },
   enviado: { label: 'Enviado', color: 'bg-purple-100 text-purple-700' },
+  entregue: { label: 'Entregue', color: 'bg-teal-100 text-teal-700' },
   concluido: { label: 'Concluído', color: 'bg-green-100 text-green-700' },
   cancelado: { label: 'Cancelado', color: 'bg-red-100 text-red-700' },
+  expirado: { label: 'Expirado', color: 'bg-gray-100 text-gray-500' },
 };
 
-const statusOptions = ['recebido', 'separacao', 'enviado', 'concluido', 'cancelado'] as const;
+const statusOptions = ['recebido', 'aguardando_pagamento', 'pago', 'separacao', 'enviado', 'entregue', 'concluido', 'cancelado', 'expirado'] as const;
 
 const AdminPedidos = () => {
   const queryClient = useQueryClient();
@@ -54,7 +59,8 @@ const AdminPedidos = () => {
             id,
             product_name_snapshot,
             qty,
-            line_total
+            line_total,
+            catalog_products ( main_image )
           )
         `
         )
@@ -68,25 +74,81 @@ const AdminPedidos = () => {
 
   const updateStatusMutation = useMutation({
     mutationFn: async ({ orderId, status }: { orderId: string; status: typeof statusOptions[number] }) => {
-      const { error } = await supabase
+      const { error, data } = await supabase
         .from('orders')
         .update({ status })
-        .eq('id', orderId);
+        .eq('id', orderId)
+        .select()
+        .single();
 
       if (error) throw error;
+      return data;
+    },
+    onMutate: async ({ orderId, status }) => {
+      await queryClient.cancelQueries({ queryKey: ['admin-orders'] });
+      const previousOrders = queryClient.getQueryData<Order[]>(['admin-orders']);
+
+      // Optimistically update the UI
+      if (previousOrders) {
+        queryClient.setQueryData<Order[]>(['admin-orders'], old =>
+          old?.map(order =>
+            order.id === orderId ? { ...order, status } : order
+          )
+        );
+      }
+      return { previousOrders };
+    },
+    onError: (err: any, variables, context) => {
+      if (context?.previousOrders) {
+        queryClient.setQueryData(['admin-orders'], context.previousOrders);
+      }
+      console.error("DEBUG STATUS ERROR:", err);
+      const errDetail = err?.details || err?.hint || '';
+      const message = err?.message ? `${err.message} ${errDetail}` : 'Erro ao atualizar status';
+      toast.error(`Falha no DB: ${message}`);
+    },
+    onSettled: () => {
+      // Delay invalidation slightly to allow backend replication/commit to settle
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ['admin-orders'] });
+      }, 500);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin-orders'] });
-      toast.success('Status atualizado com sucesso!');
-    },
-    onError: (err) => {
-      const message = err instanceof Error ? err.message : 'Erro ao atualizar status';
-      toast.error(message);
+      toast.success('Status atualizado!');
     },
   });
 
   const handleStatusChange = (orderId: string, newStatus: typeof statusOptions[number]) => {
     updateStatusMutation.mutate({ orderId, status: newStatus });
+  };
+
+  // Drag and drop handlers
+  const handleDragStart = (e: React.DragEvent, orderId: string) => {
+    e.dataTransfer.setData('orderId', orderId);
+    e.dataTransfer.effectAllowed = 'move';
+    // Small delay to prevent the dragged element from becoming invisible immediately
+    setTimeout(() => {
+      const target = e.target as HTMLElement;
+      if (target) target.classList.add('opacity-50');
+    }, 0);
+  };
+
+  const handleDragEnd = (e: React.DragEvent) => {
+    const target = e.target as HTMLElement;
+    if (target) target.classList.remove('opacity-50');
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault(); // Necessary to allow dropping
+    e.dataTransfer.dropEffect = 'move';
+  };
+
+  const handleDrop = (e: React.DragEvent, newStatus: typeof statusOptions[number]) => {
+    e.preventDefault();
+    const orderId = e.dataTransfer.getData('orderId');
+    if (orderId) {
+      handleStatusChange(orderId, newStatus);
+    }
   };
 
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
@@ -122,72 +184,150 @@ const AdminPedidos = () => {
 
         {!isLoading && !error && orders.length > 0 && (
           <>
-            {/* Desktop Table View */}
-            <div className="hidden md:block bg-white rounded-2xl shadow-card overflow-hidden">
-              <table className="w-full">
-                <thead className="bg-surface-alt border-b border-border">
-                  <tr>
-                    <th className="text-left px-6 py-3 text-xs font-semibold text-muted-foreground">Pedido</th>
-                    <th className="text-left px-6 py-3 text-xs font-semibold text-muted-foreground">Cliente</th>
-                    <th className="text-left px-6 py-3 text-xs font-semibold text-muted-foreground">WhatsApp</th>
-                    <th className="text-left px-6 py-3 text-xs font-semibold text-muted-foreground">Total</th>
-                    <th className="text-left px-6 py-3 text-xs font-semibold text-muted-foreground">Status</th>
-                    <th className="text-left px-6 py-3 text-xs font-semibold text-muted-foreground">Data</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {orders.map((order) => {
-                    const statusInfo = statusConfig[order.status];
-                    const orderNumber = order.id.slice(0, 8).toUpperCase();
-                    const orderDate = new Date(order.created_at).toLocaleDateString('pt-BR');
+            {/* Desktop Kanban / Grid View */}
+            <div className="hidden md:grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 mb-8">
+              {statusOptions.map((status, index) => {
+                const columnOrders = orders.filter((o) => o.status === status);
 
-                    return (
-                      <tr key={order.id} className="hover:bg-surface-alt transition-colors">
-                        <td className="px-6 py-4 text-sm font-semibold text-foreground">
-                          <Link
-                            to={`/pedido/sucesso/${order.id}`}
-                            className="text-gold-text hover:underline"
+                // Hide empty negative statuses to keep the kanban clean
+                if (columnOrders.length === 0 && (status === 'cancelado' || status === 'expirado')) return null;
+
+                const statusInfo = statusConfig[status] || { label: status, color: 'bg-gray-100 text-gray-600' };
+
+                return (
+                  <div
+                    key={status}
+                    className="flex flex-col min-h-[400px] max-h-[80vh] bg-[#f8f9fa] rounded-2xl shadow-sm border border-slate-200 overflow-hidden relative"
+                    onDragOver={handleDragOver}
+                    onDrop={(e) => handleDrop(e, status as typeof statusOptions[number])}
+                  >
+                    {/* Header */}
+                    <div className="p-3.5 border-b border-slate-200 flex items-center justify-between bg-white z-10 sticky top-0">
+                      <div className="flex items-center gap-2">
+                        <span className={`w-2.5 h-2.5 rounded-full ${statusInfo.color.split(' ')[0]} shadow-inner`}></span>
+                        <h3 className="font-bold text-xs text-slate-800 uppercase tracking-wide">{statusInfo.label}</h3>
+                      </div>
+                      <span className="bg-slate-100 text-slate-500 text-xs font-bold px-2.5 py-1 rounded-full border border-slate-200 shadow-sm leading-none">
+                        {columnOrders.length}
+                      </span>
+                    </div>
+
+                    {/* Cards Container */}
+                    <div className="flex-1 overflow-y-auto p-3 space-y-3 scrollbar-thin">
+                      {columnOrders.map((order) => {
+                        const orderNumber = order.id.slice(0, 8).toUpperCase();
+                        const orderDate = new Date(order.created_at).toLocaleDateString('pt-BR');
+
+                        return (
+                          <div
+                            key={order.id}
+                            draggable
+                            onDragStart={(e) => handleDragStart(e, order.id)}
+                            onDragEnd={handleDragEnd}
+                            className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 hover:shadow-md transition-shadow hover:border-gold/40 group relative flex flex-col gap-1.5 cursor-grab active:cursor-grabbing"
                           >
-                            #{orderNumber}
-                          </Link>
-                        </td>
-                        <td className="px-6 py-4 text-sm text-foreground">{order.customer_name}</td>
-                        <td className="px-6 py-4 text-sm text-foreground">{order.customer_whatsapp}</td>
-                        <td className="px-6 py-4 text-sm font-semibold text-foreground">
-                          R$ {order.total.toFixed(2)}
-                        </td>
-                        <td className="px-6 py-4 text-sm">
-                          <select
-                            value={order.status}
-                            onChange={(e) =>
-                              handleStatusChange(
-                                order.id,
-                                e.target.value as typeof statusOptions[number]
-                              )
-                            }
-                            disabled={updateStatusMutation.isPending}
-                            className={`px-3 py-1.5 rounded-full text-xs font-semibold border-0 cursor-pointer ${statusInfo.color}`}
-                          >
-                            {statusOptions.map((s) => (
-                              <option key={s} value={s}>
-                                {statusConfig[s].label}
-                              </option>
-                            ))}
-                          </select>
-                        </td>
-                        <td className="px-6 py-4 text-sm text-muted-foreground">{orderDate}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+                            <div className="flex items-start justify-between">
+                              <Link
+                                to={`/pedido/sucesso/${order.id}`}
+                                className="text-sm font-extrabold text-gold-text hover:underline"
+                              >
+                                #{orderNumber}
+                              </Link>
+                              <span className="text-[11px] font-medium text-slate-400 bg-slate-50 px-2 py-0.5 rounded-full border border-slate-100">{orderDate}</span>
+                            </div>
+
+                            <div>
+                              <p className="text-[13px] font-bold text-slate-700 truncate">{order.customer_name}</p>
+                              <p className="text-[11px] text-slate-500 truncate">{order.customer_whatsapp}</p>
+                            </div>
+
+                            {/* Small Items preview with Thumbnails */}
+                            <div className="py-3 mt-1 border-t border-dashed border-slate-100">
+                              <div className="text-[10px] text-slate-400 font-semibold mb-2 uppercase tracking-wider flex justify-between">
+                                <span>Itens do Pedido ({order.order_items.reduce((acc, item) => acc + item.qty, 0)})</span>
+                              </div>
+                              <div className="flex -space-x-3.5 sm:-space-x-4 pl-1">
+                                {order.order_items.slice(0, 4).map((item, idx) => {
+                                  let imgUrl = null;
+                                  if (Array.isArray(item.catalog_products)) {
+                                    imgUrl = item.catalog_products[0]?.main_image;
+                                  } else {
+                                    imgUrl = item.catalog_products?.main_image;
+                                  }
+
+                                  return (
+                                    <div
+                                      key={item.id}
+                                      className="w-10 h-10 sm:w-12 sm:h-12 shrink-0 rounded-full border-2 sm:border-[3px] border-white bg-white overflow-hidden shadow-sm relative hover:scale-110 transition-transform"
+                                      style={{ zIndex: idx }}
+                                      title={`${item.qty}x ${item.product_name_snapshot}`}
+                                    >
+                                      {imgUrl ? (
+                                        <img src={imgUrl} alt="" className="w-full h-full object-cover" />
+                                      ) : (
+                                        <div className="w-full h-full flex items-center justify-center bg-slate-50 text-[12px] font-bold text-slate-400">
+                                          {item.product_name_snapshot.substring(0, 1).toUpperCase()}
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                                {order.order_items.length > 4 && (
+                                  <div
+                                    className="w-10 h-10 sm:w-12 sm:h-12 shrink-0 rounded-full border-2 sm:border-[3px] border-white bg-surface-alt text-muted-foreground flex items-center justify-center text-[11px] sm:text-[14px] font-bold shadow-sm relative"
+                                    style={{ zIndex: 10 }}
+                                  >
+                                    +{order.order_items.length - 4}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="flex items-center justify-between mt-1 pt-3 border-t border-slate-100">
+                              <span className="font-black text-slate-800 tracking-tight">R$ {order.total.toFixed(2)}</span>
+
+                              <select
+                                value={order.status}
+                                onChange={(e) =>
+                                  handleStatusChange(
+                                    order.id,
+                                    e.target.value as typeof statusOptions[number]
+                                  )
+                                }
+                                disabled={updateStatusMutation.isPending}
+                                className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border-0 cursor-pointer shadow-sm outline-none transition-transform hover:scale-105 active:scale-95 ${statusInfo.color}`}
+                              >
+                                {statusOptions.map((s) => (
+                                  <option key={s} value={s}>
+                                    {statusConfig[s].label}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                          </div>
+                        );
+                      })}
+
+                      {/* Empty Column Placeholder */}
+                      {columnOrders.length === 0 && (
+                        <div className="flex flex-col items-center justify-center py-10 opacity-60">
+                          <div className="w-12 h-12 rounded-full border-2 border-dashed border-slate-300 flex items-center justify-center text-slate-400 mb-3">
+                            <span className="block w-4 h-0.5 bg-slate-300 rounded-full"></span>
+                          </div>
+                          <p className="text-xs font-semibold text-slate-400">Nenhum pedido</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
 
             {/* Mobile Card View */}
             <div className="md:hidden space-y-4">
               {orders.map((order) => {
                 const isExpanded = expandedId === order.id;
-                const statusInfo = statusConfig[order.status];
+                const statusInfo = statusConfig[order.status] || { label: order.status, color: 'bg-gray-100 text-gray-600' };
                 const orderNumber = order.id.slice(0, 8).toUpperCase();
                 const orderDate = new Date(order.created_at).toLocaleDateString('pt-BR');
 
@@ -206,9 +346,8 @@ const AdminPedidos = () => {
                         </p>
                       </div>
                       <ChevronDown
-                        className={`w-5 h-5 text-muted-foreground flex-shrink-0 transition-transform ${
-                          isExpanded ? 'rotate-180' : ''
-                        }`}
+                        className={`w-5 h-5 text-muted-foreground flex-shrink-0 transition-transform ${isExpanded ? 'rotate-180' : ''
+                          }`}
                       />
                     </button>
 
@@ -276,6 +415,7 @@ const AdminPedidos = () => {
                 );
               })}
             </div>
+
           </>
         )}
       </div>

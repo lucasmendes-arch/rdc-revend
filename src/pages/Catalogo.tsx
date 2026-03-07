@@ -13,7 +13,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useCatalogProducts } from "@/hooks/useCatalogProducts";
 import { useCategories, Category } from "@/hooks/useCategories";
 import { useCart } from "@/contexts/CartContext";
-import { useTrackPageView, useTrackAddToCart } from "@/hooks/useSessionTracking";
+import { useTrackPageView, useTrackAddToCart, useTrackProductView } from "@/hooks/useSessionTracking";
 
 // ============================================================================
 // TYPES & CONSTANTS
@@ -57,6 +57,7 @@ const Catalogo = () => {
   const { role } = useAuth();
   useTrackPageView('Catálogo');
   const trackAddToCart = useTrackAddToCart();
+  const trackProductView = useTrackProductView();
 
   // ========================================================================
   // STATE
@@ -76,6 +77,10 @@ const Catalogo = () => {
   // UI state
   const [cartOpen, setCartOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<typeof products[0] | null>(null);
+  const handleSelectProduct = (product: typeof products[0] | null) => {
+    setSelectedProduct(product);
+    if (product) trackProductView(product.name);
+  };
   const [addedId, setAddedId] = useState<string | null>(null);
   const [cartBounce, setCartBounce] = useState(false);
   const [quantities, setQuantities] = useState<Record<string, number>>({});
@@ -508,7 +513,7 @@ const Catalogo = () => {
                 getQty={getQty}
                 setQty={setQty}
                 onAdd={handleAddItem}
-                onSelect={setSelectedProduct}
+                onSelect={handleSelectProduct}
                 getSuggestedPrice={getSuggestedPrice}
               />
             )}
@@ -615,7 +620,7 @@ const Catalogo = () => {
                           getQty={getQty}
                           setQty={setQty}
                           onAdd={handleAddItem}
-                          onSelect={setSelectedProduct}
+                          onSelect={handleSelectProduct}
                           getSuggestedPrice={getSuggestedPrice}
                         />
                       </div>

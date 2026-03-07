@@ -41,6 +41,47 @@ Deno.serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+    // Rate limiting: max 3 user creations per IP per 5 minutes
+    const clientIp = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+      || req.headers.get('cf-connecting-ip')
+      || 'unknown'
+
+    const { data: allowed } = await supabase.rpc('check_rate_limit', {
+      p_key: `create-user:${clientIp}`,
+      p_max_requests: 3,
+      p_window_seconds: 300,
+    })
+    if (allowed === false) {
+      return new Response(
+        JSON.stringify({ error: 'Muitas tentativas. Aguarde alguns minutos.' }),
+        { status: 429, headers: { "Content-Type": "application/json", ...getCorsHeaders(req) } }
+      );
+    }
+
+    // Verify caller is admin (requires Authorization header)
+    const authHeader = req.headers.get('Authorization')
+    if (authHeader) {
+      const anonKey = Deno.env.get("SUPABASE_ANON_KEY") || ''
+      const callerClient = createClient(supabaseUrl, anonKey, {
+        global: { headers: { Authorization: authHeader } },
+      })
+      const { data: { user: caller } } = await callerClient.auth.getUser()
+      if (caller) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', caller.id)
+          .single()
+
+        if (profile?.role !== 'admin') {
+          return new Response(
+            JSON.stringify({ error: "Apenas administradores podem criar usuários" }),
+            { status: 403, headers: { "Content-Type": "application/json", ...getCorsHeaders(req) } }
+          );
+        }
+      }
+    }
+
     const { email, password, role } = await req.json();
 
     if (!email || !password) {
@@ -56,6 +97,10 @@ Deno.serve(async (req) => {
         { status: 400, headers: { "Content-Type": "application/json", ...getCorsHeaders(req) } }
       );
     }
+
+    // Only allow admin role if caller is authenticated admin
+    // Default to 'user' for safety
+    const userRole = (role === "admin" && authHeader) ? "admin" : "user";
 
     // Create user via Supabase Admin API
     const { data: userData, error: createError } = await supabase.auth.admin.createUser({
@@ -74,7 +119,6 @@ Deno.serve(async (req) => {
     const userId = userData.user.id;
 
     // Set role in profiles table
-    const userRole = role === "admin" ? "admin" : "user";
     const { error: profileError } = await supabase
       .from("profiles")
       .upsert({ id: userId, role: userRole }, { onConflict: "id" });

@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useActiveUpsell } from '@/hooks/useUpsell';
 import { supabase } from '@/lib/supabase';
 import { useTrackPurchase, useTrackInitiateCheckout } from '@/hooks/useSessionTracking';
+import { isValidDocument } from '@/utils/validateDocument';
 
 type Step = 1 | 2 | 3 | 4;
 
@@ -153,9 +154,9 @@ const Checkout = () => {
         setError('Preencha todos os campos obrigatorios, incluindo CPF/CNPJ e endereco.');
         return;
       }
-      const docDigits = formData.customer_document.replace(/\D/g, '');
-      if (docDigits.length !== 11 && docDigits.length !== 14) {
-        setError('CPF deve ter 11 digitos ou CNPJ 14 digitos.');
+      const docResult = isValidDocument(formData.customer_document);
+      if (!docResult.valid) {
+        setError(docResult.error || 'Documento inválido.');
         return;
       }
       if (formData.customer_whatsapp.length < 11) {
@@ -364,17 +365,10 @@ const Checkout = () => {
                   <span className="text-muted-foreground">Subtotal ({cartCount} itens)</span>
                   <span className="font-medium">R$ {cartTotal.toFixed(2)}</span>
                 </div>
-                <div className="flex items-center justify-between text-sm text-slate-600 bg-slate-50 p-2 rounded">
-                  <span>Frete estimado</span>
-                  <span>+ R$ {shippingEstimate.toFixed(2)}</span>
-                </div>
                 <div className="flex items-center justify-between text-lg font-bold pt-3 border-t border-border">
                   <span>Total</span>
-                  <span className="gradient-gold-text">R$ {orderTotal.toFixed(2)}</span>
+                  <span className="gradient-gold-text">R$ {cartTotal.toFixed(2)}</span>
                 </div>
-                <p className="text-[10px] text-muted-foreground text-center">
-                  O valor exato do frete será confirmado pela equipe após o pedido.
-                </p>
               </div>
 
               {cartTotal < 500 && (
@@ -450,16 +444,16 @@ const Checkout = () => {
                       </p>
                     )}
 
-                    <div className="flex flex-col sm:flex-row items-center sm:items-baseline gap-2 sm:gap-4 justify-center sm:justify-start">
-                      <span className="text-sm font-medium text-muted-foreground line-through decoration-red-500/50">
+                    <div className="flex flex-row flex-wrap items-baseline gap-2 sm:gap-4 justify-center sm:justify-start">
+                      <span className="text-sm font-medium text-muted-foreground line-through decoration-red-500/50 whitespace-nowrap">
                         De R$ {upsellOffer.product.price.toFixed(2)} {upsellOffer.quantity > 1 ? 'cada' : ''}
                       </span>
-                      <div className="flex items-baseline gap-1">
-                        <span className="text-sm font-bold text-foreground">{upsellOffer.quantity > 1 ? `${upsellOffer.quantity}x` : 'Por'}</span>
-                        <span className="text-3xl font-black gradient-gold-text">
+                      <div className="flex flex-row items-baseline gap-1 whitespace-nowrap">
+                        <span className="text-xl sm:text-2xl font-bold text-foreground">{upsellOffer.quantity > 1 ? `${upsellOffer.quantity}x` : 'Por'}</span>
+                        <span className="text-3xl sm:text-4xl font-black gradient-gold-text">
                           R$ {upsellOffer.discounted_price.toFixed(2)}
                         </span>
-                        {upsellOffer.quantity > 1 && <span className="text-sm text-foreground font-medium">cada</span>}
+                        {upsellOffer.quantity > 1 && <span className="text-sm font-medium text-foreground ml-1">cada</span>}
                       </div>
                     </div>
                     {upsellOffer.quantity > 1 && (
@@ -611,9 +605,14 @@ const Checkout = () => {
                 </div>
               )}
 
-              <div className="flex items-center justify-between text-sm text-slate-600 bg-slate-50 p-2 rounded">
-                <span>Frete estimado</span>
-                <span>+ R$ {shippingEstimate.toFixed(2)}</span>
+              <div className="flex flex-col text-slate-600 bg-slate-50 p-2 rounded">
+                <div className="flex items-center justify-between text-sm">
+                  <span>Frete estimado</span>
+                  <span>+ R$ {shippingEstimate.toFixed(2)}</span>
+                </div>
+                <p className="text-[10px] text-muted-foreground mt-1 text-left">
+                  O valor é uma média de cotação com tranportadoras parceiras.
+                </p>
               </div>
 
               <div className="flex items-center justify-between text-lg font-bold pt-3 border-t border-border">
@@ -622,9 +621,6 @@ const Checkout = () => {
                   R$ {orderTotal.toFixed(2)}
                 </span>
               </div>
-              <p className="text-[10px] text-muted-foreground mt-1 text-center">
-                O valor exato do frete será confirmado pela equipe após o pedido.
-              </p>
             </div>
 
             {/* Proceed to Payment Button (instead of submit) */}

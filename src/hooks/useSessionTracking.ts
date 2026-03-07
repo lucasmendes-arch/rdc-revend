@@ -8,6 +8,8 @@ declare global {
   }
 }
 
+type FunnelStatus = 'visitou' | 'visualizou_produto' | 'adicionou_carrinho' | 'iniciou_checkout' | 'comprou' | 'abandonou'
+
 function getSessionId(): string {
   let id = localStorage.getItem('rdc_session_id')
   if (!id) {
@@ -17,15 +19,53 @@ function getSessionId(): string {
   return id
 }
 
+// Status hierarchy — only advance forward, never go back (except abandonou which is set by cron)
+const statusRank: Record<FunnelStatus, number> = {
+  visitou: 1,
+  visualizou_produto: 2,
+  adicionou_carrinho: 3,
+  iniciou_checkout: 4,
+  comprou: 5,
+  abandonou: 0, // special — set by server only
+}
+
 async function upsertSession(data: {
   session_id: string
-  status: 'visitou' | 'escolhendo' | 'comprou'
+  status: FunnelStatus
   user_id?: string | null
   email?: string | null
   last_page?: string
   cart_items_count?: number
 }) {
   try {
+    // Fetch current status to avoid going backwards
+    const { data: existing } = await supabase
+      .from('client_sessions')
+      .select('status')
+      .eq('session_id', data.session_id)
+      .maybeSingle()
+
+    if (existing) {
+      const currentRank = statusRank[existing.status as FunnelStatus] || 0
+      const newRank = statusRank[data.status]
+      // Don't go backwards (but always allow updates to same status for last_page etc.)
+      if (newRank < currentRank) {
+        // Still update last_page and cart count, just keep status
+        const { error } = await supabase
+          .from('client_sessions')
+          .update({
+            user_id: data.user_id,
+            email: data.email,
+            last_page: data.last_page,
+            cart_items_count: data.cart_items_count,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('session_id', data.session_id)
+        if (error) console.warn('Session tracking error:', error.message)
+        return
+      }
+    }
+
     const { error } = await supabase
       .from('client_sessions')
       .upsert(
@@ -63,6 +103,25 @@ export function useTrackPageView(pageName?: string) {
   }, [pageName, user])
 }
 
+export function useTrackProductView() {
+  const { user } = useAuth()
+
+  return useCallback(
+    (productName: string) => {
+      const sessionId = getSessionId()
+
+      upsertSession({
+        session_id: sessionId,
+        status: 'visualizou_produto',
+        user_id: user?.id || null,
+        email: user?.email || null,
+        last_page: productName,
+      })
+    },
+    [user]
+  )
+}
+
 export function useTrackAddToCart() {
   const { user } = useAuth()
 
@@ -72,7 +131,7 @@ export function useTrackAddToCart() {
 
       upsertSession({
         session_id: sessionId,
-        status: 'escolhendo',
+        status: 'adicionou_carrinho',
         user_id: user?.id || null,
         email: user?.email || null,
         cart_items_count: cartItemsCount,
@@ -99,7 +158,7 @@ export function useTrackInitiateCheckout() {
 
       upsertSession({
         session_id: sessionId,
-        status: 'escolhendo',
+        status: 'iniciou_checkout',
         user_id: user?.id || null,
         email: user?.email || null,
         cart_items_count: numItems,

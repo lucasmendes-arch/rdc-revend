@@ -71,6 +71,19 @@ serve(async (req) => {
       )
     }
 
+    // 1.5. Rate limiting: max 5 orders per user per 60 seconds
+    const { data: allowed } = await serviceClient.rpc('check_rate_limit', {
+      p_key: `order:${user.id}`,
+      p_max_requests: 5,
+      p_window_seconds: 60,
+    })
+    if (allowed === false) {
+      return new Response(
+        JSON.stringify({ error: 'Muitas requisições. Aguarde um momento antes de tentar novamente.' }),
+        { status: 429, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
+      )
+    }
+
     // 2. Parse and validate request body
     const body: OrderRequest = await req.json()
 
@@ -245,8 +258,8 @@ serve(async (req) => {
     // Calculate shipping (validate: must be ~20% of subtotal, cap at 25% to prevent manipulation)
     const shippingFromClient = body.shipping && body.shipping > 0 ? Math.round(body.shipping * 100) / 100 : 0
     const expectedShipping = Math.round(subtotal * 0.20 * 100) / 100
-    // Use server-calculated shipping if client value diverges too much
-    const shipping = Math.abs(shippingFromClient - expectedShipping) < 1 ? shippingFromClient : expectedShipping
+    // Use server-calculated shipping if client value diverges too much (max R$0.10 tolerance)
+    const shipping = Math.abs(shippingFromClient - expectedShipping) < 0.10 ? shippingFromClient : expectedShipping
     const total = Math.round((subtotal + shipping) * 100) / 100
 
     // 7. Create order (using service client to bypass RLS — we already verified auth)
