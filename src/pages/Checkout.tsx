@@ -103,6 +103,11 @@ const Checkout = () => {
   const upsellInCart = upsellOffer?.product ? cart.some(i => i.id === upsellOffer.product!.id) : false;
   const showUpsellStep = upsellOffer?.product && !upsellInCart && !upsellAdded && !upsellSkipped;
 
+  // Shipping = 20% of subtotal (including upsell if added)
+  const upsellAmount = upsellAdded && upsellOffer ? upsellOffer.discounted_price * (upsellOffer.quantity || 1) : 0;
+  const shippingEstimate = Math.round((cartTotal + upsellAmount) * 0.20 * 100) / 100;
+  const orderTotal = Math.round((cartTotal + upsellAmount + shippingEstimate) * 100) / 100;
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     let { name, value } = e.target;
     if (name === 'customer_whatsapp') value = value.replace(/\D/g, '');
@@ -229,6 +234,7 @@ const Checkout = () => {
         customer_document: formData.customer_document,
         payment_method: paymentMethod,
         installments: paymentMethod === 'credit' ? installments : 1,
+        shipping: shippingEstimate,
         notes: finalNotes,
       };
 
@@ -358,10 +364,17 @@ const Checkout = () => {
                   <span className="text-muted-foreground">Subtotal ({cartCount} itens)</span>
                   <span className="font-medium">R$ {cartTotal.toFixed(2)}</span>
                 </div>
+                <div className="flex items-center justify-between text-sm text-slate-600 bg-slate-50 p-2 rounded">
+                  <span>Frete estimado</span>
+                  <span>+ R$ {shippingEstimate.toFixed(2)}</span>
+                </div>
                 <div className="flex items-center justify-between text-lg font-bold pt-3 border-t border-border">
                   <span>Total</span>
-                  <span className="gradient-gold-text">R$ {cartTotal.toFixed(2)}</span>
+                  <span className="gradient-gold-text">R$ {orderTotal.toFixed(2)}</span>
                 </div>
+                <p className="text-[10px] text-muted-foreground text-center">
+                  O valor exato do frete será confirmado pela equipe após o pedido.
+                </p>
               </div>
 
               {cartTotal < 500 && (
@@ -599,14 +612,14 @@ const Checkout = () => {
               )}
 
               <div className="flex items-center justify-between text-sm text-slate-600 bg-slate-50 p-2 rounded">
-                <span>Frete</span>
-                <span>+ R$ {((cartTotal + (upsellAdded && upsellOffer ? upsellOffer.discounted_price * (upsellOffer.quantity || 1) : 0)) * 0.20).toFixed(2)}</span>
+                <span>Frete estimado</span>
+                <span>+ R$ {shippingEstimate.toFixed(2)}</span>
               </div>
 
               <div className="flex items-center justify-between text-lg font-bold pt-3 border-t border-border">
                 <span className="text-foreground">Total do Pedido</span>
                 <span className="gradient-gold-text">
-                  R$ {((cartTotal + (upsellAdded && upsellOffer ? upsellOffer.discounted_price * (upsellOffer.quantity || 1) : 0)) * 1.20).toFixed(2)}
+                  R$ {orderTotal.toFixed(2)}
                 </span>
               </div>
               <p className="text-[10px] text-muted-foreground mt-1 text-center">

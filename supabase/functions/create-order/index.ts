@@ -29,6 +29,9 @@ interface OrderRequest {
   customer_whatsapp: string
   customer_email: string
   notes?: string
+  payment_method?: 'pix' | 'credit'
+  installments?: number
+  shipping?: number
 }
 
 serve(async (req) => {
@@ -239,14 +242,21 @@ serve(async (req) => {
       )
     }
 
+    // Calculate shipping (validate: must be ~20% of subtotal, cap at 25% to prevent manipulation)
+    const shippingFromClient = body.shipping && body.shipping > 0 ? Math.round(body.shipping * 100) / 100 : 0
+    const expectedShipping = Math.round(subtotal * 0.20 * 100) / 100
+    // Use server-calculated shipping if client value diverges too much
+    const shipping = Math.abs(shippingFromClient - expectedShipping) < 1 ? shippingFromClient : expectedShipping
+    const total = Math.round((subtotal + shipping) * 100) / 100
+
     // 7. Create order (using service client to bypass RLS — we already verified auth)
     const { data: order, error: orderError } = await serviceClient
       .from('orders')
       .insert({
         user_id: user.id,
         subtotal,
-        shipping: 0,
-        total: subtotal,
+        shipping,
+        total,
         customer_name: body.customer_name.trim(),
         customer_whatsapp: body.customer_whatsapp.trim(),
         customer_email: body.customer_email.trim(),
@@ -321,14 +331,27 @@ serve(async (req) => {
         const origin = req.headers.get('Origin') || 'https://rdc-revend.vercel.app'
         const webhookUrl = `${supabaseUrl}/functions/v1/webhook-mercadopago`
 
-        const preferencePayload = {
-          items: orderItems.map(item => ({
-            id: item.product_id,
-            title: item.product_name_snapshot,
-            quantity: item.qty,
-            unit_price: item.unit_price_snapshot,
+        const mpItems = orderItems.map(item => ({
+          id: item.product_id,
+          title: item.product_name_snapshot,
+          quantity: item.qty,
+          unit_price: item.unit_price_snapshot,
+          currency_id: 'BRL',
+        }))
+
+        // Add shipping as a line item
+        if (shipping > 0) {
+          mpItems.push({
+            id: 'shipping',
+            title: 'Frete',
+            quantity: 1,
+            unit_price: shipping,
             currency_id: 'BRL',
-          })),
+          })
+        }
+
+        const preferencePayload = {
+          items: mpItems,
           payer: {
             name: body.customer_name.trim(),
             email: body.customer_email.trim(),
@@ -346,7 +369,11 @@ serve(async (req) => {
           payment_methods: {
             excluded_payment_types: [
               { id: 'ticket' },
+              // If user chose PIX, exclude credit/debit cards; if credit, exclude bank_transfer (PIX)
+              ...(body.payment_method === 'pix' ? [{ id: 'credit_card' }, { id: 'debit_card' }] : []),
+              ...(body.payment_method === 'credit' ? [{ id: 'bank_transfer' }] : []),
             ],
+            ...(body.payment_method === 'credit' && body.installments ? { installments: body.installments } : {}),
           },
           auto_return: 'approved',
           external_reference: order.id,
@@ -399,7 +426,8 @@ serve(async (req) => {
           '',
           itemsList,
           '',
-          `💰 *Total: R$ ${subtotal.toFixed(2)}*`,
+          shipping > 0 ? `📦 Frete: R$ ${shipping.toFixed(2)}` : '',
+          `💰 *Total: R$ ${total.toFixed(2)}*`,
           paymentUrl ? `💳 Link: ${paymentUrl}` : '',
           body.notes ? `📝 ${body.notes}` : '',
         ].filter(Boolean).join('\n')
@@ -416,7 +444,7 @@ serve(async (req) => {
 
     // 12. Return success with payment URL
     return new Response(
-      JSON.stringify({ order_id: order.id, total: subtotal, payment_url: paymentUrl }),
+      JSON.stringify({ order_id: order.id, total, payment_url: paymentUrl }),
       { status: 201, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
     )
   } catch (err) {
