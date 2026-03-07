@@ -337,6 +337,7 @@ export default function Cadastro() {
                                             className="w-full px-4 py-2.5 rounded-xl border border-input bg-surface focus:outline-none focus:ring-2 focus:ring-amber-300 transition-all text-sm appearance-none"
                                         >
                                             <option value="" disabled>Selecione...</option>
+                                            <option value="somente_eu">Somente eu</option>
                                             <option value="1-3">De 1 a 3 funcionários</option>
                                             <option value="4-7">De 4 a 7 funcionários</option>
                                             <option value="8-10">De 8 a 10 funcionários</option>

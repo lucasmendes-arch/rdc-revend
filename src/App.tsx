@@ -28,7 +28,7 @@ import { useLocation } from "react-router-dom";
 
 function ConditionalWhatsApp() {
   const { pathname } = useLocation();
-  if (pathname.startsWith('/admin')) return null;
+  if (pathname.startsWith('/admin') || pathname === '/cadastro' || pathname === '/login') return null;
   return <WhatsAppButton />;
 }
 
