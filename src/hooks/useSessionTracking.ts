@@ -1,6 +1,7 @@
 import { useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
+import { crmService } from '@/services/crm'
 
 declare global {
   interface Window {
@@ -10,7 +11,10 @@ declare global {
 
 type FunnelStatus = 'visitou' | 'visualizou_produto' | 'adicionou_carrinho' | 'iniciou_checkout' | 'comprou' | 'abandonou'
 
-function getSessionId(): string {
+function getSessionId(userId?: string | null): string {
+  // Use stable user-based ID so each client has exactly ONE row
+  if (userId) return `user_${userId}`
+  // Fallback for unauthenticated visitors
   let id = localStorage.getItem('rdc_session_id')
   if (!id) {
     id = `s_${Date.now()}_${Math.random().toString(36).slice(2)}`
@@ -87,7 +91,7 @@ export function useTrackPageView(pageName?: string) {
 
   useEffect(() => {
     if (role === 'admin') return // don't track admin sessions
-    const sessionId = getSessionId()
+    const sessionId = getSessionId(user?.id)
 
     upsertSession({
       session_id: sessionId,
@@ -95,6 +99,13 @@ export function useTrackPageView(pageName?: string) {
       user_id: user?.id || null,
       email: user?.email || null,
       last_page: pageName || window.location.pathname,
+    })
+
+    crmService.trackEvent({
+      user_id: user?.id || null,
+      session_id: sessionId,
+      event_type: 'visitou', // custom string for page visits if not explicitly in enum
+      metadata: { page: pageName || window.location.pathname }
     })
 
     window.fbq?.('track', 'ViewContent', {
@@ -110,7 +121,7 @@ export function useTrackProductView() {
   return useCallback(
     (productName: string) => {
       if (role === 'admin') return
-      const sessionId = getSessionId()
+      const sessionId = getSessionId(user?.id)
 
       upsertSession({
         session_id: sessionId,
@@ -118,6 +129,13 @@ export function useTrackProductView() {
         user_id: user?.id || null,
         email: user?.email || null,
         last_page: productName,
+      })
+
+      crmService.trackEvent({
+        user_id: user?.id || null,
+        session_id: sessionId,
+        event_type: 'visualizou_produto',
+        metadata: { product: productName }
       })
     },
     [user, role]
@@ -130,7 +148,7 @@ export function useTrackAddToCart() {
   return useCallback(
     (cartItemsCount: number, productName?: string, productPrice?: number) => {
       if (role === 'admin') return
-      const sessionId = getSessionId()
+      const sessionId = getSessionId(user?.id)
 
       upsertSession({
         session_id: sessionId,
@@ -139,6 +157,17 @@ export function useTrackAddToCart() {
         email: user?.email || null,
         cart_items_count: cartItemsCount,
         last_page: window.location.pathname,
+      })
+
+      crmService.trackEvent({
+        user_id: user?.id || null,
+        session_id: sessionId,
+        event_type: 'adicionou_carrinho',
+        metadata: { 
+          cart_items_count: cartItemsCount,
+          product: productName,
+          price: productPrice
+        }
       })
 
       window.fbq?.('track', 'AddToCart', {
@@ -158,7 +187,7 @@ export function useTrackInitiateCheckout() {
   return useCallback(
     (totalValue: number, numItems: number) => {
       if (role === 'admin') return
-      const sessionId = getSessionId()
+      const sessionId = getSessionId(user?.id)
 
       upsertSession({
         session_id: sessionId,
@@ -167,6 +196,16 @@ export function useTrackInitiateCheckout() {
         email: user?.email || null,
         cart_items_count: numItems,
         last_page: '/checkout',
+      })
+
+      crmService.trackEvent({
+        user_id: user?.id || null,
+        session_id: sessionId,
+        event_type: 'iniciou_checkout',
+        metadata: {
+          cart_items_count: numItems,
+          total_value: totalValue,
+        }
       })
 
       window.fbq?.('track', 'InitiateCheckout', {
@@ -179,13 +218,19 @@ export function useTrackInitiateCheckout() {
   )
 }
 
+/**
+ * @deprecated Nunca foi chamado em nenhuma página.
+ * A confirmação real de compra vem server-side via webhook-mercadopago,
+ * que emite 'purchase_completed' em crm_events e atualiza client_sessions para 'comprou'.
+ * Não remover ainda — pode ser conectado a PedidoSucesso.tsx no futuro se necessário.
+ */
 export function useTrackPurchase() {
   const { user, role } = useAuth()
 
   return useCallback(
     (total: number) => {
       if (role === 'admin') return
-      const sessionId = getSessionId()
+      const sessionId = getSessionId(user?.id)
 
       upsertSession({
         session_id: sessionId,

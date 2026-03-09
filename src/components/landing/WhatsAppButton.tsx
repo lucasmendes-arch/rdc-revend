@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 
 const WhatsAppButton = () => {
   const [showPopup, setShowPopup] = useState(true);
+  const location = useLocation();
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -10,8 +12,13 @@ const WhatsAppButton = () => {
     return () => clearTimeout(timer);
   }, []);
 
+  // Hide WhatsApp button entirely on Checkout to avoid overlapping the "MUITO IMPORTANTE" Finalizar Pedido CTA
+  if (location.pathname.startsWith('/checkout')) {
+    return null;
+  }
+
   return (
-    <div className="fixed z-50 bottom-32 right-6 md:bottom-10 md:right-12 flex items-end gap-3 pointer-events-none">
+    <div className="fixed z-50 bottom-24 right-4 sm:bottom-6 sm:right-6 md:bottom-8 md:right-8 flex items-end gap-3 pointer-events-none">
 
       {/* Helper Popup */}
       <div

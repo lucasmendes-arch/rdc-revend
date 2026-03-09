@@ -22,6 +22,7 @@ import AdminUsuarios from "./pages/admin/Usuarios";
 import AdminCategorias from "./pages/admin/Categorias";
 import AdminUpsell from "./pages/admin/Upsell";
 import AdminFinanceiro from "./pages/admin/Financeiro";
+import AdminCrmDebug from "./pages/admin/CrmDebug";
 import NotFound from "./pages/NotFound";
 import WhatsAppButton from "./components/landing/WhatsAppButton";
 import { useLocation } from "react-router-dom";
@@ -62,6 +63,7 @@ const App = () => (
                     <Route path="/admin/categorias" element={<AdminCategorias />} />
                     <Route path="/admin/upsell" element={<AdminUpsell />} />
                     <Route path="/admin/financeiro" element={<AdminFinanceiro />} />
+                    <Route path="/admin/crm" element={<AdminCrmDebug />} />
                   </Route>
                 </Route>
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

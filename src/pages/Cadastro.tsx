@@ -4,6 +4,8 @@ import { Link, useNavigate } from "react-router-dom";
 import logo from "@/assets/logo-rei-dos-cachos.png";
 import { supabase } from "@/lib/supabase";
 import { isValidCPF, isValidCNPJ } from "@/utils/validateDocument";
+import { crmService } from '@/services/crm';
+import { CrmEventCode } from '@/types/crm';
 
 type DocumentType = 'CPF' | 'CNPJ';
 type BusinessType = 'salao' | 'revenda' | 'loja' | '';
@@ -88,7 +90,7 @@ export default function Cadastro() {
             }
 
             // 1. Create auth user
-            const { error: signUpError } = await supabase.auth.signUp({
+            const { data: authData, error: signUpError } = await supabase.auth.signUp({
                 email: formData.email,
                 password: formData.password,
                 options: {
@@ -106,13 +108,11 @@ export default function Cadastro() {
                 return;
             }
 
-            // 2. Save extra profile data (trigger already created the profile row)
-            // Small delay to ensure trigger has run
-            await new Promise(r => setTimeout(r, 500));
+            const user = authData?.user;
 
-            const { data: { user } } = await supabase.auth.getUser();
+            // 2. Save extra profile data (trigger already created the profile row synchronously in DB)
             if (user) {
-                await supabase.from('profiles').update({
+                const { error: profileError } = await supabase.from('profiles').update({
                     full_name: formData.name,
                     phone: formData.phone,
                     document_type: docType,
@@ -121,6 +121,22 @@ export default function Cadastro() {
                     employees: formData.employees,
                     revenue: formData.revenue,
                 }).eq('id', user.id);
+
+                if (profileError) {
+                    console.error('[CADASTRO] Erro ao atualizar profile:', profileError);
+                }
+
+                // CRM event
+                crmService.trackEvent({
+                    user_id: user.id,
+                    session_id: `user_${user.id}`,
+                    event_type: CrmEventCode.USER_REGISTERED,
+                    metadata: {
+                        name: formData.name,
+                        email: formData.email,
+                        business_type: formData.businessType,
+                    },
+                });
             }
 
             // 3. Notify via webhook (fiqon → WhatsApp)

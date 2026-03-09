@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { Package, ShoppingCart, Users, Warehouse, UserCog, Menu, X, ExternalLink, Tag, Zap, DollarSign } from 'lucide-react'
+import { Package, ShoppingCart, Users, Warehouse, UserCog, Menu, X, ExternalLink, Tag, Zap, DollarSign, GitBranch } from 'lucide-react'
 import logo from '@/assets/logo-rei-dos-cachos.png'
 
 const navItems = [
@@ -12,6 +12,7 @@ const navItems = [
   { label: 'Categorias', path: '/admin/categorias', icon: Tag },
   { label: 'Upsell', path: '/admin/upsell', icon: Zap },
   { label: 'Usuários', path: '/admin/usuarios', icon: UserCog },
+  { label: 'CRM Debug', path: '/admin/crm', icon: GitBranch },
 ]
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {

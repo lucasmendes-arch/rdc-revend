@@ -6,7 +6,6 @@ async function verifySignature(req: Request, dataId: string): Promise<boolean> {
   const secret = Deno.env.get('MERCADOPAGO_WEBHOOK_SECRET')
   if (!secret) {
     console.warn('MERCADOPAGO_WEBHOOK_SECRET not set — skipping signature check')
-    // If secret is not configured yet, fall back to verifying payment via API (existing behavior)
     return true
   }
 
@@ -18,7 +17,6 @@ async function verifySignature(req: Request, dataId: string): Promise<boolean> {
     return false
   }
 
-  // Parse signature: "ts=1234567890,v1=abcdef..."
   const parts: Record<string, string> = {}
   for (const part of xSignature.split(',')) {
     const [key, ...valueParts] = part.split('=')
@@ -33,17 +31,14 @@ async function verifySignature(req: Request, dataId: string): Promise<boolean> {
     return false
   }
 
-  // Reject if timestamp is older than 5 minutes (replay attack prevention)
   const signatureAge = Date.now() - parseInt(ts) * 1000
   if (signatureAge > 5 * 60 * 1000) {
     console.error('Webhook signature too old:', signatureAge, 'ms')
     return false
   }
 
-  // Build the signed template: id:<data.id>;request-id:<x-request-id>;ts:<ts>;
   const template = `id:${dataId};request-id:${xRequestId};ts:${ts};`
 
-  // Compute HMAC-SHA256
   const encoder = new TextEncoder()
   const key = await crypto.subtle.importKey(
     'raw',
@@ -74,7 +69,6 @@ serve(async (req) => {
     const body = await req.json()
     console.log('MP Webhook received:', body.type, body.action, JSON.stringify(body).slice(0, 300))
 
-    // MercadoPago sends: { type: "payment", action: "payment.created", data: { id: "123" } }
     if (body.type !== 'payment') {
       return new Response(JSON.stringify({ received: true }), {
         status: 200,
@@ -100,7 +94,35 @@ serve(async (req) => {
       })
     }
 
-    // Query MercadoPago for payment details (double-check: never trust webhook body for status)
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    const serviceClient = createClient(supabaseUrl, supabaseServiceKey)
+
+    // ── Idempotency guard ────────────────────────────────────────────────────
+    // Insere na tabela processed_webhooks. Se o payment_id já foi processado,
+    // retorna erro de chave duplicada (code 23505) e pulamos o processamento.
+    const { error: dupError } = await serviceClient
+      .from('processed_webhooks')
+      .insert({
+        source: 'mercadopago',
+        external_id: String(paymentId),
+        payload: body,
+        result: null,
+      })
+
+    if (dupError) {
+      if (dupError.code === '23505') {
+        console.log('Webhook already processed, skipping:', paymentId)
+        return new Response(JSON.stringify({ received: true, duplicate: true }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      }
+      // Outro erro no insert — loga mas continua (não bloqueante)
+      console.warn('processed_webhooks insert error:', dupError.message)
+    }
+
+    // ── Buscar dados reais do pagamento na API do MercadoPago ─────────────────
     const mpAccessToken = Deno.env.get('MERCADOPAGO_ACCESS_TOKEN')
     if (!mpAccessToken) {
       console.error('MERCADOPAGO_ACCESS_TOKEN not set')
@@ -136,10 +158,6 @@ serve(async (req) => {
       })
     }
 
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-    const serviceClient = createClient(supabaseUrl, supabaseServiceKey)
-
     // Map MercadoPago status to our order status
     let orderStatus: string | null = null
     if (status === 'approved') {
@@ -147,7 +165,6 @@ serve(async (req) => {
     } else if (status === 'rejected' || status === 'cancelled') {
       orderStatus = 'cancelado'
     }
-    // pending/in_process — keep as aguardando_pagamento
 
     if (orderStatus) {
       const { error: updateError } = await serviceClient
@@ -161,9 +178,8 @@ serve(async (req) => {
         console.log(`Order ${orderId} updated to: ${orderStatus}`)
       }
 
-      // When payment is confirmed, update the client_sessions funnel to 'comprou'
+      // ── Pagamento aprovado: atualizar sessão + emitir CRM event ─────────────
       if (orderStatus === 'pago') {
-        // Get user_id from the order to find their session
         const { data: orderData } = await serviceClient
           .from('orders')
           .select('user_id')
@@ -171,7 +187,7 @@ serve(async (req) => {
           .maybeSingle()
 
         if (orderData?.user_id) {
-          // Find the most recent session for this user and update to 'comprou'
+          // Atualizar sessão para 'comprou' (comportamento original preservado)
           const { error: sessionError } = await serviceClient
             .from('client_sessions')
             .update({
@@ -188,10 +204,33 @@ serve(async (req) => {
           } else {
             console.log(`Session updated to comprou for user ${orderData.user_id}`)
           }
+
+          // Emitir CRM event de purchase_completed
+          // Idempotência já garantida pelo processed_webhooks acima —
+          // este bloco só executa uma vez por paymentId.
+          const { error: crmError } = await serviceClient
+            .from('crm_events')
+            .insert({
+              user_id: orderData.user_id,
+              session_id: `user_${orderData.user_id}`,
+              event_type: 'purchase_completed',
+              metadata: {
+                order_id: orderId,
+                payment_id: String(paymentId),
+                amount: payment.transaction_amount,
+                payment_type: payment.payment_type_id,
+              },
+            })
+
+          if (crmError) {
+            console.warn('Failed to insert CRM event purchase_completed:', crmError.message)
+          } else {
+            console.log(`CRM event purchase_completed emitted for user ${orderData.user_id}`)
+          }
         }
       }
 
-      // Restore stock when payment is rejected or cancelled
+      // ── Pagamento cancelado: restaurar estoque ───────────────────────────────
       if (orderStatus === 'cancelado') {
         const { error: stockError } = await serviceClient.rpc('restore_order_stock', {
           p_order_id: orderId,
@@ -203,7 +242,7 @@ serve(async (req) => {
         }
       }
 
-      // WhatsApp notification for approved payments
+      // ── WhatsApp notification (admin) para pagamento aprovado ────────────────
       if (orderStatus === 'pago') {
         try {
           const whatsappUrl = Deno.env.get('UAZAPI_URL')
@@ -234,6 +273,13 @@ serve(async (req) => {
           console.warn('WhatsApp notification error:', err)
         }
       }
+
+      // Atualizar resultado no processed_webhooks
+      await serviceClient
+        .from('processed_webhooks')
+        .update({ result: { order_status: orderStatus, processed: true } })
+        .eq('source', 'mercadopago')
+        .eq('external_id', String(paymentId))
     }
 
     return new Response(JSON.stringify({ success: true }), {
