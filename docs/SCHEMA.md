@@ -394,15 +394,16 @@ create_manual_order(
   p_user_id        uuid,
   p_items          jsonb,          -- [{product_id, product_name, quantity, price}]
   p_total          numeric,
-  p_status         text    DEFAULT 'recebido',
-  p_origin         text    DEFAULT 'whatsapp',
-  p_payment_method text    DEFAULT NULL,
-  p_notes          text    DEFAULT NULL,
-  p_discount       numeric DEFAULT 0,
-  p_coupon_id      uuid    DEFAULT NULL
+  p_status         text        DEFAULT 'recebido',
+  p_origin         text        DEFAULT 'whatsapp',
+  p_payment_method text        DEFAULT NULL,
+  p_notes          text        DEFAULT NULL,
+  p_discount       numeric     DEFAULT 0,
+  p_coupon_id      uuid        DEFAULT NULL,
+  p_created_at     timestamptz DEFAULT NULL  -- data retroativa; NULL = now()
 ) → uuid
 ```
-Cria pedido manual (admin). Calcula `subtotal` internamente, `total = subtotal - discount`. Incrementa `coupons.used_count` se `p_coupon_id` fornecido. Atualiza `client_sessions` e insere evento CRM.
+Cria pedido manual (admin). Calcula `subtotal` internamente, `total = subtotal - discount`. Grava `created_at = COALESCE(p_created_at, now())` — permite lançamento retroativo. Incrementa `coupons.used_count` se `p_coupon_id` fornecido. Atualiza `client_sessions` e insere evento CRM.
 Acessível por: `authenticated` (admin verificado internamente).
 Retorno: `order_id` (uuid).
 
