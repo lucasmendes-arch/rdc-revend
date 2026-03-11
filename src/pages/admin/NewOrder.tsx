@@ -90,6 +90,7 @@ const NewOrder = () => {
   const [discountValue, setDiscountValue]         = useState('');
   const [isSaving, setIsSaving]                   = useState(false);
   const [isExploding, setIsExploding]             = useState(false);
+  const [createdAt, setCreatedAt]                 = useState(new Date().toISOString().slice(0, 16));
 
   // -- Coupon States --
   const [couponCode, setCouponCode] = useState('');
@@ -261,7 +262,8 @@ const NewOrder = () => {
         return currentCart;
       });
 
-      toast.success(`${addedCount} produtos do pacote ${entry.pkg.name} adicionados!`, { id: loadingToast });
+      const totalAdded = entry.selected.reduce((sum, item) => sum + item.qty, 0);
+      toast.success(`${totalAdded} produtos do pacote ${entry.pkg.name} adicionados!`, { id: loadingToast });
     } catch (err) {
       console.error("Error adding package:", err);
       toast.error("Erro ao adicionar pacote", { id: loadingToast });
@@ -362,6 +364,7 @@ const NewOrder = () => {
       p_notes:          notes || null,
       p_discount:       discountAmount,
       p_coupon_id:      appliedCoupon?.id || null,
+      p_created_at:     createdAt ? new Date(createdAt).toISOString() : null,
     };
 
     setIsSaving(true);
@@ -809,6 +812,17 @@ const NewOrder = () => {
                   <option key={opt.value} value={opt.value}>{opt.label}</option>
                 ))}
               </select>
+            </div>
+
+            {/* Data do Pedido */}
+            <div>
+              <label className="block text-xs font-semibold text-foreground mb-1.5">Data do Pedido</label>
+              <input
+                type="datetime-local"
+                value={createdAt}
+                onChange={e => setCreatedAt(e.target.value)}
+                className="w-full px-3 py-2.5 rounded-xl border border-input text-sm focus:ring-2 focus:ring-amber-400 focus:outline-none bg-white font-medium"
+              />
             </div>
 
             {/* Forma de Pagamento */}

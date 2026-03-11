@@ -1,4 +1,4 @@
-import { Check, ShoppingCart } from 'lucide-react'
+import { Check, ShoppingCart, Leaf, Sparkles } from 'lucide-react'
 import type { PublicProduct } from '@/hooks/useCatalogProducts'
 
 interface CompactProductCarouselProps {
@@ -105,6 +105,18 @@ export default function CompactProductCarousel({
                                 >
                                     {product.name}
                                 </h3>
+
+                                {/* Badges - Hidden for Professional products */}
+                                {!(product.is_professional || title.toLowerCase().includes('profissional')) && (
+                                    <div className="flex flex-wrap gap-1 mb-2.5">
+                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border bg-green-50 text-green-700 border-green-200">
+                                            <Leaf className="w-2.5 h-2.5" /> Vegano
+                                        </span>
+                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border bg-amber-50 text-amber-700 border-amber-200">
+                                            <Sparkles className="w-2.5 h-2.5" /> Liberado
+                                        </span>
+                                    </div>
+                                )}
 
                                 <div className="mt-auto">
                                     {product.is_professional || title.toLowerCase().includes('profissional') ? (

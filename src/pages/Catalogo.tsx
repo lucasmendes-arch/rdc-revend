@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import DOMPurify from "dompurify";
-import { ArrowRight, Check, Crown, Filter, LogIn, LogOut, Search, ShoppingCart, Tag, Trash2, TrendingUp, X, PackageSearch, ShieldCheck, ChevronDown, ChevronUp, Truck } from "lucide-react";
+import { ArrowRight, Check, Crown, Filter, LogIn, LogOut, Search, ShoppingCart, Tag, Trash2, TrendingUp, X, PackageSearch, ShieldCheck, ChevronDown, ChevronUp, Truck, Leaf } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import PackageCards from "@/components/catalog/PackageCards";
 import CategoryBubbles from "@/components/catalog/CategoryBubbles";
@@ -50,6 +50,11 @@ const FilterChip = ({ label, onRemove }: FilterChipProps) => (
 
 const RotatingTrustBanner = () => {
   const items = [
+    {
+      icon: <Leaf className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-600" />,
+      label: "Fórmula Limpa",
+      sub: "100% Vegano, Liberado e sem Petrolatos"
+    },
     {
       icon: <Truck className="w-5 h-5 sm:w-6 sm:h-6 text-amber-600" />,
       label: "Envio Rápido para ES & BA",
