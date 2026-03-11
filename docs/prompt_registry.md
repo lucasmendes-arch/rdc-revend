@@ -276,6 +276,95 @@ Status possíveis: `DONE` · `DONE_COM_REVIEW` · `SKIPPED_BY_MERGE` · `READY_F
 
 ---
 
+## Backend — Etapa 6 (Promoções, Cupons, Valor Mínimo Dinâmico)
+
+### RDC_BACK_E6_P1_CLD_V1
+**Status:** DONE
+**Ferramenta:** Claude Code
+**Data:** 2026-03-11
+**Descrição:** Infraestrutura de promoções B2B — `store_settings` e `coupons` + RPC `validate_coupon`.
+**Resultado:**
+- `store_settings`: tabela singleton (id=1), `min_cart_value NUMERIC DEFAULT 500.00`; RLS leitura pública, UPDATE admin
+- `coupons`: `code` UPPERCASE UNIQUE, `discount_type` (`percent`/`fixed`/`free_shipping`), `min_order_value`, `usage_limit`, `expires_at`, `is_active`; RLS somente admin (sem leitura pública — previne garimpagem)
+- `validate_coupon(p_code, p_cart_total)`: SECURITY DEFINER, normaliza `UPPER(TRIM())`, retorna `{valid, id, type, value}` ou `{valid:false, error}`; GRANT para anon+authenticated
+- Migration: `20250313000015_store_settings_and_coupons.sql`
+
+---
+
+### RDC_BACK_E6_P2_CLD_V1
+**Status:** DONE
+**Ferramenta:** Claude Code
+**Data:** 2026-03-11
+**Descrição:** Associar cupom ao pedido e incrementar `used_count`.
+**Resultado:**
+- `orders.coupon_id UUID REFERENCES coupons(id)` — nullable FK
+- `create_manual_order`: novo param `p_coupon_id UUID DEFAULT NULL`; grava `coupon_id` no INSERT; `UPDATE coupons SET used_count+1` dentro da mesma transação; `coupon_id` no metadata CRM
+- Migration: `20250313000016_orders_coupon_and_rpc_update.sql`
+
+---
+
+### RDC_BACK_E6_P3_CLD_V1
+**Status:** DONE (depois absorvido/revertido por P4)
+**Ferramenta:** Claude Code
+**Data:** 2026-03-11
+**Descrição:** Adicionou coluna booleana `free_shipping` em coupons (abordagem descartada na iteração seguinte).
+**Resultado:** Migration `20250313000017` — revertida conceitualmente pelo P4.
+
+---
+
+### RDC_BACK_E6_P4_CLD_V1
+**Status:** DONE
+**Ferramenta:** Claude Code
+**Data:** 2026-03-11
+**Descrição:** Refatoração: `free_shipping` como tipo de desconto (não flag booleana).
+**Resultado:**
+- `DROP COLUMN free_shipping` (boolean removida)
+- CHECK `discount_type` expandido: `('percent', 'fixed', 'free_shipping')`
+- `validate_coupon` simplificada: retorno `{valid, id, type, value}` — frontend interpreta `type='free_shipping'` para zerar frete
+- Migration: `20250313000018_coupons_freeshipping_as_type.sql`
+
+---
+
+### RDC_BACK_E6_P6_CLD_V1
+**Status:** DONE
+**Ferramenta:** Claude Code
+**Data:** 2026-03-11
+**Descrição:** Single Source of Truth — auditoria e documentação completa do schema do banco.
+**Resultado:**
+- Arquivo criado: `docs/SCHEMA.md` (não existia)
+- 18 tabelas documentadas com colunas exatas, tipos, nullable, defaults, FKs
+- 2 views, 10+ RPCs com assinaturas completas
+- Tabela de CHECKs e seção "Armadilhas Comuns" (❌ errado → ✅ correto) para prevenir erros 400/404 de integração frontend
+
+---
+
+### RDC_BACK_E6_P7_CLD_V1
+**Status:** DONE
+**Ferramenta:** Claude Code
+**Data:** 2026-03-11
+**Descrição:** Suporte a data retroativa em pedidos manuais (lojista B2B que registra vendas do dia anterior).
+**Resultado:**
+- `create_manual_order`: 10º parâmetro `p_created_at TIMESTAMPTZ DEFAULT NULL`
+- `INSERT orders.created_at = COALESCE(p_created_at, now())`
+- `order_date` incluído no metadata CRM
+- `docs/SCHEMA.md` atualizado com nova assinatura
+- Migration: `20250313000019_manual_order_custom_date.sql`
+
+---
+
+### RDC_BACK_E6_P8_CLD_V1
+**Status:** DONE
+**Ferramenta:** Claude Code
+**Data:** 2026-03-11
+**Descrição:** Fix crítico — erro 23505 (duplicate key) ao criar pedido manual para cliente com sessão existente.
+**Causa raiz:** Migration `_014` adicionou `UNIQUE (user_id)` em `client_sessions`, mas a RPC usava `ON CONFLICT (session_id)` — não cobria a nova constraint.
+**Resultado:**
+- `ON CONFLICT (session_id)` → `ON CONFLICT (user_id)`
+- DO UPDATE também normaliza `session_id` para padrão canônico `user_{uuid}`
+- Migration: `20250313000020_fix_manual_order_session_upsert.sql`
+
+---
+
 ## Template para novos prompts
 
 ```

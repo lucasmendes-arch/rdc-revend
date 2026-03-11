@@ -1,6 +1,6 @@
 # Arquitetura — Rei dos Cachos B2B
 
-_Última atualização: 2026-03-10_
+_Última atualização: 2026-03-11_
 
 ## Banco de dados (Supabase PostgreSQL)
 
@@ -16,9 +16,18 @@ _Última atualização: 2026-03-10_
 | `order_items` | Itens de cada pedido |
 | `upsell_offers` | Oferta de upsell ativa no checkout |
 | `kit_components` | Composição dos kits |
-| `client_sessions` | Tracking do funil por usuário (Kanban admin) |
+| `client_sessions` | Tracking do funil por usuário (Kanban admin) — UNIQUE (user_id) |
 | `catalog_sync_runs` | Histórico de sincronizações com Nuvemshop |
 | `rate_limits` | Rate limiting para edge functions |
+| `store_settings` | Configurações globais da loja (id=1 singleton, min_cart_value) |
+| `coupons` | Cupons de desconto (percent/fixed/free_shipping) |
+
+### Tabelas Promoções (Etapa 6)
+
+| Tabela | Propósito |
+|---|---|
+| `store_settings` | Configurações globais — `min_cart_value` dinâmico (singleton id=1) |
+| `coupons` | Cupons: `discount_type` (`percent`/`fixed`/`free_shipping`), `usage_limit`, `expires_at` |
 
 ### Tabelas CRM (Etapa 1+2)
 
@@ -59,12 +68,19 @@ visitou → visualizou_produto → adicionou_carrinho → iniciou_checkout → c
 | Função | Propósito |
 |---|---|
 | `public.is_admin()` | Verifica role admin sem recursão |
-| `create_manual_order(p_customer_id, p_items, p_total, p_status, p_origin, p_notes)` | Cria pedido manual (admin-only, SECURITY DEFINER, bypassa mínimo e estoque) |
+| `create_manual_order(p_user_id, p_items, p_total, p_status, p_origin, p_payment_method, p_notes, p_discount, p_coupon_id, p_created_at)` | Cria pedido manual (admin-only, SECURITY DEFINER, 10 params, suporta data retroativa e cupom) |
+| `validate_coupon(p_code, p_cart_total)` | Valida cupom; retorna `{valid,id,type,value}` — acessível por anon+authenticated |
 | `decrement_stock(p_product_id, p_qty)` | Decrementa estoque atomicamente |
 | `restore_order_stock(p_order_id)` | Restaura estoque ao cancelar pedido |
 | `detect_abandoned_carts()` | Marca sessões como abandonou + emite crm_event |
 | `check_rate_limit(key, max, window)` | Rate limiting nas edge functions |
 | `get_crm_customer_debug(user_id)` | Debug consolidado do CRM por usuário |
+| `assign_crm_tag(user_id, slug, source)` | Atribui tag CRM idempotentemente |
+| `remove_crm_tag(user_id, slug)` | Remove tag CRM |
+| `claim_crm_queue_items(batch_size)` | Claim atômico da fila CRM (FOR UPDATE SKIP LOCKED) |
+| `release_expired_orders()` | Libera pedidos expirados e restaura estoque (pg_cron 5min) |
+
+> **Referência completa de schema:** ver `docs/SCHEMA.md`
 
 ## Edge Functions
 
