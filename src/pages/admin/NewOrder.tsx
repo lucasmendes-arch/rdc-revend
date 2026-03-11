@@ -91,6 +91,11 @@ const NewOrder = () => {
   const [isSaving, setIsSaving]                   = useState(false);
   const [isExploding, setIsExploding]             = useState(false);
 
+  // -- Coupon States --
+  const [couponCode, setCouponCode] = useState('');
+  const [appliedCoupon, setAppliedCoupon] = useState<{id: string, code: string, discount_amount: number, discount_type?: 'fixed' | 'percent' | 'free_shipping'} | null>(null);
+  const [isValidatingCoupon, setIsValidatingCoupon] = useState(false);
+
   // ── Queries ─────────────────────────────────────────────────────────────────
 
   const { data: allProfiles = [], isLoading: loadingProfiles } = useQuery<CustomerProfile[]>({
@@ -120,7 +125,7 @@ const NewOrder = () => {
   const { data: categories = [] } = useQuery<Category[]>({
     queryKey: ['product-categories'],
     queryFn: async () => {
-      const { data, error } = await supabase.from('product_categories').select('id, name');
+      const { data, error } = await supabase.from('categories').select('id, name');
       if (error) throw error;
       return data || [];
     },
@@ -189,7 +194,13 @@ const NewOrder = () => {
     return Math.min(v, subtotal);
   }, [discountValue, discountType, subtotal]);
 
-  const total = useMemo(() => Math.max(subtotal - discountAmount, 0), [subtotal, discountAmount]);
+  const total = useMemo(() => {
+    const baseTotal = Math.max(subtotal - discountAmount, 0);
+    const couponDisc = appliedCoupon?.discount_amount || 0;
+    // Note: Manual orders don't have a separate shipping field in this UI, 
+    // but the total should still reflect the coupon discount.
+    return Math.max(baseTotal - couponDisc, 0);
+  }, [subtotal, discountAmount, appliedCoupon]);
 
   // ── Handlers ─────────────────────────────────────────────────────────────────
 
@@ -277,6 +288,39 @@ const NewOrder = () => {
     setCartItems(prev => prev.filter(i => i.product_id !== productId));
   }
 
+  const handleApplyCoupon = async () => {
+    if (!couponCode.trim()) return;
+    setIsValidatingCoupon(true);
+    try {
+      const { data, error: rpcError } = await supabase.rpc('validate_coupon', {
+        p_code: couponCode.toUpperCase().trim(),
+        p_cart_total: subtotal - discountAmount
+      });
+
+      if (rpcError) throw rpcError;
+      
+      const res = data as { valid: boolean; id?: string; type?: 'fixed' | 'percent' | 'free_shipping'; value?: number; error?: string };
+
+      if (!res.valid) {
+        throw new Error(res.error || 'Cupom inválido ou expirado');
+      }
+
+      setAppliedCoupon({
+        id: res.id!,
+        code: couponCode.toUpperCase().trim(),
+        discount_amount: res.value ?? 0,
+        discount_type: res.type
+      });
+      toast.success('Cupom aplicado!');
+    } catch (err: unknown) {
+      setAppliedCoupon(null);
+      const message = err instanceof Error ? err.message : 'Erro ao validar cupom';
+      toast.error(message);
+    } finally {
+      setIsValidatingCoupon(false);
+    }
+  };
+
   function toggleProductSelection(productId: string) {
     const product = allProducts.find(p => p.id === productId);
     if (product) addToCartOrExplode(product);
@@ -317,6 +361,7 @@ const NewOrder = () => {
       p_payment_method: paymentMethod,
       p_notes:          notes || null,
       p_discount:       discountAmount,
+      p_coupon_id:      appliedCoupon?.id || null,
     };
 
     setIsSaving(true);
@@ -677,14 +722,56 @@ const NewOrder = () => {
               </div>
               {discountAmount > 0 && (
                 <div className="flex justify-between items-center text-sm text-emerald-600">
-                  <span>Desconto</span>
+                  <span>Desconto Manual</span>
                   <span>− R$ {discountAmount.toFixed(2)}</span>
+                </div>
+              )}
+              {appliedCoupon && (
+                <div className="flex justify-between items-center text-sm text-emerald-600 font-bold">
+                  <span>Cupom ({appliedCoupon.code})</span>
+                  <span>− R$ {appliedCoupon.discount_amount.toFixed(2)}</span>
                 </div>
               )}
               <div className="flex justify-between items-center pt-1 border-t border-border">
                 <span className="font-semibold text-foreground">Total</span>
                 <span className="text-xl font-black text-foreground">R$ {total.toFixed(2)}</span>
               </div>
+            </div>
+
+            {/* Cupom de Desconto */}
+            <div className="pt-3 border-t border-border space-y-2">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Cupom de Desconto</p>
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={couponCode}
+                  onChange={e => setCouponCode(e.target.value.toUpperCase())}
+                  placeholder="EX: BEMVINDO10"
+                  disabled={!!appliedCoupon || isValidatingCoupon}
+                  className="flex-1 text-sm border border-input rounded-lg px-3 py-1.5 focus:ring-2 focus:ring-amber-400 focus:outline-none uppercase font-mono"
+                />
+                {appliedCoupon ? (
+                  <button
+                    onClick={() => { setAppliedCoupon(null); setCouponCode(''); }}
+                    className="px-4 py-1.5 rounded-lg border border-red-200 text-red-500 text-xs font-bold hover:bg-red-50 transition-colors"
+                  >
+                    Remover
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleApplyCoupon}
+                    disabled={isValidatingCoupon || !couponCode.trim()}
+                    className="px-4 py-1.5 rounded-lg bg-foreground text-white text-xs font-bold hover:bg-foreground/90 transition-colors disabled:opacity-50"
+                  >
+                    {isValidatingCoupon ? <Loader className="w-3 h-3 animate-spin" /> : 'Validar'}
+                  </button>
+                )}
+              </div>
+              {appliedCoupon && (
+                <p className="text-[10px] text-emerald-600 font-bold">
+                  Cupom {appliedCoupon.code} aplicado: − R$ {appliedCoupon.discount_amount.toFixed(2)}
+                </p>
+              )}
             </div>
           </section>
         )}

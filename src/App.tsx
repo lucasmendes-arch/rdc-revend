@@ -24,6 +24,7 @@ import AdminUpsell from "./pages/admin/Upsell";
 import AdminFinanceiro from "./pages/admin/Financeiro";
 import AdminCrmDebug from "./pages/admin/CrmDebug";
 import AdminNewOrder from "./pages/admin/NewOrder";
+import AdminMarketing from "./pages/admin/Marketing";
 import NotFound from "./pages/NotFound";
 import WhatsAppButton from "./components/landing/WhatsAppButton";
 import { useLocation } from "react-router-dom";
@@ -65,6 +66,7 @@ const App = () => (
                     <Route path="/admin/categorias" element={<AdminCategorias />} />
                     <Route path="/admin/upsell" element={<AdminUpsell />} />
                     <Route path="/admin/financeiro" element={<AdminFinanceiro />} />
+                    <Route path="/admin/marketing" element={<AdminMarketing />} />
                     <Route path="/admin/crm" element={<AdminCrmDebug />} />
                   </Route>
                 </Route>

@@ -7,6 +7,7 @@ import { useActiveUpsell } from '@/hooks/useUpsell';
 import { supabase } from '@/lib/supabase';
 import { useTrackInitiateCheckout } from '@/hooks/useSessionTracking';
 import { isValidDocument } from '@/utils/validateDocument';
+import { toast } from 'sonner';
 
 type Step = 1 | 2 | 3 | 4;
 
@@ -27,9 +28,15 @@ interface ProfileData {
 const Checkout = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { items: cart, total: cartTotal, clearCart, addItem, count: cartCount } = useCart();
+  const { items: cart, total: cartTotal, clearCart, addItem, count: cartCount, minOrderValue } = useCart();
   const trackInitiateCheckout = useTrackInitiateCheckout();
   const { data: upsellOffer } = useActiveUpsell();
+
+  const [couponCode, setCouponCode] = useState('');
+  const [couponDiscount, setCouponDiscount] = useState(0);
+  const [couponId, setCouponId] = useState<string | null>(null);
+  const [couponType, setCouponType] = useState<'fixed' | 'percent' | 'free_shipping' | null>(null);
+  const [isValidatingCoupon, setIsValidatingCoupon] = useState(false);
 
   const [step, setStep] = useState<Step>(1);
   const [loading, setLoading] = useState(false);
@@ -105,10 +112,12 @@ const Checkout = () => {
 
   // Shipping = 20% of subtotal (cartTotal already includes upsell if added via addItem)
   const shippingEstimate = Math.round(cartTotal * 0.20 * 100) / 100;
-  const orderTotal = Math.round((cartTotal + shippingEstimate) * 100) / 100;
+  const shippingValue = couponType === 'free_shipping' ? 0 : shippingEstimate;
+  const orderTotal = Math.round(Math.max(cartTotal + shippingValue - couponDiscount, 0) * 100) / 100;
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    let { name, value } = e.target;
+    const { name, value: rawValue } = e.target;
+    let value = rawValue;
     if (name === 'customer_whatsapp') value = value.replace(/\D/g, '');
     else if (name === 'cep') {
       value = value.replace(/\D/g, '');
@@ -138,8 +147,8 @@ const Checkout = () => {
   const handleNext = () => {
     setError('');
     if (step === 1) {
-      if (cartTotal < 500) {
-        setError(`Pedido minimo: R$ 500. Seu total: R$ ${cartTotal.toFixed(2)}`);
+      if (cartTotal < minOrderValue) {
+        setError(`Pedido minimo: R$ ${minOrderValue}. Seu total: R$ ${cartTotal.toFixed(2)}`);
         return;
       }
       if (showUpsellStep) {
@@ -169,6 +178,39 @@ const Checkout = () => {
     if (step === 4) setStep(3);
     else if (step === 3) setStep(showUpsellStep && !upsellAdded && !upsellSkipped ? 2 : 1);
     else if (step === 2) setStep(1);
+  };
+  
+  const handleApplyCoupon = async () => {
+    if (!couponCode.trim()) return;
+    setIsValidatingCoupon(true);
+    setError('');
+    try {
+      const { data, error: rpcError } = await supabase.rpc('validate_coupon', {
+        p_code: couponCode.toUpperCase().trim(),
+        p_cart_total: cartTotal
+      });
+
+      if (rpcError) throw rpcError;
+      
+      const res = data as { valid: boolean; id?: string; type?: 'fixed' | 'percent' | 'free_shipping'; value?: number; error?: string };
+
+      if (!res.valid) {
+        throw new Error(res.error || 'Cupom inválido ou expirado');
+      }
+
+      setCouponDiscount(res.value ?? 0);
+      setCouponId(res.id || null);
+      setCouponType(res.type || null);
+      toast.success('Cupom aplicado com sucesso!');
+    } catch (err: unknown) {
+      setCouponDiscount(0);
+      setCouponId(null);
+      setCouponType(null);
+      const message = err instanceof Error ? err.message : 'Erro ao validar cupom';
+      setError(message);
+    } finally {
+      setIsValidatingCoupon(false);
+    }
   };
 
   const handleSubmit = async () => {
@@ -233,8 +275,10 @@ const Checkout = () => {
         customer_document: formData.customer_document,
         payment_method: paymentMethod,
         installments: paymentMethod === 'credit' ? installments : 1,
-        shipping: shippingEstimate,
+        shipping: shippingValue,
         notes: finalNotes,
+        discount_amount: couponDiscount,
+        coupon_id: couponId
       };
 
       // Try supabase.functions.invoke first (sends auth automatically)
@@ -364,24 +408,37 @@ const Checkout = () => {
                   <span className="text-muted-foreground">Subtotal ({cartCount} itens)</span>
                   <span className="font-medium">R$ {cartTotal.toFixed(2)}</span>
                 </div>
+                {/* Frete oculto no Passo 1 a pedido do usuario */}
                 <div className="flex items-center justify-between text-lg font-bold pt-3 border-t border-border">
-                  <span>Total</span>
-                  <span className="gradient-gold-text">R$ {cartTotal.toFixed(2)}</span>
+                  <span>Subtotal Final</span>
+                  <span className="text-foreground text-base">R$ {cartTotal.toFixed(2)}</span>
+                </div>
+                {couponDiscount > 0 && (
+                  <div className="flex items-center justify-between text-sm text-green-600 font-bold">
+                    <span>Desconto (Cupom)</span>
+                    <span>- R$ {couponDiscount.toFixed(2)}</span>
+                  </div>
+                )}
+                <div className="flex items-center justify-between text-xl font-black pt-3 border-t-2 border-amber-100">
+                  <span className="uppercase tracking-tight text-foreground/80">Total</span>
+                  <span className="gradient-gold-text">R$ {(cartTotal).toFixed(2)}</span>
                 </div>
               </div>
 
-              {cartTotal < 500 && (
+              {cartTotal < minOrderValue && (
                 <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
                   <p className="text-xs text-amber-700">
-                    Pedido minimo: R$ 500. Faltam: <strong>R$ {(500 - cartTotal).toFixed(2)}</strong>
+                    Pedido minimo: R$ {minOrderValue}. Faltam: <strong>R$ {(minOrderValue - cartTotal).toFixed(2)}</strong>
                   </p>
                 </div>
               )}
             </div>
 
+            {/* Cupom movido para o Passo 3 */}
+
             <button
               onClick={handleNext}
-              disabled={cartTotal < 500}
+              disabled={cartTotal < minOrderValue}
               className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-semibold text-base btn-gold text-white disabled:opacity-50 disabled:cursor-not-allowed transition-all"
             >
               Continuar para Entrega
@@ -590,6 +647,42 @@ const Checkout = () => {
               />
             </div>
 
+            {/* Cupom de Desconto - Movido para o Passo 3 */}
+            <div className="bg-white rounded-2xl p-5 sm:p-6 shadow-card">
+              <label className="block text-xs font-bold text-muted-foreground uppercase mb-2">Cupom de Desconto</label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={couponCode}
+                  onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                  placeholder="Código do cupom"
+                  disabled={couponDiscount > 0 || isValidatingCoupon}
+                  className="flex-1 px-3 py-2 rounded-lg border border-border focus:ring-2 focus:ring-gold outline-none uppercase font-mono text-sm"
+                />
+                {couponDiscount > 0 ? (
+                  <button
+                    onClick={() => { setCouponDiscount(0); setCouponId(null); setCouponCode(''); setCouponType(null); }}
+                    className="px-4 py-2 rounded-lg border border-red-200 text-red-500 text-sm font-bold hover:bg-red-50 transition-colors"
+                  >
+                    Remover
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleApplyCoupon}
+                    disabled={isValidatingCoupon || !couponCode.trim()}
+                    className="px-4 py-2 rounded-lg bg-foreground text-white text-sm font-bold hover:bg-foreground/90 transition-colors disabled:opacity-50"
+                  >
+                    {isValidatingCoupon ? '...' : 'Aplicar'}
+                  </button>
+                )}
+              </div>
+              {couponDiscount > 0 && (
+                <p className="mt-2 text-xs text-green-600 font-bold flex items-center gap-1">
+                  <Check className="w-3 h-3" /> {couponType === 'free_shipping' ? 'Frete Grátis aplicado!' : `Desconto de R$ ${couponDiscount.toFixed(2)} aplicado!`}
+                </p>
+              )}
+            </div>
+
             {/* Order Total Summary */}
             <div className="bg-white rounded-2xl p-5 sm:p-6 shadow-card space-y-3">
               <div className="flex items-center justify-between text-sm text-muted-foreground">
@@ -603,16 +696,29 @@ const Checkout = () => {
                   <span>+ R$ {(upsellOffer.discounted_price * (upsellOffer.quantity || 1)).toFixed(2)}</span>
                 </div>
               )}
-
               <div className="flex flex-col text-slate-600 bg-slate-50 p-2 rounded">
                 <div className="flex items-center justify-between text-sm">
                   <span>Frete estimado</span>
-                  <span>+ R$ {shippingEstimate.toFixed(2)}</span>
+                  {couponType === 'free_shipping' ? (
+                    <div className="flex flex-col items-end">
+                      <span className="text-muted-foreground line-through text-xs">R$ {shippingEstimate.toFixed(2)}</span>
+                      <span className="text-emerald-600 font-bold">Grátis</span>
+                    </div>
+                  ) : (
+                    <span>+ R$ {shippingEstimate.toFixed(2)}</span>
+                  )}
                 </div>
                 <p className="text-[10px] text-muted-foreground mt-1 text-left">
                   O valor é uma média de cotação com tranportadoras parceiras.
                 </p>
               </div>
+
+              {couponDiscount > 0 && couponType !== 'free_shipping' && (
+                <div className="flex items-center justify-between text-sm text-green-600 font-bold">
+                  <span>Desconto (Cupom)</span>
+                  <span>- R$ {couponDiscount.toFixed(2)}</span>
+                </div>
+              )}
 
               <div className="flex items-center justify-between text-lg font-bold pt-3 border-t border-border">
                 <span className="text-foreground">Total do Pedido</span>

@@ -121,7 +121,7 @@ const Catalogo = () => {
   const navigate = useNavigate();
   const { data: products = [], isLoading, error } = useCatalogProducts();
   const { data: dbCategories = [] } = useCategories();
-  const { items: cart, addItem, updateQty, removeItem, clearCart, total: cartTotal, count: cartCount } = useCart();
+  const { items: cart, addItem, updateQty, removeItem, clearCart, total: cartTotal, count: cartCount, minOrderValue } = useCart();
   const { role, user, loading: isLoadingAuth } = useAuth();
   useTrackPageView('Catálogo');
   const trackAddToCart = useTrackAddToCart();
@@ -1138,9 +1138,9 @@ const Catalogo = () => {
                     <span className="text-xl font-bold gradient-gold-text">R$ {cartTotal.toFixed(2)}</span>
                   </div>
 
-                  {cartTotal < 500 && (
+                  {cartTotal < minOrderValue && (
                     <p className="text-xs text-center text-amber-600 bg-amber-50 rounded-lg py-1.5 px-2">
-                      Mínimo: R$ 500 (faltam R$ {(500 - cartTotal).toFixed(2)})
+                      Mínimo: R$ {minOrderValue} (faltam R$ {(minOrderValue - cartTotal).toFixed(2)})
                     </p>
                   )}
 

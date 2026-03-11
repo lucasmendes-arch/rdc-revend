@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
 import { useAuth } from './AuthContext';
+import { supabase } from '@/lib/supabase';
 
 export interface CartItem {
   id: string;
@@ -17,6 +18,7 @@ interface CartContextType {
   clearCart: () => void;
   total: number;
   count: number;
+  minOrderValue: number;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -45,6 +47,20 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
 
   // Use lazy initializer to read localStorage only on mount
   const [items, setItems] = useState<CartItem[]>(() => loadCartFromStorage());
+  const [minOrderValue, setMinOrderValue] = useState<number>(500); // Default fallback
+
+  useEffect(() => {
+    supabase
+      .from('store_settings')
+      .select('min_cart_value')
+      .eq('id', 1)
+      .single()
+      .then(({ data }) => {
+        if (data?.min_cart_value) {
+          setMinOrderValue(data.min_cart_value);
+        }
+      });
+  }, []);
 
   // Clear cart when user changes (login/logout/switch account)
   useEffect(() => {
@@ -118,6 +134,7 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     clearCart,
     total,
     count,
+    minOrderValue,
   };
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
