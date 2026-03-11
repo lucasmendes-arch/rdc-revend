@@ -8,9 +8,10 @@ import type { PublicProduct } from '@/hooks/useCatalogProducts'
 
 interface PackageCardsProps {
   products: PublicProduct[]
+  isAnonymous?: boolean
 }
 
-export default function PackageCards({ products }: PackageCardsProps) {
+export default function PackageCards({ products, isAnonymous = false }: PackageCardsProps) {
   const { addItem } = useCart()
   const navigate = useNavigate()
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -45,6 +46,11 @@ export default function PackageCards({ products }: PackageCardsProps) {
   }, [])
 
   const handleSelectPackage = (pkgId: number) => {
+    if (isAnonymous) {
+      navigate('/cadastro?teaser=1')
+      return
+    }
+
     const entry = packageSelections.find(e => e.pkg.id === pkgId)
     if (!entry || entry.selected.length === 0) {
       toast.error('Nenhum produto disponível para este pacote')
@@ -53,7 +59,7 @@ export default function PackageCards({ products }: PackageCardsProps) {
 
     let addedCount = 0
     for (const item of entry.selected) {
-      if (item.product.id === 'not_found') continue
+      if (item.product.id === 'not_found' ) continue
       addItem({ id: item.product.id, name: item.product.name, price: item.product.price, image: item.product.main_image }, item.qty)
       addedCount += item.qty
     }
@@ -109,7 +115,11 @@ export default function PackageCards({ products }: PackageCardsProps) {
               {/* Price pill */}
               <div className="mt-1 mb-3">
                 <span className="text-[18px] sm:text-2xl font-black gradient-gold-text">
-                  R$ {pkgTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  {isAnonymous ? (
+                    <span className="text-sm font-medium">Faça login para ver preço</span>
+                  ) : (
+                    `R$ ${pkgTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
+                  )}
                 </span>
               </div>
 
@@ -166,7 +176,7 @@ export default function PackageCards({ products }: PackageCardsProps) {
                   <TrendingUp className="w-3.5 h-3.5 shrink-0" />
                   <span>
                     Potencial de retorno estimado*{' '}
-                    <span className="whitespace-nowrap">R$ {dynamicRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                    <span className="whitespace-nowrap">{isAnonymous ? '---' : `R$ ${dynamicRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}</span>
                   </span>
                 </div>
               </div>
@@ -190,10 +200,11 @@ export default function PackageCards({ products }: PackageCardsProps) {
                 ) : (
                   <>
                     <ShoppingCart className="w-4 h-4" />
-                    Adicionar Pacote
+                    {isAnonymous ? 'Cadastrar para Comprar' : 'Adicionar Pacote'}
                   </>
                 )}
               </button>
+
               <button
                 onClick={() => setDetailsPkgId(pkg.id)}
                 className="w-full mt-2 py-2 text-xs font-bold text-muted-foreground hover:text-gold transition-colors underline bg-transparent border-none"

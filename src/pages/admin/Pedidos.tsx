@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { Loader, ChevronDown } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Loader, ChevronDown, Plus } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
@@ -38,6 +38,7 @@ const statusConfig: Record<string, { label: string; color: string }> = {
 const statusOptions = ['recebido', 'aguardando_pagamento', 'pago', 'separacao', 'enviado', 'entregue', 'concluido', 'cancelado', 'expirado'] as const;
 
 const AdminPedidos = () => {
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
@@ -156,8 +157,16 @@ const AdminPedidos = () => {
   return (
     <AdminLayout>
       <div className="bg-white border-b border-border sticky top-0 lg:top-0 z-30">
-        <div className="px-4 sm:px-6 py-4">
+        <div className="px-4 sm:px-6 py-4 flex items-center justify-between gap-3">
           <h1 className="text-xl sm:text-2xl font-bold text-foreground">Pedidos</h1>
+          <button
+            onClick={() => navigate('/admin/pedidos/novo')}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl btn-gold text-sm font-semibold shrink-0"
+          >
+            <Plus className="w-4 h-4" />
+            <span className="hidden sm:inline">Novo Pedido Manual</span>
+            <span className="sm:hidden">Novo</span>
+          </button>
         </div>
       </div>
 

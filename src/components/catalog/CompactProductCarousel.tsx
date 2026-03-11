@@ -10,9 +10,11 @@ interface CompactProductCarouselProps {
     onAdd: (product: PublicProduct) => void
     onSelect: (product: PublicProduct) => void
     getSuggestedPrice: (price: number, compareTo: number | null) => number
+    isAnonymous?: boolean
 }
 
 import { useState, useRef, useCallback } from 'react'
+import { Link } from 'react-router-dom'
 
 export default function CompactProductCarousel({
     title,
@@ -22,7 +24,8 @@ export default function CompactProductCarousel({
     setQty,
     onAdd,
     onSelect,
-    getSuggestedPrice
+    getSuggestedPrice,
+    isAnonymous = false
 }: CompactProductCarouselProps) {
     const [activeIndex, setActiveIndex] = useState(0)
     const scrollRef = useRef<HTMLDivElement>(null)
@@ -56,18 +59,32 @@ export default function CompactProductCarousel({
                 onScroll={handleScroll}
                 className="flex gap-3 sm:gap-5 overflow-x-auto snap-x snap-mandatory scroll-smooth px-4 sm:px-4 pb-4 sm:pb-6 scrollbar-none w-full"
             >
-                {products.map((product) => {
+                {products.map((product, index) => {
                     const suggested = getSuggestedPrice(product.price, product.compare_at_price)
+                    const isBlurred = isAnonymous && index > 3
 
                     return (
                         <div
                             key={product.id}
-                            className="flex-shrink-0 w-[140px] sm:w-[160px] md:w-[180px] lg:w-[190px] xl:w-[200px] snap-start bg-white rounded-xl border border-border shadow-sm hover:shadow-md transition-shadow flex flex-col relative overflow-hidden group"
+                            className={`flex-shrink-0 w-[140px] sm:w-[160px] md:w-[180px] lg:w-[190px] xl:w-[200px] snap-start bg-white rounded-xl border border-border shadow-sm hover:shadow-md transition-shadow flex flex-col relative overflow-hidden group ${isBlurred ? 'select-none pointer-events-none' : ''}`}
                         >
+                            {isBlurred && (
+                                <div className="absolute inset-0 z-20 flex flex-col items-center justify-center p-4 bg-white/40 backdrop-blur-md pointer-events-auto text-center">
+                                    <p className="text-[10px] sm:text-xs font-bold text-foreground mb-2 leading-tight">
+                                        Acesse o catálogo completo com preços de atacado.
+                                    </p>
+                                    <Link 
+                                        to="/cadastro?teaser=1" 
+                                        className="px-3 py-1.5 bg-gold text-white text-[10px] sm:text-xs font-bold rounded-full shadow-sm hover:bg-amber-600 transition-colors"
+                                    >
+                                        Cadastrar-se
+                                    </Link>
+                                </div>
+                            )}
 
                             <div
-                                className="w-full h-[140px] sm:h-[160px] md:h-[170px] lg:h-[170px] xl:h-[180px] bg-surface-alt flex items-center justify-center p-1 sm:p-2 cursor-pointer relative"
-                                onClick={() => onSelect(product)}
+                                className={`w-full h-[140px] sm:h-[160px] md:h-[170px] lg:h-[170px] xl:h-[180px] bg-surface-alt flex items-center justify-center p-1 sm:p-2 cursor-pointer relative ${isBlurred ? 'blur-sm' : ''}`}
+                                onClick={() => !isBlurred && onSelect(product)}
                             >
                                 {product.main_image ? (
                                     <img
@@ -81,10 +98,10 @@ export default function CompactProductCarousel({
                                 )}
                             </div>
 
-                            <div className="p-2.5 sm:p-4 flex flex-col flex-1">
+                            <div className={`p-2.5 sm:p-4 flex flex-col flex-1 ${isBlurred ? 'blur-sm' : ''}`}>
                                 <h3
                                     className="font-medium text-foreground text-[11px] sm:text-[13px] md:text-[13px] lg:text-[14px] leading-snug line-clamp-2 mb-1.5 sm:mb-2 cursor-pointer group-hover:text-amber-600 transition-colors"
-                                    onClick={() => onSelect(product)}
+                                    onClick={() => !isBlurred && onSelect(product)}
                                 >
                                     {product.name}
                                 </h3>
@@ -96,64 +113,79 @@ export default function CompactProductCarousel({
                                         </div>
                                     ) : (
                                         <div className="text-[10px] sm:text-xs md:text-xs lg:text-[13px] text-green-700 font-bold mb-0.5 sm:mb-1">
-                                            Revenda: R$ {suggested.toFixed(2)}
+                                            Revenda: {isAnonymous ? '---' : `R$ ${suggested.toFixed(2)}`}
                                         </div>
                                     )}
                                     <div className="text-sm sm:text-base md:text-[15px] lg:text-base font-bold text-foreground mb-2 sm:mb-3">
-                                        R$ {product.price.toFixed(2)}
+                                        {isAnonymous ? (
+                                            <span className="text-[10px] sm:text-xs text-amber-600 font-medium">Faça login para ver</span>
+                                        ) : (
+                                            `R$ ${product.price.toFixed(2)}`
+                                        )}
                                     </div>
 
                                     <div className="flex items-center gap-1.5 sm:gap-2 mt-2">
-                                        <div className="flex items-center gap-0.5 max-w-[70px] sm:max-w-[85px]">
-                                            <button
-                                                onClick={(e) => { e.stopPropagation(); setQty(product.id, getQty(product.id) - 1) }}
-                                                disabled={getQty(product.id) <= 1}
-                                                className="w-6 h-6 sm:w-7 sm:h-8 flex items-center justify-center rounded border border-border bg-white text-muted-foreground hover:bg-surface-alt transition-colors disabled:opacity-40 disabled:cursor-not-allowed text-xs sm:text-sm font-medium"
-                                                aria-label="Diminuir quantidade"
+                                        {isAnonymous ? (
+                                            <Link
+                                                to="/cadastro?teaser=1"
+                                                className="w-full h-8 flex items-center justify-center rounded bg-gold-light text-gold-text border border-gold-border hover:bg-gold hover:text-white text-[10px] sm:text-[11px] font-bold transition-all uppercase tracking-wide pointer-events-auto"
                                             >
-                                                −
-                                            </button>
-                                            <input
-                                                type="text"
-                                                inputMode="numeric"
-                                                aria-label="Quantidade"
-                                                value={getQty(product.id)}
-                                                onChange={(e) => {
-                                                    const v = parseInt(e.target.value, 10);
-                                                    if (!isNaN(v)) setQty(product.id, v);
-                                                }}
-                                                onBlur={(e) => {
-                                                    const v = parseInt(e.target.value, 10);
-                                                    if (isNaN(v) || v < 1) setQty(product.id, 1);
-                                                }}
-                                                className="w-7 h-6 sm:w-9 sm:h-8 text-center text-[11px] sm:text-xs font-semibold text-foreground border border-border rounded bg-white focus:outline-none focus:ring-1 focus:ring-gold"
-                                            />
-                                            <button
-                                                onClick={(e) => { e.stopPropagation(); setQty(product.id, getQty(product.id) + 1) }}
-                                                className="w-6 h-6 sm:w-7 sm:h-8 flex items-center justify-center rounded-lg border border-border bg-white text-muted-foreground hover:bg-surface-alt transition-colors text-xs sm:text-sm font-medium"
-                                                aria-label="Aumentar quantidade"
-                                            >
-                                                +
-                                            </button>
-                                        </div>
+                                                Cadastrar para Comprar
+                                            </Link>
+                                        ) : (
+                                            <>
+                                                <div className="flex items-center gap-0.5 max-w-[70px] sm:max-w-[85px]">
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); setQty(product.id, getQty(product.id) - 1) }}
+                                                        disabled={getQty(product.id) <= 1}
+                                                        className="w-6 h-6 sm:w-7 sm:h-8 flex items-center justify-center rounded border border-border bg-white text-muted-foreground hover:bg-surface-alt transition-colors disabled:opacity-40 disabled:cursor-not-allowed text-xs sm:text-sm font-medium"
+                                                        aria-label="Diminuir quantidade"
+                                                    >
+                                                        −
+                                                    </button>
+                                                    <input
+                                                        type="text"
+                                                        inputMode="numeric"
+                                                        aria-label="Quantidade"
+                                                        value={getQty(product.id)}
+                                                        onChange={(e) => {
+                                                            const v = parseInt(e.target.value, 10);
+                                                            if (!isNaN(v)) setQty(product.id, v);
+                                                        }}
+                                                        onBlur={(e) => {
+                                                            const v = parseInt(e.target.value, 10);
+                                                            if (isNaN(v) || v < 1) setQty(product.id, 1);
+                                                        }}
+                                                        className="w-7 h-6 sm:w-9 sm:h-8 text-center text-[11px] sm:text-xs font-semibold text-foreground border border-border rounded bg-white focus:outline-none focus:ring-1 focus:ring-gold"
+                                                    />
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); setQty(product.id, getQty(product.id) + 1) }}
+                                                        className="w-6 h-6 sm:w-7 sm:h-8 flex items-center justify-center rounded-lg border border-border bg-white text-muted-foreground hover:bg-surface-alt transition-colors text-xs sm:text-sm font-medium"
+                                                        aria-label="Aumentar quantidade"
+                                                    >
+                                                        +
+                                                    </button>
+                                                </div>
 
-                                        <button
-                                            onClick={(e) => { e.stopPropagation(); onAdd(product) }}
-                                            className={`flex-1 h-6 sm:h-8 flex items-center justify-center gap-1 sm:gap-1.5 rounded text-[10px] sm:text-[11px] font-bold transition-all uppercase tracking-wide ${cartAddedId === product.id
-                                                ? 'bg-green-600 text-white'
-                                                : 'bg-gold-light text-gold-text border border-gold-border hover:bg-gold hover:text-white'
-                                                }`}
-                                        >
-                                            {cartAddedId === product.id ? (
-                                                <>
-                                                    <Check className="w-3 h-3 sm:w-4 sm:h-4" /> <span className="hidden sm:inline">Adicionado</span><span className="sm:inline sm:hidden">OK!</span>
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <ShoppingCart className="w-3 h-3 sm:w-4 sm:h-4" /> <span className="hidden sm:inline">Comprar</span><span className="sm:inline sm:hidden">ADD</span>
-                                                </>
-                                            )}
-                                        </button>
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); onAdd(product) }}
+                                                    className={`flex-1 h-6 sm:h-8 flex items-center justify-center gap-1 sm:gap-1.5 rounded text-[10px] sm:text-[11px] font-bold transition-all uppercase tracking-wide ${cartAddedId === product.id
+                                                        ? 'bg-green-600 text-white'
+                                                        : 'bg-gold-light text-gold-text border border-gold-border hover:bg-gold hover:text-white'
+                                                        }`}
+                                                >
+                                                    {cartAddedId === product.id ? (
+                                                        <>
+                                                            <Check className="w-3 h-3 sm:w-4 sm:h-4" /> <span className="hidden sm:inline">Adicionado</span><span className="inline sm:hidden">OK!</span>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <ShoppingCart className="w-3 h-3 sm:w-4 sm:h-4" /> <span className="hidden sm:inline">Comprar</span><span className="inline sm:hidden">ADD</span>
+                                                        </>
+                                                    )}
+                                                </button>
+                                            </>
+                                        )}
                                     </div>
                                 </div>
                             </div>

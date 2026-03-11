@@ -216,6 +216,66 @@ Status possíveis: `DONE` · `DONE_COM_REVIEW` · `SKIPPED_BY_MERGE` · `READY_F
 
 ---
 
+## Backend — Etapa 5
+
+### RDC_BACK_E5_P1_CLD_V1
+**Status:** DONE
+**Ferramenta:** Claude Code
+**Data:** 2026-03-10
+**Descrição:** Infraestrutura de acesso público ao catálogo + price_category no perfil.
+**Resultado:**
+- `GRANT SELECT ON catalog_products TO anon` — acesso anon explícito
+- `categories`: policy `authenticated_read_categories` → `anyone_read_categories` + GRANT anon
+- VIEW `catalog_products_public` (security_invoker=true): projeção segura sem colunas internas
+- `profiles.price_category TEXT DEFAULT 'retail' CHECK IN ('retail','wholesale','vip')` — base para tabela de preços
+- Migration: `20250313000008_public_catalog_access.sql`
+
+---
+
+## Admin — Etapa 5
+
+### RDC_BACK_E5_P8_CLD_V1
+**Status:** DONE
+**Ferramenta:** Claude Code
+**Data:** 2026-03-11
+**Descrição:** Fix 404 da RPC create_manual_order — parâmetro renomeado para alinhar com o frontend.
+**Causa raiz:** PostgREST resolve RPCs por nome de parâmetro. Frontend enviava `p_user_id`; função tinha `p_customer_id`.
+**Resultado:**
+- DROP de todas as overloads anteriores (7-param com `p_customer_id` era a única real)
+- Função recriada com assinatura `(p_user_id, p_items, p_total, p_status, p_origin, p_payment_method, p_notes)`
+- Lógica de segurança, CRM e sessão preservadas integralmente
+- Migration: `20250313000011_fix_manual_order_signature.sql` — aplicada
+
+---
+
+### RDC_BACK_E5_P6_CLD_V1
+**Status:** DONE
+**Ferramenta:** Claude Code
+**Data:** 2026-03-10
+**Descrição:** Adicionar forma de pagamento ao pedido manual.
+**Resultado:**
+- `orders.payment_method TEXT` — nullable, sem CHECK (campo livre)
+- RPC `create_manual_order` atualizada: novo parâmetro `p_payment_method TEXT DEFAULT NULL`, incluído no INSERT e no metadata do crm_event
+- Versão anterior da função (sem o parâmetro) removida via `DROP FUNCTION IF EXISTS`
+- Migration: `20250313000010_orders_payment_method.sql` — aplicada
+
+---
+
+### RDC_ADMIN_E5_P4_CLD_V1
+**Status:** DONE
+**Ferramenta:** Claude Code
+**Data:** 2026-03-10
+**Descrição:** Interface admin para lançar pedidos manuais (vendas via WhatsApp/loja física).
+**Resultado:**
+- Migration `20250313000009`: `orders.status` enum → text + CHECK (9 valores), coluna `orders.origin` ('site','whatsapp','loja_fisica','outro'), RPC `create_manual_order` SECURITY DEFINER
+- `src/pages/admin/NewOrder.tsx`: seleção de cliente (get_all_profiles), busca de produtos, carrinho com preço editável por item, campos de status/origem/notas, total dinâmico, RPC call + toast + redirect
+- `src/App.tsx`: rota `/admin/pedidos/novo` registrada
+- `src/pages/admin/Pedidos.tsx`: botão "Novo Pedido Manual" no header
+- Build TypeScript: limpo (0 erros)
+- Migration deployada: `npx supabase db push --linked`
+
+---
+
 ## Template para novos prompts
 
 ```

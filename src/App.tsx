@@ -23,6 +23,7 @@ import AdminCategorias from "./pages/admin/Categorias";
 import AdminUpsell from "./pages/admin/Upsell";
 import AdminFinanceiro from "./pages/admin/Financeiro";
 import AdminCrmDebug from "./pages/admin/CrmDebug";
+import AdminNewOrder from "./pages/admin/NewOrder";
 import NotFound from "./pages/NotFound";
 import WhatsAppButton from "./components/landing/WhatsAppButton";
 import { useLocation } from "react-router-dom";
@@ -48,8 +49,8 @@ const App = () => (
                 <Route path="/" element={<Navigate to="/login" replace />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/cadastro" element={<Cadastro />} />
+                <Route path="/catalogo" element={<Catalogo />} />
                 <Route element={<ProtectedRoute />}>
-                  <Route path="/catalogo" element={<Catalogo />} />
                   <Route path="/checkout" element={<Checkout />} />
                   <Route path="/pedido/sucesso/:id" element={<PedidoSucesso />} />
                   <Route path="/meus-pedidos" element={<MeusPedidos />} />
@@ -57,6 +58,7 @@ const App = () => (
                     <Route path="/admin" element={<Navigate to="/admin/catalogo" replace />} />
                     <Route path="/admin/catalogo" element={<AdminCatalogo />} />
                     <Route path="/admin/pedidos" element={<AdminPedidos />} />
+                    <Route path="/admin/pedidos/novo" element={<AdminNewOrder />} />
                     <Route path="/admin/clientes" element={<AdminClientes />} />
                     <Route path="/admin/estoque" element={<AdminEstoque />} />
                     <Route path="/admin/usuarios" element={<AdminUsuarios />} />

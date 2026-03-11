@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase';
 
 interface Order {
   id: string;
-  status: 'recebido' | 'separacao' | 'enviado' | 'concluido' | 'cancelado';
+  status: 'recebido' | 'aguardando_pagamento' | 'pago' | 'separacao' | 'enviado' | 'entregue' | 'concluido' | 'cancelado' | 'expirado';
   total: number;
   customer_name: string;
   customer_whatsapp: string;
@@ -20,12 +20,16 @@ interface Order {
   }>;
 }
 
-const statusConfig = {
-  recebido: { label: 'Recebido', color: 'bg-blue-100 text-blue-700', bgColor: 'bg-blue-50' },
-  separacao: { label: 'Separação', color: 'bg-yellow-100 text-yellow-700', bgColor: 'bg-yellow-50' },
-  enviado: { label: 'Enviado', color: 'bg-purple-100 text-purple-700', bgColor: 'bg-purple-50' },
-  concluido: { label: 'Concluído', color: 'bg-green-100 text-green-700', bgColor: 'bg-green-50' },
-  cancelado: { label: 'Cancelado', color: 'bg-red-100 text-red-700', bgColor: 'bg-red-50' },
+const statusConfig: Record<string, { label: string; color: string; bgColor: string }> = {
+  recebido:             { label: 'Recebido',             color: 'bg-blue-100 text-blue-700',    bgColor: 'bg-blue-50' },
+  aguardando_pagamento: { label: 'Aguardando Pagamento', color: 'bg-orange-100 text-orange-700', bgColor: 'bg-orange-50' },
+  pago:                 { label: 'Pago',                 color: 'bg-emerald-100 text-emerald-700', bgColor: 'bg-emerald-50' },
+  separacao:            { label: 'Separação',            color: 'bg-yellow-100 text-yellow-700', bgColor: 'bg-yellow-50' },
+  enviado:              { label: 'Enviado',              color: 'bg-purple-100 text-purple-700', bgColor: 'bg-purple-50' },
+  entregue:             { label: 'Entregue',             color: 'bg-teal-100 text-teal-700',    bgColor: 'bg-teal-50' },
+  concluido:            { label: 'Concluído',            color: 'bg-green-100 text-green-700',  bgColor: 'bg-green-50' },
+  cancelado:            { label: 'Cancelado',            color: 'bg-red-100 text-red-700',      bgColor: 'bg-red-50' },
+  expirado:             { label: 'Expirado',             color: 'bg-gray-100 text-gray-500',    bgColor: 'bg-gray-50' },
 };
 
 const PedidoSucesso = () => {
@@ -111,7 +115,7 @@ const PedidoSucesso = () => {
     );
   }
 
-  const statusInfo = statusConfig[order.status];
+  const statusInfo = statusConfig[order.status] ?? { label: order.status, color: 'bg-gray-100 text-gray-600', bgColor: 'bg-gray-50' };
   const orderNumber = order.id.slice(0, 8).toUpperCase();
   const orderDate = new Date(order.created_at).toLocaleDateString('pt-BR', {
     day: '2-digit',

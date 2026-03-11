@@ -5,6 +5,8 @@ import { useCategories } from '@/hooks/useCategories'
 import { useImageUpload } from '@/hooks/useImageUpload'
 import AdminLayout from '@/components/admin/AdminLayout'
 
+
+
 export default function AdminCatalogo() {
   const { data: products = [], isLoading, error } = useAdminProducts()
   const updateMutation = useUpdateProduct()
@@ -179,6 +181,8 @@ export default function AdminCatalogo() {
             </button>
           </div>
         </div>
+        
+
       </div>
 
       {/* Sync Result Toast */}
@@ -204,7 +208,7 @@ export default function AdminCatalogo() {
       )}
 
       {/* Main */}
-      <div className="px-4 sm:px-6 py-8">
+      <div className="px-4 sm:px-6 py-4">
         {/* Search & Filters */}
         <div className="mb-6 space-y-3">
           <input
@@ -706,7 +710,7 @@ export default function AdminCatalogo() {
                 <label className="block text-sm font-medium text-foreground mb-1">Classificacao de Destaque</label>
                 <select
                   value={editForm.category_type || ''}
-                  onChange={(e) => setEditForm({ ...editForm, category_type: e.target.value as any || null })}
+                  onChange={(e) => setEditForm({ ...editForm, category_type: e.target.value as CatalogProduct['category_type'] || null })}
                   className="w-full px-3 py-2 rounded-lg border border-border bg-white focus:outline-none focus:ring-2 focus:ring-gold"
                 >
                   <option value="">Sem classificacao</option>

@@ -1,6 +1,6 @@
 # Arquitetura — Rei dos Cachos B2B
 
-_Última atualização: 2026-03-08_
+_Última atualização: 2026-03-10_
 
 ## Banco de dados (Supabase PostgreSQL)
 
@@ -39,6 +39,12 @@ visitou → visualizou_produto → adicionou_carrinho → iniciou_checkout → c
                                                                  abandonou  (cron)
 ```
 
+### Views públicas
+
+| View | Propósito |
+|---|---|
+| `catalog_products_public` | Projeção segura de catalog_products para acesso anon (omite colunas internas) |
+
 ### RLS — padrão adotado
 
 - Todas as tabelas têm RLS habilitado (exceto `rate_limits`, `processed_webhooks`)
@@ -46,12 +52,14 @@ visitou → visualizou_produto → adicionou_carrinho → iniciou_checkout → c
 - Nunca usar subquery em `profiles` dentro de policies de outras tabelas
 - Admin: `public.is_admin()` em todas as operações sensíveis
 - Usuário: `auth.uid() = user_id` para leitura/escrita própria
+- **Anon**: `catalog_products` e `categories` têm policy `USING (true/is_active=true)` + `GRANT SELECT TO anon`
 
 ### Funções SQL relevantes
 
 | Função | Propósito |
 |---|---|
 | `public.is_admin()` | Verifica role admin sem recursão |
+| `create_manual_order(p_customer_id, p_items, p_total, p_status, p_origin, p_notes)` | Cria pedido manual (admin-only, SECURITY DEFINER, bypassa mínimo e estoque) |
 | `decrement_stock(p_product_id, p_qty)` | Decrementa estoque atomicamente |
 | `restore_order_stock(p_order_id)` | Restaura estoque ao cancelar pedido |
 | `detect_abandoned_carts()` | Marca sessões como abandonou + emite crm_event |

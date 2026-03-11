@@ -35,7 +35,8 @@ export default function Cadastro() {
     });
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-        let { name, value } = e.target;
+        const { name, value: rawValue } = e.target;
+        let value = rawValue;
 
         // Apply Masks
         if (name === 'phone') {
@@ -189,9 +190,17 @@ export default function Cadastro() {
                     <h1 className="text-2xl sm:text-3xl font-black text-foreground mb-2">
                         Crie sua conta B2B
                     </h1>
-                    <p className="text-muted-foreground text-sm sm:text-base">
-                        Preencha seus dados para solicitar acesso exclusivo ao nosso catálogo de revenda.
-                    </p>
+                    {new URLSearchParams(window.location.search).get('teaser') === '1' ? (
+                        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-4 animate-in fade-in slide-in-from-top-4 duration-500">
+                            <p className="text-amber-800 text-sm sm:text-base font-bold">
+                                🚀 Cadastre-se para liberar o catálogo completo e receber ofertas exclusivas via WhatsApp.
+                            </p>
+                        </div>
+                    ) : (
+                        <p className="text-muted-foreground text-sm sm:text-base">
+                            Preencha seus dados para solicitar acesso exclusivo ao nosso catálogo de revenda.
+                        </p>
+                    )}
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-6 sm:space-y-8">
