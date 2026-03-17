@@ -55,16 +55,7 @@ const PedidoSucesso = () => {
           .from('orders')
           .select(
             `
-            id,
-            status,
-            total,
-            customer_name,
-            customer_whatsapp,
-            customer_email,
-            delivery_method,
-            pickup_unit_slug,
-            pickup_unit_address,
-            created_at,
+            *,
             order_items (
               id,
               product_name_snapshot,
