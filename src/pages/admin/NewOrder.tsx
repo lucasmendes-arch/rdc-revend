@@ -91,6 +91,9 @@ const NewOrder = () => {
   const [isSaving, setIsSaving]                   = useState(false);
   const [isExploding, setIsExploding]             = useState(false);
   const [createdAt, setCreatedAt]                 = useState(new Date().toISOString().slice(0, 16));
+  
+  const [deliveryMethod, setDeliveryMethod]       = useState<'shipping' | 'pickup'>('shipping');
+  const [pickupUnitSlug, setPickupUnitSlug]       = useState<string | null>(null);
 
   // -- Coupon States --
   const [couponCode, setCouponCode] = useState('');
@@ -348,6 +351,17 @@ const NewOrder = () => {
       toast.error('Adicione ao menos um produto');
       return;
     }
+    
+    if (deliveryMethod === 'pickup' && !pickupUnitSlug) {
+      toast.error('Selecione uma unidade para retirada');
+      return;
+    }
+
+    let parsedNotes = notes || '';
+    if (deliveryMethod === 'pickup') {
+      const unitName = pickupUnitSlug === 'linhares' ? 'Linhares' : pickupUnitSlug === 'serra' ? 'Serra' : pickupUnitSlug === 'teixeira' ? 'Teixeira de Freitas' : pickupUnitSlug;
+      parsedNotes = `[RETIRADA NA LOJA: ${unitName}]\n${parsedNotes}`;
+    }
 
     const payload = {
       p_user_id:        selectedCustomer.id,
@@ -361,7 +375,7 @@ const NewOrder = () => {
       p_status:         status,
       p_origin:         origin,
       p_payment_method: paymentMethod,
-      p_notes:          notes || null,
+      p_notes:          parsedNotes,
       p_discount:       discountAmount,
       p_coupon_id:      appliedCoupon?.id || null,
       p_created_at:     createdAt ? new Date(createdAt).toISOString() : null,
@@ -838,6 +852,39 @@ const NewOrder = () => {
                 ))}
               </select>
             </div>
+          </div>
+
+          {/* Método de Entrega */}
+          <div className="pt-4 border-t border-border mt-4">
+            <label className="block text-xs font-semibold text-foreground mb-1.5">Método de Entrega</label>
+            <div className="grid grid-cols-2 gap-3 mb-3">
+              <label className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-colors ${deliveryMethod === 'shipping' ? 'border-amber-500 bg-amber-50' : 'border-border hover:bg-surface-alt'}`}>
+                <input type="radio" checked={deliveryMethod === 'shipping'} onChange={() => setDeliveryMethod('shipping')} className="text-amber-600 focus:ring-amber-500" />
+                <span className="font-semibold text-sm">Entrega Normal</span>
+              </label>
+              <label className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-colors ${deliveryMethod === 'pickup' ? 'border-amber-500 bg-amber-50' : 'border-border hover:bg-surface-alt'}`}>
+                <input type="radio" checked={deliveryMethod === 'pickup'} onChange={() => { setDeliveryMethod('pickup'); setPickupUnitSlug('linhares'); }} className="text-amber-600 focus:ring-amber-500" />
+                <span className="font-semibold text-sm">Retirar na Loja</span>
+              </label>
+            </div>
+
+            {deliveryMethod === 'pickup' && (
+              <div className="p-3 bg-surface-alt rounded-xl border border-border space-y-2">
+                <p className="text-xs font-semibold text-muted-foreground mb-2">Selecione a Unidade</p>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="radio" name="admin_pickup_unit" checked={pickupUnitSlug === 'linhares'} onChange={() => setPickupUnitSlug('linhares')} className="text-amber-600 focus:ring-amber-500" />
+                  <span className="text-sm font-medium text-foreground">Rei dos Cachos (Linhares)</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="radio" name="admin_pickup_unit" checked={pickupUnitSlug === 'serra'} onChange={() => setPickupUnitSlug('serra')} className="text-amber-600 focus:ring-amber-500" />
+                  <span className="text-sm font-medium text-foreground">Rei dos Cachos (Serra)</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="radio" name="admin_pickup_unit" checked={pickupUnitSlug === 'teixeira'} onChange={() => setPickupUnitSlug('teixeira')} className="text-amber-600 focus:ring-amber-500" />
+                  <span className="text-sm font-medium text-foreground">Rei dos Cachos (Teixeira de Freitas)</span>
+                </label>
+              </div>
+            )}
           </div>
 
           {/* Observações */}

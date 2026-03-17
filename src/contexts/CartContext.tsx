@@ -19,6 +19,8 @@ interface CartContextType {
   total: number;
   count: number;
   minOrderValue: number;
+  cartOpen: boolean;
+  setCartOpen: (open: boolean) => void;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -42,12 +44,13 @@ interface CartProviderProps {
 const USER_KEY = 'rdc-cart-user';
 
 export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const prevUserRef = useRef<string | null>(null);
 
   // Use lazy initializer to read localStorage only on mount
   const [items, setItems] = useState<CartItem[]>(() => loadCartFromStorage());
   const [minOrderValue, setMinOrderValue] = useState<number>(500); // Default fallback
+  const [cartOpen, setCartOpen] = useState<boolean>(false);
 
   useEffect(() => {
     supabase
@@ -64,6 +67,8 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
 
   // Clear cart when user changes (login/logout/switch account)
   useEffect(() => {
+    if (authLoading) return; // Wait for AuthContext to resolve the initial session
+
     const currentUserId = user?.id || null;
     const storedUserId = localStorage.getItem(USER_KEY);
 
@@ -86,7 +91,7 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
       localStorage.removeItem(USER_KEY);
     }
     prevUserRef.current = currentUserId;
-  }, [user?.id]);
+  }, [user?.id, authLoading]);
 
   // Sync to localStorage whenever items change
   useEffect(() => {
@@ -135,6 +140,8 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     total,
     count,
     minOrderValue,
+    cartOpen,
+    setCartOpen,
   };
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, Check, Loader, ShoppingCart, Sparkles, MapPin, Minus, Plus, Zap, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, Loader, ShoppingCart, Sparkles, MapPin, Minus, Plus, Zap, Store } from 'lucide-react';
 import { useCart } from '@/contexts/CartContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useActiveUpsell } from '@/hooks/useUpsell';
@@ -47,6 +47,9 @@ const Checkout = () => {
 
   const [paymentMethod, setPaymentMethod] = useState<'pix' | 'credit'>('pix');
   const [installments, setInstallments] = useState<number>(1);
+
+  const [deliveryMethod, setDeliveryMethod] = useState<'shipping' | 'pickup'>('shipping');
+  const [pickupUnitSlug, setPickupUnitSlug] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
     customer_name: '',
@@ -112,7 +115,7 @@ const Checkout = () => {
 
   // Shipping = 20% of subtotal (cartTotal already includes upsell if added via addItem)
   const shippingEstimate = Math.round(cartTotal * 0.20 * 100) / 100;
-  const shippingValue = couponType === 'free_shipping' ? 0 : shippingEstimate;
+  const shippingValue = deliveryMethod === 'pickup' ? 0 : (couponType === 'free_shipping' ? 0 : shippingEstimate);
   const orderTotal = Math.round(Math.max(cartTotal + shippingValue - couponDiscount, 0) * 100) / 100;
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -139,6 +142,13 @@ const Checkout = () => {
     setStep(3);
   };
 
+  const isAddressValid = !!(
+    formData.cep && formData.cep.length >= 9 &&
+    formData.street && formData.number &&
+    formData.neighborhood && formData.city &&
+    formData.state && formData.state.length === 2
+  );
+
   const handleSkipUpsell = () => {
     setUpsellSkipped(true);
     setStep(3);
@@ -157,8 +167,16 @@ const Checkout = () => {
         setStep(3);
       }
     } else if (step === 3) {
-      if (!formData.customer_name.trim() || !formData.customer_whatsapp.trim() || !formData.customer_email.trim() || !formData.customer_document.trim() || !formData.cep || !formData.street || !formData.number || !formData.neighborhood || !formData.city || !formData.state) {
-        setError('Preencha todos os campos obrigatorios, incluindo CPF/CNPJ e endereco.');
+      if (!formData.customer_name.trim() || !formData.customer_whatsapp.trim() || !formData.customer_email.trim() || !formData.customer_document.trim()) {
+        setError('Preencha os dados do cliente (Nome, WhatsApp, E-mail, Documento).');
+        return;
+      }
+      if (deliveryMethod === 'shipping' && (!formData.cep || !formData.street || !formData.number || !formData.neighborhood || !formData.city || !formData.state)) {
+        setError('Preencha o endereco de entrega completo.');
+        return;
+      }
+      if (deliveryMethod === 'pickup' && !pickupUnitSlug) {
+        setError('Selecione uma unidade para retirar seu pedido.');
         return;
       }
       const docResult = isValidDocument(formData.customer_document);
@@ -218,8 +236,19 @@ const Checkout = () => {
     setLoading(true);
 
     try {
-      if (!formData.customer_name.trim() || !formData.customer_whatsapp.trim() || !formData.customer_email.trim() || !formData.customer_document.trim() || !formData.cep || !formData.street || !formData.number || !formData.neighborhood || !formData.city || !formData.state) {
-        setError('Preencha todos os campos obrigatorios, incluindo o endereco e CPF/CNPJ.');
+      if (!formData.customer_name.trim() || !formData.customer_whatsapp.trim() || !formData.customer_email.trim() || !formData.customer_document.trim()) {
+        setError('Preencha todos os dados do cliente.');
+        setLoading(false);
+        return;
+      }
+      if (deliveryMethod === 'shipping' && (!formData.cep || !formData.street || !formData.number || !formData.neighborhood || !formData.city || !formData.state)) {
+        setError('Preencha o endereco de entrega completo.');
+        setLoading(false);
+        return;
+      }
+      
+      if (deliveryMethod === 'pickup' && !pickupUnitSlug) {
+        setError('Selecione o local de retirada.');
         setLoading(false);
         return;
       }
@@ -251,19 +280,26 @@ const Checkout = () => {
         return;
       }
 
-      // Save address to profile for next time
-      supabase.from('profiles').update({
-        address_cep: formData.cep,
-        address_street: formData.street,
-        address_number: formData.number,
-        address_complement: formData.complement,
-        address_neighborhood: formData.neighborhood,
-        address_city: formData.city,
-        address_state: formData.state,
-      }).eq('id', user.id).then(() => { });
+      // Save address to profile for next time if shipping
+      if (deliveryMethod === 'shipping') {
+        supabase.from('profiles').update({
+          address_cep: formData.cep,
+          address_street: formData.street,
+          address_number: formData.number,
+          address_complement: formData.complement,
+          address_neighborhood: formData.neighborhood,
+          address_city: formData.city,
+          address_state: formData.state,
+        }).eq('id', user.id).then(() => { });
+      }
 
       const paymentStr = paymentMethod === 'pix' ? 'PIX' : `Cartão de Crédito (${installments}x${installments > 3 ? ' com juros' : ' sem juros'})`;
-      const addressString = `Endereco de Entrega:\nCEP: ${formData.cep}\nLogradouro: ${formData.street}, ${formData.number} ${formData.complement ? `(${formData.complement})` : ''}\nBairro: ${formData.neighborhood}\nCidade/UF: ${formData.city}/${formData.state.toUpperCase()}\n\nForma de Pagamento Selecionada: ${paymentStr}`;
+      let addressString = '';
+      if (deliveryMethod === 'shipping') {
+        addressString = `Endereco de Entrega:\nCEP: ${formData.cep}\nLogradouro: ${formData.street}, ${formData.number} ${formData.complement ? `(${formData.complement})` : ''}\nBairro: ${formData.neighborhood}\nCidade/UF: ${formData.city}/${formData.state.toUpperCase()}\n\nForma de Pagamento Selecionada: ${paymentStr}`;
+      } else {
+        addressString = `Retirada na Loja:\nUnidade: ${pickupUnitSlug === 'linhares' ? 'Linhares' : pickupUnitSlug === 'serra' ? 'Serra' : 'Teixeira'}\n\nForma de Pagamento Selecionada: ${paymentStr}`;
+      }
       const finalNotes = formData.notes ? `${formData.notes}\n\n${addressString}` : addressString;
 
       // Call edge function — use fetch with both apikey and user token
@@ -276,9 +312,12 @@ const Checkout = () => {
         payment_method: paymentMethod,
         installments: paymentMethod === 'credit' ? installments : 1,
         shipping: shippingValue,
+        delivery_method: deliveryMethod,
+        pickup_unit_slug: pickupUnitSlug,
         notes: finalNotes,
         discount_amount: couponDiscount,
-        coupon_id: couponId
+        coupon_id: couponId,
+        coupon_code: couponCode
       };
 
       // Try supabase.functions.invoke first (sends auth automatically)
@@ -405,13 +444,12 @@ const Checkout = () => {
 
               <div className="border-t border-border pt-4 space-y-2">
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Subtotal ({cartCount} itens)</span>
-                  <span className="font-medium">R$ {cartTotal.toFixed(2)}</span>
+                  <span className="text-muted-foreground">Subtotal dos itens ({cartCount} itens)</span>
+                  <span className="font-medium text-foreground">R$ {cartTotal.toFixed(2)}</span>
                 </div>
-                {/* Frete oculto no Passo 1 a pedido do usuario */}
-                <div className="flex items-center justify-between text-lg font-bold pt-3 border-t border-border">
-                  <span>Subtotal Final</span>
-                  <span className="text-foreground text-base">R$ {cartTotal.toFixed(2)}</span>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Frete</span>
+                  <span className="text-muted-foreground italic text-xs">Calculado na próxima etapa</span>
                 </div>
                 {couponDiscount > 0 && (
                   <div className="flex items-center justify-between text-sm text-green-600 font-bold">
@@ -419,9 +457,9 @@ const Checkout = () => {
                     <span>- R$ {couponDiscount.toFixed(2)}</span>
                   </div>
                 )}
-                <div className="flex items-center justify-between text-xl font-black pt-3 border-t-2 border-amber-100">
-                  <span className="uppercase tracking-tight text-foreground/80">Total</span>
-                  <span className="gradient-gold-text">R$ {(cartTotal).toFixed(2)}</span>
+                <div className="flex items-center justify-between text-lg sm:text-xl font-black pt-3 border-t-2 border-amber-100">
+                  <span className="uppercase tracking-tight text-foreground/80">Subtotal Geral</span>
+                  <span className="gradient-gold-text">R$ {(cartTotal - couponDiscount).toFixed(2)}</span>
                 </div>
               </div>
 
@@ -589,52 +627,152 @@ const Checkout = () => {
               </div>
             </div>
 
-            {/* Address */}
-            <div className="bg-white rounded-2xl p-5 sm:p-6 shadow-card">
+            {/* Delivery Method Selector */}
+            <div className="bg-white rounded-2xl p-5 sm:p-6 shadow-sm border border-border">
               <h2 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
-                <MapPin className="w-5 h-5 text-gold-text" />
-                Endereco de Entrega
+                <Store className="w-5 h-5 text-amber-500" />
+                Entrega
               </h2>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-medium text-muted-foreground mb-1">CEP *</label>
-                  <input type="text" name="cep" required value={formData.cep} onChange={handleChange} placeholder="00000-000"
-                    className="w-full px-3 py-2.5 rounded-lg border border-border bg-white text-sm focus:ring-2 focus:ring-gold" />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-muted-foreground mb-1">Rua *</label>
-                  <input type="text" name="street" required value={formData.street} onChange={handleChange} placeholder="Av. Principal"
-                    className="w-full px-3 py-2.5 rounded-lg border border-border bg-white text-sm focus:ring-2 focus:ring-gold" />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-muted-foreground mb-1">Numero *</label>
-                  <input type="text" name="number" required value={formData.number} onChange={handleChange} placeholder="123"
-                    className="w-full px-3 py-2.5 rounded-lg border border-border bg-white text-sm focus:ring-2 focus:ring-gold" />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-muted-foreground mb-1">Complemento</label>
-                  <input type="text" name="complement" value={formData.complement} onChange={handleChange} placeholder="Apto 101"
-                    className="w-full px-3 py-2.5 rounded-lg border border-border bg-white text-sm focus:ring-2 focus:ring-gold" />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-muted-foreground mb-1">Bairro *</label>
-                  <input type="text" name="neighborhood" required value={formData.neighborhood} onChange={handleChange} placeholder="Centro"
-                    className="w-full px-3 py-2.5 rounded-lg border border-border bg-white text-sm focus:ring-2 focus:ring-gold" />
-                </div>
-                <div className="flex gap-3">
-                  <div className="flex-1">
-                    <label className="block text-xs font-medium text-muted-foreground mb-1">Cidade *</label>
-                    <input type="text" name="city" required value={formData.city} onChange={handleChange} placeholder="Sao Paulo"
-                      className="w-full px-3 py-2.5 rounded-lg border border-border bg-white text-sm focus:ring-2 focus:ring-gold" />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
+                <button
+                  type="button"
+                  onClick={() => setDeliveryMethod('shipping')}
+                  className={`relative flex items-center p-4 rounded-xl border transition-all ${deliveryMethod === 'shipping' ? 'border-amber-500 bg-amber-50/50 ring-1 ring-amber-500 shadow-sm' : 'border-border bg-surface hover:border-amber-300'}`}
+                >
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center mr-3 ${deliveryMethod === 'shipping' ? 'bg-amber-100/80 text-amber-600' : 'bg-surface-alt text-muted-foreground'}`}>
+                    <MapPin className="w-5 h-5" />
                   </div>
-                  <div className="w-20">
-                    <label className="block text-xs font-medium text-muted-foreground mb-1">UF *</label>
-                    <input type="text" name="state" required maxLength={2} value={formData.state} onChange={handleChange} placeholder="SP"
-                      className="w-full px-3 py-2.5 rounded-lg border border-border bg-white text-sm focus:ring-2 focus:ring-gold uppercase" />
+                  <div className="flex-1 text-left">
+                    <span className="block font-bold text-sm text-foreground">Receber em casa</span>
+                    <span className="block text-xs text-muted-foreground mt-0.5">Entrega via transportadora</span>
                   </div>
-                </div>
+                  {deliveryMethod === 'shipping' && (
+                    <div className="absolute top-4 right-4">
+                      <div className="w-5 h-5 rounded-full bg-amber-500 text-white flex items-center justify-center">
+                        <Check className="w-3 h-3" />
+                      </div>
+                    </div>
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => { setDeliveryMethod('pickup'); setPickupUnitSlug('linhares'); }}
+                  className={`relative flex items-center p-4 rounded-xl border transition-all ${deliveryMethod === 'pickup' ? 'border-amber-500 bg-amber-50/50 ring-1 ring-amber-500 shadow-sm' : 'border-border bg-surface hover:border-amber-300'}`}
+                >
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center mr-3 ${deliveryMethod === 'pickup' ? 'bg-amber-100/80 text-amber-600' : 'bg-surface-alt text-muted-foreground'}`}>
+                    <Store className="w-5 h-5" />
+                  </div>
+                  <div className="flex-1 text-left">
+                    <div className="flex items-center gap-2">
+                      <span className="block font-bold text-sm text-foreground">Retirar na Loja</span>
+                      <span className="text-[10px] uppercase font-bold tracking-wider text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">Grátis</span>
+                    </div>
+                    <span className="block text-xs text-muted-foreground mt-0.5">Unidades Rei dos Cachos</span>
+                  </div>
+                  {deliveryMethod === 'pickup' && (
+                    <div className="absolute top-4 right-4">
+                      <div className="w-5 h-5 rounded-full bg-amber-500 text-white flex items-center justify-center">
+                        <Check className="w-3 h-3" />
+                      </div>
+                    </div>
+                  )}
+                </button>
               </div>
+
+              {/* Conditional Form: Address OR Store Selection */}
+              {deliveryMethod === 'shipping' ? (
+                <>
+                  <h3 className="text-sm font-bold text-foreground mb-3 mt-2 border-t border-border pt-4">Endereço de Entrega</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-medium text-muted-foreground mb-1">CEP *</label>
+                      <input type="text" name="cep" required value={formData.cep} onChange={handleChange} placeholder="00000-000"
+                        className="w-full px-3 py-2.5 rounded-lg border border-border bg-white text-sm focus:ring-2 focus:ring-gold" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-muted-foreground mb-1">Rua *</label>
+                      <input type="text" name="street" required value={formData.street} onChange={handleChange} placeholder="Av. Principal"
+                        className="w-full px-3 py-2.5 rounded-lg border border-border bg-white text-sm focus:ring-2 focus:ring-gold" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-muted-foreground mb-1">Numero *</label>
+                      <input type="text" name="number" required value={formData.number} onChange={handleChange} placeholder="123"
+                        className="w-full px-3 py-2.5 rounded-lg border border-border bg-white text-sm focus:ring-2 focus:ring-gold" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-muted-foreground mb-1">Complemento</label>
+                      <input type="text" name="complement" value={formData.complement} onChange={handleChange} placeholder="Apto 101"
+                        className="w-full px-3 py-2.5 rounded-lg border border-border bg-white text-sm focus:ring-2 focus:ring-gold" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-muted-foreground mb-1">Bairro *</label>
+                      <input type="text" name="neighborhood" required value={formData.neighborhood} onChange={handleChange} placeholder="Centro"
+                        className="w-full px-3 py-2.5 rounded-lg border border-border bg-white text-sm focus:ring-2 focus:ring-gold" />
+                    </div>
+                    <div className="flex gap-3">
+                      <div className="flex-1">
+                        <label className="block text-xs font-medium text-muted-foreground mb-1">Cidade *</label>
+                        <input type="text" name="city" required value={formData.city} onChange={handleChange} placeholder="Sao Paulo"
+                          className="w-full px-3 py-2.5 rounded-lg border border-border bg-white text-sm focus:ring-2 focus:ring-gold" />
+                      </div>
+                      <div className="w-20">
+                        <label className="block text-xs font-medium text-muted-foreground mb-1">UF *</label>
+                        <input type="text" name="state" required maxLength={2} value={formData.state} onChange={handleChange} placeholder="SP"
+                          className="w-full px-3 py-2.5 rounded-lg border border-border bg-white text-sm focus:ring-2 focus:ring-gold uppercase" />
+                      </div>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="animate-in fade-in zoom-in-95 duration-200">
+                  <h3 className="text-sm font-bold text-foreground mb-4 mt-2 border-t border-border pt-6">Selecione a unidade</h3>
+                  <div className="space-y-3">
+                    {/* Linhares */}
+                    <label className={`relative block p-4 rounded-xl border cursor-pointer transition-all ${pickupUnitSlug === 'linhares' ? 'border-amber-500 bg-amber-50/30' : 'border-border bg-surface hover:border-amber-300'}`}>
+                      <input type="radio" name="pickup_unit" className="sr-only" checked={pickupUnitSlug === 'linhares'} onChange={() => setPickupUnitSlug('linhares')} />
+                      <div className="flex items-start gap-4">
+                        <div className={`mt-0.5 flex-shrink-0 w-5 h-5 rounded-full border flex items-center justify-center transition-colors ${pickupUnitSlug === 'linhares' ? 'border-amber-500 bg-amber-500 text-white' : 'border-slate-300'}`}>
+                          {pickupUnitSlug === 'linhares' && <Check className="w-3 h-3" />}
+                        </div>
+                        <div className="flex-1">
+                          <p className="font-bold text-foreground text-sm">Rei dos Cachos (Linhares)</p>
+                          <p className="text-xs text-muted-foreground mt-1 leading-relaxed">Av. Gov. Carlos Lindemberg, 835<br/>Centro, Linhares - ES, 29900-203</p>
+                        </div>
+                      </div>
+                    </label>
+
+                    {/* Serra */}
+                    <label className={`relative block p-4 rounded-xl border cursor-pointer transition-all ${pickupUnitSlug === 'serra' ? 'border-amber-500 bg-amber-50/30' : 'border-border bg-surface hover:border-amber-300'}`}>
+                      <input type="radio" name="pickup_unit" className="sr-only" checked={pickupUnitSlug === 'serra'} onChange={() => setPickupUnitSlug('serra')} />
+                      <div className="flex items-start gap-4">
+                        <div className={`mt-0.5 flex-shrink-0 w-5 h-5 rounded-full border flex items-center justify-center transition-colors ${pickupUnitSlug === 'serra' ? 'border-amber-500 bg-amber-500 text-white' : 'border-slate-300'}`}>
+                          {pickupUnitSlug === 'serra' && <Check className="w-3 h-3" />}
+                        </div>
+                        <div className="flex-1">
+                          <p className="font-bold text-foreground text-sm">Rei dos Cachos (Serra)</p>
+                          <p className="text-xs text-muted-foreground mt-1 leading-relaxed">Av. Central, 1197 - Parque Res. Laranjeiras<br/>Serra - ES, 29165-130</p>
+                        </div>
+                      </div>
+                    </label>
+
+                    {/* Teixeira */}
+                    <label className={`relative block p-4 rounded-xl border cursor-pointer transition-all ${pickupUnitSlug === 'teixeira' ? 'border-amber-500 bg-amber-50/30' : 'border-border bg-surface hover:border-amber-300'}`}>
+                      <input type="radio" name="pickup_unit" className="sr-only" checked={pickupUnitSlug === 'teixeira'} onChange={() => setPickupUnitSlug('teixeira')} />
+                      <div className="flex items-start gap-4">
+                        <div className={`mt-0.5 flex-shrink-0 w-5 h-5 rounded-full border flex items-center justify-center transition-colors ${pickupUnitSlug === 'teixeira' ? 'border-amber-500 bg-amber-500 text-white' : 'border-slate-300'}`}>
+                          {pickupUnitSlug === 'teixeira' && <Check className="w-3 h-3" />}
+                        </div>
+                        <div className="flex-1">
+                          <p className="font-bold text-foreground text-sm">Rei dos Cachos (Teixeira de Freitas)</p>
+                          <p className="text-xs text-muted-foreground mt-1 leading-relaxed">Av. São Paulo, 151 - Bela Vista<br/>Teixeira de Freitas - BA, 45997-006</p>
+                        </div>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Notes */}
@@ -699,7 +837,13 @@ const Checkout = () => {
               <div className="flex flex-col text-slate-600 bg-slate-50 p-2 rounded">
                 <div className="flex items-center justify-between text-sm">
                   <span>Frete estimado</span>
-                  {couponType === 'free_shipping' ? (
+                  {deliveryMethod === 'pickup' ? (
+                    <div className="flex flex-col items-end">
+                      <span className="text-emerald-600 font-bold">Retirada Grátis</span>
+                    </div>
+                  ) : !isAddressValid ? (
+                     <span className="text-muted-foreground italic text-xs">A calcular</span>
+                  ) : couponType === 'free_shipping' ? (
                     <div className="flex flex-col items-end">
                       <span className="text-muted-foreground line-through text-xs">R$ {shippingEstimate.toFixed(2)}</span>
                       <span className="text-emerald-600 font-bold">Grátis</span>
@@ -708,9 +852,11 @@ const Checkout = () => {
                     <span>+ R$ {shippingEstimate.toFixed(2)}</span>
                   )}
                 </div>
-                <p className="text-[10px] text-muted-foreground mt-1 text-left">
-                  O valor é uma média de cotação com tranportadoras parceiras.
-                </p>
+                {deliveryMethod === 'shipping' && isAddressValid && (
+                  <p className="text-[10px] text-muted-foreground mt-1 text-left">
+                    O valor é uma média de cotação com tranportadoras parceiras.
+                  </p>
+                )}
               </div>
 
               {couponDiscount > 0 && couponType !== 'free_shipping' && (

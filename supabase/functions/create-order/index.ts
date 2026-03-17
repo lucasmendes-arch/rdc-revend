@@ -1,6 +1,13 @@
+// @ts-expect-error Deno import
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
+// @ts-expect-error Deno import
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
+declare const Deno: {
+  env: {
+    get(key: string): string | undefined;
+  };
+};
 const ALLOWED_ORIGINS = [
   'https://rdc-revend.vercel.app',
   'http://localhost:8080',
@@ -28,13 +35,19 @@ interface OrderRequest {
   customer_name: string
   customer_whatsapp: string
   customer_email: string
+  customer_document?: string
   notes?: string
   payment_method?: 'pix' | 'credit'
   installments?: number
   shipping?: number
+  delivery_method?: 'shipping' | 'pickup'
+  pickup_unit_slug?: string
+  coupon_code?: string
+  coupon_id?: string
+  discount_amount?: number
 }
 
-serve(async (req) => {
+serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: getCorsHeaders(req) })
   }
@@ -127,7 +140,7 @@ serve(async (req) => {
     }
 
     // Build price map and validate all products exist and are active
-    const priceMap = new Map(products.map(p => [p.id, p]))
+    const priceMap = new Map<string, { id: string; name: string; price: number; is_active: boolean }>(products.map((p: { id: string; name: string; price: number; is_active: boolean }) => [p.id, p]))
 
     for (const item of body.items) {
       const product = priceMap.get(item.product_id)
@@ -211,11 +224,11 @@ serve(async (req) => {
     }
 
     // Build stock map (products without inventory records are treated as unlimited)
-    const stockMap = new Map(inventory?.map(i => [i.product_id, i.quantity]) ?? [])
+    const stockMap = new Map<string, number>(inventory?.map((i: { product_id: string; quantity: number }) => [i.product_id, i.quantity]) ?? [])
 
     // Also need a name map for component products (for error messages)
     const componentIds = Array.from(stockCheckIds).filter(id => !priceMap.has(id))
-    let componentNameMap = new Map<string, string>()
+    const componentNameMap = new Map<string, string>()
     if (componentIds.length > 0) {
       const { data: compProducts } = await serviceClient
         .from('catalog_products')
@@ -229,7 +242,7 @@ serve(async (req) => {
     const outOfStock: string[] = []
     for (const [productId, needed] of stockDecrements) {
       const stock = stockMap.get(productId)
-      if (stock !== undefined && stock < needed) {
+      if (stock != null && stock < needed) {
         const name = priceMap.get(productId)?.name || componentNameMap.get(productId) || productId
         outOfStock.push(`${name} (disponível: ${stock}, necessário: ${needed})`)
       }
@@ -255,14 +268,105 @@ serve(async (req) => {
       )
     }
 
-    // Calculate shipping (validate: must be ~20% of subtotal, cap at 25% to prevent manipulation)
-    const shippingFromClient = body.shipping && body.shipping > 0 ? Math.round(body.shipping * 100) / 100 : 0
-    const expectedShipping = Math.round(subtotal * 0.20 * 100) / 100
-    // Use server-calculated shipping if client value diverges too much (max R$0.10 tolerance)
-    const shipping = Math.abs(shippingFromClient - expectedShipping) < 0.10 ? shippingFromClient : expectedShipping
-    const total = Math.round((subtotal + shipping) * 100) / 100
+    // Resolve delivery method and pickup unit
+    const deliveryMethod = body.delivery_method === 'pickup' ? 'pickup' : 'shipping'
+    let pickupUnitSlug: string | null = null
+    let pickupUnitAddress: string | null = null
 
-    // 7. Create order (using service client to bypass RLS — we already verified auth)
+    if (deliveryMethod === 'pickup') {
+      if (!body.pickup_unit_slug) {
+        return new Response(
+          JSON.stringify({ error: 'Retirada na loja requer seleção de unidade' }),
+          { status: 400, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
+        )
+      }
+
+      // Fetch unit from DB to validate and snapshot the address
+      const { data: unit, error: unitError } = await serviceClient
+        .from('pickup_units')
+        .select('slug, address')
+        .eq('slug', body.pickup_unit_slug)
+        .eq('is_active', true)
+        .single()
+
+      if (unitError || !unit) {
+        return new Response(
+          JSON.stringify({ error: `Unidade de retirada não encontrada ou inativa: ${body.pickup_unit_slug}` }),
+          { status: 400, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
+        )
+      }
+
+      pickupUnitSlug = unit.slug
+      pickupUnitAddress = unit.address
+    }
+
+    // 7. Validate and apply coupon server-side
+    let couponId: string | null = null
+    let couponDiscount = 0
+    let couponType: string | null = null
+    let isFreeShipping = false
+
+    if (body.coupon_code || body.coupon_id) {
+      // If coupon_code provided, validate via RPC (authoritative)
+      // If only coupon_id provided, validate directly
+      if (body.coupon_code) {
+        const { data: couponResult } = await serviceClient.rpc('validate_coupon', {
+          p_code: body.coupon_code.toUpperCase().trim(),
+          p_cart_total: subtotal,
+        })
+
+        if (couponResult?.valid) {
+          couponId = couponResult.id
+          couponType = couponResult.type
+
+          if (couponResult.type === 'free_shipping') {
+            isFreeShipping = true
+            couponDiscount = 0
+          } else if (couponResult.type === 'percent') {
+            couponDiscount = Math.round(subtotal * couponResult.value / 100 * 100) / 100
+          } else if (couponResult.type === 'fixed') {
+            couponDiscount = Math.min(couponResult.value, subtotal)
+          }
+        }
+        // If coupon is invalid, silently ignore (frontend already validated — this is a safety net)
+      } else if (body.coupon_id) {
+        // Fallback: trust the coupon_id from frontend but verify it exists
+        const { data: coupon } = await serviceClient
+          .from('coupons')
+          .select('id, discount_type, discount_value, is_active')
+          .eq('id', body.coupon_id)
+          .eq('is_active', true)
+          .single()
+
+        if (coupon) {
+          couponId = coupon.id
+          couponType = coupon.discount_type
+          if (coupon.discount_type === 'free_shipping') {
+            isFreeShipping = true
+          } else if (coupon.discount_type === 'percent') {
+            couponDiscount = Math.round(subtotal * coupon.discount_value / 100 * 100) / 100
+          } else if (coupon.discount_type === 'fixed') {
+            couponDiscount = Math.min(coupon.discount_value, subtotal)
+          }
+        }
+      }
+    }
+
+    // Calculate shipping: pickup = 0, free_shipping coupon = 0, else ~20% of subtotal
+    let shipping: number
+    if (deliveryMethod === 'pickup' || isFreeShipping) {
+      shipping = 0
+    } else {
+      const shippingFromClient = body.shipping && body.shipping > 0 ? Math.round(body.shipping * 100) / 100 : 0
+      const expectedShipping = Math.round(subtotal * 0.20 * 100) / 100
+      // Use server-calculated shipping if client value diverges too much (max R$0.10 tolerance)
+      shipping = Math.abs(shippingFromClient - expectedShipping) < 0.10 ? shippingFromClient : expectedShipping
+    }
+
+    // Total = subtotal + shipping - coupon discount (never negative)
+    const total = Math.round(Math.max((subtotal + shipping - couponDiscount), 0) * 100) / 100
+
+    // 8. Create order (using service client to bypass RLS — we already verified auth)
     const { data: order, error: orderError } = await serviceClient
       .from('orders')
       .insert({
@@ -275,6 +379,12 @@ serve(async (req) => {
         customer_email: body.customer_email.trim(),
         notes: body.notes?.trim() || null,
         status: 'recebido',
+        origin: 'site',
+        delivery_method: deliveryMethod,
+        pickup_unit_slug: pickupUnitSlug,
+        pickup_unit_address: pickupUnitAddress,
+        coupon_id: couponId,
+        discount_amount: couponDiscount,
       })
       .select('id')
       .single()
@@ -333,7 +443,13 @@ serve(async (req) => {
       )
     }
 
-    // 10. Create MercadoPago Checkout Pro preference
+    // 10. Increment coupon used_count (atomic via RPC)
+    if (couponId) {
+      await serviceClient.rpc('increment_coupon_usage', { p_coupon_id: couponId })
+        .catch((err: Error) => console.warn('Coupon usage increment failed:', err))
+    }
+
+    // 11. Create MercadoPago Checkout Pro preference
     let paymentUrl: string | null = null
     let preferenceId: string | null = null
 
@@ -359,6 +475,17 @@ serve(async (req) => {
             title: 'Frete',
             quantity: 1,
             unit_price: shipping,
+            currency_id: 'BRL',
+          })
+        }
+
+        // Add coupon discount as negative line item
+        if (couponDiscount > 0) {
+          mpItems.push({
+            id: 'discount',
+            title: `Desconto (cupom)`,
+            quantity: 1,
+            unit_price: -couponDiscount,
             currency_id: 'BRL',
           })
         }
@@ -436,10 +563,14 @@ serve(async (req) => {
           `👤 ${body.customer_name}`,
           `📱 ${body.customer_whatsapp}`,
           `📧 ${body.customer_email}`,
+          deliveryMethod === 'pickup' ? `📍 *Retirada:* ${pickupUnitAddress}` : '',
           '',
           itemsList,
           '',
           shipping > 0 ? `📦 Frete: R$ ${shipping.toFixed(2)}` : '',
+          deliveryMethod === 'pickup' ? '📦 Frete: R$ 0,00 (retirada)' : '',
+          isFreeShipping ? '📦 Frete grátis (cupom)' : '',
+          couponDiscount > 0 ? `🏷️ Desconto cupom: -R$ ${couponDiscount.toFixed(2)}` : '',
           `💰 *Total: R$ ${total.toFixed(2)}*`,
           paymentUrl ? `💳 Link: ${paymentUrl}` : '',
           body.notes ? `📝 ${body.notes}` : '',

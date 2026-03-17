@@ -10,6 +10,9 @@ interface Order {
   customer_name: string;
   customer_whatsapp: string;
   customer_email: string;
+  delivery_method?: string;
+  pickup_unit_slug?: string;
+  pickup_unit_address?: string;
   created_at: string;
   order_items: Array<{
     id: string;
@@ -58,6 +61,9 @@ const PedidoSucesso = () => {
             customer_name,
             customer_whatsapp,
             customer_email,
+            delivery_method,
+            pickup_unit_slug,
+            pickup_unit_address,
             created_at,
             order_items (
               id,
@@ -212,6 +218,14 @@ const PedidoSucesso = () => {
                     <span className="text-muted-foreground">Data do Pedido:</span> {orderDate}
                   </p>
                 </div>
+
+                {order.delivery_method === 'pickup' && (
+                  <div className="mt-4 pt-4 border-t border-border/10">
+                    <p className="text-sm font-medium text-foreground mb-1">Local de Retirada</p>
+                    <p className="text-sm font-bold text-amber-600 mb-1">Unidade {order.pickup_unit_slug === 'linhares' ? 'Linhares' : order.pickup_unit_slug === 'serra' ? 'Serra' : order.pickup_unit_slug === 'teixeira' ? 'Teixeira' : order.pickup_unit_slug}</p>
+                    <p className="text-xs text-muted-foreground">{order.pickup_unit_address}</p>
+                  </div>
+                )}
               </div>
             </div>
           </div>

@@ -1,6 +1,6 @@
 # SCHEMA.md — Single Source of Truth · RDC Revend
-> Atualizado em: 2026-03-11
-> Gerado a partir das migrations `20250221000001` → `20250313000018`
+> Atualizado em: 2026-03-17
+> Gerado a partir das migrations `20250221000001` → `20250317000001`
 > **LEIA ESTE ARQUIVO antes de escrever qualquer query, RPC call ou type definition no frontend.**
 
 ---
@@ -103,9 +103,34 @@ Pedidos de venda.
 | origin | text | YES | NULL | — |
 | payment_method | text | YES | NULL | — |
 | coupon_id | uuid | YES | NULL | coupons.id |
+| delivery_method | text | NO | `'shipping'` | — |
+| pickup_unit_slug | text | YES | NULL | — |
+| pickup_unit_address | text | YES | NULL | — |
+| discount_amount | numeric(10,2) | NO | `0` | — |
 
 > **ATENÇÃO:** campo de data é `created_at`, NÃO `order_date` ou `date`.
+> `discount_amount` é o valor efetivo do desconto aplicado (cupom percent/fixed). 0 se sem desconto.
 > Status válidos: `recebido`, `aguardando_pagamento`, `pago`, `separacao`, `enviado`, `entregue`, `concluido`, `cancelado`, `expirado`.
+> `delivery_method` válidos: `'shipping'` (envio), `'pickup'` (retirada na loja).
+> Constraints: se `pickup`, `pickup_unit_slug` e `pickup_unit_address` são obrigatórios e `shipping` deve ser 0.
+
+---
+
+### `pickup_units`
+Unidades físicas disponíveis para retirada de pedidos.
+
+| Coluna | Tipo | Nullable | Default | FK |
+|--------|------|----------|---------|-----|
+| id | uuid | NO | `gen_random_uuid()` | — |
+| slug | text | NO | — | — |
+| name | text | NO | — | — |
+| address | text | NO | — | — |
+| is_active | boolean | NO | `true` | — |
+| sort_order | int | NO | `0` | — |
+| created_at | timestamptz | NO | `now()` | — |
+
+> RLS: leitura pública, escrita admin-only.
+> Slugs atuais: `'linhares'`, `'serra'`, `'teixeira'`.
 
 ---
 
@@ -391,21 +416,59 @@ Erros possíveis: `"Cupom não encontrado"`, `"Cupom inativo"`, `"Cupom expirado
 ### `create_manual_order`
 ```
 create_manual_order(
-  p_user_id        uuid,
-  p_items          jsonb,          -- [{product_id, product_name, quantity, price}]
-  p_total          numeric,
-  p_status         text        DEFAULT 'recebido',
-  p_origin         text        DEFAULT 'whatsapp',
-  p_payment_method text        DEFAULT NULL,
-  p_notes          text        DEFAULT NULL,
-  p_discount       numeric     DEFAULT 0,
-  p_coupon_id      uuid        DEFAULT NULL,
-  p_created_at     timestamptz DEFAULT NULL  -- data retroativa; NULL = now()
+  p_user_id          uuid,
+  p_items            jsonb,          -- [{product_id, product_name, quantity, price}]
+  p_total            numeric,
+  p_status           text        DEFAULT 'recebido',
+  p_origin           text        DEFAULT 'whatsapp',
+  p_payment_method   text        DEFAULT NULL,
+  p_notes            text        DEFAULT NULL,
+  p_discount         numeric     DEFAULT 0,
+  p_coupon_id        uuid        DEFAULT NULL,
+  p_created_at       timestamptz DEFAULT NULL,  -- data retroativa; NULL = now()
+  p_delivery_method  text        DEFAULT 'shipping',  -- 'shipping' | 'pickup'
+  p_pickup_unit_slug text        DEFAULT NULL   -- slug da unidade (obrigatório se pickup)
 ) → uuid
 ```
 Cria pedido manual (admin). Calcula `subtotal` internamente, `total = subtotal - discount`. Grava `created_at = COALESCE(p_created_at, now())` — permite lançamento retroativo. Incrementa `coupons.used_count` se `p_coupon_id` fornecido. Atualiza `client_sessions` e insere evento CRM.
+Quando `p_delivery_method = 'pickup'`, busca o endereço da unidade via `pickup_units.slug` e força `shipping = 0`.
 Acessível por: `authenticated` (admin verificado internamente).
 Retorno: `order_id` (uuid).
+
+---
+
+### `increment_coupon_usage`
+```
+increment_coupon_usage(p_coupon_id UUID) → void
+```
+Incrementa atomicamente `coupons.used_count + 1`. Usada pela edge function `create-order`.
+Acessível por: `authenticated`.
+
+---
+
+### `get_customer_timeline`
+```
+get_customer_timeline(p_user_id UUID, p_limit INT DEFAULT 50) → JSONB
+```
+Retorna timeline consolidada do cliente para o admin/CRM.
+Acessível por: `authenticated` (admin verificado internamente).
+
+**Retorno:**
+```json
+{
+  "profile": { "id", "full_name", "phone", "email", "document_type", "document", "business_type", "created_at" },
+  "session": { "status", "cart_items_count", "last_page", "updated_at" },
+  "tags": [{ "slug", "name", "color", "type" }],
+  "events": [{ "id", "type", "metadata", "created_at" }],
+  "orders": [{
+    "id", "status", "subtotal", "shipping", "discount_amount", "total",
+    "delivery_method", "pickup_unit_slug", "pickup_unit_address",
+    "origin", "payment_method", "notes", "created_at",
+    "items_count", "items_summary": [{ "name", "qty", "total" }]
+  }],
+  "stats": { "total_orders", "total_spent", "first_order_at", "last_order_at", "total_events" }
+}
+```
 
 ---
 
@@ -463,6 +526,7 @@ Retorno: contagem de pedidos liberados.
 | catalog_products | category_type | `'alto_giro'`, `'maior_margem'`, `'recompra_alta'`, NULL |
 | orders | status | `'recebido'`, `'aguardando_pagamento'`, `'pago'`, `'separacao'`, `'enviado'`, `'entregue'`, `'concluido'`, `'cancelado'`, `'expirado'` |
 | orders | origin | `'site'`, `'whatsapp'`, `'loja_fisica'`, `'outro'`, NULL |
+| orders | delivery_method | `'shipping'`, `'pickup'` |
 | order_items | qty | `> 0` |
 | client_sessions | status | `'visitou'`, `'visualizou_produto'`, `'adicionou_carrinho'`, `'iniciou_checkout'`, `'comprou'`, `'abandonou'` |
 | coupons | code | UPPERCASE (enforced por CHECK) |
@@ -491,3 +555,6 @@ Retorno: contagem de pedidos liberados.
 | `coupon_code` (RPC) | `p_code` (RPC `validate_coupon`) |
 | SELECT direto em `coupons` (anon) | `validate_coupon()` via RPC |
 | `free_shipping` (coluna boolean) | `discount_type = 'free_shipping'` |
+| `pickup_store` / `store_pickup` | `delivery_method = 'pickup'` |
+| `pickup_unit_name` (orders) | Não existe — use `pickup_unit_slug` + `pickup_units.name` |
+| `pickup_unit_id` (orders) | Não existe — FK lógica por `pickup_unit_slug` |

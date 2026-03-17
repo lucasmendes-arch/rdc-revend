@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { Loader, Search, RefreshCw, AlertCircle, FileText, Tag as TagIcon, Zap, PlayCircle, Clock, Plus, Trash2, X, ChevronDown, ChevronRight, MessageCircle } from 'lucide-react'
 import AdminLayout from '@/components/admin/AdminLayout'
+import { CustomerTimeline } from '@/components/admin/CustomerTimeline'
 import { crmService } from '@/services/crm'
 import { getTagColorClasses, getRunStatusInfo, parseRunMetadata } from '@/utils/crm'
 import { useToast } from '@/hooks/use-toast'
@@ -399,6 +400,13 @@ export default function AdminCrmDebug() {
                       </div>
                     )}
                   </div>
+                </div>
+              )}
+
+              {/* Customer Timeline (if user found and has phone) */}
+              {crmState.targetUserId && crmState.userSession?.phone && (
+                <div className="bg-white rounded-xl border border-border shadow-sm overflow-hidden">
+                  <CustomerTimeline phone={crmState.userSession.phone} />
                 </div>
               )}
 

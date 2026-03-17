@@ -1,6 +1,6 @@
 # Arquitetura — Rei dos Cachos B2B
 
-_Última atualização: 2026-03-11_
+_Última atualização: 2026-03-17_
 
 ## Banco de dados (Supabase PostgreSQL)
 
@@ -21,6 +21,7 @@ _Última atualização: 2026-03-11_
 | `rate_limits` | Rate limiting para edge functions |
 | `store_settings` | Configurações globais da loja (id=1 singleton, min_cart_value) |
 | `coupons` | Cupons de desconto (percent/fixed/free_shipping) |
+| `pickup_units` | Unidades físicas para retirada de pedidos |
 
 ### Tabelas Promoções (Etapa 6)
 
@@ -68,8 +69,10 @@ visitou → visualizou_produto → adicionou_carrinho → iniciou_checkout → c
 | Função | Propósito |
 |---|---|
 | `public.is_admin()` | Verifica role admin sem recursão |
-| `create_manual_order(p_user_id, p_items, p_total, p_status, p_origin, p_payment_method, p_notes, p_discount, p_coupon_id, p_created_at)` | Cria pedido manual (admin-only, SECURITY DEFINER, 10 params, suporta data retroativa e cupom) |
+| `create_manual_order(p_user_id, p_items, p_total, p_status, p_origin, p_payment_method, p_notes, p_discount, p_coupon_id, p_created_at, p_delivery_method, p_pickup_unit_slug)` | Cria pedido manual (admin-only, SECURITY DEFINER, 12 params, suporta data retroativa, cupom e retirada na loja) |
 | `validate_coupon(p_code, p_cart_total)` | Valida cupom; retorna `{valid,id,type,value}` — acessível por anon+authenticated |
+| `increment_coupon_usage(p_coupon_id)` | Incrementa used_count do cupom atomicamente |
+| `get_customer_timeline(p_user_id, p_limit)` | Timeline consolidada do cliente (perfil, sessão, tags, eventos, pedidos, stats) — admin-only |
 | `decrement_stock(p_product_id, p_qty)` | Decrementa estoque atomicamente |
 | `restore_order_stock(p_order_id)` | Restaura estoque ao cancelar pedido |
 | `detect_abandoned_carts()` | Marca sessões como abandonou + emite crm_event |

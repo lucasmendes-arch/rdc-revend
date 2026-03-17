@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
+import { useCart } from '@/contexts/CartContext';
 
 const WhatsAppButton = () => {
   const [showPopup, setShowPopup] = useState(true);
   const location = useLocation();
+  const { cartOpen } = useCart();
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -13,7 +15,7 @@ const WhatsAppButton = () => {
   }, []);
 
   // Hide WhatsApp button entirely on Checkout to avoid overlapping the "MUITO IMPORTANTE" Finalizar Pedido CTA
-  if (location.pathname.startsWith('/checkout')) {
+  if (location.pathname.startsWith('/checkout') || cartOpen) {
     return null;
   }
 

@@ -126,7 +126,7 @@ const Catalogo = () => {
   const navigate = useNavigate();
   const { data: products = [], isLoading, error } = useCatalogProducts();
   const { data: dbCategories = [] } = useCategories();
-  const { items: cart, addItem, updateQty, removeItem, clearCart, total: cartTotal, count: cartCount, minOrderValue } = useCart();
+  const { items: cart, addItem, updateQty, removeItem, clearCart, total: cartTotal, count: cartCount, minOrderValue, cartOpen, setCartOpen } = useCart();
   const { role, user, loading: isLoadingAuth } = useAuth();
   useTrackPageView('Catálogo');
   const trackAddToCart = useTrackAddToCart();
@@ -148,7 +148,6 @@ const Catalogo = () => {
   const [filtersOpen, setFiltersOpen] = useState(false);
 
   // UI state
-  const [cartOpen, setCartOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<typeof products[0] | null>(null);
   const handleSelectProduct = (product: typeof products[0] | null) => {
     setSelectedProduct(product);
