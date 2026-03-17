@@ -27,6 +27,7 @@ import AdminNewOrder from "./pages/admin/NewOrder";
 import AdminMarketing from "./pages/admin/Marketing";
 import NotFound from "./pages/NotFound";
 import WhatsAppButton from "./components/landing/WhatsAppButton";
+import PixelTracker from "./components/PixelTracker";
 import { useLocation } from "react-router-dom";
 
 function ConditionalWhatsApp() {
@@ -44,6 +45,7 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter future={{ v7_relativeSplatPath: true, v7_startTransition: true }}>
+          <PixelTracker />
           <AuthProvider>
             <CartProvider>
               <Routes>

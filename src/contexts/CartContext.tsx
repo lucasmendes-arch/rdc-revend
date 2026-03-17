@@ -101,6 +101,18 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
   const addItem = (item: Omit<CartItem, 'quantity'>, desiredQty: number = 1) => {
     setItems((prev) => {
       const existing = prev.find((i) => i.id === item.id);
+      
+      // Track AddToCart event
+      if (window.fbq) {
+        window.fbq('track', 'AddToCart', {
+          content_ids: [item.id],
+          content_name: item.name,
+          value: item.price * desiredQty,
+          currency: 'BRL',
+          content_type: 'product'
+        });
+      }
+
       if (existing) {
         return prev.map((i) =>
           i.id === item.id ? { ...i, quantity: i.quantity + desiredQty } : i

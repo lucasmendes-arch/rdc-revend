@@ -73,6 +73,16 @@ const PedidoSucesso = () => {
         }
 
         setOrder(data as Order);
+
+        // Track Purchase event
+        if (window.fbq) {
+          window.fbq('track', 'Purchase', {
+            value: data.total,
+            currency: 'BRL',
+            content_ids: data.order_items.map((i: any) => i.id || i.product_id),
+            content_type: 'product'
+          });
+        }
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Erro ao carregar pedido';
         setError(message);

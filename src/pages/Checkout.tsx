@@ -66,6 +66,12 @@ const Checkout = () => {
     notes: '',
   });
 
+  useEffect(() => {
+    if (cartTotal > 0) {
+      trackInitiateCheckout(cartTotal, cartCount);
+    }
+  }, [trackInitiateCheckout, cartTotal, cartCount]);
+
   // Pre-fill from profile
   useEffect(() => {
     if (!user?.id || profileLoaded) return;
