@@ -403,10 +403,10 @@ export default function AdminCrmDebug() {
                 </div>
               )}
 
-              {/* Customer Timeline (if user found and has phone) */}
-              {crmState.targetUserId && crmState.userSession?.phone && (
+              {/* Customer Timeline (if user found) */}
+              {crmState.targetUserId && (
                 <div className="bg-white rounded-xl border border-border shadow-sm overflow-hidden">
-                  <CustomerTimeline phone={crmState.userSession.phone} />
+                  <CustomerTimeline userId={crmState.targetUserId} />
                 </div>
               )}
 

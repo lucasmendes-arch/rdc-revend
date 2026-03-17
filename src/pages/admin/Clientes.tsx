@@ -340,8 +340,8 @@ function ClientDetailPanel({ session, onClose }: { session: ClientSession; onClo
           </div>
 
           {/* Timeline Completa */}
-          {profile?.phone && (
-            <CustomerTimeline phone={profile.phone} />
+          {session.user_id && (
+            <CustomerTimeline userId={session.user_id} />
           )}
         </div>
       </div>

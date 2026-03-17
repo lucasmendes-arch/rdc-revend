@@ -16,12 +16,12 @@ interface Order {
   delivery_method?: string;
   pickup_unit_slug?: string;
   pickup_unit_address?: string;
-  subtotal: number;
-  shipping: number;
-  discount_amount: number;
-  origin: string;
-  notes: string | null;
-  coupon_id: string | null;
+  subtotal?: number;
+  shipping?: number;
+  discount_amount?: number;
+  origin?: string;
+  notes?: string | null;
+  coupon_id?: string | null;
   created_at: string;
   order_items: Array<{
     id: string;
@@ -58,22 +58,7 @@ const AdminPedidos = () => {
         .from('orders')
         .select(
           `
-          id,
-          status,
-          total,
-          customer_name,
-          customer_whatsapp,
-          customer_email,
-          delivery_method,
-          pickup_unit_slug,
-          pickup_unit_address,
-          subtotal,
-          shipping,
-          discount_amount,
-          origin,
-          notes,
-          coupon_id,
-          created_at,
+          *,
           order_items (
             id,
             product_name_snapshot,

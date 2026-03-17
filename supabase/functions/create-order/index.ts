@@ -11,6 +11,7 @@ declare const Deno: {
 const ALLOWED_ORIGINS = [
   'https://rdc-revend.vercel.app',
   'http://localhost:8080',
+  'http://localhost:8083',
   'http://localhost:5173',
 ]
 
