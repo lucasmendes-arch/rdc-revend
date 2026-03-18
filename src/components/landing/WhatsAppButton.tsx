@@ -14,8 +14,10 @@ const WhatsAppButton = () => {
     return () => clearTimeout(timer);
   }, []);
 
-  // Hide WhatsApp button entirely on Checkout to avoid overlapping the "MUITO IMPORTANTE" Finalizar Pedido CTA
-  if (location.pathname.startsWith('/checkout') || cartOpen) {
+  // Hide WhatsApp button entirely on Checkout or when a modal/cart is open
+  const isModalOpen = document.body.getAttribute('data-modal-open') === 'true';
+
+  if (location.pathname.startsWith('/checkout') || cartOpen || isModalOpen) {
     return null;
   }
 

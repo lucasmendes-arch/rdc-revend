@@ -13,6 +13,8 @@ import { useCatalogProducts } from "@/hooks/useCatalogProducts";
 import { useCategories, Category } from "@/hooks/useCategories";
 import { useCart } from "@/contexts/CartContext";
 import { useTrackPageView, useTrackAddToCart, useTrackProductView } from "@/hooks/useSessionTracking";
+import { ProfileCompletionModal } from "@/components/ProfileCompletionModal";
+import { isProfileIncomplete } from "@/utils/profile";
 
 // ============================================================================
 // TYPES & CONSTANTS
@@ -168,6 +170,45 @@ const Catalogo = () => {
   const toggleSection = (section: string) => {
     setOpenSections(prev => ({ ...prev, [section]: !prev[section] }));
   };
+
+  // ---- Progressive Profiling Popup ----
+  const [showProfilePopup, setShowProfilePopup] = useState(false)
+
+  useEffect(() => {
+    // Only for logged-in, non-admin users
+    if (!user?.id || role === 'admin') return
+
+    const USER_VISITS_KEY = `rdc_profile_visits_${user.id}`
+    const SESSION_DISMISSED_KEY = `rdc_popup_dismissed_${user.id}`
+    
+    const visits = parseInt(localStorage.getItem(USER_VISITS_KEY) || '0', 10)
+    const dismissedThisSession = sessionStorage.getItem(SESSION_DISMISSED_KEY) === '1'
+
+    // Max 2 popup appearances totals; don't show again if dismissed this session
+    if (visits >= 2 || dismissedThisSession) return
+
+    let timer: NodeJS.Timeout;
+
+    // Check if profile needs completion
+    supabase
+      .from('profiles')
+      .select('document, document_type, address_city, address_state')
+      .eq('id', user.id)
+      .single()
+      .then(({ data }) => {
+        if (!isProfileIncomplete(data)) return
+
+        timer = setTimeout(() => {
+          setShowProfilePopup(true)
+          // Increment visit counter ONLY when it actually shows
+          localStorage.setItem(USER_VISITS_KEY, String(visits + 1))
+        }, 15000)
+      })
+
+    return () => {
+      if (timer) clearTimeout(timer)
+    }
+  }, [user?.id, role])
 
   // ========================================================================
   // EFFECTS
@@ -365,6 +406,7 @@ const Catalogo = () => {
   // ========================================================================
 
   return (
+    <>
     <div className="min-h-screen bg-surface-alt overflow-x-hidden">
       {/* Header */}
       {/* Sticky Header Wrapper */}
@@ -1175,7 +1217,24 @@ const Catalogo = () => {
           </div>
         )}
       </div>
-    </div >
+    </div>
+
+      {/* Progressive Profiling Popup */}
+      {showProfilePopup && user?.id && (
+        <ProfileCompletionModal
+          userId={user.id}
+          onClose={() => {
+            setShowProfilePopup(false)
+            sessionStorage.setItem(`rdc_popup_dismissed_${user.id}`, '1')
+          }}
+          onComplete={() => {
+            setShowProfilePopup(false)
+            // Mark all visits exhausted so it never shows again
+            localStorage.setItem(`rdc_profile_visits_${user.id}`, '99')
+          }}
+        />
+      )}
+    </>
   );
 };
 

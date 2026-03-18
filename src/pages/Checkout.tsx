@@ -44,6 +44,8 @@ const Checkout = () => {
   const [upsellAdded, setUpsellAdded] = useState(false);
   const [upsellSkipped, setUpsellSkipped] = useState(false);
   const [profileLoaded, setProfileLoaded] = useState(false);
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [initialProfile, setInitialProfile] = useState<Partial<ProfileData>>({});
 
   const [paymentMethod, setPaymentMethod] = useState<'pix' | 'credit'>('pix');
   const [installments, setInstallments] = useState<number>(1);
@@ -80,6 +82,7 @@ const Checkout = () => {
       .then(({ data }) => {
         if (data) {
           const p = data as ProfileData;
+          setInitialProfile(p);
           setFormData(prev => ({
             ...prev,
             customer_name: p.full_name || prev.customer_name,
@@ -96,6 +99,7 @@ const Checkout = () => {
         }
         setProfileLoaded(true);
       });
+
   }, [user, profileLoaded]);
 
   // Track InitiateCheckout
@@ -286,18 +290,25 @@ const Checkout = () => {
         return;
       }
 
-      // Save address to profile for next time if shipping
+      // Save address and basic data to profile for next time
+      const profileUpdates: Partial<ProfileData> = {
+        full_name: formData.customer_name,
+        phone: formData.customer_whatsapp,
+        document: formData.customer_document,
+      };
+
       if (deliveryMethod === 'shipping') {
-        supabase.from('profiles').update({
-          address_cep: formData.cep,
-          address_street: formData.street,
-          address_number: formData.number,
-          address_complement: formData.complement,
-          address_neighborhood: formData.neighborhood,
-          address_city: formData.city,
-          address_state: formData.state,
-        }).eq('id', user.id).then(() => { });
+        profileUpdates.address_cep = formData.cep;
+        profileUpdates.address_street = formData.street;
+        profileUpdates.address_number = formData.number;
+        profileUpdates.address_complement = formData.complement;
+        profileUpdates.address_neighborhood = formData.neighborhood;
+        profileUpdates.address_city = formData.city;
+        profileUpdates.address_state = formData.state;
       }
+
+      supabase.from('profiles').update(profileUpdates).eq('id', user.id).then(() => { });
+
 
       const paymentStr = paymentMethod === 'pix' ? 'PIX' : `Cartão de Crédito (${installments}x${installments > 3 ? ' com juros' : ' sem juros'})`;
       let addressString = '';
@@ -592,46 +603,111 @@ const Checkout = () => {
         {step === 3 && (
           <div className="space-y-6">
             {/* Pre-filled Client Info (read-only summary) */}
-            <div className="bg-white rounded-2xl p-5 sm:p-6 shadow-card">
-              <h2 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
-                <Check className="w-5 h-5 text-green-500" />
-                Dados do Cliente
-              </h2>
+            {/* Progressive Profiling: Only show inputs for missing fields or if editing */}
+            <div className="bg-white rounded-2xl p-5 sm:p-6 shadow-sm border border-border">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
+                  <Check className="w-5 h-5 text-green-500" />
+                  Dados do Cliente
+                </h2>
+                {profileLoaded && (
+                  <button 
+                    type="button"
+                    onClick={() => setIsEditingProfile(!isEditingProfile)}
+                    className="text-xs font-semibold text-amber-600 hover:text-amber-700 underline"
+                  >
+                    {isEditingProfile ? 'Salvar visualização' : 'Editar dados'}
+                  </button>
+                )}
+              </div>
+
+              {/* Missing data banner */}
+              {!isEditingProfile && (!initialProfile.full_name || !initialProfile.document) && (
+                <div className="mb-6 p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-2.5 animate-in fade-in slide-in-from-top-2 duration-300">
+                  <Zap className="w-4 h-4 text-amber-600 mt-0.5" />
+                  <p className="text-[12px] text-amber-800 leading-relaxed font-medium">
+                    Precisamos de mais alguns dados para finalizar seu pedido com segurança.
+                  </p>
+                </div>
+              )}
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-medium text-muted-foreground mb-1">Nome</label>
-                  <input
-                    type="text" name="customer_name" value={formData.customer_name} onChange={handleChange} required
-                    className="w-full px-3 py-2.5 rounded-lg border border-border bg-surface text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-gold"
-                    placeholder="Nome completo"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-muted-foreground mb-1">WhatsApp</label>
-                  <input
-                    type="tel" name="customer_whatsapp" value={formData.customer_whatsapp} onChange={handleChange} required
-                    className="w-full px-3 py-2.5 rounded-lg border border-border bg-surface text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-gold"
-                    placeholder="11999999999"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-muted-foreground mb-1">E-mail</label>
-                  <input
-                    type="email" name="customer_email" value={formData.customer_email} onChange={handleChange} required
-                    className="w-full px-3 py-2.5 rounded-lg border border-border bg-surface text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-gold"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-muted-foreground mb-1">CPF ou CNPJ</label>
-                  <input
-                    type="text" name="customer_document" value={formData.customer_document} onChange={handleChange} required
-                    className="w-full px-3 py-2.5 rounded-lg border border-border bg-surface text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-gold"
-                    placeholder="000.000.000-00"
-                    inputMode="numeric"
-                  />
-                </div>
+                {(isEditingProfile || !initialProfile.full_name) && (
+                  <div>
+                    <label className="block text-xs font-medium text-muted-foreground mb-1">Nome Completo</label>
+                    <input
+                      type="text" name="customer_name" value={formData.customer_name} onChange={handleChange} required
+                      className="w-full px-3 py-2.5 rounded-lg border border-border bg-surface text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-gold"
+                      placeholder="Nome completo"
+                    />
+                  </div>
+                )}
+                
+                {(isEditingProfile || !initialProfile.phone) && (
+                  <div>
+                    <label className="block text-xs font-medium text-muted-foreground mb-1">WhatsApp</label>
+                    <input
+                      type="tel" name="customer_whatsapp" value={formData.customer_whatsapp} onChange={handleChange} required
+                      className="w-full px-3 py-2.5 rounded-lg border border-border bg-surface text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-gold"
+                      placeholder="11999999999"
+                    />
+                  </div>
+                )}
+
+                {(isEditingProfile || !user?.email) && (
+                  <div>
+                    <label className="block text-xs font-medium text-muted-foreground mb-1">E-mail</label>
+                    <input
+                      type="email" name="customer_email" value={formData.customer_email} onChange={handleChange} required
+                      className="w-full px-3 py-2.5 rounded-lg border border-border bg-surface text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-gold"
+                    />
+                  </div>
+                )}
+
+                {(isEditingProfile || !initialProfile.document) && (
+                  <div>
+                    <label className="block text-xs font-medium text-muted-foreground mb-1">CPF ou CNPJ</label>
+                    <input
+                      type="text" name="customer_document" value={formData.customer_document} onChange={handleChange} required
+                      className="w-full px-3 py-2.5 rounded-lg border border-border bg-surface text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-gold"
+                      placeholder="000.000.000-00"
+                      inputMode="numeric"
+                    />
+                  </div>
+                )}
+
+                {/* Summary View for pre-filled data */}
+                {!isEditingProfile && (
+                  <>
+                    {initialProfile.full_name && (
+                      <div className="p-3 bg-surface-alt rounded-lg border border-border/50">
+                        <span className="block text-[10px] uppercase tracking-wider text-muted-foreground font-bold mb-0.5">Nome</span>
+                        <span className="text-sm font-medium text-foreground">{formData.customer_name}</span>
+                      </div>
+                    )}
+                    {initialProfile.phone && (
+                      <div className="p-3 bg-surface-alt rounded-lg border border-border/50">
+                        <span className="block text-[10px] uppercase tracking-wider text-muted-foreground font-bold mb-0.5">WhatsApp</span>
+                        <span className="text-sm font-medium text-foreground">{formData.customer_whatsapp}</span>
+                      </div>
+                    )}
+                    {user?.email && (
+                      <div className="p-3 bg-surface-alt rounded-lg border border-border/50">
+                        <span className="block text-[10px] uppercase tracking-wider text-muted-foreground font-bold mb-0.5">E-mail</span>
+                        <span className="text-sm font-medium text-foreground">{formData.customer_email}</span>
+                      </div>
+                    )}
+                    {initialProfile.document && (
+                      <div className="p-3 bg-surface-alt rounded-lg border border-border/50">
+                        <span className="block text-[10px] uppercase tracking-wider text-muted-foreground font-bold mb-0.5">Documento</span>
+                        <span className="text-sm font-medium text-foreground">{formData.customer_document}</span>
+                      </div>
+                    )}
+                  </>
+                )}
               </div>
             </div>
+
 
             {/* Delivery Method Selector */}
             <div className="bg-white rounded-2xl p-5 sm:p-6 shadow-sm border border-border">
@@ -690,47 +766,83 @@ const Checkout = () => {
               {/* Conditional Form: Address OR Store Selection */}
               {deliveryMethod === 'shipping' ? (
                 <>
-                  <h3 className="text-sm font-bold text-foreground mb-3 mt-2 border-t border-border pt-4">Endereço de Entrega</h3>
+                  <div className="flex items-center justify-between mb-3 mt-2 border-t border-border pt-4">
+                    <h3 className="text-sm font-bold text-foreground">Endereço de Entrega</h3>
+                  </div>
+
+                  {/* Smart Address Form */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-medium text-muted-foreground mb-1">CEP *</label>
-                      <input type="text" name="cep" required value={formData.cep} onChange={handleChange} placeholder="00000-000"
-                        className="w-full px-3 py-2.5 rounded-lg border border-border bg-white text-sm focus:ring-2 focus:ring-gold" />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-muted-foreground mb-1">Rua *</label>
-                      <input type="text" name="street" required value={formData.street} onChange={handleChange} placeholder="Av. Principal"
-                        className="w-full px-3 py-2.5 rounded-lg border border-border bg-white text-sm focus:ring-2 focus:ring-gold" />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-muted-foreground mb-1">Numero *</label>
-                      <input type="text" name="number" required value={formData.number} onChange={handleChange} placeholder="123"
-                        className="w-full px-3 py-2.5 rounded-lg border border-border bg-white text-sm focus:ring-2 focus:ring-gold" />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-muted-foreground mb-1">Complemento</label>
-                      <input type="text" name="complement" value={formData.complement} onChange={handleChange} placeholder="Apto 101"
-                        className="w-full px-3 py-2.5 rounded-lg border border-border bg-white text-sm focus:ring-2 focus:ring-gold" />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-muted-foreground mb-1">Bairro *</label>
-                      <input type="text" name="neighborhood" required value={formData.neighborhood} onChange={handleChange} placeholder="Centro"
-                        className="w-full px-3 py-2.5 rounded-lg border border-border bg-white text-sm focus:ring-2 focus:ring-gold" />
-                    </div>
-                    <div className="flex gap-3">
-                      <div className="flex-1">
-                        <label className="block text-xs font-medium text-muted-foreground mb-1">Cidade *</label>
-                        <input type="text" name="city" required value={formData.city} onChange={handleChange} placeholder="Sao Paulo"
+                    {(isEditingProfile || !initialProfile.address_cep) && (
+                      <div>
+                        <label className="block text-xs font-medium text-muted-foreground mb-1">CEP *</label>
+                        <input type="text" name="cep" required value={formData.cep} onChange={handleChange} placeholder="00000-000"
                           className="w-full px-3 py-2.5 rounded-lg border border-border bg-white text-sm focus:ring-2 focus:ring-gold" />
                       </div>
-                      <div className="w-20">
-                        <label className="block text-xs font-medium text-muted-foreground mb-1">UF *</label>
-                        <input type="text" name="state" required maxLength={2} value={formData.state} onChange={handleChange} placeholder="SP"
-                          className="w-full px-3 py-2.5 rounded-lg border border-border bg-white text-sm focus:ring-2 focus:ring-gold uppercase" />
+                    )}
+                    {(isEditingProfile || !initialProfile.address_street) && (
+                      <div>
+                        <label className="block text-xs font-medium text-muted-foreground mb-1">Rua *</label>
+                        <input type="text" name="street" required value={formData.street} onChange={handleChange} placeholder="Av. Principal"
+                          className="w-full px-3 py-2.5 rounded-lg border border-border bg-white text-sm focus:ring-2 focus:ring-gold" />
                       </div>
-                    </div>
+                    )}
+                    {(isEditingProfile || !initialProfile.address_number) && (
+                      <div>
+                        <label className="block text-xs font-medium text-muted-foreground mb-1">Numero *</label>
+                        <input type="text" name="number" required value={formData.number} onChange={handleChange} placeholder="123"
+                          className="w-full px-3 py-2.5 rounded-lg border border-border bg-white text-sm focus:ring-2 focus:ring-gold" />
+                      </div>
+                    )}
+                    {(isEditingProfile || initialProfile.address_complement === undefined) && (
+                      <div>
+                        <label className="block text-xs font-medium text-muted-foreground mb-1">Complemento</label>
+                        <input type="text" name="complement" value={formData.complement} onChange={handleChange} placeholder="Apto 101"
+                          className="w-full px-3 py-2.5 rounded-lg border border-border bg-white text-sm focus:ring-2 focus:ring-gold" />
+                      </div>
+                    )}
+                    {(isEditingProfile || !initialProfile.address_neighborhood) && (
+                      <div>
+                        <label className="block text-xs font-medium text-muted-foreground mb-1">Bairro *</label>
+                        <input type="text" name="neighborhood" required value={formData.neighborhood} onChange={handleChange} placeholder="Centro"
+                          className="w-full px-3 py-2.5 rounded-lg border border-border bg-white text-sm focus:ring-2 focus:ring-gold" />
+                      </div>
+                    )}
+                    {(isEditingProfile || !initialProfile.address_city || !initialProfile.address_state) && (
+                      <div className="flex gap-3">
+                        <div className="flex-1">
+                          <label className="block text-xs font-medium text-muted-foreground mb-1">Cidade *</label>
+                          <input type="text" name="city" required value={formData.city} onChange={handleChange} placeholder="Sao Paulo"
+                            className="w-full px-3 py-2.5 rounded-lg border border-border bg-white text-sm focus:ring-2 focus:ring-gold" />
+                        </div>
+                        <div className="w-20">
+                          <label className="block text-xs font-medium text-muted-foreground mb-1">UF *</label>
+                          <input type="text" name="state" required maxLength={2} value={formData.state} onChange={handleChange} placeholder="SP"
+                            className="w-full px-3 py-2.5 rounded-lg border border-border bg-white text-sm focus:ring-2 focus:ring-gold uppercase" />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Summary for filled address */}
+                    {!isEditingProfile && (
+                      <div className="sm:col-span-2">
+                        <div className="p-4 bg-surface-alt rounded-xl border border-border/50 space-y-2">
+                          {initialProfile.address_cep && (
+                            <div className="flex items-center gap-2 overflow-hidden">
+                              <MapPin className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+                              <span className="text-sm text-foreground truncate">
+                                {formData.street}, {formData.number} {formData.complement ? `(${formData.complement})` : ''} - {formData.neighborhood}, {formData.city}/{formData.state} (CEP: {formData.cep})
+                              </span>
+                            </div>
+                          )}
+                          {!initialProfile.address_cep && (
+                            <span className="text-xs text-muted-foreground italic">Endereço será coletado nos campos acima</span>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </>
+
               ) : (
                 <div className="animate-in fade-in zoom-in-95 duration-200">
                   <h3 className="text-sm font-bold text-foreground mb-4 mt-2 border-t border-border pt-6">Selecione a unidade</h3>

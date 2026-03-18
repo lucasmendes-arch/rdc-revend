@@ -1,6 +1,6 @@
 # SCHEMA.md — Single Source of Truth · RDC Revend
 > Atualizado em: 2026-03-17
-> Gerado a partir das migrations `20250221000001` → `20250317000001`
+> Gerado a partir das migrations `20250221000001` → `20250317000004`
 > **LEIA ESTE ARQUIVO antes de escrever qualquer query, RPC call ou type definition no frontend.**
 
 ---
@@ -39,6 +39,15 @@ Perfil do usuário. Criado automaticamente por trigger ao registrar em `auth.use
 | address_city | text | YES | NULL | — |
 | address_state | text | YES | NULL | — |
 | price_category | text | NO | `'retail'` | — |
+| clickup_task_id | text | YES | NULL | — |
+| lead_source | text | YES | NULL | — |
+| lead_status | text | YES | NULL | — |
+| assigned_seller | text | YES | NULL | — |
+| integration_notes | text | YES | NULL | — |
+| last_synced_at | timestamptz | YES | NULL | — |
+| updated_by | text | YES | NULL | — |
+
+> Colunas de integração (Etapa 9): `clickup_task_id`, `lead_source`, `lead_status`, `assigned_seller`, `integration_notes`, `last_synced_at`, `updated_by` — todas nullable, usadas pelo fluxo n8n/ClickUp.
 
 ---
 
@@ -265,7 +274,7 @@ Log de eventos do funil CRM.
 | metadata | jsonb | NO | `'{}'` | — |
 | created_at | timestamptz | NO | `now()` | — |
 
-> `event_type` válidos: `visitou`, `visualizou_produto`, `adicionou_carrinho`, `iniciou_checkout`, `comprou`, `abandonou`, `user_registered`, `purchase_completed`, `cart_abandoned`, `checkout_abandoned`, `order_created`, `tag_added`, `inactivity_detected`.
+> `event_type` válidos: `visitou`, `visualizou_produto`, `adicionou_carrinho`, `iniciou_checkout`, `comprou`, `abandonou`, `user_registered`, `purchase_completed`, `cart_abandoned`, `checkout_abandoned`, `order_created`, `tag_added`, `inactivity_detected`, `profile_completed`, `profile_synced`.
 
 ---
 
@@ -333,6 +342,31 @@ Fila de envio de mensagens CRM.
 | processed_at | timestamptz | YES | NULL | — |
 | created_at | timestamptz | NO | `now()` | — |
 | updated_at | timestamptz | NO | `now()` | — |
+
+---
+
+### `integration_outbox`
+Fila de integração outbound (outbox pattern) para n8n/ClickUp.
+
+| Coluna | Tipo | Nullable | Default | FK |
+|--------|------|----------|---------|-----|
+| id | uuid | NO | `gen_random_uuid()` | — |
+| event_type | text | NO | — | — |
+| user_id | uuid | YES | NULL | auth.users.id |
+| payload | jsonb | NO | `'{}'` | — |
+| status | text | NO | `'pending'` | — |
+| attempt_count | int | NO | `0` | — |
+| max_attempts | int | NO | `5` | — |
+| last_error | text | YES | NULL | — |
+| idempotency_key | text | YES | NULL | — |
+| created_at | timestamptz | NO | `now()` | — |
+| processed_at | timestamptz | YES | NULL | — |
+| delivered_at | timestamptz | YES | NULL | — |
+
+> Status válidos: `pending`, `processing`, `delivered`, `failed`.
+> `idempotency_key` é UNIQUE — previne duplicatas (ex: `'lead_created:{user_id}'`).
+> RLS: admin-only. service_role bypassa automaticamente.
+> Triggers automáticos populam esta tabela a partir de `crm_events` (user_registered) e `profiles` (profile completed).
 
 ---
 
@@ -508,6 +542,24 @@ Acessível por: `service_role`.
 
 ---
 
+### `claim_outbox_items`
+```
+claim_outbox_items(p_batch_size INT DEFAULT 10) → SETOF integration_outbox
+```
+Reserva atomicamente itens da outbox para processamento (FOR UPDATE SKIP LOCKED). Filtra `status = 'pending'` e `attempt_count < max_attempts`. Marca como `processing`.
+Acessível por: `service_role`.
+
+---
+
+### `reset_stuck_outbox_items`
+```
+reset_stuck_outbox_items() → INT
+```
+Reseta itens em `processing` há mais de 10 minutos de volta para `pending`. Retorna contagem de itens resetados.
+Acessível por: `service_role` / admin.
+
+---
+
 ### `release_expired_orders`
 ```
 release_expired_orders() → integer
@@ -532,7 +584,8 @@ Retorno: contagem de pedidos liberados.
 | coupons | code | UPPERCASE (enforced por CHECK) |
 | coupons | discount_type | `'percent'`, `'fixed'`, `'free_shipping'` |
 | coupons | discount_value | `> 0` |
-| crm_events | event_type | `'visitou'`, `'visualizou_produto'`, `'adicionou_carrinho'`, `'iniciou_checkout'`, `'comprou'`, `'abandonou'`, `'user_registered'`, `'purchase_completed'`, `'cart_abandoned'`, `'checkout_abandoned'`, `'order_created'`, `'tag_added'`, `'inactivity_detected'` |
+| crm_events | event_type | `'visitou'`, `'visualizou_produto'`, `'adicionou_carrinho'`, `'iniciou_checkout'`, `'comprou'`, `'abandonou'`, `'user_registered'`, `'purchase_completed'`, `'cart_abandoned'`, `'checkout_abandoned'`, `'order_created'`, `'tag_added'`, `'inactivity_detected'`, `'profile_completed'`, `'profile_synced'` |
+| integration_outbox | status | `'pending'`, `'processing'`, `'delivered'`, `'failed'` |
 | crm_tags | type | `'system'`, `'custom'` |
 | crm_automations | trigger_type | `'funnel_status_changed'`, `'tag_added'`, `'order_created'`, `'abandon_cart'` |
 | crm_automations | action_type | `'send_whatsapp'` |
