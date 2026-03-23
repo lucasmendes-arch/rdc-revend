@@ -46,6 +46,11 @@ export default function PackageCards({ products, isGuest = false }: PackageCards
   }, [])
 
   const handleSelectPackage = (pkgId: number) => {
+    if (isGuest) {
+      navigate('/cadastro')
+      return
+    }
+
     const entry = packageSelections.find(e => e.pkg.id === pkgId)
     if (!entry || entry.selected.length === 0) {
       toast.error('Nenhum produto disponível para este pacote')
@@ -54,7 +59,7 @@ export default function PackageCards({ products, isGuest = false }: PackageCards
 
     let addedCount = 0
     for (const item of entry.selected) {
-      if (item.product.id === 'not_found') continue
+      if (item.product.id === 'not_found' ) continue
       addItem({ id: item.product.id, name: item.product.name, price: item.product.price, image: item.product.main_image }, item.qty)
       addedCount += item.qty
     }
@@ -216,6 +221,7 @@ export default function PackageCards({ products, isGuest = false }: PackageCards
                   )}
                 </button>
               )}
+
               <button
                 onClick={() => setDetailsPkgId(pkg.id)}
                 className="w-full mt-2 py-2 text-xs font-bold text-muted-foreground hover:text-gold transition-colors underline bg-transparent border-none"

@@ -1,13 +1,11 @@
 import { useState, useRef } from "react";
-import { ArrowLeft, CheckCircle2, ChevronRight, Crown, Building2, Store, User, Mail, Lock } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Crown, Building2, Store, User, Mail, Lock, Phone } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import logo from "@/assets/logo-rei-dos-cachos.png";
 import { supabase } from "@/lib/supabase";
-import { isValidCPF, isValidCNPJ } from "@/utils/validateDocument";
 import { crmService } from '@/services/crm';
 import { CrmEventCode } from '@/types/crm';
 
-type DocumentType = 'CPF' | 'CNPJ';
 type BusinessType = 'salao' | 'revenda' | 'loja' | '';
 
 export default function Cadastro() {
@@ -21,47 +19,26 @@ export default function Cadastro() {
         setTimeout(() => errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
     };
 
-    // Form State
-    const [docType, setDocType] = useState<DocumentType>('CPF');
     const [formData, setFormData] = useState({
         name: '',
         email: '',
         password: '',
         phone: '',
-        document: '',
         businessType: '' as BusinessType,
-        employees: '',
-        revenue: '',
     });
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-        let { name, value } = e.target;
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const { name, value: rawValue } = e.target;
+        let value = rawValue;
 
-        // Apply Masks
         if (name === 'phone') {
             value = value.replace(/\D/g, '');
             if (value.length <= 11) {
                 value = value.replace(/^(\d{2})(\d{4,5})(\d{4}).*/, '($1) $2-$3');
             }
-        } else if (name === 'document') {
-            value = value.replace(/\D/g, '');
-            if (docType === 'CPF') {
-                if (value.length <= 11) {
-                    value = value.replace(/(\d{3})(\d{3})(\d{3})(\d{2}).*/, '$1.$2.$3-$4');
-                }
-            } else {
-                if (value.length <= 14) {
-                    value = value.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2}).*/, '$1.$2.$3/$4-$5');
-                }
-            }
         }
 
         setFormData(prev => ({ ...prev, [name]: value }));
-    };
-
-    const handleDocTypeToggle = (type: DocumentType) => {
-        setDocType(type);
-        setFormData(prev => ({ ...prev, document: '' })); // clear document on toggle
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -72,19 +49,6 @@ export default function Cadastro() {
         try {
             if (formData.password.length < 6) {
                 showError('A senha deve ter pelo menos 6 caracteres.');
-                setLoading(false);
-                return;
-            }
-
-            // Validate document checksum
-            const docDigits = formData.document.replace(/\D/g, '');
-            if (docType === 'CPF' && !isValidCPF(docDigits)) {
-                showError('CPF inválido. Verifique os dígitos.');
-                setLoading(false);
-                return;
-            }
-            if (docType === 'CNPJ' && !isValidCNPJ(docDigits)) {
-                showError('CNPJ inválido. Verifique os dígitos.');
                 setLoading(false);
                 return;
             }
@@ -110,16 +74,12 @@ export default function Cadastro() {
 
             const user = authData?.user;
 
-            // 2. Save extra profile data (trigger already created the profile row synchronously in DB)
+            // 2. Save profile (only fields collected at registration)
             if (user) {
                 const { error: profileError } = await supabase.from('profiles').update({
                     full_name: formData.name,
                     phone: formData.phone,
-                    document_type: docType,
-                    document: formData.document,
                     business_type: formData.businessType,
-                    employees: formData.employees,
-                    revenue: formData.revenue,
                 }).eq('id', user.id);
 
                 if (profileError) {
@@ -149,14 +109,11 @@ export default function Cadastro() {
                     name: formData.name,
                     email: formData.email,
                     phone: formData.phone,
-                    document_type: docType,
-                    document: formData.document,
                     business_type: formData.businessType,
                     catalog_url: `${window.location.origin}/login`,
                 }),
             }).catch(err => console.warn('Webhook error:', err));
 
-            // Login automático (email confirmation disabled)
             navigate('/catalogo', { replace: true });
         } catch (err) {
             setError('Erro ao criar conta. Tente novamente.');
@@ -173,239 +130,173 @@ export default function Cadastro() {
                 <div className="container mx-auto flex items-center justify-between">
                     <Link to="/login" className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
                         <ArrowLeft className="w-5 h-5" />
-                        <span className="hidden sm:inline">Voltar ao Login</span>
+                        <span className="hidden sm:inline">Voltar</span>
                     </Link>
                     <img src={logo} alt="Rei dos Cachos" className="h-10 sm:h-12 w-auto" />
-                    <div className="w-20" /> {/* Spacer for centering */}
+                    <div className="w-20" />
                 </div>
             </header>
 
             {/* Main Content */}
-            <main className="flex-1 w-full max-w-2xl mx-auto px-4 py-8 sm:py-12">
+            <main className="flex-1 w-full max-w-lg mx-auto px-4 py-8 sm:py-12">
+                {/* Hero */}
                 <div className="text-center mb-8">
                     <div className="w-14 h-14 rounded-2xl mx-auto mb-4 gradient-gold flex items-center justify-center shadow-gold">
                         <Crown className="w-7 h-7 text-white" />
                     </div>
                     <h1 className="text-2xl sm:text-3xl font-black text-foreground mb-2">
-                        Crie sua conta B2B
+                        Libere os preços de atacado
                     </h1>
                     <p className="text-muted-foreground text-sm sm:text-base">
-                        Preencha seus dados para solicitar acesso exclusivo ao nosso catálogo de revenda.
+                        Cadastre-se grátis e acesse o catálogo completo com preços de revenda
                     </p>
+
+                    {new URLSearchParams(window.location.search).get('teaser') === '1' && (
+                        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mt-4 animate-in fade-in slide-in-from-top-4 duration-500">
+                            <p className="text-amber-800 text-sm font-bold">
+                                🚀 Você está a um passo de desbloquear os melhores preços de revenda.
+                            </p>
+                        </div>
+                    )}
                 </div>
 
-                <form onSubmit={handleSubmit} className="space-y-6 sm:space-y-8">
+                {/* Benefits row */}
+                <div className="flex items-center justify-center gap-4 mb-6 text-xs text-muted-foreground">
+                    <span className="flex items-center gap-1">✅ Grátis</span>
+                    <span className="flex items-center gap-1">✅ Sem compromisso</span>
+                    <span className="flex items-center gap-1">✅ Acesso imediato</span>
+                </div>
 
-                    {/* Section 1: Dados Pessoais */}
-                    <div className="bg-white rounded-2xl p-5 sm:p-8 shadow-sm border border-border">
-                        <h2 className="text-lg font-bold text-foreground mb-5 flex items-center gap-2">
-                            <span className="w-6 h-6 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center text-xs font-black">1</span>
-                            Seus Dados
-                        </h2>
+                <form onSubmit={handleSubmit} className="bg-white rounded-2xl p-5 sm:p-8 shadow-sm border border-border space-y-4">
 
-                        {error && (
-                            <div ref={errorRef} className="mb-4 px-4 py-3 rounded-lg bg-red-50 border border-red-100 text-red-600 text-sm">
-                                {error}
-                            </div>
-                        )}
+                    {error && (
+                        <div ref={errorRef} className="px-4 py-3 rounded-lg bg-red-50 border border-red-100 text-red-600 text-sm">
+                            {error}
+                        </div>
+                    )}
 
-                        <div className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-semibold text-foreground mb-1.5">E-mail</label>
-                                <div className="relative">
-                                    <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                                    <input
-                                        type="email"
-                                        name="email"
-                                        required
-                                        value={formData.email}
-                                        onChange={handleChange}
-                                        placeholder="seu@email.com"
-                                        className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-input bg-surface focus:outline-none focus:ring-2 focus:ring-amber-300 transition-all text-sm"
-                                    />
-                                </div>
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-semibold text-foreground mb-1.5">Senha</label>
-                                <div className="relative">
-                                    <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                                    <input
-                                        type="password"
-                                        name="password"
-                                        required
-                                        minLength={6}
-                                        value={formData.password}
-                                        onChange={handleChange}
-                                        placeholder="Mínimo 6 caracteres"
-                                        className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-input bg-surface focus:outline-none focus:ring-2 focus:ring-amber-300 transition-all text-sm"
-                                    />
-                                </div>
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-semibold text-foreground mb-1.5">Nome Completo</label>
-                                <input
-                                    type="text"
-                                    name="name"
-                                    required
-                                    value={formData.name}
-                                    onChange={handleChange}
-                                    placeholder="Ex: Maria das Graças"
-                                    className="w-full px-4 py-2.5 rounded-xl border border-input bg-surface focus:outline-none focus:ring-2 focus:ring-amber-300 transition-all text-sm"
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-semibold text-foreground mb-1.5">WhatsApp / Telefone</label>
-                                <input
-                                    type="tel"
-                                    name="phone"
-                                    required
-                                    value={formData.phone}
-                                    onChange={handleChange}
-                                    maxLength={15}
-                                    placeholder="(00) 00000-0000"
-                                    className="w-full px-4 py-2.5 rounded-xl border border-input bg-surface focus:outline-none focus:ring-2 focus:ring-amber-300 transition-all text-sm"
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-semibold text-foreground mb-2">Tipo de Documento</label>
-                                <div className="flex p-1 bg-surface rounded-xl border border-border mb-3">
-                                    <button
-                                        type="button"
-                                        onClick={() => handleDocTypeToggle('CPF')}
-                                        className={`flex-1 py-1.5 text-xs sm:text-sm font-semibold rounded-lg transition-all ${docType === 'CPF' ? 'bg-amber-100 text-amber-700 shadow-sm border border-amber-300' : 'text-muted-foreground hover:text-foreground'}`}
-                                    >
-                                        Pessoa Física (CPF)
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => handleDocTypeToggle('CNPJ')}
-                                        className={`flex-1 py-1.5 text-xs sm:text-sm font-semibold rounded-lg transition-all ${docType === 'CNPJ' ? 'bg-amber-100 text-amber-700 shadow-sm border border-amber-300' : 'text-muted-foreground hover:text-foreground'}`}
-                                    >
-                                        Pessoa Jurídica (CNPJ)
-                                    </button>
-                                </div>
-
-                                <input
-                                    type="text"
-                                    name="document"
-                                    required
-                                    value={formData.document}
-                                    onChange={handleChange}
-                                    maxLength={docType === 'CPF' ? 14 : 18}
-                                    placeholder={docType === 'CPF' ? '000.000.000-00' : '00.000.000/0000-00'}
-                                    className="w-full px-4 py-2.5 rounded-xl border border-input bg-surface focus:outline-none focus:ring-2 focus:ring-amber-300 transition-all text-sm font-mono"
-                                />
-                            </div>
+                    {/* Name */}
+                    <div>
+                        <label className="block text-sm font-semibold text-foreground mb-1.5">Nome completo</label>
+                        <div className="relative">
+                            <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                            <input
+                                type="text"
+                                name="name"
+                                required
+                                value={formData.name}
+                                onChange={handleChange}
+                                placeholder="Ex: Maria das Graças"
+                                className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-input bg-surface focus:outline-none focus:ring-2 focus:ring-amber-300 transition-all text-sm"
+                            />
                         </div>
                     </div>
 
-                    {/* Section 2: O Negócio */}
-                    <div className="bg-white rounded-2xl p-5 sm:p-8 shadow-sm border border-border">
-                        <h2 className="text-lg font-bold text-foreground mb-5 flex items-center gap-2">
-                            <span className="w-6 h-6 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center text-xs font-black">2</span>
-                            Seu Negócio
-                        </h2>
+                    {/* WhatsApp */}
+                    <div>
+                        <label className="block text-sm font-semibold text-foreground mb-1.5">WhatsApp</label>
+                        <div className="relative">
+                            <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                            <input
+                                type="tel"
+                                name="phone"
+                                required
+                                value={formData.phone}
+                                onChange={handleChange}
+                                maxLength={15}
+                                placeholder="(00) 00000-0000"
+                                className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-input bg-surface focus:outline-none focus:ring-2 focus:ring-amber-300 transition-all text-sm"
+                            />
+                        </div>
+                    </div>
 
-                        <div className="space-y-5">
-                            <div>
-                                <label className="block text-sm font-semibold text-foreground mb-3">Tipo de Atuação</label>
-                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                                    <button
-                                        type="button"
-                                        onClick={() => setFormData(prev => ({ ...prev, businessType: 'salao' }))}
-                                        className={`flex flex-col items-center justify-center gap-2 p-4 rounded-xl border-2 transition-all ${formData.businessType === 'salao' ? 'border-amber-400 bg-amber-50 text-amber-700' : 'border-border bg-surface text-muted-foreground hover:border-gold-border'}`}
-                                    >
-                                        <Building2 className="w-6 h-6" />
-                                        <span className="text-xs font-bold">Salão de Beleza</span>
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => setFormData(prev => ({ ...prev, businessType: 'loja' }))}
-                                        className={`flex flex-col items-center justify-center gap-2 p-4 rounded-xl border-2 transition-all ${formData.businessType === 'loja' ? 'border-amber-400 bg-amber-50 text-amber-700' : 'border-border bg-surface text-muted-foreground hover:border-gold-border'}`}
-                                    >
-                                        <Store className="w-6 h-6" />
-                                        <span className="text-xs font-bold">Loja / Comércio</span>
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => setFormData(prev => ({ ...prev, businessType: 'revenda' }))}
-                                        className={`flex flex-col items-center justify-center gap-2 p-4 rounded-xl border-2 transition-all ${formData.businessType === 'revenda' ? 'border-amber-400 bg-amber-50 text-amber-700' : 'border-border bg-surface text-muted-foreground hover:border-gold-border'}`}
-                                    >
-                                        <User className="w-6 h-6" />
-                                        <span className="text-xs font-bold">Autônomo(a)</span>
-                                    </button>
-                                </div>
-                            </div>
+                    {/* Email */}
+                    <div>
+                        <label className="block text-sm font-semibold text-foreground mb-1.5">E-mail</label>
+                        <div className="relative">
+                            <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                            <input
+                                type="email"
+                                name="email"
+                                required
+                                value={formData.email}
+                                onChange={handleChange}
+                                placeholder="seu@email.com"
+                                className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-input bg-surface focus:outline-none focus:ring-2 focus:ring-amber-300 transition-all text-sm"
+                            />
+                        </div>
+                    </div>
 
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-sm font-semibold text-foreground mb-1.5">Nº de Funcionários</label>
-                                    <div className="relative">
-                                        <select
-                                            name="employees"
-                                            required
-                                            value={formData.employees}
-                                            onChange={handleChange}
-                                            className="w-full px-4 py-2.5 rounded-xl border border-input bg-surface focus:outline-none focus:ring-2 focus:ring-amber-300 transition-all text-sm appearance-none"
-                                        >
-                                            <option value="" disabled>Selecione...</option>
-                                            <option value="somente_eu">Somente eu</option>
-                                            <option value="1-3">De 1 a 3 funcionários</option>
-                                            <option value="4-7">De 4 a 7 funcionários</option>
-                                            <option value="8-10">De 8 a 10 funcionários</option>
-                                            <option value="+10">Mais de 10 funcionários</option>
-                                        </select>
-                                        <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground">
-                                            ▼
-                                        </div>
-                                    </div>
-                                </div>
+                    {/* Password */}
+                    <div>
+                        <label className="block text-sm font-semibold text-foreground mb-1.5">Senha</label>
+                        <div className="relative">
+                            <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                            <input
+                                type="password"
+                                name="password"
+                                required
+                                minLength={6}
+                                value={formData.password}
+                                onChange={handleChange}
+                                placeholder="Mínimo 6 caracteres"
+                                className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-input bg-surface focus:outline-none focus:ring-2 focus:ring-amber-300 transition-all text-sm"
+                            />
+                        </div>
+                    </div>
 
-                                <div>
-                                    <label className="block text-sm font-semibold text-foreground mb-1.5">Faturamento Estimado</label>
-                                    <div className="relative">
-                                        <select
-                                            name="revenue"
-                                            required
-                                            value={formData.revenue}
-                                            onChange={handleChange}
-                                            className="w-full px-4 py-2.5 rounded-xl border border-input bg-surface focus:outline-none focus:ring-2 focus:ring-amber-300 transition-all text-sm appearance-none"
-                                        >
-                                            <option value="" disabled>Selecione a faixa...</option>
-                                            <option value="1k_5k">R$ 1.000 a R$ 5.000 / mês</option>
-                                            <option value="6k_10k">R$ 6.000 a R$ 10.000 / mês</option>
-                                            <option value="10k_30k">R$ 10.000 a R$ 30.000 / mês</option>
-                                            <option value="30k_50k">R$ 30.000 a R$ 50.000 / mês</option>
-                                            <option value="acima_50k">Mais de R$ 50.000 / mês</option>
-                                        </select>
-                                        <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground">
-                                            ▼
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
+                    {/* Business Type */}
+                    <div>
+                        <label className="block text-sm font-semibold text-foreground mb-3">Como você atua?</label>
+                        <div className="grid grid-cols-3 gap-2">
+                            <button
+                                type="button"
+                                onClick={() => setFormData(prev => ({ ...prev, businessType: 'salao' }))}
+                                className={`flex flex-col items-center justify-center gap-1.5 p-3 rounded-xl border-2 transition-all ${formData.businessType === 'salao' ? 'border-amber-400 bg-amber-50 text-amber-700' : 'border-border bg-surface text-muted-foreground hover:border-gold-border'}`}
+                            >
+                                <Building2 className="w-5 h-5" />
+                                <span className="text-[10px] sm:text-xs font-bold leading-tight text-center">Salão de Beleza</span>
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setFormData(prev => ({ ...prev, businessType: 'loja' }))}
+                                className={`flex flex-col items-center justify-center gap-1.5 p-3 rounded-xl border-2 transition-all ${formData.businessType === 'loja' ? 'border-amber-400 bg-amber-50 text-amber-700' : 'border-border bg-surface text-muted-foreground hover:border-gold-border'}`}
+                            >
+                                <Store className="w-5 h-5" />
+                                <span className="text-[10px] sm:text-xs font-bold leading-tight text-center">Loja / Comércio</span>
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setFormData(prev => ({ ...prev, businessType: 'revenda' }))}
+                                className={`flex flex-col items-center justify-center gap-1.5 p-3 rounded-xl border-2 transition-all ${formData.businessType === 'revenda' ? 'border-amber-400 bg-amber-50 text-amber-700' : 'border-border bg-surface text-muted-foreground hover:border-gold-border'}`}
+                            >
+                                <User className="w-5 h-5" />
+                                <span className="text-[10px] sm:text-xs font-bold leading-tight text-center">Autônomo(a)</span>
+                            </button>
                         </div>
                     </div>
 
                     <button
                         type="submit"
                         disabled={loading || !formData.businessType}
-                        className="w-full flex items-center justify-center gap-2.5 py-4 rounded-xl font-bold text-lg btn-gold text-white disabled:opacity-70 disabled:cursor-not-allowed shadow-md hover:shadow-lg transition-all"
+                        className="w-full flex items-center justify-center gap-2 py-3 rounded-lg font-bold text-base btn-gold text-white disabled:opacity-70 disabled:cursor-not-allowed shadow-sm hover:shadow-md transition-all mt-2"
                     >
                         {loading ? (
                             <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                         ) : (
                             <>
-                                <CheckCircle2 className="w-5 h-5" />
-                                Concluir Cadastro
+                                <CheckCircle2 className="w-4 h-4" />
+                                Acessar catálogo agora
                             </>
                         )}
                     </button>
+
+                    <p className="text-center text-xs text-muted-foreground pt-1">
+                        Já tem conta?{' '}
+                        <Link to="/login" className="text-gold-text font-semibold hover:underline">
+                            Faça login
+                        </Link>
+                    </p>
                 </form>
             </main>
         </div>

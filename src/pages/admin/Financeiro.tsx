@@ -30,9 +30,25 @@ interface OrderItem {
 const DEFAULT_MONTHLY_GOAL = 50000
 
 export default function AdminFinanceiro() {
-  const [monthlyGoal, setMonthlyGoal] = useState(DEFAULT_MONTHLY_GOAL)
   const [editingGoal, setEditingGoal] = useState(false)
-  const [goalInput, setGoalInput] = useState(String(DEFAULT_MONTHLY_GOAL))
+  const [goalInput, setGoalInput] = useState('')
+
+  // Fetch store settings for the monthly goal
+  const { data: settings, refetch: refetchSettings } = useQuery({
+    queryKey: ['admin-store-settings'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('store_settings')
+        .select('monthly_revenue_goal')
+        .eq('id', 1)
+        .single()
+      
+      if (error) throw error
+      return data
+    }
+  })
+
+  const monthlyGoal = settings?.monthly_revenue_goal || DEFAULT_MONTHLY_GOAL
 
   // Custom date filter
   const [dateFrom, setDateFrom] = useState('')
@@ -233,14 +249,25 @@ export default function AdminFinanceiro() {
                     className="w-28 px-2 py-1 text-sm border border-border rounded-lg focus:ring-2 focus:ring-gold"
                   />
                   <button
-                    onClick={() => {
+                    onClick={async () => {
                       const v = parseFloat(goalInput)
-                      if (v > 0) setMonthlyGoal(v)
-                      setEditingGoal(false)
+                      if (isNaN(v) || v <= 0) return
+
+                      const { error } = await supabase
+                        .from('store_settings')
+                        .update({ monthly_revenue_goal: v })
+                        .eq('id', 1)
+
+                      if (error) {
+                        alert('Erro ao salvar meta: ' + error.message)
+                      } else {
+                        await refetchSettings()
+                        setEditingGoal(false)
+                      }
                     }}
-                    className="px-3 py-1 text-xs font-bold bg-green-600 text-white rounded-lg"
+                    className="px-3 py-1 text-xs font-bold bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
                   >
-                    OK
+                    Salvar
                   </button>
                 </div>
               ) : (

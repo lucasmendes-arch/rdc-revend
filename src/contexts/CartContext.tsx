@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
 import { useAuth } from './AuthContext';
+import { supabase } from '@/lib/supabase';
 
 export interface CartItem {
   id: string;
@@ -17,6 +18,9 @@ interface CartContextType {
   clearCart: () => void;
   total: number;
   count: number;
+  minOrderValue: number;
+  cartOpen: boolean;
+  setCartOpen: (open: boolean) => void;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -40,14 +44,31 @@ interface CartProviderProps {
 const USER_KEY = 'rdc-cart-user';
 
 export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const prevUserRef = useRef<string | null>(null);
 
   // Use lazy initializer to read localStorage only on mount
   const [items, setItems] = useState<CartItem[]>(() => loadCartFromStorage());
+  const [minOrderValue, setMinOrderValue] = useState<number>(500); // Default fallback
+  const [cartOpen, setCartOpen] = useState<boolean>(false);
+
+  useEffect(() => {
+    supabase
+      .from('store_settings')
+      .select('min_cart_value')
+      .eq('id', 1)
+      .single()
+      .then(({ data }) => {
+        if (data?.min_cart_value) {
+          setMinOrderValue(data.min_cart_value);
+        }
+      });
+  }, []);
 
   // Clear cart when user changes (login/logout/switch account)
   useEffect(() => {
+    if (authLoading) return; // Wait for AuthContext to resolve the initial session
+
     const currentUserId = user?.id || null;
     const storedUserId = localStorage.getItem(USER_KEY);
 
@@ -70,7 +91,7 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
       localStorage.removeItem(USER_KEY);
     }
     prevUserRef.current = currentUserId;
-  }, [user?.id]);
+  }, [user?.id, authLoading]);
 
   // Sync to localStorage whenever items change
   useEffect(() => {
@@ -80,6 +101,18 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
   const addItem = (item: Omit<CartItem, 'quantity'>, desiredQty: number = 1) => {
     setItems((prev) => {
       const existing = prev.find((i) => i.id === item.id);
+      
+      // Track AddToCart event
+      if (window.fbq) {
+        window.fbq('track', 'AddToCart', {
+          content_ids: [item.id],
+          content_name: item.name,
+          value: item.price * desiredQty,
+          currency: 'BRL',
+          content_type: 'product'
+        });
+      }
+
       if (existing) {
         return prev.map((i) =>
           i.id === item.id ? { ...i, quantity: i.quantity + desiredQty } : i
@@ -118,6 +151,9 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     clearCart,
     total,
     count,
+    minOrderValue,
+    cartOpen,
+    setCartOpen,
   };
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;

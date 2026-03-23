@@ -6,6 +6,7 @@ import {
   CheckCircle, XCircle, X, User, Phone, Mail,
   Building2, FileText, Package, Clock, Calendar, Users, DollarSign, Sparkles, AlertTriangle
 } from 'lucide-react'
+import { CustomerTimeline } from '@/components/admin/CustomerTimeline'
 import AdminLayout from '@/components/admin/AdminLayout'
 
 interface OrderItem {
@@ -185,7 +186,7 @@ function ClientDetailPanel({ session, onClose }: { session: ClientSession; onClo
           <div className="flex-1 min-w-0">
             <h2 className="text-lg font-bold text-foreground truncate">{clientName}</h2>
             <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
-              <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full ${stageInfo.badgeColor}`}>
+              <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full text-white shadow-sm ${stageInfo.indicatorColor}`}>
                 <StageIcon className="w-3 h-3" />
                 {stageInfo.label}
               </span>
@@ -328,7 +329,7 @@ function ClientDetailPanel({ session, onClose }: { session: ClientSession; onClo
 
           {/* Activity */}
           <div className="px-6 py-5 bg-slate-50">
-            <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-4">Atividade</h3>
+            <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-4">Atividade da Sessão</h3>
             <div className="space-y-3">
               <InfoRow icon={Calendar} label="Primeira visita" value={new Date(session.created_at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })} />
               <InfoRow icon={Clock} label="Última atividade" value={new Date(session.updated_at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })} />
@@ -337,11 +338,18 @@ function ClientDetailPanel({ session, onClose }: { session: ClientSession; onClo
               )}
             </div>
           </div>
+
+          {/* Timeline Completa */}
+          {session.user_id && (
+            <CustomerTimeline userId={session.user_id} />
+          )}
         </div>
       </div>
     </>
   )
 }
+
+
 
 // Reusable info row
 function InfoRow({ icon: Icon, label, value }: { icon: typeof User; label: string; value: string }) {

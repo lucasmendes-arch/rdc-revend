@@ -1,9 +1,8 @@
 import { useState, useEffect, useMemo } from "react";
 import DOMPurify from "dompurify";
-import { ArrowRight, Check, Crown, Filter, Lock, LogOut, Search, ShoppingCart, Tag, Trash2, TrendingUp, X, PackageSearch, ShieldCheck } from "lucide-react";
+import { ArrowRight, Check, Crown, Filter, Lock, LogIn, LogOut, Search, ShoppingCart, Tag, Trash2, TrendingUp, X, PackageSearch, ShieldCheck, ChevronDown, ChevronUp, Truck, Leaf } from "lucide-react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import PackageCards from "@/components/catalog/PackageCards";
-import PromoBanner from "@/components/catalog/PromoBanner";
 import CategoryBubbles from "@/components/catalog/CategoryBubbles";
 import CompactProductCarousel from "@/components/catalog/CompactProductCarousel";
 import { toast } from "sonner";
@@ -14,6 +13,8 @@ import { useCatalogProducts } from "@/hooks/useCatalogProducts";
 import { useCategories, Category } from "@/hooks/useCategories";
 import { useCart } from "@/contexts/CartContext";
 import { useTrackPageView, useTrackAddToCart, useTrackProductView } from "@/hooks/useSessionTracking";
+import { ProfileCompletionModal } from "@/components/ProfileCompletionModal";
+import { isProfileIncomplete } from "@/utils/profile";
 
 // ============================================================================
 // TYPES & CONSTANTS
@@ -49,6 +50,80 @@ const FilterChip = ({ label, onRemove }: FilterChipProps) => (
   </span>
 );
 
+const RotatingTrustBanner = () => {
+  const items = [
+    {
+      icon: <Leaf className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-600" />,
+      label: "Fórmula Limpa",
+      sub: "100% Vegano, Liberado e sem Petrolatos"
+    },
+    {
+      icon: <Truck className="w-5 h-5 sm:w-6 sm:h-6 text-amber-600" />,
+      label: "Envio Rápido para ES & BA",
+      sub: "Logística própria e transportadoras"
+    },
+    {
+      icon: <ShieldCheck className="w-5 h-5 sm:w-6 sm:h-6 text-green-600" />,
+      label: "Compra 100% Segura",
+      sub: "Ambiente Seguro e Dados Protegidos"
+    },
+    {
+      icon: <Check className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600" />,
+      label: "Alto Giro",
+      sub: "Fazem sucesso com as cacheadas"
+    },
+    {
+      icon: <div className="w-3 h-3 sm:w-4 sm:h-4 rounded-full bg-green-500 animate-pulse m-1" />,
+      label: "Suporte WhatsApp",
+      sub: "Seg à Sex, 08h às 18h • Online agora"
+    }
+  ];
+
+  const [index, setIndex] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setIndex(prev => (prev + 1) % items.length);
+    }, 4500);
+    return () => clearInterval(timer);
+  }, [items.length]);
+
+  return (
+    <div className="w-full mb-6 sm:mb-10 px-3 flex justify-center">
+      <div className="w-full max-w-4xl bg-white/95 backdrop-blur-md border border-amber-100/40 rounded-2xl sm:rounded-full px-4 sm:px-8 py-3 sm:py-4 shadow-lg shadow-amber-900/10 flex items-center justify-between gap-4 h-16 sm:h-20 overflow-hidden transition-all duration-300 hover:scale-[1.01] active:scale-[0.99] ring-1 ring-amber-900/5">
+        <div key={index} className="flex items-center gap-3 sm:gap-5 animate-in fade-in slide-in-from-bottom-3 duration-500 flex-1">
+          <div className="flex-shrink-0 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-amber-50/50 flex items-center justify-center border border-amber-100/30">
+            {items[index].icon}
+          </div>
+          <div className="flex flex-col justify-center leading-tight">
+            <span className="text-[12px] sm:text-base font-black text-foreground uppercase tracking-tight sm:tracking-normal">
+              {items[index].label}
+            </span>
+            <span className="text-[10px] sm:text-[13px] text-muted-foreground italic font-medium opacity-80 line-clamp-1">
+              {items[index].sub}
+            </span>
+          </div>
+        </div>
+
+        <div className="flex flex-col sm:flex-row items-center gap-1.5 sm:gap-3 border-l border-border/40 pl-4 sm:pl-6 shrink-0">
+          <div className="hidden sm:flex flex-col items-end mr-2">
+             <span className="text-[9px] font-bold text-amber-500 uppercase tracking-widest">Confiança</span>
+             <span className="text-[8px] text-muted-foreground whitespace-nowrap">Certificada B2B</span>
+          </div>
+          <div className="flex gap-1">
+            {items.map((_, i) => (
+              <div
+                key={i}
+                className={`w-1.5 sm:w-2 h-1.5 sm:h-2 rounded-full transition-all duration-500 ${i === index ? 'bg-amber-500 sm:w-6' : 'bg-border/40 hover:bg-border/80'}`}
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const Catalogo = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -56,9 +131,9 @@ const Catalogo = () => {
   const setViewAll = (v: boolean) => setSearchParams(v ? { view: 'todos' } : {}, { replace: true });
   const { data: products = [], isLoading, error } = useCatalogProducts();
   const { data: dbCategories = [] } = useCategories();
-  const { items: cart, addItem, updateQty, removeItem, clearCart, total: cartTotal, count: cartCount } = useCart();
-  const { user, role } = useAuth();
-  const isGuest = !user;
+  const { items: cart, addItem, updateQty, removeItem, clearCart, total: cartTotal, count: cartCount, minOrderValue, cartOpen, setCartOpen } = useCart();
+  const { user, role, loading: isLoadingAuth } = useAuth();
+  const isGuest = !isLoadingAuth && !user;
   useTrackPageView('Catálogo');
   const trackAddToCart = useTrackAddToCart();
   const trackProductView = useTrackProductView();
@@ -79,7 +154,6 @@ const Catalogo = () => {
   const [filtersOpen, setFiltersOpen] = useState(false);
 
   // UI state
-  const [cartOpen, setCartOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<typeof products[0] | null>(null);
   const handleSelectProduct = (product: typeof products[0] | null) => {
     setSelectedProduct(product);
@@ -88,6 +162,57 @@ const Catalogo = () => {
   const [addedId, setAddedId] = useState<string | null>(null);
   const [cartBounce, setCartBounce] = useState(false);
   const [quantities, setQuantities] = useState<Record<string, number>>({});
+
+  // Accordion state
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>({
+    sort: true,
+    price: true,
+    categories: true,
+    extra: true
+  });
+
+  const toggleSection = (section: string) => {
+    setOpenSections(prev => ({ ...prev, [section]: !prev[section] }));
+  };
+
+  // ---- Progressive Profiling Popup ----
+  const [showProfilePopup, setShowProfilePopup] = useState(false)
+
+  useEffect(() => {
+    // Only for logged-in, non-admin users
+    if (!user?.id || role === 'admin') return
+
+    const USER_VISITS_KEY = `rdc_profile_visits_${user.id}`
+    const SESSION_DISMISSED_KEY = `rdc_popup_dismissed_${user.id}`
+
+    const visits = parseInt(localStorage.getItem(USER_VISITS_KEY) || '0', 10)
+    const dismissedThisSession = sessionStorage.getItem(SESSION_DISMISSED_KEY) === '1'
+
+    // Max 2 popup appearances totals; don't show again if dismissed this session
+    if (visits >= 2 || dismissedThisSession) return
+
+    let timer: NodeJS.Timeout;
+
+    // Check if profile needs completion
+    supabase
+      .from('profiles')
+      .select('document, document_type, address_city, address_state')
+      .eq('id', user.id)
+      .single()
+      .then(({ data }) => {
+        if (!isProfileIncomplete(data)) return
+
+        timer = setTimeout(() => {
+          setShowProfilePopup(true)
+          // Increment visit counter ONLY when it actually shows
+          localStorage.setItem(USER_VISITS_KEY, String(visits + 1))
+        }, 15000)
+      })
+
+    return () => {
+      if (timer) clearTimeout(timer)
+    }
+  }, [user?.id, role])
 
   // ========================================================================
   // EFFECTS
@@ -129,7 +254,7 @@ const Catalogo = () => {
   ].filter(Boolean).length;
 
   const filtered = useMemo(() => {
-    let result = products.filter(p => {
+    const result = products.filter(p => {
       if (!p.name.toLowerCase().includes(debouncedSearch.toLowerCase())) return false;
       if (filterProfessional && !p.is_professional) return false;
       if (filterOnlySuggested && !p.compare_at_price) return false;
@@ -143,15 +268,15 @@ const Catalogo = () => {
 
     switch (sortBy) {
       case 'name_asc':
-        return result.sort((a, b) => a.name.localeCompare(b.name));
+        return [...result].sort((a, b) => a.name.localeCompare(b.name));
       case 'name_desc':
-        return result.sort((a, b) => b.name.localeCompare(a.name));
+        return [...result].sort((a, b) => b.name.localeCompare(a.name));
       case 'price_asc':
-        return result.sort((a, b) => a.price - b.price);
+        return [...result].sort((a, b) => a.price - b.price);
       case 'price_desc':
-        return result.sort((a, b) => b.price - a.price);
+        return [...result].sort((a, b) => b.price - a.price);
       case 'profit_desc':
-        return result.sort((a, b) => {
+        return [...result].sort((a, b) => {
           const pa = a.price > 0
             ? ((getSuggestedPrice(a.price, a.compare_at_price) - a.price) / a.price) * 100
             : -1;
@@ -165,7 +290,7 @@ const Catalogo = () => {
     }
   }, [products, debouncedSearch, sortBy, filterMinPrice, filterMaxPrice, filterOnlySuggested, filterCategories, filterProfessional]);
 
-  // Derivação de `filtered` com ordenação por categoria para o modo "Ver todos"
+  // Derivation of `filtered` sorted by category for "Ver todos" mode
   const categoryOrder = useMemo(
     () => new Map(dbCategories.map((c, i) => [c.id, i])),
     [dbCategories]
@@ -179,6 +304,30 @@ const Catalogo = () => {
       return ai - bi;
     });
   }, [filtered, categoryOrder, viewAll]);
+
+  // Derive categories from products if dbCategories is empty (to handle anonymous RLS)
+  const categoriesToDisplay = useMemo(() => {
+    let source = dbCategories;
+    if (source.length === 0) {
+      const uniqueCats: Record<string, { id: string; name: string; slug: string; sort_order: number }> = {};
+      products.forEach(p => {
+        if (p.category) {
+          uniqueCats[p.category.id] = p.category;
+        }
+      });
+      source = Object.values(uniqueCats).sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+    }
+
+    // Only show categories that have products after general search filtering
+    // but before category filtering itself (to keep sidebar stable)
+    const baseFilteredIds = new Set(products.filter(p =>
+      p.name.toLowerCase().includes(debouncedSearch.toLowerCase()) &&
+      (!filterProfessional || p.is_professional) &&
+      (!filterOnlySuggested || p.compare_at_price)
+    ).map(p => p.category_id));
+
+    return source.filter(cat => baseFilteredIds.has(cat.id));
+  }, [dbCategories, products, debouncedSearch, filterProfessional, filterOnlySuggested]);
 
   // ========================================================================
   // HELPERS
@@ -281,10 +430,13 @@ const Catalogo = () => {
   // ========================================================================
 
   return (
+    <>
     <div className="min-h-screen bg-surface-alt overflow-x-hidden">
       {/* Header */}
-      <header className="bg-gold border-b border-amber-600 sticky top-0 z-40">
-        <div className="container mx-auto px-3 sm:px-4 lg:px-6 py-2 sm:h-16 flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4">
+      {/* Sticky Header Wrapper */}
+      <div className="sticky top-0 z-40 w-full overflow-visible">
+        <header className="bg-gold border-b border-amber-600 shadow-sm transition-all duration-300">
+          <div className="container mx-auto px-3 sm:px-4 lg:px-6 py-2 sm:h-16 flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4">
 
           <div className="flex items-center justify-between w-full sm:w-auto">
             <div className="flex items-center gap-2 sm:gap-3 select-none pointer-events-none">
@@ -443,113 +595,159 @@ const Catalogo = () => {
             )}
           </div>
         </div>
-      </header >
+      </header>
+
+      {/* Rotating Trust Banner Layer (Lower part of sticky header) */}
+      <div className="bg-white/95 backdrop-blur-md pt-2.5 pb-1 border-b border-border/10 shadow-sm mb-2 sm:-mb-6 relative z-[39]">
+        <RotatingTrustBanner />
+      </div>
+    </div>
 
       <div className="flex flex-col lg:flex-row lg:gap-6 w-full max-w-full">
         {/* Sidebar Filters (Desktop) */}
-        <aside className="hidden lg:block w-60 px-3 pt-6 pb-6">
-          <div className="sticky top-24 bg-white rounded-2xl p-4 border border-border">
-            <h3 className="font-bold text-foreground mb-4">Filtros</h3>
+        <aside className="hidden lg:block w-64 px-3 pt-4 pb-6">
+          <div className="sticky top-24 bg-white rounded-2xl p-1 shadow-sm border border-border">
+            <div className="p-3 border-b border-border mb-1">
+              <h3 className="font-bold text-foreground">Filtros</h3>
+            </div>
 
             {/* Sort */}
-            <div className="mb-5 pb-5 border-b border-border">
-              <label className="text-xs font-semibold text-muted-foreground mb-2 block">Ordenar por</label>
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as SortOption)}
-                className="w-full px-3 py-2 rounded-lg border border-border bg-white text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-gold"
+            <div className="border-b border-border/60">
+              <button
+                onClick={() => toggleSection('sort')}
+                className="w-full flex items-center justify-between p-3 text-xs font-bold text-muted-foreground hover:bg-surface-alt transition-colors"
               >
-                <option value="name_asc">Nome (A-Z)</option>
-                <option value="name_desc">Nome (Z-A)</option>
-                <option value="price_asc">Menor custo</option>
-                <option value="price_desc">Maior custo</option>
-                <option value="profit_desc">Maior lucro</option>
-              </select>
+                <span>ORDENAR POR</span>
+                {openSections.sort ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+              </button>
+              {openSections.sort && (
+                <div className="px-3 pb-3 animate-in fade-in slide-in-from-top-1 duration-200">
+                  <select
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value as SortOption)}
+                    className="w-full px-3 py-2 rounded-lg border border-border bg-white text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-gold"
+                  >
+                    <option value="name_asc">Nome (A-Z)</option>
+                    <option value="name_desc">Nome (Z-A)</option>
+                    <option value="price_asc">Menor custo</option>
+                    <option value="price_desc">Maior custo</option>
+                    <option value="profit_desc">Maior lucro</option>
+                  </select>
+                </div>
+              )}
             </div>
 
             {/* Price Range */}
-            <div className="mb-5 pb-5 border-b border-border">
-              <label className="text-xs font-semibold text-muted-foreground mb-2 block">Faixa de custo</label>
-              <div className="space-y-2">
-                <input
-                  type="number"
-                  placeholder="Mín"
-                  value={filterMinPrice}
-                  onChange={(e) => setFilterMinPrice(e.target.value === '' ? '' : parseFloat(e.target.value))}
-                  className="w-full px-3 py-2 rounded-lg border border-border bg-white text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-gold"
-                />
-                <input
-                  type="number"
-                  placeholder="Máx"
-                  value={filterMaxPrice}
-                  onChange={(e) => setFilterMaxPrice(e.target.value === '' ? '' : parseFloat(e.target.value))}
-                  className="w-full px-3 py-2 rounded-lg border border-border bg-white text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-gold"
-                />
-              </div>
+            <div className="border-b border-border/60">
+              <button
+                onClick={() => toggleSection('price')}
+                className="w-full flex items-center justify-between p-3 text-xs font-bold text-muted-foreground hover:bg-surface-alt transition-colors"
+              >
+                <span>FAIXA DE CUSTO</span>
+                {openSections.price ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+              </button>
+              {openSections.price && (
+                <div className="px-3 pb-3 space-y-2 animate-in fade-in slide-in-from-top-1 duration-200">
+                  <input
+                    type="number"
+                    placeholder="Mín"
+                    value={filterMinPrice}
+                    onChange={(e) => setFilterMinPrice(e.target.value === '' ? '' : parseFloat(e.target.value))}
+                    className="w-full px-3 py-2 rounded-lg border border-border bg-white text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-gold"
+                  />
+                  <input
+                    type="number"
+                    placeholder="Máx"
+                    value={filterMaxPrice}
+                    onChange={(e) => setFilterMaxPrice(e.target.value === '' ? '' : parseFloat(e.target.value))}
+                    className="w-full px-3 py-2 rounded-lg border border-border bg-white text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-gold"
+                  />
+                </div>
+              )}
             </div>
 
             {/* Categories */}
-            <div className="mb-5 pb-5 border-b border-border">
-              <label className="text-xs font-semibold text-muted-foreground mb-2 block">Categorias</label>
-              <div className="space-y-1.5">
-                {dbCategories.map(cat => (
-                  <label key={cat.id} className="flex items-center gap-2 cursor-pointer">
+            <div className="border-b border-border/60">
+              <button
+                onClick={() => toggleSection('categories')}
+                className="w-full flex items-center justify-between p-3 text-xs font-bold text-muted-foreground hover:bg-surface-alt transition-colors"
+              >
+                <span>CATEGORIAS</span>
+                {openSections.categories ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+              </button>
+              {openSections.categories && (
+                <div className="px-3 pb-3 max-h-[250px] overflow-y-auto scrollbar-thin animate-in fade-in slide-in-from-top-1 duration-200">
+                  <div className="space-y-1.5">
+                    {categoriesToDisplay.map(cat => (
+                      <label key={cat.id} className="flex items-center gap-2 cursor-pointer group">
+                        <input
+                          type="checkbox"
+                          checked={filterCategories.includes(cat.id)}
+                          onChange={() => toggleCategory(cat.id)}
+                          className="w-4 h-4 rounded border-border text-gold focus:ring-gold"
+                        />
+                        <span className="text-sm text-foreground group-hover:text-amber-600 transition-colors">{cat.name}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Extra */}
+            <div>
+              <button
+                onClick={() => toggleSection('extra')}
+                className="w-full flex items-center justify-between p-3 text-xs font-bold text-muted-foreground hover:bg-surface-alt transition-colors"
+              >
+                <span>ADICIONAL</span>
+                {openSections.extra ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+              </button>
+              {openSections.extra && (
+                <div className="px-3 pb-3 space-y-3 animate-in fade-in slide-in-from-top-1 duration-200">
+                  <label className="flex items-center gap-2 cursor-pointer group">
                     <input
                       type="checkbox"
-                      checked={filterCategories.includes(cat.id)}
-                      onChange={() => toggleCategory(cat.id)}
+                      checked={filterProfessional}
+                      onChange={(e) => setFilterProfessional(e.target.checked)}
                       className="w-4 h-4 rounded border-border text-gold focus:ring-gold"
                     />
-                    <span className="text-sm text-foreground">{cat.name}</span>
+                    <span className="text-sm text-foreground group-hover:text-amber-600 font-medium">Uso Profissional</span>
                   </label>
-                ))}
-              </div>
-            </div>
 
-            {/* Uso Profissional */}
-            <div className="mb-5 pb-5 border-b border-border">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={filterProfessional}
-                  onChange={(e) => setFilterProfessional(e.target.checked)}
-                  className="w-4 h-4 rounded border-border text-gold focus:ring-gold"
-                />
-                <span className="text-sm text-foreground font-medium">Uso Profissional</span>
-              </label>
-            </div>
-
-            {/* Suggested Price Only */}
-            <div className="mb-5">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={filterOnlySuggested}
-                  onChange={(e) => setFilterOnlySuggested(e.target.checked)}
-                  className="w-4 h-4 rounded border-border text-gold focus:ring-gold"
-                />
-                <span className="text-sm text-foreground font-medium">Somente com preço sugerido</span>
-              </label>
+                  {!isGuest && (
+                    <label className="flex items-center gap-2 cursor-pointer group border-t border-border/40 pt-2">
+                      <input
+                        type="checkbox"
+                        checked={filterOnlySuggested}
+                        onChange={(e) => setFilterOnlySuggested(e.target.checked)}
+                        className="w-4 h-4 rounded border-border text-gold focus:ring-gold"
+                      />
+                      <span className="text-sm text-foreground group-hover:text-amber-600 font-medium">Preço sugerido</span>
+                    </label>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Clear filters */}
             {activeFiltersCount > 0 && (
-              <button
-                onClick={clearAllFilters}
-                className="w-full px-3 py-2 rounded-lg bg-surface-alt text-sm font-medium text-foreground hover:bg-border transition-colors"
-              >
-                Limpar filtros
-              </button>
+              <div className="p-3 bg-surface-alt rounded-b-2xl">
+                <button
+                  onClick={clearAllFilters}
+                  className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-white border border-border text-xs font-bold text-red-500 hover:bg-red-50 hover:border-red-200 transition-all shadow-sm"
+                >
+                  <Trash2 className="w-3 h-3" />
+                  LIMPAR FILTROS
+                </button>
+              </div>
             )}
           </div>
         </aside>
 
         {/* Main Content */}
         <div className="flex-1 min-w-0 pb-20 sm:pb-6 w-full max-w-full">
-          {/* Mobile Only: Promo Banner */}
-          <div className="pt-4 sm:hidden">
-            <PromoBanner onClick={() => document.getElementById('kits-section')?.scrollIntoView({ behavior: 'smooth' })} />
-          </div>
+          {/* Mobile Only: Trust Banner (Removed as it is now in the sticky header) */}
 
           {/* Mobile Only: Seleção dos Mais Vendidos — ocultar durante busca ou viewAll */}
           {!debouncedSearch && !viewAll && !isLoading && !error && products.length > 0 && (
@@ -614,7 +812,7 @@ const Catalogo = () => {
             {!debouncedSearch && !viewAll && (
               <div className="sm:hidden mb-2 mt-4 -mx-3">
                 <CategoryBubbles
-                  categories={dbCategories}
+                  categories={categoriesToDisplay}
                   activeCategories={filterCategories}
                   onToggleCategory={toggleCategory}
                 />
@@ -656,14 +854,14 @@ const Catalogo = () => {
                 {filterMaxPrice !== '' && (
                   <FilterChip label={`≤ R$ ${filterMaxPrice}`} onRemove={() => setFilterMaxPrice('')} />
                 )}
-                {filterOnlySuggested && (
+                {!isGuest && filterOnlySuggested && (
                   <FilterChip label="C/ sugestão" onRemove={() => setFilterOnlySuggested(false)} />
                 )}
                 {filterProfessional && (
                   <FilterChip label="Uso Profissional" onRemove={() => setFilterProfessional(false)} />
                 )}
                 {filterCategories.map(catId => {
-                  const cat = dbCategories.find(c => c.id === catId);
+                  const cat = categoriesToDisplay.find(c => c.id === catId);
                   return cat ? <FilterChip key={catId} label={cat.name} onRemove={() => toggleCategory(catId)} /> : null;
                 })}
                 <button
@@ -728,13 +926,13 @@ const Catalogo = () => {
                                 {product.name}
                               </h3>
                               <div className="mt-auto">
-                                {/* Preço de revenda: oculto para visitante */}
+                                {/* Resale price: hidden for guest */}
                                 {!isGuest && !product.is_professional && (
                                   <div className="text-[10px] sm:text-xs text-green-700 font-bold mb-0.5">
                                     Revenda: R$ {suggested.toFixed(2)}
                                   </div>
                                 )}
-                                {/* Preço de custo: oculto para visitante */}
+                                {/* Cost price: hidden for guest */}
                                 {isGuest ? (
                                   <div className="flex items-center gap-1 mb-2">
                                     <Lock className="w-3 h-3 text-muted-foreground flex-shrink-0" />
@@ -800,7 +998,7 @@ const Catalogo = () => {
                   /* MODO NAVEGAÇÃO: carrosséis por categoria */
                   <>
                     <div className="flex flex-col gap-6 sm:gap-8 mb-8">
-                      {dbCategories.map(category => {
+                      {categoriesToDisplay.map(category => {
                         const categoryProducts = filtered.filter(p => p.category_id === category.id);
                         if (categoryProducts.length === 0) return null;
                         return (
@@ -900,7 +1098,7 @@ const Catalogo = () => {
                 <div>
                   <label className="text-xs font-semibold text-muted-foreground mb-2 block">Categorias</label>
                   <div className="space-y-1.5">
-                    {dbCategories.map(cat => (
+                    {categoriesToDisplay.map(cat => (
                       <label key={cat.id} className="flex items-center gap-2 cursor-pointer">
                         <input
                           type="checkbox"
@@ -926,15 +1124,17 @@ const Catalogo = () => {
                 </label>
 
                 {/* Suggested Price Only */}
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={filterOnlySuggested}
-                    onChange={(e) => setFilterOnlySuggested(e.target.checked)}
-                    className="w-4 h-4 rounded border-border text-gold focus:ring-gold"
-                  />
-                  <span className="text-sm text-foreground font-medium">Somente com preço sugerido</span>
-                </label>
+                {!isGuest && (
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={filterOnlySuggested}
+                      onChange={(e) => setFilterOnlySuggested(e.target.checked)}
+                      className="w-4 h-4 rounded border-border text-gold focus:ring-gold"
+                    />
+                    <span className="text-sm text-foreground font-medium">Somente com preço sugerido</span>
+                  </label>
+                )}
               </div>
 
               {/* Footer */}
@@ -1173,9 +1373,9 @@ const Catalogo = () => {
                     <span className="text-xl font-bold gradient-gold-text">R$ {cartTotal.toFixed(2)}</span>
                   </div>
 
-                  {cartTotal < 500 && (
+                  {cartTotal < minOrderValue && (
                     <p className="text-xs text-center text-amber-600 bg-amber-50 rounded-lg py-1.5 px-2">
-                      Mínimo: R$ 500 (faltam R$ {(500 - cartTotal).toFixed(2)})
+                      Mínimo: R$ {minOrderValue} (faltam R$ {(minOrderValue - cartTotal).toFixed(2)})
                     </p>
                   )}
 
@@ -1206,7 +1406,24 @@ const Catalogo = () => {
           </div>
         )}
       </div>
-    </div >
+    </div>
+
+      {/* Progressive Profiling Popup */}
+      {showProfilePopup && user?.id && (
+        <ProfileCompletionModal
+          userId={user.id}
+          onClose={() => {
+            setShowProfilePopup(false)
+            sessionStorage.setItem(`rdc_popup_dismissed_${user.id}`, '1')
+          }}
+          onComplete={() => {
+            setShowProfilePopup(false)
+            // Mark all visits exhausted so it never shows again
+            localStorage.setItem(`rdc_profile_visits_${user.id}`, '99')
+          }}
+        />
+      )}
+    </>
   );
 };
 

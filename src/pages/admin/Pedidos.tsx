@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { Loader, ChevronDown } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Loader, ChevronDown, Plus, Globe, MonitorSmartphone, Tag, Hand, MessageSquare } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
@@ -13,6 +13,15 @@ interface Order {
   customer_name: string;
   customer_whatsapp: string;
   customer_email: string;
+  delivery_method?: string;
+  pickup_unit_slug?: string;
+  pickup_unit_address?: string;
+  subtotal?: number;
+  shipping?: number;
+  discount_amount?: number;
+  origin?: string;
+  notes?: string | null;
+  coupon_id?: string | null;
   created_at: string;
   order_items: Array<{
     id: string;
@@ -38,6 +47,7 @@ const statusConfig: Record<string, { label: string; color: string }> = {
 const statusOptions = ['recebido', 'aguardando_pagamento', 'pago', 'separacao', 'enviado', 'entregue', 'concluido', 'cancelado', 'expirado'] as const;
 
 const AdminPedidos = () => {
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
@@ -48,13 +58,7 @@ const AdminPedidos = () => {
         .from('orders')
         .select(
           `
-          id,
-          status,
-          total,
-          customer_name,
-          customer_whatsapp,
-          customer_email,
-          created_at,
+          *,
           order_items (
             id,
             product_name_snapshot,
@@ -156,8 +160,16 @@ const AdminPedidos = () => {
   return (
     <AdminLayout>
       <div className="bg-white border-b border-border sticky top-0 lg:top-0 z-30">
-        <div className="px-4 sm:px-6 py-4">
+        <div className="px-4 sm:px-6 py-4 flex items-center justify-between gap-3">
           <h1 className="text-xl sm:text-2xl font-bold text-foreground">Pedidos</h1>
+          <button
+            onClick={() => navigate('/admin/pedidos/novo')}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl btn-gold text-sm font-semibold shrink-0"
+          >
+            <Plus className="w-4 h-4" />
+            <span className="hidden sm:inline">Novo Pedido Manual</span>
+            <span className="sm:hidden">Novo</span>
+          </button>
         </div>
       </div>
 
@@ -227,18 +239,38 @@ const AdminPedidos = () => {
                             className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 hover:shadow-md transition-shadow hover:border-gold/40 group relative flex flex-col gap-1.5 cursor-grab active:cursor-grabbing"
                           >
                             <div className="flex items-start justify-between">
-                              <Link
-                                to={`/pedido/sucesso/${order.id}`}
-                                className="text-sm font-extrabold text-gold-text hover:underline"
-                              >
-                                #{orderNumber}
-                              </Link>
+                              <div className="flex items-center gap-1.5">
+                                <Link
+                                  to={`/pedido/sucesso/${order.id}`}
+                                  className="text-sm font-extrabold text-gold-text hover:underline"
+                                >
+                                  #{orderNumber}
+                                </Link>
+                                {order.origin === 'manual' ? (
+                                  <span title="Pedido Manual"><Hand className="w-3 h-3 text-slate-400" /></span>
+                                ) : (
+                                  <span title="Feito pelo Site"><Globe className="w-3 h-3 text-slate-400" /></span>
+                                )}
+                              </div>
                               <span className="text-[11px] font-medium text-slate-400 bg-slate-50 px-2 py-0.5 rounded-full border border-slate-100">{orderDate}</span>
                             </div>
 
                             <div>
-                              <p className="text-[13px] font-bold text-slate-700 truncate">{order.customer_name}</p>
+                              <div className="flex flex-wrap items-center gap-1.5 mb-0.5">
+                                <p className="text-[13px] font-bold text-slate-700 truncate max-w-[130px]" title={order.customer_name}>{order.customer_name}</p>
+                                {order.delivery_method === 'pickup' && (
+                                  <span className="bg-amber-100 text-amber-800 text-[9px] px-1.5 py-0.5 rounded font-bold uppercase shrink-0" title={`Retirada: ${order.pickup_unit_address || order.pickup_unit_slug}`}>
+                                    Retirada ({order.pickup_unit_slug === 'linhares' ? 'LIN' : order.pickup_unit_slug === 'serra' ? 'SER' : order.pickup_unit_slug === 'teixeira' ? 'TEIX' : order.pickup_unit_slug})
+                                  </span>
+                                )}
+                              </div>
                               <p className="text-[11px] text-slate-500 truncate">{order.customer_whatsapp}</p>
+                              {order.notes && (
+                                <div className="mt-1.5 flex items-start gap-1">
+                                  <MessageSquare className="w-3 h-3 text-amber-500 mt-0.5 shrink-0" />
+                                  <p className="text-[10px] text-slate-500 italic line-clamp-2 leading-tight" title={order.notes}>{order.notes}</p>
+                                </div>
+                              )}
                             </div>
 
                             {/* Small Items preview with Thumbnails */}
@@ -284,7 +316,14 @@ const AdminPedidos = () => {
                             </div>
 
                             <div className="flex items-center justify-between mt-1 pt-3 border-t border-slate-100">
-                              <span className="font-black text-slate-800 tracking-tight">R$ {order.total.toFixed(2)}</span>
+                              <div className="flex flex-col">
+                                <span className="font-black text-slate-800 tracking-tight">R$ {order.total.toFixed(2)}</span>
+                                {order.discount_amount > 0 && (
+                                  <span className="text-[9px] text-emerald-600 font-bold flex items-center gap-0.5 mt-0.5">
+                                    <Tag className="w-2.5 h-2.5" /> -R$ {order.discount_amount.toFixed(2)}
+                                  </span>
+                                )}
+                              </div>
 
                               <select
                                 value={order.status}
@@ -339,11 +378,25 @@ const AdminPedidos = () => {
                       className="w-full text-left p-4 hover:bg-surface-alt transition-colors flex items-center justify-between gap-3"
                     >
                       <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-foreground mb-1">Pedido #{orderNumber}</p>
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <p className="font-semibold text-foreground">Pedido #{orderNumber}</p>
+                          {order.origin === 'manual' ? (
+                            <span title="Pedido Manual" className="flex shrink-0"><Hand className="w-3 h-3 text-slate-400" /></span>
+                          ) : (
+                            <span title="Feito pelo Site" className="flex shrink-0"><Globe className="w-3 h-3 text-slate-400" /></span>
+                          )}
+                        </div>
                         <p className="text-xs text-muted-foreground">{order.customer_name}</p>
-                        <p className="text-sm font-semibold text-foreground mt-1">
-                          R$ {order.total.toFixed(2)}
-                        </p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <p className="text-sm font-semibold text-foreground">
+                            R$ {order.total.toFixed(2)}
+                          </p>
+                          {order.discount_amount > 0 && (
+                            <span className="text-[10px] text-emerald-600 font-bold bg-emerald-50 px-1.5 rounded">
+                              -R$ {order.discount_amount.toFixed(2)}
+                            </span>
+                          )}
+                        </div>
                       </div>
                       <ChevronDown
                         className={`w-5 h-5 text-muted-foreground flex-shrink-0 transition-transform ${isExpanded ? 'rotate-180' : ''
@@ -364,6 +417,17 @@ const AdminPedidos = () => {
                           <p>
                             <span className="text-muted-foreground">Data:</span> {orderDate}
                           </p>
+                          {order.delivery_method === 'pickup' && (
+                            <p>
+                              <span className="text-muted-foreground">Entrega:</span> <strong className="text-amber-600">Retirada na Loja ({order.pickup_unit_slug === 'linhares' ? 'Linhares' : order.pickup_unit_slug === 'serra' ? 'Serra' : order.pickup_unit_slug === 'teixeira' ? 'Teixeira' : order.pickup_unit_slug})</strong>
+                            </p>
+                          )}
+                          {order.notes && (
+                            <div className="p-2 bg-amber-50 border border-amber-100 rounded text-amber-800 text-xs italic">
+                              <span className="font-semibold flex items-center gap-1 mb-0.5"><MessageSquare className="w-3 h-3" /> Observações:</span>
+                              {order.notes}
+                            </div>
+                          )}
                         </div>
 
                         <div className="border-t border-border pt-4">

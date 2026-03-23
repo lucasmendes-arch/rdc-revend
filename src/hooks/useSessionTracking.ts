@@ -100,7 +100,7 @@ export function useTrackPageView(pageName?: string) {
   const { user, role } = useAuth()
 
   useEffect(() => {
-    if (role === 'admin') return // don't track admin sessions
+    if (!user || role === 'admin') return // only track authenticated non-admin clients
     const sessionId = getSessionId(user?.id)
 
     upsertSession({
@@ -130,7 +130,7 @@ export function useTrackProductView() {
 
   return useCallback(
     (productName: string) => {
-      if (role === 'admin') return
+      if (!user || role === 'admin') return
       const sessionId = getSessionId(user?.id)
 
       upsertSession({
@@ -157,7 +157,7 @@ export function useTrackAddToCart() {
 
   return useCallback(
     (cartItemsCount: number, productName?: string, productPrice?: number) => {
-      if (role === 'admin') return
+      if (!user || role === 'admin') return
       const sessionId = getSessionId(user?.id)
 
       upsertSession({
@@ -196,7 +196,7 @@ export function useTrackInitiateCheckout() {
 
   return useCallback(
     (totalValue: number, numItems: number) => {
-      if (role === 'admin') return
+      if (!user || role === 'admin') return
       const sessionId = getSessionId(user?.id)
 
       upsertSession({
@@ -239,7 +239,7 @@ export function useTrackPurchase() {
 
   return useCallback(
     (total: number) => {
-      if (role === 'admin') return
+      if (!user || role === 'admin') return
       const sessionId = getSessionId(user?.id)
 
       upsertSession({

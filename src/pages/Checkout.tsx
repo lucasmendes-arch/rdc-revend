@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, Check, Loader, ShoppingCart, Sparkles, MapPin, Minus, Plus, Zap, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, Loader, ShoppingCart, Sparkles, MapPin, Minus, Plus, Zap, Store } from 'lucide-react';
 import { useCart } from '@/contexts/CartContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useActiveUpsell } from '@/hooks/useUpsell';
 import { supabase } from '@/lib/supabase';
 import { useTrackInitiateCheckout } from '@/hooks/useSessionTracking';
 import { isValidDocument } from '@/utils/validateDocument';
+import { toast } from 'sonner';
 
 type Step = 1 | 2 | 3 | 4;
 
@@ -27,9 +28,15 @@ interface ProfileData {
 const Checkout = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { items: cart, total: cartTotal, clearCart, addItem, count: cartCount } = useCart();
+  const { items: cart, total: cartTotal, clearCart, addItem, count: cartCount, minOrderValue } = useCart();
   const trackInitiateCheckout = useTrackInitiateCheckout();
   const { data: upsellOffer } = useActiveUpsell();
+
+  const [couponCode, setCouponCode] = useState('');
+  const [couponDiscount, setCouponDiscount] = useState(0);
+  const [couponId, setCouponId] = useState<string | null>(null);
+  const [couponType, setCouponType] = useState<'fixed' | 'percent' | 'free_shipping' | null>(null);
+  const [isValidatingCoupon, setIsValidatingCoupon] = useState(false);
 
   const [step, setStep] = useState<Step>(1);
   const [loading, setLoading] = useState(false);
@@ -37,9 +44,14 @@ const Checkout = () => {
   const [upsellAdded, setUpsellAdded] = useState(false);
   const [upsellSkipped, setUpsellSkipped] = useState(false);
   const [profileLoaded, setProfileLoaded] = useState(false);
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [initialProfile, setInitialProfile] = useState<Partial<ProfileData>>({});
 
   const [paymentMethod, setPaymentMethod] = useState<'pix' | 'credit'>('pix');
   const [installments, setInstallments] = useState<number>(1);
+
+  const [deliveryMethod, setDeliveryMethod] = useState<'shipping' | 'pickup'>('shipping');
+  const [pickupUnitSlug, setPickupUnitSlug] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
     customer_name: '',
@@ -56,6 +68,12 @@ const Checkout = () => {
     notes: '',
   });
 
+  useEffect(() => {
+    if (cartTotal > 0) {
+      trackInitiateCheckout(cartTotal, cartCount);
+    }
+  }, [trackInitiateCheckout, cartTotal, cartCount]);
+
   // Pre-fill from profile
   useEffect(() => {
     if (!user?.id || profileLoaded) return;
@@ -64,6 +82,7 @@ const Checkout = () => {
       .then(({ data }) => {
         if (data) {
           const p = data as ProfileData;
+          setInitialProfile(p);
           setFormData(prev => ({
             ...prev,
             customer_name: p.full_name || prev.customer_name,
@@ -80,6 +99,7 @@ const Checkout = () => {
         }
         setProfileLoaded(true);
       });
+
   }, [user, profileLoaded]);
 
   // Track InitiateCheckout
@@ -105,10 +125,12 @@ const Checkout = () => {
 
   // Shipping = 20% of subtotal (cartTotal already includes upsell if added via addItem)
   const shippingEstimate = Math.round(cartTotal * 0.20 * 100) / 100;
-  const orderTotal = Math.round((cartTotal + shippingEstimate) * 100) / 100;
+  const shippingValue = deliveryMethod === 'pickup' ? 0 : (couponType === 'free_shipping' ? 0 : shippingEstimate);
+  const orderTotal = Math.round(Math.max(cartTotal + shippingValue - couponDiscount, 0) * 100) / 100;
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    let { name, value } = e.target;
+    const { name, value: rawValue } = e.target;
+    let value = rawValue;
     if (name === 'customer_whatsapp') value = value.replace(/\D/g, '');
     else if (name === 'cep') {
       value = value.replace(/\D/g, '');
@@ -130,6 +152,13 @@ const Checkout = () => {
     setStep(3);
   };
 
+  const isAddressValid = !!(
+    formData.cep && formData.cep.length >= 9 &&
+    formData.street && formData.number &&
+    formData.neighborhood && formData.city &&
+    formData.state && formData.state.length === 2
+  );
+
   const handleSkipUpsell = () => {
     setUpsellSkipped(true);
     setStep(3);
@@ -138,8 +167,8 @@ const Checkout = () => {
   const handleNext = () => {
     setError('');
     if (step === 1) {
-      if (cartTotal < 500) {
-        setError(`Pedido minimo: R$ 500. Seu total: R$ ${cartTotal.toFixed(2)}`);
+      if (cartTotal < minOrderValue) {
+        setError(`Pedido minimo: R$ ${minOrderValue}. Seu total: R$ ${cartTotal.toFixed(2)}`);
         return;
       }
       if (showUpsellStep) {
@@ -148,8 +177,16 @@ const Checkout = () => {
         setStep(3);
       }
     } else if (step === 3) {
-      if (!formData.customer_name.trim() || !formData.customer_whatsapp.trim() || !formData.customer_email.trim() || !formData.customer_document.trim() || !formData.cep || !formData.street || !formData.number || !formData.neighborhood || !formData.city || !formData.state) {
-        setError('Preencha todos os campos obrigatorios, incluindo CPF/CNPJ e endereco.');
+      if (!formData.customer_name.trim() || !formData.customer_whatsapp.trim() || !formData.customer_email.trim() || !formData.customer_document.trim()) {
+        setError('Preencha os dados do cliente (Nome, WhatsApp, E-mail, Documento).');
+        return;
+      }
+      if (deliveryMethod === 'shipping' && (!formData.cep || !formData.street || !formData.number || !formData.neighborhood || !formData.city || !formData.state)) {
+        setError('Preencha o endereco de entrega completo.');
+        return;
+      }
+      if (deliveryMethod === 'pickup' && !pickupUnitSlug) {
+        setError('Selecione uma unidade para retirar seu pedido.');
         return;
       }
       const docResult = isValidDocument(formData.customer_document);
@@ -170,14 +207,58 @@ const Checkout = () => {
     else if (step === 3) setStep(showUpsellStep && !upsellAdded && !upsellSkipped ? 2 : 1);
     else if (step === 2) setStep(1);
   };
+  
+  const handleApplyCoupon = async () => {
+    if (!couponCode.trim()) return;
+    setIsValidatingCoupon(true);
+    setError('');
+    try {
+      const { data, error: rpcError } = await supabase.rpc('validate_coupon', {
+        p_code: couponCode.toUpperCase().trim(),
+        p_cart_total: cartTotal
+      });
+
+      if (rpcError) throw rpcError;
+      
+      const res = data as { valid: boolean; id?: string; type?: 'fixed' | 'percent' | 'free_shipping'; value?: number; error?: string };
+
+      if (!res.valid) {
+        throw new Error(res.error || 'Cupom inválido ou expirado');
+      }
+
+      setCouponDiscount(res.value ?? 0);
+      setCouponId(res.id || null);
+      setCouponType(res.type || null);
+      toast.success('Cupom aplicado com sucesso!');
+    } catch (err: unknown) {
+      setCouponDiscount(0);
+      setCouponId(null);
+      setCouponType(null);
+      const message = err instanceof Error ? err.message : 'Erro ao validar cupom';
+      setError(message);
+    } finally {
+      setIsValidatingCoupon(false);
+    }
+  };
 
   const handleSubmit = async () => {
     setError('');
     setLoading(true);
 
     try {
-      if (!formData.customer_name.trim() || !formData.customer_whatsapp.trim() || !formData.customer_email.trim() || !formData.customer_document.trim() || !formData.cep || !formData.street || !formData.number || !formData.neighborhood || !formData.city || !formData.state) {
-        setError('Preencha todos os campos obrigatorios, incluindo o endereco e CPF/CNPJ.');
+      if (!formData.customer_name.trim() || !formData.customer_whatsapp.trim() || !formData.customer_email.trim() || !formData.customer_document.trim()) {
+        setError('Preencha todos os dados do cliente.');
+        setLoading(false);
+        return;
+      }
+      if (deliveryMethod === 'shipping' && (!formData.cep || !formData.street || !formData.number || !formData.neighborhood || !formData.city || !formData.state)) {
+        setError('Preencha o endereco de entrega completo.');
+        setLoading(false);
+        return;
+      }
+      
+      if (deliveryMethod === 'pickup' && !pickupUnitSlug) {
+        setError('Selecione o local de retirada.');
         setLoading(false);
         return;
       }
@@ -209,19 +290,33 @@ const Checkout = () => {
         return;
       }
 
-      // Save address to profile for next time
-      supabase.from('profiles').update({
-        address_cep: formData.cep,
-        address_street: formData.street,
-        address_number: formData.number,
-        address_complement: formData.complement,
-        address_neighborhood: formData.neighborhood,
-        address_city: formData.city,
-        address_state: formData.state,
-      }).eq('id', user.id).then(() => { });
+      // Save address and basic data to profile for next time
+      const profileUpdates: Partial<ProfileData> = {
+        full_name: formData.customer_name,
+        phone: formData.customer_whatsapp,
+        document: formData.customer_document,
+      };
+
+      if (deliveryMethod === 'shipping') {
+        profileUpdates.address_cep = formData.cep;
+        profileUpdates.address_street = formData.street;
+        profileUpdates.address_number = formData.number;
+        profileUpdates.address_complement = formData.complement;
+        profileUpdates.address_neighborhood = formData.neighborhood;
+        profileUpdates.address_city = formData.city;
+        profileUpdates.address_state = formData.state;
+      }
+
+      supabase.from('profiles').update(profileUpdates).eq('id', user.id).then(() => { });
+
 
       const paymentStr = paymentMethod === 'pix' ? 'PIX' : `Cartão de Crédito (${installments}x${installments > 3 ? ' com juros' : ' sem juros'})`;
-      const addressString = `Endereco de Entrega:\nCEP: ${formData.cep}\nLogradouro: ${formData.street}, ${formData.number} ${formData.complement ? `(${formData.complement})` : ''}\nBairro: ${formData.neighborhood}\nCidade/UF: ${formData.city}/${formData.state.toUpperCase()}\n\nForma de Pagamento Selecionada: ${paymentStr}`;
+      let addressString = '';
+      if (deliveryMethod === 'shipping') {
+        addressString = `Endereco de Entrega:\nCEP: ${formData.cep}\nLogradouro: ${formData.street}, ${formData.number} ${formData.complement ? `(${formData.complement})` : ''}\nBairro: ${formData.neighborhood}\nCidade/UF: ${formData.city}/${formData.state.toUpperCase()}\n\nForma de Pagamento Selecionada: ${paymentStr}`;
+      } else {
+        addressString = `Retirada na Loja:\nUnidade: ${pickupUnitSlug === 'linhares' ? 'Linhares' : pickupUnitSlug === 'serra' ? 'Serra' : 'Teixeira'}\n\nForma de Pagamento Selecionada: ${paymentStr}`;
+      }
       const finalNotes = formData.notes ? `${formData.notes}\n\n${addressString}` : addressString;
 
       // Call edge function — use fetch with both apikey and user token
@@ -233,8 +328,13 @@ const Checkout = () => {
         customer_document: formData.customer_document,
         payment_method: paymentMethod,
         installments: paymentMethod === 'credit' ? installments : 1,
-        shipping: shippingEstimate,
+        shipping: shippingValue,
+        delivery_method: deliveryMethod,
+        pickup_unit_slug: pickupUnitSlug,
         notes: finalNotes,
+        discount_amount: couponDiscount,
+        coupon_id: couponId,
+        coupon_code: couponCode
       };
 
       // Try supabase.functions.invoke first (sends auth automatically)
@@ -361,27 +461,39 @@ const Checkout = () => {
 
               <div className="border-t border-border pt-4 space-y-2">
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Subtotal ({cartCount} itens)</span>
-                  <span className="font-medium">R$ {cartTotal.toFixed(2)}</span>
+                  <span className="text-muted-foreground">Subtotal dos itens ({cartCount} itens)</span>
+                  <span className="font-medium text-foreground">R$ {cartTotal.toFixed(2)}</span>
                 </div>
-                <div className="flex items-center justify-between text-lg font-bold pt-3 border-t border-border">
-                  <span>Total</span>
-                  <span className="gradient-gold-text">R$ {cartTotal.toFixed(2)}</span>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Frete</span>
+                  <span className="text-muted-foreground italic text-xs">Calculado na próxima etapa</span>
+                </div>
+                {couponDiscount > 0 && (
+                  <div className="flex items-center justify-between text-sm text-green-600 font-bold">
+                    <span>Desconto (Cupom)</span>
+                    <span>- R$ {couponDiscount.toFixed(2)}</span>
+                  </div>
+                )}
+                <div className="flex items-center justify-between text-lg sm:text-xl font-black pt-3 border-t-2 border-amber-100">
+                  <span className="uppercase tracking-tight text-foreground/80">Subtotal Geral</span>
+                  <span className="gradient-gold-text">R$ {(cartTotal - couponDiscount).toFixed(2)}</span>
                 </div>
               </div>
 
-              {cartTotal < 500 && (
+              {cartTotal < minOrderValue && (
                 <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
                   <p className="text-xs text-amber-700">
-                    Pedido minimo: R$ 500. Faltam: <strong>R$ {(500 - cartTotal).toFixed(2)}</strong>
+                    Pedido minimo: R$ {minOrderValue}. Faltam: <strong>R$ {(minOrderValue - cartTotal).toFixed(2)}</strong>
                   </p>
                 </div>
               )}
             </div>
 
+            {/* Cupom movido para o Passo 3 */}
+
             <button
               onClick={handleNext}
-              disabled={cartTotal < 500}
+              disabled={cartTotal < minOrderValue}
               className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-semibold text-base btn-gold text-white disabled:opacity-50 disabled:cursor-not-allowed transition-all"
             >
               Continuar para Entrega
@@ -491,93 +603,294 @@ const Checkout = () => {
         {step === 3 && (
           <div className="space-y-6">
             {/* Pre-filled Client Info (read-only summary) */}
-            <div className="bg-white rounded-2xl p-5 sm:p-6 shadow-card">
-              <h2 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
-                <Check className="w-5 h-5 text-green-500" />
-                Dados do Cliente
-              </h2>
+            {/* Progressive Profiling: Only show inputs for missing fields or if editing */}
+            <div className="bg-white rounded-2xl p-5 sm:p-6 shadow-sm border border-border">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
+                  <Check className="w-5 h-5 text-green-500" />
+                  Dados do Cliente
+                </h2>
+                {profileLoaded && (
+                  <button 
+                    type="button"
+                    onClick={() => setIsEditingProfile(!isEditingProfile)}
+                    className="text-xs font-semibold text-amber-600 hover:text-amber-700 underline"
+                  >
+                    {isEditingProfile ? 'Salvar visualização' : 'Editar dados'}
+                  </button>
+                )}
+              </div>
+
+              {/* Missing data banner */}
+              {!isEditingProfile && (!initialProfile.full_name || !initialProfile.document) && (
+                <div className="mb-6 p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-2.5 animate-in fade-in slide-in-from-top-2 duration-300">
+                  <Zap className="w-4 h-4 text-amber-600 mt-0.5" />
+                  <p className="text-[12px] text-amber-800 leading-relaxed font-medium">
+                    Precisamos de mais alguns dados para finalizar seu pedido com segurança.
+                  </p>
+                </div>
+              )}
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-medium text-muted-foreground mb-1">Nome</label>
-                  <input
-                    type="text" name="customer_name" value={formData.customer_name} onChange={handleChange} required
-                    className="w-full px-3 py-2.5 rounded-lg border border-border bg-surface text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-gold"
-                    placeholder="Nome completo"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-muted-foreground mb-1">WhatsApp</label>
-                  <input
-                    type="tel" name="customer_whatsapp" value={formData.customer_whatsapp} onChange={handleChange} required
-                    className="w-full px-3 py-2.5 rounded-lg border border-border bg-surface text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-gold"
-                    placeholder="11999999999"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-muted-foreground mb-1">E-mail</label>
-                  <input
-                    type="email" name="customer_email" value={formData.customer_email} onChange={handleChange} required
-                    className="w-full px-3 py-2.5 rounded-lg border border-border bg-surface text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-gold"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-muted-foreground mb-1">CPF ou CNPJ</label>
-                  <input
-                    type="text" name="customer_document" value={formData.customer_document} onChange={handleChange} required
-                    className="w-full px-3 py-2.5 rounded-lg border border-border bg-surface text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-gold"
-                    placeholder="000.000.000-00"
-                    inputMode="numeric"
-                  />
-                </div>
+                {(isEditingProfile || !initialProfile.full_name) && (
+                  <div>
+                    <label className="block text-xs font-medium text-muted-foreground mb-1">Nome Completo</label>
+                    <input
+                      type="text" name="customer_name" value={formData.customer_name} onChange={handleChange} required
+                      className="w-full px-3 py-2.5 rounded-lg border border-border bg-surface text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-gold"
+                      placeholder="Nome completo"
+                    />
+                  </div>
+                )}
+                
+                {(isEditingProfile || !initialProfile.phone) && (
+                  <div>
+                    <label className="block text-xs font-medium text-muted-foreground mb-1">WhatsApp</label>
+                    <input
+                      type="tel" name="customer_whatsapp" value={formData.customer_whatsapp} onChange={handleChange} required
+                      className="w-full px-3 py-2.5 rounded-lg border border-border bg-surface text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-gold"
+                      placeholder="11999999999"
+                    />
+                  </div>
+                )}
+
+                {(isEditingProfile || !user?.email) && (
+                  <div>
+                    <label className="block text-xs font-medium text-muted-foreground mb-1">E-mail</label>
+                    <input
+                      type="email" name="customer_email" value={formData.customer_email} onChange={handleChange} required
+                      className="w-full px-3 py-2.5 rounded-lg border border-border bg-surface text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-gold"
+                    />
+                  </div>
+                )}
+
+                {(isEditingProfile || !initialProfile.document) && (
+                  <div>
+                    <label className="block text-xs font-medium text-muted-foreground mb-1">CPF ou CNPJ</label>
+                    <input
+                      type="text" name="customer_document" value={formData.customer_document} onChange={handleChange} required
+                      className="w-full px-3 py-2.5 rounded-lg border border-border bg-surface text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-gold"
+                      placeholder="000.000.000-00"
+                      inputMode="numeric"
+                    />
+                  </div>
+                )}
+
+                {/* Summary View for pre-filled data */}
+                {!isEditingProfile && (
+                  <>
+                    {initialProfile.full_name && (
+                      <div className="p-3 bg-surface-alt rounded-lg border border-border/50">
+                        <span className="block text-[10px] uppercase tracking-wider text-muted-foreground font-bold mb-0.5">Nome</span>
+                        <span className="text-sm font-medium text-foreground">{formData.customer_name}</span>
+                      </div>
+                    )}
+                    {initialProfile.phone && (
+                      <div className="p-3 bg-surface-alt rounded-lg border border-border/50">
+                        <span className="block text-[10px] uppercase tracking-wider text-muted-foreground font-bold mb-0.5">WhatsApp</span>
+                        <span className="text-sm font-medium text-foreground">{formData.customer_whatsapp}</span>
+                      </div>
+                    )}
+                    {user?.email && (
+                      <div className="p-3 bg-surface-alt rounded-lg border border-border/50">
+                        <span className="block text-[10px] uppercase tracking-wider text-muted-foreground font-bold mb-0.5">E-mail</span>
+                        <span className="text-sm font-medium text-foreground">{formData.customer_email}</span>
+                      </div>
+                    )}
+                    {initialProfile.document && (
+                      <div className="p-3 bg-surface-alt rounded-lg border border-border/50">
+                        <span className="block text-[10px] uppercase tracking-wider text-muted-foreground font-bold mb-0.5">Documento</span>
+                        <span className="text-sm font-medium text-foreground">{formData.customer_document}</span>
+                      </div>
+                    )}
+                  </>
+                )}
               </div>
             </div>
 
-            {/* Address */}
-            <div className="bg-white rounded-2xl p-5 sm:p-6 shadow-card">
+
+            {/* Delivery Method Selector */}
+            <div className="bg-white rounded-2xl p-5 sm:p-6 shadow-sm border border-border">
               <h2 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
-                <MapPin className="w-5 h-5 text-gold-text" />
-                Endereco de Entrega
+                <Store className="w-5 h-5 text-amber-500" />
+                Entrega
               </h2>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-medium text-muted-foreground mb-1">CEP *</label>
-                  <input type="text" name="cep" required value={formData.cep} onChange={handleChange} placeholder="00000-000"
-                    className="w-full px-3 py-2.5 rounded-lg border border-border bg-white text-sm focus:ring-2 focus:ring-gold" />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-muted-foreground mb-1">Rua *</label>
-                  <input type="text" name="street" required value={formData.street} onChange={handleChange} placeholder="Av. Principal"
-                    className="w-full px-3 py-2.5 rounded-lg border border-border bg-white text-sm focus:ring-2 focus:ring-gold" />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-muted-foreground mb-1">Numero *</label>
-                  <input type="text" name="number" required value={formData.number} onChange={handleChange} placeholder="123"
-                    className="w-full px-3 py-2.5 rounded-lg border border-border bg-white text-sm focus:ring-2 focus:ring-gold" />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-muted-foreground mb-1">Complemento</label>
-                  <input type="text" name="complement" value={formData.complement} onChange={handleChange} placeholder="Apto 101"
-                    className="w-full px-3 py-2.5 rounded-lg border border-border bg-white text-sm focus:ring-2 focus:ring-gold" />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-muted-foreground mb-1">Bairro *</label>
-                  <input type="text" name="neighborhood" required value={formData.neighborhood} onChange={handleChange} placeholder="Centro"
-                    className="w-full px-3 py-2.5 rounded-lg border border-border bg-white text-sm focus:ring-2 focus:ring-gold" />
-                </div>
-                <div className="flex gap-3">
-                  <div className="flex-1">
-                    <label className="block text-xs font-medium text-muted-foreground mb-1">Cidade *</label>
-                    <input type="text" name="city" required value={formData.city} onChange={handleChange} placeholder="Sao Paulo"
-                      className="w-full px-3 py-2.5 rounded-lg border border-border bg-white text-sm focus:ring-2 focus:ring-gold" />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
+                <button
+                  type="button"
+                  onClick={() => setDeliveryMethod('shipping')}
+                  className={`relative flex items-center p-4 rounded-xl border transition-all ${deliveryMethod === 'shipping' ? 'border-amber-500 bg-amber-50/50 ring-1 ring-amber-500 shadow-sm' : 'border-border bg-surface hover:border-amber-300'}`}
+                >
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center mr-3 ${deliveryMethod === 'shipping' ? 'bg-amber-100/80 text-amber-600' : 'bg-surface-alt text-muted-foreground'}`}>
+                    <MapPin className="w-5 h-5" />
                   </div>
-                  <div className="w-20">
-                    <label className="block text-xs font-medium text-muted-foreground mb-1">UF *</label>
-                    <input type="text" name="state" required maxLength={2} value={formData.state} onChange={handleChange} placeholder="SP"
-                      className="w-full px-3 py-2.5 rounded-lg border border-border bg-white text-sm focus:ring-2 focus:ring-gold uppercase" />
+                  <div className="flex-1 text-left">
+                    <span className="block font-bold text-sm text-foreground">Receber em casa</span>
+                    <span className="block text-xs text-muted-foreground mt-0.5">Entrega via transportadora</span>
                   </div>
-                </div>
+                  {deliveryMethod === 'shipping' && (
+                    <div className="absolute top-4 right-4">
+                      <div className="w-5 h-5 rounded-full bg-amber-500 text-white flex items-center justify-center">
+                        <Check className="w-3 h-3" />
+                      </div>
+                    </div>
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => { setDeliveryMethod('pickup'); setPickupUnitSlug('linhares'); }}
+                  className={`relative flex items-center p-4 rounded-xl border transition-all ${deliveryMethod === 'pickup' ? 'border-amber-500 bg-amber-50/50 ring-1 ring-amber-500 shadow-sm' : 'border-border bg-surface hover:border-amber-300'}`}
+                >
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center mr-3 ${deliveryMethod === 'pickup' ? 'bg-amber-100/80 text-amber-600' : 'bg-surface-alt text-muted-foreground'}`}>
+                    <Store className="w-5 h-5" />
+                  </div>
+                  <div className="flex-1 text-left">
+                    <div className="flex items-center gap-2">
+                      <span className="block font-bold text-sm text-foreground">Retirar na Loja</span>
+                      <span className="text-[10px] uppercase font-bold tracking-wider text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">Grátis</span>
+                    </div>
+                    <span className="block text-xs text-muted-foreground mt-0.5">Unidades Rei dos Cachos</span>
+                  </div>
+                  {deliveryMethod === 'pickup' && (
+                    <div className="absolute top-4 right-4">
+                      <div className="w-5 h-5 rounded-full bg-amber-500 text-white flex items-center justify-center">
+                        <Check className="w-3 h-3" />
+                      </div>
+                    </div>
+                  )}
+                </button>
               </div>
+
+              {/* Conditional Form: Address OR Store Selection */}
+              {deliveryMethod === 'shipping' ? (
+                <>
+                  <div className="flex items-center justify-between mb-3 mt-2 border-t border-border pt-4">
+                    <h3 className="text-sm font-bold text-foreground">Endereço de Entrega</h3>
+                  </div>
+
+                  {/* Smart Address Form */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {(isEditingProfile || !initialProfile.address_cep) && (
+                      <div>
+                        <label className="block text-xs font-medium text-muted-foreground mb-1">CEP *</label>
+                        <input type="text" name="cep" required value={formData.cep} onChange={handleChange} placeholder="00000-000"
+                          className="w-full px-3 py-2.5 rounded-lg border border-border bg-white text-sm focus:ring-2 focus:ring-gold" />
+                      </div>
+                    )}
+                    {(isEditingProfile || !initialProfile.address_street) && (
+                      <div>
+                        <label className="block text-xs font-medium text-muted-foreground mb-1">Rua *</label>
+                        <input type="text" name="street" required value={formData.street} onChange={handleChange} placeholder="Av. Principal"
+                          className="w-full px-3 py-2.5 rounded-lg border border-border bg-white text-sm focus:ring-2 focus:ring-gold" />
+                      </div>
+                    )}
+                    {(isEditingProfile || !initialProfile.address_number) && (
+                      <div>
+                        <label className="block text-xs font-medium text-muted-foreground mb-1">Numero *</label>
+                        <input type="text" name="number" required value={formData.number} onChange={handleChange} placeholder="123"
+                          className="w-full px-3 py-2.5 rounded-lg border border-border bg-white text-sm focus:ring-2 focus:ring-gold" />
+                      </div>
+                    )}
+                    {(isEditingProfile || initialProfile.address_complement === undefined) && (
+                      <div>
+                        <label className="block text-xs font-medium text-muted-foreground mb-1">Complemento</label>
+                        <input type="text" name="complement" value={formData.complement} onChange={handleChange} placeholder="Apto 101"
+                          className="w-full px-3 py-2.5 rounded-lg border border-border bg-white text-sm focus:ring-2 focus:ring-gold" />
+                      </div>
+                    )}
+                    {(isEditingProfile || !initialProfile.address_neighborhood) && (
+                      <div>
+                        <label className="block text-xs font-medium text-muted-foreground mb-1">Bairro *</label>
+                        <input type="text" name="neighborhood" required value={formData.neighborhood} onChange={handleChange} placeholder="Centro"
+                          className="w-full px-3 py-2.5 rounded-lg border border-border bg-white text-sm focus:ring-2 focus:ring-gold" />
+                      </div>
+                    )}
+                    {(isEditingProfile || !initialProfile.address_city || !initialProfile.address_state) && (
+                      <div className="flex gap-3">
+                        <div className="flex-1">
+                          <label className="block text-xs font-medium text-muted-foreground mb-1">Cidade *</label>
+                          <input type="text" name="city" required value={formData.city} onChange={handleChange} placeholder="Sao Paulo"
+                            className="w-full px-3 py-2.5 rounded-lg border border-border bg-white text-sm focus:ring-2 focus:ring-gold" />
+                        </div>
+                        <div className="w-20">
+                          <label className="block text-xs font-medium text-muted-foreground mb-1">UF *</label>
+                          <input type="text" name="state" required maxLength={2} value={formData.state} onChange={handleChange} placeholder="SP"
+                            className="w-full px-3 py-2.5 rounded-lg border border-border bg-white text-sm focus:ring-2 focus:ring-gold uppercase" />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Summary for filled address */}
+                    {!isEditingProfile && (
+                      <div className="sm:col-span-2">
+                        <div className="p-4 bg-surface-alt rounded-xl border border-border/50 space-y-2">
+                          {initialProfile.address_cep && (
+                            <div className="flex items-center gap-2 overflow-hidden">
+                              <MapPin className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+                              <span className="text-sm text-foreground truncate">
+                                {formData.street}, {formData.number} {formData.complement ? `(${formData.complement})` : ''} - {formData.neighborhood}, {formData.city}/{formData.state} (CEP: {formData.cep})
+                              </span>
+                            </div>
+                          )}
+                          {!initialProfile.address_cep && (
+                            <span className="text-xs text-muted-foreground italic">Endereço será coletado nos campos acima</span>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </>
+
+              ) : (
+                <div className="animate-in fade-in zoom-in-95 duration-200">
+                  <h3 className="text-sm font-bold text-foreground mb-4 mt-2 border-t border-border pt-6">Selecione a unidade</h3>
+                  <div className="space-y-3">
+                    {/* Linhares */}
+                    <label className={`relative block p-4 rounded-xl border cursor-pointer transition-all ${pickupUnitSlug === 'linhares' ? 'border-amber-500 bg-amber-50/30' : 'border-border bg-surface hover:border-amber-300'}`}>
+                      <input type="radio" name="pickup_unit" className="sr-only" checked={pickupUnitSlug === 'linhares'} onChange={() => setPickupUnitSlug('linhares')} />
+                      <div className="flex items-start gap-4">
+                        <div className={`mt-0.5 flex-shrink-0 w-5 h-5 rounded-full border flex items-center justify-center transition-colors ${pickupUnitSlug === 'linhares' ? 'border-amber-500 bg-amber-500 text-white' : 'border-slate-300'}`}>
+                          {pickupUnitSlug === 'linhares' && <Check className="w-3 h-3" />}
+                        </div>
+                        <div className="flex-1">
+                          <p className="font-bold text-foreground text-sm">Rei dos Cachos (Linhares)</p>
+                          <p className="text-xs text-muted-foreground mt-1 leading-relaxed">Av. Gov. Carlos Lindemberg, 835<br/>Centro, Linhares - ES, 29900-203</p>
+                        </div>
+                      </div>
+                    </label>
+
+                    {/* Serra */}
+                    <label className={`relative block p-4 rounded-xl border cursor-pointer transition-all ${pickupUnitSlug === 'serra' ? 'border-amber-500 bg-amber-50/30' : 'border-border bg-surface hover:border-amber-300'}`}>
+                      <input type="radio" name="pickup_unit" className="sr-only" checked={pickupUnitSlug === 'serra'} onChange={() => setPickupUnitSlug('serra')} />
+                      <div className="flex items-start gap-4">
+                        <div className={`mt-0.5 flex-shrink-0 w-5 h-5 rounded-full border flex items-center justify-center transition-colors ${pickupUnitSlug === 'serra' ? 'border-amber-500 bg-amber-500 text-white' : 'border-slate-300'}`}>
+                          {pickupUnitSlug === 'serra' && <Check className="w-3 h-3" />}
+                        </div>
+                        <div className="flex-1">
+                          <p className="font-bold text-foreground text-sm">Rei dos Cachos (Serra)</p>
+                          <p className="text-xs text-muted-foreground mt-1 leading-relaxed">Av. Central, 1197 - Parque Res. Laranjeiras<br/>Serra - ES, 29165-130</p>
+                        </div>
+                      </div>
+                    </label>
+
+                    {/* Teixeira */}
+                    <label className={`relative block p-4 rounded-xl border cursor-pointer transition-all ${pickupUnitSlug === 'teixeira' ? 'border-amber-500 bg-amber-50/30' : 'border-border bg-surface hover:border-amber-300'}`}>
+                      <input type="radio" name="pickup_unit" className="sr-only" checked={pickupUnitSlug === 'teixeira'} onChange={() => setPickupUnitSlug('teixeira')} />
+                      <div className="flex items-start gap-4">
+                        <div className={`mt-0.5 flex-shrink-0 w-5 h-5 rounded-full border flex items-center justify-center transition-colors ${pickupUnitSlug === 'teixeira' ? 'border-amber-500 bg-amber-500 text-white' : 'border-slate-300'}`}>
+                          {pickupUnitSlug === 'teixeira' && <Check className="w-3 h-3" />}
+                        </div>
+                        <div className="flex-1">
+                          <p className="font-bold text-foreground text-sm">Rei dos Cachos (Teixeira de Freitas)</p>
+                          <p className="text-xs text-muted-foreground mt-1 leading-relaxed">Av. São Paulo, 151 - Bela Vista<br/>Teixeira de Freitas - BA, 45997-006</p>
+                        </div>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Notes */}
@@ -588,6 +901,42 @@ const Checkout = () => {
                 className="w-full px-3 py-2.5 rounded-lg border border-border bg-white text-sm focus:ring-2 focus:ring-gold"
                 placeholder="Alguma observacao para o pedido..."
               />
+            </div>
+
+            {/* Cupom de Desconto - Movido para o Passo 3 */}
+            <div className="bg-white rounded-2xl p-5 sm:p-6 shadow-card">
+              <label className="block text-xs font-bold text-muted-foreground uppercase mb-2">Cupom de Desconto</label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={couponCode}
+                  onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                  placeholder="Código do cupom"
+                  disabled={couponDiscount > 0 || isValidatingCoupon}
+                  className="flex-1 px-3 py-2 rounded-lg border border-border focus:ring-2 focus:ring-gold outline-none uppercase font-mono text-sm"
+                />
+                {couponDiscount > 0 ? (
+                  <button
+                    onClick={() => { setCouponDiscount(0); setCouponId(null); setCouponCode(''); setCouponType(null); }}
+                    className="px-4 py-2 rounded-lg border border-red-200 text-red-500 text-sm font-bold hover:bg-red-50 transition-colors"
+                  >
+                    Remover
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleApplyCoupon}
+                    disabled={isValidatingCoupon || !couponCode.trim()}
+                    className="px-4 py-2 rounded-lg bg-foreground text-white text-sm font-bold hover:bg-foreground/90 transition-colors disabled:opacity-50"
+                  >
+                    {isValidatingCoupon ? '...' : 'Aplicar'}
+                  </button>
+                )}
+              </div>
+              {couponDiscount > 0 && (
+                <p className="mt-2 text-xs text-green-600 font-bold flex items-center gap-1">
+                  <Check className="w-3 h-3" /> {couponType === 'free_shipping' ? 'Frete Grátis aplicado!' : `Desconto de R$ ${couponDiscount.toFixed(2)} aplicado!`}
+                </p>
+              )}
             </div>
 
             {/* Order Total Summary */}
@@ -603,16 +952,37 @@ const Checkout = () => {
                   <span>+ R$ {(upsellOffer.discounted_price * (upsellOffer.quantity || 1)).toFixed(2)}</span>
                 </div>
               )}
-
               <div className="flex flex-col text-slate-600 bg-slate-50 p-2 rounded">
                 <div className="flex items-center justify-between text-sm">
                   <span>Frete estimado</span>
-                  <span>+ R$ {shippingEstimate.toFixed(2)}</span>
+                  {deliveryMethod === 'pickup' ? (
+                    <div className="flex flex-col items-end">
+                      <span className="text-emerald-600 font-bold">Retirada Grátis</span>
+                    </div>
+                  ) : !isAddressValid ? (
+                     <span className="text-muted-foreground italic text-xs">A calcular</span>
+                  ) : couponType === 'free_shipping' ? (
+                    <div className="flex flex-col items-end">
+                      <span className="text-muted-foreground line-through text-xs">R$ {shippingEstimate.toFixed(2)}</span>
+                      <span className="text-emerald-600 font-bold">Grátis</span>
+                    </div>
+                  ) : (
+                    <span>+ R$ {shippingEstimate.toFixed(2)}</span>
+                  )}
                 </div>
-                <p className="text-[10px] text-muted-foreground mt-1 text-left">
-                  O valor é uma média de cotação com tranportadoras parceiras.
-                </p>
+                {deliveryMethod === 'shipping' && isAddressValid && (
+                  <p className="text-[10px] text-muted-foreground mt-1 text-left">
+                    O valor é uma média de cotação com tranportadoras parceiras.
+                  </p>
+                )}
               </div>
+
+              {couponDiscount > 0 && couponType !== 'free_shipping' && (
+                <div className="flex items-center justify-between text-sm text-green-600 font-bold">
+                  <span>Desconto (Cupom)</span>
+                  <span>- R$ {couponDiscount.toFixed(2)}</span>
+                </div>
+              )}
 
               <div className="flex items-center justify-between text-lg font-bold pt-3 border-t border-border">
                 <span className="text-foreground">Total do Pedido</span>

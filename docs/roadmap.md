@@ -154,3 +154,55 @@ SELECT cron.schedule(
 ## 🗓️ Backlog futuro (P2/P3)
 
 Ver `docs/backlog_future.md`.
+
+---
+
+## ✅ Etapa 5 — Pedido Manual Admin (concluída 2026-03-11)
+
+**Prompts:** `RDC_BACK_E5_P1_CLD_V1` · `RDC_ADMIN_E5_P4_CLD_V1` · `RDC_BACK_E5_P6_CLD_V1` · `RDC_BACK_E5_P8_CLD_V1`
+
+### Backend
+- Acesso anônimo a `catalog_products` e `categories` + VIEW `catalog_products_public`
+- `profiles.price_category` (`retail`/`wholesale`/`vip`)
+- `orders.status` convertido de enum para text + CHECK (9 valores)
+- `orders.origin` (`site`/`whatsapp`/`loja_fisica`/`outro`)
+- `orders.payment_method` TEXT nullable
+- `orders.coupon_id` UUID FK → coupons
+- RPC `create_manual_order` SECURITY DEFINER (admin-only)
+- Policies admin restauradas em `orders` e `order_items` (SELECT + UPDATE/ALL)
+- Migrations: `000008` → `000013`
+
+### Frontend
+- `src/pages/admin/NewOrder.tsx` — seleção de cliente, busca de produtos, carrinho com preço editável, desconto (R$/%), cupom, status/origem/pagamento, data retroativa
+- Rota `/admin/pedidos/novo` registrada em `App.tsx`
+- Botão "Novo Pedido Manual" em `Pedidos.tsx`
+- `PedidoSucesso.tsx` expandido para 9 status + fallback
+
+### Fixes de dados
+- Sessões anônimas removidas; UNIQUE (user_id) em client_sessions
+- Jussara revertida para 'visitou'; Taita Bispo deduplicada; Rebeca deletada
+- Migration: `000014`
+
+---
+
+## ✅ Etapa 6 — Promoções e Cupons B2B (concluída 2026-03-11)
+
+**Prompts:** `RDC_BACK_E6_P1` → `RDC_BACK_E6_P8`
+
+### Backend
+- `store_settings`: min_cart_value dinâmico (singleton id=1)
+- `coupons`: CRUD completo com code UPPERCASE, discount_type (`percent`/`fixed`/`free_shipping`), usage_limit, expires_at, min_order_value
+- RPC `validate_coupon(p_code, p_cart_total)`: SECURITY DEFINER, acessível por anon+authenticated
+- `create_manual_order` evoluída para 10 parâmetros: + `p_coupon_id`, + `p_created_at` (data retroativa)
+- Fix 23505: ON CONFLICT (user_id) na sessão do cliente dentro da RPC
+- Migrations: `000015` → `000020`
+
+### Frontend
+- `src/pages/admin/Marketing.tsx` — CRUD de cupons + edição do min_cart_value
+- `src/types/marketing.ts` — tipagem de Coupon e StoreSettings
+- `Checkout.tsx` — campo de cupom + leitura dinâmica do min_cart_value via store_settings
+- `NewOrder.tsx` — campo de cupom + data retroativa (datetime-local)
+- Bugs corrigidos: mapeamento da resposta de `validate_coupon` (`value/id/type` não `discount_amount/coupon_id/discount_type`); tabela `categories` (não `product_categories`)
+
+### Documentação
+- `docs/SCHEMA.md` criado — single source of truth de todas as tabelas, views, RPCs e CHECKs

@@ -1,4 +1,4 @@
-import { Check, Lock, ShoppingCart } from 'lucide-react'
+import { Check, Lock, ShoppingCart, Leaf, Sparkles } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import type { PublicProduct } from '@/hooks/useCatalogProducts'
 
@@ -106,20 +106,20 @@ export default function CompactProductCarousel({
             >
                 {products.map((product, index) => {
                     const suggested = getSuggestedPrice(product.price, product.compare_at_price)
-                    // Itens além do 4º ficam bloqueados para visitante
+                    // Items beyond the 4th are locked for guests
                     const isBlocked = isGuest && index >= 4
 
                     return (
                         <div
                             key={product.id}
-                            className="flex-shrink-0 w-[140px] sm:w-[160px] md:w-[180px] lg:w-[190px] xl:w-[200px] snap-start bg-white rounded-xl border border-border shadow-sm hover:shadow-md transition-shadow flex flex-col relative overflow-hidden group"
+                            className={`flex-shrink-0 w-[140px] sm:w-[160px] md:w-[180px] lg:w-[190px] xl:w-[200px] snap-start bg-white rounded-xl border border-border shadow-sm hover:shadow-md transition-shadow flex flex-col relative overflow-hidden group`}
                         >
-                            {/* Overlay de bloqueio para itens 5+ quando visitante */}
+                            {/* Lock overlay for items 5+ when guest */}
                             {isBlocked && (
                                 <>
-                                    {/* Camada visual — pointer-events-none para não bloquear scroll */}
+                                    {/* Visual layer — pointer-events-none to not block scroll */}
                                     <div className="absolute inset-0 z-10 rounded-xl pointer-events-none" style={{ backdropFilter: 'blur(6px)', background: 'rgba(255,255,255,0.75)' }} />
-                                    {/* Conteúdo interativo */}
+                                    {/* Interactive content */}
                                     <div className="absolute inset-0 z-20 rounded-xl flex flex-col items-center justify-center gap-1.5 px-3">
                                         <Lock className="w-4 h-4 text-amber-500 flex-shrink-0" />
                                         <p className="text-[10px] font-semibold text-foreground text-center leading-snug">
@@ -136,7 +136,7 @@ export default function CompactProductCarousel({
                             )}
 
                             <div
-                                className="w-full h-[140px] sm:h-[160px] md:h-[170px] lg:h-[170px] xl:h-[180px] bg-surface-alt flex items-center justify-center p-1 sm:p-2 cursor-pointer relative"
+                                className={`w-full h-[140px] sm:h-[160px] md:h-[170px] lg:h-[170px] xl:h-[180px] bg-surface-alt flex items-center justify-center p-1 sm:p-2 cursor-pointer relative`}
                                 onClick={() => !isBlocked && onSelect(product)}
                             >
                                 {product.main_image ? (
@@ -159,8 +159,20 @@ export default function CompactProductCarousel({
                                     {product.name}
                                 </h3>
 
+                                {/* Badges - Hidden for Professional products */}
+                                {!(product.is_professional || title.toLowerCase().includes('profissional')) && (
+                                    <div className="flex flex-wrap gap-1 mb-2.5">
+                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border bg-green-50 text-green-700 border-green-200">
+                                            <Leaf className="w-2.5 h-2.5" /> Vegano
+                                        </span>
+                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border bg-amber-50 text-amber-700 border-amber-200">
+                                            <Sparkles className="w-2.5 h-2.5" /> Liberado
+                                        </span>
+                                    </div>
+                                )}
+
                                 <div className="mt-auto">
-                                    {/* Preço de revenda: oculto para visitante */}
+                                    {/* Resale price: hidden for guest */}
                                     {!isGuest && (product.is_professional || title.toLowerCase().includes('profissional') ? (
                                         <div className="text-[10px] sm:text-xs md:text-xs lg:text-[13px] font-bold mb-0.5 sm:mb-1 opacity-0 pointer-events-none" aria-hidden="true">
                                             Revenda: -
@@ -171,9 +183,9 @@ export default function CompactProductCarousel({
                                         </div>
                                     ))}
 
-                                    {/* Preço de custo: oculto para visitante */}
+                                    {/* Cost price: hidden for guest */}
                                     {isGuest ? (
-                                        <div className="flex items-center gap-1 mb-2 sm:mb-3">
+                                        <div className="flex items-center gap-1 mb-2">
                                             <Lock className="w-3 h-3 text-muted-foreground flex-shrink-0" />
                                             <span className="text-[11px] text-muted-foreground font-medium">Ver preço ao cadastrar</span>
                                         </div>

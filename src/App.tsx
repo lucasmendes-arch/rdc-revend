@@ -24,8 +24,11 @@ import AdminUpsell from "./pages/admin/Upsell";
 import AdminFinanceiro from "./pages/admin/Financeiro";
 import AdminCrmDebug from "./pages/admin/CrmDebug";
 import RedefinirSenha from "./pages/RedefinirSenha";
+import AdminNewOrder from "./pages/admin/NewOrder";
+import AdminMarketing from "./pages/admin/Marketing";
 import NotFound from "./pages/NotFound";
 import WhatsAppButton from "./components/landing/WhatsAppButton";
+import PixelTracker from "./components/PixelTracker";
 import { useLocation } from "react-router-dom";
 
 function ConditionalWhatsApp() {
@@ -43,6 +46,7 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter future={{ v7_relativeSplatPath: true, v7_startTransition: true }}>
+          <PixelTracker />
           <AuthProvider>
             <CartProvider>
               <Routes>
@@ -59,12 +63,14 @@ const App = () => (
                     <Route path="/admin" element={<Navigate to="/admin/catalogo" replace />} />
                     <Route path="/admin/catalogo" element={<AdminCatalogo />} />
                     <Route path="/admin/pedidos" element={<AdminPedidos />} />
+                    <Route path="/admin/pedidos/novo" element={<AdminNewOrder />} />
                     <Route path="/admin/clientes" element={<AdminClientes />} />
                     <Route path="/admin/estoque" element={<AdminEstoque />} />
                     <Route path="/admin/usuarios" element={<AdminUsuarios />} />
                     <Route path="/admin/categorias" element={<AdminCategorias />} />
                     <Route path="/admin/upsell" element={<AdminUpsell />} />
                     <Route path="/admin/financeiro" element={<AdminFinanceiro />} />
+                    <Route path="/admin/marketing" element={<AdminMarketing />} />
                     <Route path="/admin/crm" element={<AdminCrmDebug />} />
                   </Route>
                 </Route>
@@ -81,4 +87,3 @@ const App = () => (
 );
 
 export default App;
-
