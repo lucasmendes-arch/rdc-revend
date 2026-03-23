@@ -23,14 +23,26 @@ function getSessionId(userId?: string | null): string {
   return id
 }
 
-// Status hierarchy — only advance forward, never go back (except abandonou which is set by cron)
+// Status hierarchy com regra comercial:
+// - comprou é terminal (rank mais alto, nunca regrida)
+// - abandonou tem rank acima de ações básicas para não ser sobrescrito por visitou/visualizou
+// - abandonou pode ser atualizado para iniciou_checkout/adicionou_carrinho (cliente retomou jornada)
 const statusRank: Record<FunnelStatus, number> = {
   visitou: 1,
   visualizou_produto: 2,
   adicionou_carrinho: 3,
   iniciou_checkout: 4,
-  comprou: 5,
-  abandonou: 0, // special — set by server only
+  abandonou: 5, // acima das ações básicas — só regride ao ser retomada a jornada
+  comprou: 10,  // terminal — nunca sobrescrito
+}
+
+function shouldUpdateStatus(current: FunnelStatus, next: FunnelStatus): boolean {
+  if (current === 'comprou') return false  // terminal
+  if (next === 'comprou') return true      // comprou sempre vence
+  // Retomada de jornada: do estado abandonado, só permitir avanço para checkout ou carrinho
+  if (current === 'abandonou' && (next === 'iniciou_checkout' || next === 'adicionou_carrinho')) return true
+  // Padrão: só avança em rank — sem regressão boba para visitou/visualizou
+  return statusRank[next] >= statusRank[current]
 }
 
 async function upsertSession(data: {
@@ -50,11 +62,9 @@ async function upsertSession(data: {
       .maybeSingle()
 
     if (existing) {
-      const currentRank = statusRank[existing.status as FunnelStatus] || 0
-      const newRank = statusRank[data.status]
-      // Don't go backwards (but always allow updates to same status for last_page etc.)
-      if (newRank < currentRank) {
-        // Still update last_page and cart count, just keep status
+      const currentStatus = existing.status as FunnelStatus
+      if (!shouldUpdateStatus(currentStatus, data.status)) {
+        // Não avança o estágio, mas ainda atualiza metadados (página, carrinho, etc.)
         const { error } = await supabase
           .from('client_sessions')
           .update({
