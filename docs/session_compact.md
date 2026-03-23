@@ -9,104 +9,79 @@ Resumo compacto da conversa longa para retomada rápida com qualquer IA.
 
 ## 2. Resumo executivo
 
-O projeto CRM do Rei dos Cachos avançou da fundação até o fechamento operacional da Etapa 3.
+O projeto CRM do Rei dos Cachos avançou da fundação até a primeira versão operacional da Etapa 4.
 
 ### Etapa 2
-Foi concluído o tracking dos eventos:
-- cadastro
-- visita
-- visualização de produto
-- carrinho
-- checkout
-- compra
-- abandono
-
-Houve:
-- correção de conflitos entre types e schema;
-- correção do CRM debug;
-- correção de bug no cadastro;
-- correção de deduplicação de add_to_cart;
-- correção de sobreposição do botão de WhatsApp no checkout;
-- validação técnica de abandono;
-- validação do purchase_completed via revisão técnica e testes SQL parciais.
-
-Status final:
-- `QA_APPROVED_COM_RESSALVAS`
+Tracking de eventos (cadastro, visita, produto, carrinho, checkout, compra, abandono). Correções de types/schema, CRM debug, cadastro, deduplicação e sobreposição de botão. Status: `QA_APPROVED_COM_RESSALVAS` (purchase_completed pende teste real com MP).
 
 ### Etapa 3
-Foi implementado:
-- motor de tags híbridas via trigger SQL;
-- backfill de tags;
-- visualização de tags no debug;
-- gestão manual de tags;
-- filtro de clientes por tag;
-- dispatcher WhatsApp com UAZAPI validado em produção;
-- redesign do kanban de clientes;
-- correção de scroll horizontal do board.
+Motor de tags via trigger SQL, backfill, visualização e gestão de tags, filtro por tag, dispatcher WhatsApp com UAZAPI validado em produção, kanban redesenhado, scroll horizontal corrigido, perfis novos sem nome corrigido. Status: `QA_APPROVED`.
 
-Também foi corrigido:
-- problema de perfis novos aparecendo sem nome por falha no fluxo de `Cadastro.tsx`.
+### Etapa 4 (2026-03-09)
+- Ambiente local no novo PC configurado (fix: nome do arquivo `.env.local`).
+- Migrations `20250313000006` (automations) e `20250313000007` (dispatch_queue) aplicadas manualmente.
+- Tabela `crm_dispatch_queue`, funções `claim_crm_queue_items` e `reset_stuck_crm_queue_items` criadas.
+- `crm-queue-processor` deployado e ativo.
+- `pg_net` e `pg_cron` confirmadas ativas. Job a cada 1 minuto.
+- Automação de recuperação de carrinho: operacional.
+- Boas-vindas e Fidelizacao: inativas (duplicidades identificadas, aguardam validação).
+- Disparo manual testado com sucesso.
 
-Status final:
-- `QA_APPROVED`
+Status: `OPERATIONAL_V1`
 
 ---
 
 ## 3. Estado atual resumido
 
 ### Concluído
-- Etapa 1
-- Etapa 2
-- Etapa 3
+- Etapa 1 (DONE)
+- Etapa 2 (QA_APPROVED_COM_RESSALVAS)
+- Etapa 3 (QA_APPROVED)
+- Etapa 4 v1 (OPERATIONAL_V1)
 
-### Em hold
-- abertura formal da Etapa 4
-
-Motivo do hold:
-- a conversa ficou longa e foi necessário consolidar memória e status
-- houve foco em corrigir UX do kanban antes de avançar
+### Pendências de Etapa 4
+- Editor de mensagens das automações
+- UX "Tags Vinculadas"
+- Visualização da fila no admin
+- Blindagem contra duplicidade de seeds/migrations de automações
+- Remover duplicatas de Boas-vindas e Fidelizacao antes de ativar
 
 ---
 
 ## 4. Decisões importantes
 
-1. Claude = backend, SQL, RLS, edge functions, dispatcher, integrações.
+1. Claude = backend, SQL, RLS, edge functions, dispatcher, automações.
 2. Ant = frontend, UX, admin, kanban, CRM debug, filtros, visual.
 3. Sempre pensar em paralelização.
 4. Preferir 1 prompt consolidado quando a tarefa for leve/documental.
 5. Não expor secrets em handoff.
 6. Evitar metáforas e respostas longas demais; ser direto.
 7. Para UX crítica, validar por print e não apenas por handoff.
+8. Manter apenas automação de carrinho ativa até UX/admin evoluir.
 
 ---
 
 ## 5. UAZAPI
 
-### Definido
 - API oficial do WhatsApp: UAZAPI
-
-### Já validado
-- dispatcher funcionando em produção
-- endpoint correto identificado durante a validação
-- secrets configurados no ambiente
-
-### Regra
-- não escrever credenciais reais em handoff
+- Dispatcher funcionando em produção; endpoint e secrets corretos.
+- Não escrever credenciais reais em handoff.
 
 ---
 
 ## 6. Últimos problemas relevantes resolvidos
 
 - CRM debug quebrando por colunas incompatíveis com o schema
-- cadastro não persistindo profile corretamente em alguns casos
-- kanban com cards ilegíveis
-- scroll horizontal do kanban não funcionando
+- Cadastro não persistindo profile corretamente
+- Kanban com cards ilegíveis / scroll horizontal
+- Ambiente local no novo PC (fix: nome do arquivo `.env.local`)
+- Duplicidades de automações identificadas no banco
 
 ---
 
-## 7. Próximo passo provável
+## 7. Próximos passos
 
-Abrir formalmente a Etapa 4:
-- automações WhatsApp operacionais
-- poucas automações iniciais
-- foco em segurança, idempotência, ativação/desativação e governança
+- Editor de mensagens das automações (CLD ou ANT)
+- Painel da fila `crm_dispatch_queue` no admin (ANT)
+- UX "Tags Vinculadas" (ANT)
+- Verificar e remover duplicatas de Boas-vindas/Fidelizacao antes de ativar

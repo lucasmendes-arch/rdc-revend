@@ -13,7 +13,7 @@
 - QA_APPROVED
 
 ### Etapa 4 — Automações WhatsApp operacionais
-- PENDING_START
+- OPERATIONAL_V1
 
 ---
 
@@ -44,8 +44,32 @@
 - filtro por tags
 - scroll horizontal do board funcional
 
-### Dispatcher
+### Dispatcher e Fila
 - crm-dispatcher validado com UAZAPI
+- crm-queue-processor deployado e ativo
+- fila crm_dispatch_queue operacional
+- pg_cron job ativo (a cada 1 minuto)
+- pg_net e pg_cron habilitados no Supabase
+
+### Automações cadastradas no banco
+- CRM: Recuperacao Carrinho (tag) — is_active=true (única ativa)
+- CRM: Boas-vindas Novo Cliente — is_active=false (seeds, aguarda validação)
+- CRM: Fidelizacao Cliente Recorrente — is_active=false (seeds, aguarda validação)
+
+---
+
+## Ponto de atenção
+
+Duplicidades das automações "Boas-vindas Novo Cliente" e "Fidelizacao Cliente Recorrente" foram identificadas no banco durante o dia 2026-03-09. A migration usa `ON CONFLICT DO NOTHING`, o que previne novo seed idempotente, mas duplicatas existentes devem ser removidas manualmente se confirmadas. Verificar antes de ativar essas automações.
+
+---
+
+## Pendências imediatas (Etapa 4)
+
+1. Editor de mensagens das automações — não implementado
+2. UX do campo "Tags Vinculadas" — precisa melhoria
+3. Visualização da fila (crm_dispatch_queue) no admin — não existe
+4. Blindagem contra duplicidade em seeds/migrations de automações
 
 ---
 
@@ -79,15 +103,14 @@
 
 ---
 
-## Próxima ação recomendada
+## Recomendação de operação atual
 
-Abrir a Etapa 4 com:
-- automações WhatsApp operacionais iniciais
-- baixo escopo
-- governança
-- idempotência
-- ativação/desativação
-- logs
+- Manter apenas automação de recuperação de carrinho ativa.
+- Não ativar Boas-vindas nem Fidelizacao até resolver duplicidades e validar templates com a equipe.
+- Não expandir automações até evoluir UX/admin e ampliar validações.
 
-Sugestão de próximo prompt:
-- `RDC_CRM_E4_P1_CLD_V1`
+## Próximos candidatos de prompt
+
+- Editor de mensagens das automações (CLD ou ANT)
+- Painel da fila crm_dispatch_queue no admin (ANT)
+- UX "Tags Vinculadas" (ANT)

@@ -216,152 +216,43 @@ Status possíveis: `DONE` · `DONE_COM_REVIEW` · `SKIPPED_BY_MERGE` · `READY_F
 
 ---
 
-## Backend — Etapa 5
+## CRM — Etapa 4 (continuação)
 
-### RDC_BACK_E5_P1_CLD_V1
+### RDC_CRM_E4_P1_CLD_V1
 **Status:** DONE
 **Ferramenta:** Claude Code
-**Data:** 2026-03-10
-**Descrição:** Infraestrutura de acesso público ao catálogo + price_category no perfil.
+**Data:** 2026-03-09
+**Descrição:** Seeds das automações operacionais da Etapa 4 — templates B2B, boas-vindas e fidelização.
 **Resultado:**
-- `GRANT SELECT ON catalog_products TO anon` — acesso anon explícito
-- `categories`: policy `authenticated_read_categories` → `anyone_read_categories` + GRANT anon
-- VIEW `catalog_products_public` (security_invoker=true): projeção segura sem colunas internas
-- `profiles.price_category TEXT DEFAULT 'retail' CHECK IN ('retail','wholesale','vip')` — base para tabela de preços
-- Migration: `20250313000008_public_catalog_access.sql`
+- `supabase/migrations/20250313000006_crm_e4_automations.sql` criado
+- Template de recuperação de carrinho atualizado (tom B2B)
+- `CRM: Boas-vindas Novo Cliente` inserida com `ON CONFLICT DO NOTHING` (is_active=false)
+- `CRM: Fidelizacao Cliente Recorrente` inserida com `ON CONFLICT DO NOTHING` (is_active=false)
+- Ambas aguardam validação de templates com a equipe antes de ativar
 
 ---
 
-## Admin — Etapa 5
-
-### RDC_BACK_E5_P8_CLD_V1
-**Status:** DONE
-**Ferramenta:** Claude Code
-**Data:** 2026-03-11
-**Descrição:** Fix 404 da RPC create_manual_order — parâmetro renomeado para alinhar com o frontend.
-**Causa raiz:** PostgREST resolve RPCs por nome de parâmetro. Frontend enviava `p_user_id`; função tinha `p_customer_id`.
-**Resultado:**
-- DROP de todas as overloads anteriores (7-param com `p_customer_id` era a única real)
-- Função recriada com assinatura `(p_user_id, p_items, p_total, p_status, p_origin, p_payment_method, p_notes)`
-- Lógica de segurança, CRM e sessão preservadas integralmente
-- Migration: `20250313000011_fix_manual_order_signature.sql` — aplicada
+### RDC_CRM_E4_P8_ANT_V1
+**Status:** NOT_EXECUTED
+**Ferramenta:** Antigravity/Gemini
+**Data:** 2026-03-09
+**Descrição:** Previsto para melhoria de UX do campo "Tags Vinculadas" e refinamentos de admin.
+**Resultado:** Não executado — limite de contexto do Antigravity atingido no dia. Pendente para próxima sessão.
 
 ---
 
-### RDC_BACK_E5_P6_CLD_V1
+### RDC_CRM_E4_P10_CLD_V1
 **Status:** DONE
 **Ferramenta:** Claude Code
-**Data:** 2026-03-10
-**Descrição:** Adicionar forma de pagamento ao pedido manual.
+**Data:** 2026-03-09
+**Descrição:** Fechamento documental do dia 2026-03-09 — atualização da documentação operacional para refletir estado consolidado da Etapa 4.
 **Resultado:**
-- `orders.payment_method TEXT` — nullable, sem CHECK (campo livre)
-- RPC `create_manual_order` atualizada: novo parâmetro `p_payment_method TEXT DEFAULT NULL`, incluído no INSERT e no metadata do crm_event
-- Versão anterior da função (sem o parâmetro) removida via `DROP FUNCTION IF EXISTS`
-- Migration: `20250313000010_orders_payment_method.sql` — aplicada
-
----
-
-### RDC_ADMIN_E5_P4_CLD_V1
-**Status:** DONE
-**Ferramenta:** Claude Code
-**Data:** 2026-03-10
-**Descrição:** Interface admin para lançar pedidos manuais (vendas via WhatsApp/loja física).
-**Resultado:**
-- Migration `20250313000009`: `orders.status` enum → text + CHECK (9 valores), coluna `orders.origin` ('site','whatsapp','loja_fisica','outro'), RPC `create_manual_order` SECURITY DEFINER
-- `src/pages/admin/NewOrder.tsx`: seleção de cliente (get_all_profiles), busca de produtos, carrinho com preço editável por item, campos de status/origem/notas, total dinâmico, RPC call + toast + redirect
-- `src/App.tsx`: rota `/admin/pedidos/novo` registrada
-- `src/pages/admin/Pedidos.tsx`: botão "Novo Pedido Manual" no header
-- Build TypeScript: limpo (0 erros)
-- Migration deployada: `npx supabase db push --linked`
-
----
-
-## Backend — Etapa 6 (Promoções, Cupons, Valor Mínimo Dinâmico)
-
-### RDC_BACK_E6_P1_CLD_V1
-**Status:** DONE
-**Ferramenta:** Claude Code
-**Data:** 2026-03-11
-**Descrição:** Infraestrutura de promoções B2B — `store_settings` e `coupons` + RPC `validate_coupon`.
-**Resultado:**
-- `store_settings`: tabela singleton (id=1), `min_cart_value NUMERIC DEFAULT 500.00`; RLS leitura pública, UPDATE admin
-- `coupons`: `code` UPPERCASE UNIQUE, `discount_type` (`percent`/`fixed`/`free_shipping`), `min_order_value`, `usage_limit`, `expires_at`, `is_active`; RLS somente admin (sem leitura pública — previne garimpagem)
-- `validate_coupon(p_code, p_cart_total)`: SECURITY DEFINER, normaliza `UPPER(TRIM())`, retorna `{valid, id, type, value}` ou `{valid:false, error}`; GRANT para anon+authenticated
-- Migration: `20250313000015_store_settings_and_coupons.sql`
-
----
-
-### RDC_BACK_E6_P2_CLD_V1
-**Status:** DONE
-**Ferramenta:** Claude Code
-**Data:** 2026-03-11
-**Descrição:** Associar cupom ao pedido e incrementar `used_count`.
-**Resultado:**
-- `orders.coupon_id UUID REFERENCES coupons(id)` — nullable FK
-- `create_manual_order`: novo param `p_coupon_id UUID DEFAULT NULL`; grava `coupon_id` no INSERT; `UPDATE coupons SET used_count+1` dentro da mesma transação; `coupon_id` no metadata CRM
-- Migration: `20250313000016_orders_coupon_and_rpc_update.sql`
-
----
-
-### RDC_BACK_E6_P3_CLD_V1
-**Status:** DONE (depois absorvido/revertido por P4)
-**Ferramenta:** Claude Code
-**Data:** 2026-03-11
-**Descrição:** Adicionou coluna booleana `free_shipping` em coupons (abordagem descartada na iteração seguinte).
-**Resultado:** Migration `20250313000017` — revertida conceitualmente pelo P4.
-
----
-
-### RDC_BACK_E6_P4_CLD_V1
-**Status:** DONE
-**Ferramenta:** Claude Code
-**Data:** 2026-03-11
-**Descrição:** Refatoração: `free_shipping` como tipo de desconto (não flag booleana).
-**Resultado:**
-- `DROP COLUMN free_shipping` (boolean removida)
-- CHECK `discount_type` expandido: `('percent', 'fixed', 'free_shipping')`
-- `validate_coupon` simplificada: retorno `{valid, id, type, value}` — frontend interpreta `type='free_shipping'` para zerar frete
-- Migration: `20250313000018_coupons_freeshipping_as_type.sql`
-
----
-
-### RDC_BACK_E6_P6_CLD_V1
-**Status:** DONE
-**Ferramenta:** Claude Code
-**Data:** 2026-03-11
-**Descrição:** Single Source of Truth — auditoria e documentação completa do schema do banco.
-**Resultado:**
-- Arquivo criado: `docs/SCHEMA.md` (não existia)
-- 18 tabelas documentadas com colunas exatas, tipos, nullable, defaults, FKs
-- 2 views, 10+ RPCs com assinaturas completas
-- Tabela de CHECKs e seção "Armadilhas Comuns" (❌ errado → ✅ correto) para prevenir erros 400/404 de integração frontend
-
----
-
-### RDC_BACK_E6_P7_CLD_V1
-**Status:** DONE
-**Ferramenta:** Claude Code
-**Data:** 2026-03-11
-**Descrição:** Suporte a data retroativa em pedidos manuais (lojista B2B que registra vendas do dia anterior).
-**Resultado:**
-- `create_manual_order`: 10º parâmetro `p_created_at TIMESTAMPTZ DEFAULT NULL`
-- `INSERT orders.created_at = COALESCE(p_created_at, now())`
-- `order_date` incluído no metadata CRM
-- `docs/SCHEMA.md` atualizado com nova assinatura
-- Migration: `20250313000019_manual_order_custom_date.sql`
-
----
-
-### RDC_BACK_E6_P8_CLD_V1
-**Status:** DONE
-**Ferramenta:** Claude Code
-**Data:** 2026-03-11
-**Descrição:** Fix crítico — erro 23505 (duplicate key) ao criar pedido manual para cliente com sessão existente.
-**Causa raiz:** Migration `_014` adicionou `UNIQUE (user_id)` em `client_sessions`, mas a RPC usava `ON CONFLICT (session_id)` — não cobria a nova constraint.
-**Resultado:**
-- `ON CONFLICT (session_id)` → `ON CONFLICT (user_id)`
-- DO UPDATE também normaliza `session_id` para padrão canônico `user_{uuid}`
-- Migration: `20250313000020_fix_manual_order_session_upsert.sql`
+- `docs/current_status.md`: Etapa 4 atualizada para OPERATIONAL_V1, pendências e recomendações adicionadas
+- `docs/roadmap.md`: Etapa 3 marcada QA_APPROVED, seção formal de Etapa 4 adicionada
+- `docs/qa_checklists.md`: seção Etapa 4 com validações do dia e pontos de atenção
+- `docs/prompt_registry.md`: P1, P8 e P10 registrados
+- `docs/session_compact.md`: estado atual sincronizado
+- `docs/backlog_future.md`: itens concluídos marcados, pendências de Etapa 4 adicionadas
 
 ---
 

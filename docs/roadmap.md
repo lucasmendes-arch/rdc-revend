@@ -1,6 +1,6 @@
 # Roadmap CRM — Rei dos Cachos B2B
 
-_Última atualização: 2026-03-08 (fechamento Etapa 2)_
+_Última atualização: 2026-03-09 (fechamento operacional Etapa 4 v1)_
 
 ## Visão geral
 
@@ -54,7 +54,7 @@ Ver `docs/qa_checklists.md` — Etapa 2.
 
 ---
 
-## 🔧 Etapa 3 — Motor de Tags + Disparos (em andamento)
+## ✅ Etapa 3 — Motor de Tags + Disparos (QA_APPROVED)
 
 **Objetivo:** conectar eventos CRM a tags automáticas e, em seguida, disparar automações WhatsApp.
 
@@ -148,6 +148,52 @@ SELECT cron.schedule(
 ### Pré-requisito para disparos WhatsApp
 - Definir e testar credenciais da API WhatsApp (Fiqon ou Z-API)
 - Ajustar `action_config` nos seeds com campos reais da API
+
+---
+
+## ✅ Etapa 4 — Automações WhatsApp (OPERATIONAL_V1)
+
+_Fechamento: 2026-03-09_
+
+### Status
+
+Backend principal funcionando. Disparo manual validado. Fila com delay ativa. Automação de recuperação de carrinho operacional.
+
+### Prompts executados
+
+- `RDC_CRM_E4_P1_CLD_V1` — seeds das automações operacionais (migration `20250313000006`)
+- `RDC_CRM_E4_P4_CLD_V1` — fila de delay (migration `20250313000007`) — ver detalhes acima na seção P4
+
+### Migrations aplicadas manualmente no Supabase
+
+- `20250313000006_crm_e4_automations.sql` — templates B2B de recuperação, boas-vindas e fidelização
+- `20250313000007_crm_dispatch_queue.sql` — fila, claim atômico, reset de stuck items
+
+### Infraestrutura ativada
+
+- Extensões `pg_net` e `pg_cron` confirmadas ativas
+- Job `crm-queue-processor` criado via `cron.schedule` — frequência: `* * * * *`
+
+### Automações cadastradas
+
+| Nome | Trigger | is_active |
+|---|---|---|
+| CRM: Recuperacao Carrinho (tag) | tag_added: abandonou-carrinho | true |
+| CRM: Boas-vindas Novo Cliente | tag_added: novo-cliente | false |
+| CRM: Fidelizacao Cliente Recorrente | tag_added: recorrente | false |
+
+> **Atenção:** duplicidades das automações "Boas-vindas" e "Fidelizacao" foram identificadas no banco. Verificar e limpar antes de ativar.
+
+### Recomendação de operação
+
+Manter apenas a automação de carrinho ativa. Não ativar as demais até resolver duplicidades no banco e validar templates com a equipe.
+
+### Pendências de Etapa 4
+
+- [ ] Editor de mensagens das automações no admin
+- [ ] UX do campo "Tags Vinculadas" (melhoria)
+- [ ] Visualização da fila `crm_dispatch_queue` no admin
+- [ ] Blindagem contra duplicidade em seeds/migrations de automações
 
 ---
 

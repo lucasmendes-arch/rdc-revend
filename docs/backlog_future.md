@@ -4,15 +4,23 @@ _Features planejadas mas fora do escopo atual. Não implementar sem alinhamento 
 
 ---
 
-## CRM — Etapa 3 (próxima)
+## CRM — Etapa 3 (concluída)
 
-- [ ] Tags automáticas via trigger SQL (cart_abandoned → tag `abandonou-carrinho`, purchase_completed → tag `novo-cliente`/`recorrente`)
-- [ ] Edge function `crm-dispatcher`: lê automações ativas, verifica idempotência, envia via Fiqon/Z-API
-- [ ] Painel admin para ativar/desativar automações e editar templates
-- [ ] Visualização de tags por cliente no debug screen
-- [ ] Configurar credenciais Fiqon/Z-API + ajustar `action_config` nos seeds
+- [x] Tags automáticas via trigger SQL — DONE
+- [x] Edge function `crm-dispatcher` com UAZAPI — DONE
+- [x] Visualização de tags por cliente no debug screen — DONE
+- [x] Credenciais UAZAPI configuradas — DONE
+- [ ] Painel admin para ativar/desativar automações e editar templates — pendente (Etapa 4)
 
-## CRM — Etapa 4+ (futuro)
+## CRM — Etapa 4 (em progresso)
+
+- [ ] Editor de mensagens das automações no admin
+- [ ] UX do campo "Tags Vinculadas" (melhoria)
+- [ ] Visualização da fila `crm_dispatch_queue` no admin
+- [ ] Blindagem contra duplicidade em seeds/migrations de automações
+- [ ] Ativar Boas-vindas e Fidelizacao após validação de templates e limpeza de duplicatas
+
+## CRM — Etapa 5+ (futuro)
 
 - [ ] Segmentação de clientes por tag (listagem filtrável)
 - [ ] Relatório de disparos: taxa de sucesso, falhas, por automação

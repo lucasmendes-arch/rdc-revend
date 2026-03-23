@@ -202,6 +202,40 @@ ORDER BY created_at DESC LIMIT 3;
 
 ---
 
+## Etapa 4 — Automações e Fila · STATUS: ✅ VALIDADO MANUALMENTE (2026-03-09)
+
+> Validação manual realizada no novo PC de trabalho após configuração do ambiente local.
+> Ambiente local funcionando após correção do nome do arquivo `.env.local`.
+
+### QA executado em 2026-03-09
+
+```
+[✅] Ambiente local (novo PC) — npm run dev funcionando após fix env.local
+[✅] Login local — autenticação funcionando
+[✅] /admin/crm — página carrega sem erro
+[✅] Disparo manual de automação — crm-dispatcher Modo B validado (dispatched: 1)
+[✅] Migration 20250313000006_crm_e4_automations.sql — aplicada manualmente no Supabase
+[✅] Migration 20250313000007_crm_dispatch_queue.sql — aplicada manualmente no Supabase
+[✅] Tabela crm_dispatch_queue — confirmada no banco
+[✅] Função claim_crm_queue_items — confirmada no banco
+[✅] Função reset_stuck_crm_queue_items — confirmada no banco
+[✅] Extensão pg_net — ativa no Supabase
+[✅] Extensão pg_cron — ativa no Supabase
+[✅] Job crm-queue-processor — criado e ativo (frequência: * * * * *)
+```
+
+### Pontos de atenção identificados
+
+```
+[⚠️] Duplicidades das automações "Boas-vindas Novo Cliente" e "Fidelizacao Cliente Recorrente" identificadas no banco
+     → Verificar e remover duplicatas antes de ativar essas automações
+[ ]  Editor de mensagens das automações — não implementado
+[ ]  Visualização da fila crm_dispatch_queue no admin — não existe
+[ ]  UX do campo "Tags Vinculadas" — precisa melhoria
+```
+
+---
+
 ## Etapa 3 P3 — Dispatcher WhatsApp · STATUS: ✅ VALIDADO
 
 > Deploy realizado. Endpoint UAZAPI correto: `POST /send/text` com token no header e campo `text`.
