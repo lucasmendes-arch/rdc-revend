@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import DOMPurify from "dompurify";
-import { ArrowRight, Check, Crown, Filter, LogOut, Search, ShoppingCart, Tag, Trash2, TrendingUp, X, PackageSearch, ShieldCheck } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
+import { ArrowRight, Check, Crown, Filter, Lock, LogOut, Search, ShoppingCart, Tag, Trash2, TrendingUp, X, PackageSearch, ShieldCheck } from "lucide-react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import PackageCards from "@/components/catalog/PackageCards";
 import PromoBanner from "@/components/catalog/PromoBanner";
 import CategoryBubbles from "@/components/catalog/CategoryBubbles";
@@ -51,10 +51,14 @@ const FilterChip = ({ label, onRemove }: FilterChipProps) => (
 
 const Catalogo = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const viewAll = searchParams.get('view') === 'todos';
+  const setViewAll = (v: boolean) => setSearchParams(v ? { view: 'todos' } : {}, { replace: true });
   const { data: products = [], isLoading, error } = useCatalogProducts();
   const { data: dbCategories = [] } = useCategories();
   const { items: cart, addItem, updateQty, removeItem, clearCart, total: cartTotal, count: cartCount } = useCart();
-  const { role } = useAuth();
+  const { user, role } = useAuth();
+  const isGuest = !user;
   useTrackPageView('Catálogo');
   const trackAddToCart = useTrackAddToCart();
   const trackProductView = useTrackProductView();
@@ -161,6 +165,21 @@ const Catalogo = () => {
     }
   }, [products, debouncedSearch, sortBy, filterMinPrice, filterMaxPrice, filterOnlySuggested, filterCategories, filterProfessional]);
 
+  // Derivação de `filtered` com ordenação por categoria para o modo "Ver todos"
+  const categoryOrder = useMemo(
+    () => new Map(dbCategories.map((c, i) => [c.id, i])),
+    [dbCategories]
+  );
+
+  const filteredSortedByCategory = useMemo(() => {
+    if (!viewAll) return filtered;
+    return [...filtered].sort((a, b) => {
+      const ai = a.category_id ? (categoryOrder.get(a.category_id) ?? 999) : 999;
+      const bi = b.category_id ? (categoryOrder.get(b.category_id) ?? 999) : 999;
+      return ai - bi;
+    });
+  }, [filtered, categoryOrder, viewAll]);
+
   // ========================================================================
   // HELPERS
   // ========================================================================
@@ -206,6 +225,13 @@ const Catalogo = () => {
 
   // Handle add to cart with quantity
   const handleAddItem = (product: typeof products[0]) => {
+    if (isGuest) {
+      toast('Cadastre-se para fazer pedidos', {
+        action: { label: 'Criar conta', onClick: () => navigate('/cadastro') },
+        duration: 4000,
+      });
+      return;
+    }
     const qty = getQty(product.id);
     const existing = cart.find(i => i.id === product.id);
 
@@ -261,54 +287,77 @@ const Catalogo = () => {
         <div className="container mx-auto px-3 sm:px-4 lg:px-6 py-2 sm:h-16 flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4">
 
           <div className="flex items-center justify-between w-full sm:w-auto">
-            <div className="select-none pointer-events-none">
-              <img src={logo} alt="Rei dos Cachos" className="h-8 sm:h-12 w-auto flex-shrink-0 brightness-0 invert" />
+            <div className="flex items-center gap-2 sm:gap-3 select-none pointer-events-none">
+              <img src={logo} alt="Rei dos Cachos" className="h-8 sm:h-10 w-auto flex-shrink-0 brightness-0 invert" />
+              <div className="flex flex-col leading-none">
+                <span className="text-white font-black text-[11px] sm:text-sm tracking-wide uppercase">Rei dos Cachos</span>
+                <span className="text-white/70 text-[9px] sm:text-[10px] font-semibold uppercase tracking-widest">atacado</span>
+              </div>
             </div>
 
             {/* Mobile Actions in Header Row */}
             <div className="flex items-center gap-1.5 sm:hidden text-white">
-              <button
-                onClick={() => setCartOpen(true)}
-                className="relative p-1.5 hover:bg-white/10 rounded-full transition-colors flex items-center justify-center"
-                title="Carrinho"
-              >
-                <ShoppingCart className="w-5 h-5" />
-                {cartCount > 0 && (
-                  <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-white text-[9px] font-bold flex items-center justify-center border-2 border-gold shadow-sm">
-                    {cartCount}
-                  </span>
-                )}
-              </button>
+              {isGuest ? (
+                <>
+                  <Link
+                    to="/login"
+                    className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-white/20 hover:bg-white/30 transition-colors"
+                  >
+                    Entrar
+                  </Link>
+                  <Link
+                    to="/cadastro"
+                    className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-white text-amber-700 hover:bg-amber-50 transition-colors"
+                  >
+                    Criar conta
+                  </Link>
+                </>
+              ) : (
+                <>
+                  <button
+                    onClick={() => setCartOpen(true)}
+                    className="relative p-1.5 hover:bg-white/10 rounded-full transition-colors flex items-center justify-center"
+                    title="Carrinho"
+                  >
+                    <ShoppingCart className="w-5 h-5" />
+                    {cartCount > 0 && (
+                      <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-white text-[9px] font-bold flex items-center justify-center border-2 border-gold shadow-sm">
+                        {cartCount}
+                      </span>
+                    )}
+                  </button>
 
-              <button
-                onClick={() => setFiltersOpen(!filtersOpen)}
-                className="relative p-1.5 hover:bg-white/10 rounded-full transition-colors flex items-center justify-center"
-              >
-                <Filter className="w-5 h-5" />
-                {activeFiltersCount > 0 && (
-                  <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-white text-[9px] font-bold flex items-center justify-center border-2 border-gold shadow-sm">
-                    {activeFiltersCount}
-                  </span>
-                )}
-              </button>
+                  <button
+                    onClick={() => setFiltersOpen(!filtersOpen)}
+                    className="relative p-1.5 hover:bg-white/10 rounded-full transition-colors flex items-center justify-center"
+                  >
+                    <Filter className="w-5 h-5" />
+                    {activeFiltersCount > 0 && (
+                      <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-white text-[9px] font-bold flex items-center justify-center border-2 border-gold shadow-sm">
+                        {activeFiltersCount}
+                      </span>
+                    )}
+                  </button>
 
-              {role === 'admin' && (
-                <Link
-                  to="/admin/catalogo"
-                  className="p-1.5 hover:bg-white/10 rounded-full transition-colors flex items-center justify-center"
-                  title="Painel Admin"
-                >
-                  <ShieldCheck className="w-5 h-5" />
-                </Link>
+                  {role === 'admin' && (
+                    <Link
+                      to="/admin/catalogo"
+                      className="p-1.5 hover:bg-white/10 rounded-full transition-colors flex items-center justify-center"
+                      title="Painel Admin"
+                    >
+                      <ShieldCheck className="w-5 h-5" />
+                    </Link>
+                  )}
+
+                  <button
+                    onClick={handleLogout}
+                    className="p-1.5 hover:bg-white/10 rounded-full transition-colors flex items-center justify-center"
+                    title="Sair"
+                  >
+                    <LogOut className="w-5 h-5" />
+                  </button>
+                </>
               )}
-
-              <button
-                onClick={handleLogout}
-                className="p-1.5 hover:bg-white/10 rounded-full transition-colors flex items-center justify-center"
-                title="Sair"
-              >
-                <LogOut className="w-5 h-5" />
-              </button>
             </div>
           </div>
 
@@ -328,51 +377,70 @@ const Catalogo = () => {
 
           <div className="hidden sm:flex items-center gap-3">
             {/* Desktop Actions */}
-            <button
-              onClick={() => setFiltersOpen(!filtersOpen)}
-              className="relative p-2 text-white hover:bg-white/10 rounded-lg transition-colors"
-              title="Filtros"
-            >
-              <Filter className="w-5 h-5" />
-              {activeFiltersCount > 0 && (
-                <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-red-500 text-white text-[9px] font-bold flex items-center justify-center">
-                  {activeFiltersCount}
-                </span>
-              )}
-            </button>
+            {isGuest ? (
+              <>
+                <Link
+                  to="/login"
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-white hover:bg-white/10 transition-all border border-white/30"
+                >
+                  Entrar
+                </Link>
+                <Link
+                  to="/cadastro"
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold bg-white text-amber-700 hover:bg-amber-50 transition-all"
+                >
+                  Criar conta
+                </Link>
+              </>
+            ) : (
+              <>
+                <button
+                  onClick={() => setFiltersOpen(!filtersOpen)}
+                  className="relative p-2 text-white hover:bg-white/10 rounded-lg transition-colors"
+                  title="Filtros"
+                >
+                  <Filter className="w-5 h-5" />
+                  {activeFiltersCount > 0 && (
+                    <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-red-500 text-white text-[9px] font-bold flex items-center justify-center">
+                      {activeFiltersCount}
+                    </span>
+                  )}
+                </button>
 
-            {/* Cart */}
-            <button
-              onClick={() => setCartOpen(true)}
-              className={`relative flex items-center gap-1.5 px-4 py-2 rounded-lg border border-gold-light text-gold-text bg-white hover:border-gold-border transition-all text-sm font-medium ${cartBounce ? 'animate-bounce' : ''}`}
-            >
-              <ShoppingCart className="w-4 h-4" />
-              <span>Pedido</span>
-              {cartCount > 0 && (
-                <span className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full gradient-gold text-white text-[10px] font-bold flex items-center justify-center">
-                  {cartCount}
-                </span>
-              )}
-            </button>
+                {/* Cart */}
+                <button
+                  onClick={() => setCartOpen(true)}
+                  className={`relative flex items-center gap-1.5 px-4 py-2 rounded-lg border border-gold-light text-gold-text bg-white hover:border-gold-border transition-all text-sm font-medium ${cartBounce ? 'animate-bounce' : ''}`}
+                >
+                  <ShoppingCart className="w-4 h-4" />
+                  <span>Pedido</span>
+                  {cartCount > 0 && (
+                    <span className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full gradient-gold text-white text-[10px] font-bold flex items-center justify-center">
+                      {cartCount}
+                    </span>
+                  )}
+                </button>
 
-            {role === 'admin' && (
-              <Link
-                to="/admin/catalogo"
-                className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-transparent text-sm font-medium text-white hover:bg-white/10 transition-all bg-white/5"
-                title="Painel Admin"
-              >
-                <ShieldCheck className="w-4 h-4" />
-                <span>Admin</span>
-              </Link>
+                {role === 'admin' && (
+                  <Link
+                    to="/admin/catalogo"
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-transparent text-sm font-medium text-white hover:bg-white/10 transition-all bg-white/5"
+                    title="Painel Admin"
+                  >
+                    <ShieldCheck className="w-4 h-4" />
+                    <span>Admin</span>
+                  </Link>
+                )}
+
+                <button
+                  onClick={handleLogout}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm text-amber-100 hover:text-white hover:bg-white/10 transition-all"
+                >
+                  <LogOut className="w-4 h-4" />
+                  <span>Sair</span>
+                </button>
+              </>
             )}
-
-            <button
-              onClick={handleLogout}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm text-amber-100 hover:text-white hover:bg-white/10 transition-all"
-            >
-              <LogOut className="w-4 h-4" />
-              <span>Sair</span>
-            </button>
           </div>
         </div>
       </header >
@@ -483,8 +551,8 @@ const Catalogo = () => {
             <PromoBanner onClick={() => document.getElementById('kits-section')?.scrollIntoView({ behavior: 'smooth' })} />
           </div>
 
-          {/* Mobile Only: Seleção dos Mais Vendidos */}
-          {!isLoading && !error && products.length > 0 && (
+          {/* Mobile Only: Seleção dos Mais Vendidos — ocultar durante busca ou viewAll */}
+          {!debouncedSearch && !viewAll && !isLoading && !error && products.length > 0 && (
             <div className="pt-2 px-3 sm:hidden">
               <div id="kits-section" className="flex items-center justify-between mb-4 mt-2">
                 <div className="flex items-center gap-1.5">
@@ -496,28 +564,31 @@ const Catalogo = () => {
               </div>
 
               <div className="mb-4">
-                <PackageCards products={products} />
+                <PackageCards products={products} isGuest={isGuest} />
               </div>
             </div>
           )}
 
-          {/* Mobile Only: Destaques & Rest */}
-          <div className="pt-0 sm:hidden">
-
-            {/* Mobile Only: Compact Product Carousel for Featured Items */}
-            {!isLoading && !error && filtered.length > 0 && (
-              <CompactProductCarousel
-                title="Destaques para você"
-                products={products.filter(p => p.is_highlight)}
-                cartAddedId={addedId}
-                getQty={getQty}
-                setQty={setQty}
-                onAdd={handleAddItem}
-                onSelect={handleSelectProduct}
-                getSuggestedPrice={getSuggestedPrice}
-              />
-            )}
-          </div>
+          {/* Mobile Only: Destaques & Rest — ocultar durante busca ou viewAll */}
+          {!debouncedSearch && !viewAll && (
+            <div className="pt-0 sm:hidden">
+              {/* Mobile Only: Compact Product Carousel for Featured Items */}
+              {!isLoading && !error && filtered.length > 0 && (
+                <CompactProductCarousel
+                  title="Destaques para você"
+                  products={products.filter(p => p.is_highlight)}
+                  cartAddedId={addedId}
+                  getQty={getQty}
+                  setQty={setQty}
+                  onAdd={handleAddItem}
+                  onSelect={handleSelectProduct}
+                  getSuggestedPrice={getSuggestedPrice}
+                  isGuest={isGuest}
+                  onViewAll={() => setViewAll(true)}
+                />
+              )}
+            </div>
+          )}
 
           <div className="px-3 sm:px-4 lg:px-6 pt-2 sm:pt-6">
             {/* Page Header (Desktop) */}
@@ -530,29 +601,48 @@ const Catalogo = () => {
               <p className="text-xs sm:text-sm text-muted-foreground mt-0">{isLoading ? "Carregando..." : `${filtered.length} produtos disponíveis`}</p>
             </div>
 
-            {/* Package Cards Header (Desktop Only, since Mobile was moved to top) */}
-            {!isLoading && !error && products.length > 0 && (
+            {/* Package Cards Header (Desktop Only) — ocultar durante busca ou viewAll */}
+            {!debouncedSearch && !viewAll && !isLoading && !error && products.length > 0 && (
               <div className="hidden sm:block">
                 <div className="mb-8">
-                  <PackageCards products={products} />
+                  <PackageCards products={products} isGuest={isGuest} />
                 </div>
               </div>
             )}
 
-            {/* Category Bubbles - Moved right above 'Aproveite e leve também' */}
-            <div className="sm:hidden mb-2 mt-4 -mx-3">
-              <CategoryBubbles
-                categories={dbCategories}
-                activeCategories={filterCategories}
-                onToggleCategory={toggleCategory}
-              />
-            </div>
+            {/* Category Bubbles — ocultar durante busca ou viewAll */}
+            {!debouncedSearch && !viewAll && (
+              <div className="sm:hidden mb-2 mt-4 -mx-3">
+                <CategoryBubbles
+                  categories={dbCategories}
+                  activeCategories={filterCategories}
+                  onToggleCategory={toggleCategory}
+                />
+              </div>
+            )}
 
-            {/* All Products Title Mobile */}
-            {!isLoading && !error && filtered.length > 0 && (
+            {/* Banner de saída do modo Ver todos */}
+            {viewAll && !debouncedSearch && (
+              <div className="flex items-center justify-between mt-4 sm:mt-6 mb-4 py-2.5 px-3 rounded-lg bg-amber-50 border border-amber-200">
+                <span className="text-xs sm:text-sm font-semibold text-amber-800">
+                  Todos os produtos ({filtered.length})
+                </span>
+                <button
+                  onClick={() => setViewAll(false)}
+                  className="flex items-center gap-1 text-xs font-bold text-amber-700 hover:text-amber-900 transition-colors"
+                >
+                  <X className="w-3.5 h-3.5" /> Voltar ao catálogo
+                </button>
+              </div>
+            )}
+
+            {/* Título da seção de produtos — oculto em viewAll sem busca (substituído pelo banner) */}
+            {!isLoading && !error && filtered.length > 0 && (!viewAll || debouncedSearch) && (
               <div className="flex items-center gap-1.5 mb-4 mt-4 sm:mt-8">
                 <div className="w-1 h-5 bg-amber-500 rounded-full"></div>
-                <h2 className="text-[16px] sm:text-lg font-bold text-foreground">Aproveite e leve também</h2>
+                <h2 className="text-[16px] sm:text-lg font-bold text-foreground">
+                  {debouncedSearch ? `Resultados para "${debouncedSearch}"` : "Aproveite e leve também"}
+                </h2>
               </div>
             )}
             {activeFiltersCount > 0 && (
@@ -604,44 +694,150 @@ const Catalogo = () => {
             {/* Products Grid */}
             {!isLoading && !error && (
               <>
-                {/* Category Carousels */}
-                <div className="flex flex-col gap-6 sm:gap-8 mb-8">
-                  {dbCategories.map(category => {
-                    const categoryProducts = filtered.filter(p => p.category_id === category.id);
+                {debouncedSearch || viewAll ? (
+                  /* MODO BUSCA / VER TODOS: lista plana, ordenada por categoria */
+                  filteredSortedByCategory.length > 0 ? (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4 mb-8">
+                      {filteredSortedByCategory.map(product => {
+                        const suggested = getSuggestedPrice(product.price, product.compare_at_price);
+                        return (
+                          <div
+                            key={product.id}
+                            className="bg-white rounded-xl border border-border shadow-sm hover:shadow-md transition-shadow flex flex-col overflow-hidden group"
+                          >
+                            <div
+                              className="w-full h-[140px] sm:h-[160px] bg-surface-alt flex items-center justify-center p-2 cursor-pointer"
+                              onClick={() => handleSelectProduct(product)}
+                            >
+                              {product.main_image ? (
+                                <img
+                                  src={product.main_image}
+                                  alt={product.name}
+                                  loading="lazy"
+                                  className="w-full h-full object-contain mix-blend-multiply transition-transform duration-500 group-hover:scale-105"
+                                />
+                              ) : (
+                                <ShoppingCart className="w-10 h-10 text-muted-foreground/25" />
+                              )}
+                            </div>
+                            <div className="p-2.5 sm:p-3 flex flex-col flex-1">
+                              <h3
+                                className="font-medium text-foreground text-[11px] sm:text-[13px] leading-snug line-clamp-2 mb-1.5 cursor-pointer group-hover:text-amber-600 transition-colors"
+                                onClick={() => handleSelectProduct(product)}
+                              >
+                                {product.name}
+                              </h3>
+                              <div className="mt-auto">
+                                {/* Preço de revenda: oculto para visitante */}
+                                {!isGuest && !product.is_professional && (
+                                  <div className="text-[10px] sm:text-xs text-green-700 font-bold mb-0.5">
+                                    Revenda: R$ {suggested.toFixed(2)}
+                                  </div>
+                                )}
+                                {/* Preço de custo: oculto para visitante */}
+                                {isGuest ? (
+                                  <div className="flex items-center gap-1 mb-2">
+                                    <Lock className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+                                    <span className="text-[11px] text-muted-foreground font-medium">Ver preço ao cadastrar</span>
+                                  </div>
+                                ) : (
+                                  <div className="text-sm font-bold text-foreground mb-2">
+                                    R$ {product.price.toFixed(2)}
+                                  </div>
+                                )}
+                                {isGuest ? (
+                                  <Link
+                                    to="/cadastro"
+                                    className="w-full flex items-center justify-center gap-1 py-1.5 rounded text-[10px] font-bold border border-gold-border text-gold-text hover:bg-gold hover:text-white transition-all"
+                                  >
+                                    Cadastre-se para comprar
+                                  </Link>
+                                ) : (
+                                  <div className="flex items-center gap-1 mt-1">
+                                    <div className="flex items-center gap-0.5">
+                                      <button
+                                        onClick={(e) => { e.stopPropagation(); setQty(product.id, getQty(product.id) - 1); }}
+                                        disabled={getQty(product.id) <= 1}
+                                        className="w-6 h-6 flex items-center justify-center rounded border border-border bg-white text-muted-foreground hover:bg-surface-alt transition-colors disabled:opacity-40 text-xs font-medium"
+                                      >−</button>
+                                      <input
+                                        type="text"
+                                        inputMode="numeric"
+                                        value={getQty(product.id)}
+                                        onChange={(e) => { const v = parseInt(e.target.value, 10); if (!isNaN(v)) setQty(product.id, v); }}
+                                        onBlur={(e) => { const v = parseInt(e.target.value, 10); if (isNaN(v) || v < 1) setQty(product.id, 1); }}
+                                        className="w-7 h-6 text-center text-[11px] font-semibold text-foreground border border-border rounded bg-white focus:outline-none focus:ring-1 focus:ring-gold"
+                                      />
+                                      <button
+                                        onClick={(e) => { e.stopPropagation(); setQty(product.id, getQty(product.id) + 1); }}
+                                        className="w-6 h-6 flex items-center justify-center rounded-lg border border-border bg-white text-muted-foreground hover:bg-surface-alt transition-colors text-xs font-medium"
+                                      >+</button>
+                                    </div>
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); handleAddItem(product); }}
+                                      className={`flex-1 h-6 flex items-center justify-center gap-1 rounded text-[10px] font-bold transition-all uppercase ${addedId === product.id ? 'bg-green-600 text-white' : 'bg-gold-light text-gold-text border border-gold-border hover:bg-gold hover:text-white'}`}
+                                    >
+                                      {addedId === product.id
+                                        ? <><Check className="w-3 h-3" /> OK</>
+                                        : <><ShoppingCart className="w-3 h-3" /> ADD</>}
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="text-center py-16">
+                      <Tag className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                      <h3 className="text-lg font-semibold text-foreground mb-2">Nenhum produto encontrado</h3>
+                      <p className="text-muted-foreground text-sm">Tente outro termo de busca ou ajuste os filtros.</p>
+                    </div>
+                  )
+                ) : (
+                  /* MODO NAVEGAÇÃO: carrosséis por categoria */
+                  <>
+                    <div className="flex flex-col gap-6 sm:gap-8 mb-8">
+                      {dbCategories.map(category => {
+                        const categoryProducts = filtered.filter(p => p.category_id === category.id);
+                        if (categoryProducts.length === 0) return null;
+                        return (
+                          <div key={category.id} className="w-full">
+                            <CompactProductCarousel
+                              title={category.name}
+                              products={categoryProducts}
+                              cartAddedId={addedId}
+                              getQty={getQty}
+                              setQty={setQty}
+                              onAdd={handleAddItem}
+                              onSelect={handleSelectProduct}
+                              getSuggestedPrice={getSuggestedPrice}
+                              isGuest={isGuest}
+                              onViewAll={() => setViewAll(true)}
+                            />
+                          </div>
+                        );
+                      })}
+                    </div>
 
-                    if (categoryProducts.length === 0) return null;
-
-                    return (
-                      <div key={category.id} className="w-full">
-                        <CompactProductCarousel
-                          title={category.name}
-                          products={categoryProducts}
-                          cartAddedId={addedId}
-                          getQty={getQty}
-                          setQty={setQty}
-                          onAdd={handleAddItem}
-                          onSelect={handleSelectProduct}
-                          getSuggestedPrice={getSuggestedPrice}
-                        />
+                    {filtered.length === 0 && products.length > 0 && (
+                      <div className="text-center py-16">
+                        <Tag className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                        <h3 className="text-lg font-semibold text-foreground mb-2">Nenhum produto encontrado</h3>
+                        <p className="text-muted-foreground text-sm">Tente outro termo de busca ou ajuste os filtros.</p>
                       </div>
-                    );
-                  })}
-                </div>
+                    )}
 
-                {filtered.length === 0 && products.length > 0 && (
-                  <div className="text-center py-16">
-                    <Tag className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                    <h3 className="text-lg font-semibold text-foreground mb-2">Nenhum produto encontrado</h3>
-                    <p className="text-muted-foreground text-sm">Tente outro termo de busca ou ajuste os filtros.</p>
-                  </div>
-                )}
-
-                {products.length === 0 && (
-                  <div className="text-center py-16">
-                    <ShoppingCart className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                    <h3 className="text-lg font-semibold text-foreground mb-2">Catálogo vazio</h3>
-                    <p className="text-muted-foreground text-sm">Volte mais tarde para ver os produtos.</p>
-                  </div>
+                    {products.length === 0 && (
+                      <div className="text-center py-16">
+                        <ShoppingCart className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                        <h3 className="text-lg font-semibold text-foreground mb-2">Catálogo vazio</h3>
+                        <p className="text-muted-foreground text-sm">Volte mais tarde para ver os produtos.</p>
+                      </div>
+                    )}
+                  </>
                 )}
               </>
             )}
@@ -799,16 +995,27 @@ const Catalogo = () => {
                 {/* Pricing */}
                 {selectedProduct.description_html && (
                   <div className="bg-surface-alt rounded-lg sm:rounded-xl p-3 sm:p-4 mb-3 sm:mb-4 text-xs sm:text-sm">
-                    <div className="text-muted-foreground mb-0.5">Custo</div>
-                    <div className="text-base sm:text-lg font-bold text-foreground mb-2">
-                      R$ {selectedProduct.price.toFixed(2)}
-                    </div>
-                    <div className="border-t border-border pt-2">
-                      <div className="text-muted-foreground mb-0.5">Preço de Venda (Sugerido)</div>
-                      <div className="text-base sm:text-lg font-bold gradient-gold-text">
-                        R$ {getSuggestedPrice(selectedProduct.price, selectedProduct.compare_at_price).toFixed(2)}
+                    {isGuest ? (
+                      <div className="flex items-center gap-2 py-1">
+                        <Lock className="w-4 h-4 text-amber-500 flex-shrink-0" />
+                        <span className="text-sm font-medium text-muted-foreground">
+                          Preços visíveis após cadastro gratuito
+                        </span>
                       </div>
-                    </div>
+                    ) : (
+                      <>
+                        <div className="text-muted-foreground mb-0.5">Custo</div>
+                        <div className="text-base sm:text-lg font-bold text-foreground mb-2">
+                          R$ {selectedProduct.price.toFixed(2)}
+                        </div>
+                        <div className="border-t border-border pt-2">
+                          <div className="text-muted-foreground mb-0.5">Preço de Venda (Sugerido)</div>
+                          <div className="text-base sm:text-lg font-bold gradient-gold-text">
+                            R$ {getSuggestedPrice(selectedProduct.price, selectedProduct.compare_at_price).toFixed(2)}
+                          </div>
+                        </div>
+                      </>
+                    )}
                   </div>
                 )}
 
@@ -861,28 +1068,38 @@ const Catalogo = () => {
 
                 {/* Action buttons */}
                 <div className="space-y-1.5 sm:space-y-2">
-                  <button
-                    onClick={() => {
-                      handleAddItem(selectedProduct);
-                      setSelectedProduct(null);
-                    }}
-                    className={`w-full flex items-center justify-center gap-1.5 py-2 sm:py-3 rounded text-xs sm:text-sm font-semibold text-white transition-all ${addedId === selectedProduct.id
-                      ? 'bg-green-600'
-                      : 'btn-gold'
-                      }`}
-                  >
-                    {addedId === selectedProduct.id ? (
-                      <>
-                        <Check className="w-3.5 h-3.5" />
-                        Adicionado!
-                      </>
-                    ) : (
-                      <>
-                        <ShoppingCart className="w-3.5 h-3.5" />
-                        ADICIONAR AO PEDIDO
-                      </>
-                    )}
-                  </button>
+                  {isGuest ? (
+                    <Link
+                      to="/cadastro"
+                      className="w-full flex items-center justify-center gap-1.5 py-2 sm:py-3 rounded text-xs sm:text-sm font-semibold text-white btn-gold"
+                    >
+                      <ArrowRight className="w-3.5 h-3.5" />
+                      Cadastre-se para comprar
+                    </Link>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        handleAddItem(selectedProduct);
+                        setSelectedProduct(null);
+                      }}
+                      className={`w-full flex items-center justify-center gap-1.5 py-2 sm:py-3 rounded text-xs sm:text-sm font-semibold text-white transition-all ${addedId === selectedProduct.id
+                        ? 'bg-green-600'
+                        : 'btn-gold'
+                        }`}
+                    >
+                      {addedId === selectedProduct.id ? (
+                        <>
+                          <Check className="w-3.5 h-3.5" />
+                          Adicionado!
+                        </>
+                      ) : (
+                        <>
+                          <ShoppingCart className="w-3.5 h-3.5" />
+                          ADICIONAR AO PEDIDO
+                        </>
+                      )}
+                    </button>
+                  )}
                   <button
                     onClick={() => setSelectedProduct(null)}
                     className="w-full px-3 sm:px-4 py-1.5 sm:py-2 rounded text-xs sm:text-sm font-medium border border-border bg-white text-foreground hover:bg-surface-alt transition-colors"

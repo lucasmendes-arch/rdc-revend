@@ -1,16 +1,17 @@
 import { useCallback, useMemo, useRef, useState, useEffect } from 'react'
-import { Check, ShoppingCart, TrendingUp, X } from 'lucide-react'
+import { Check, Lock, ShoppingCart, TrendingUp, X } from 'lucide-react'
 import { toast } from 'sonner'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { PACKAGES, selectProductsForPackage } from '@/config/packages'
 import { useCart } from '@/contexts/CartContext'
 import type { PublicProduct } from '@/hooks/useCatalogProducts'
 
 interface PackageCardsProps {
   products: PublicProduct[]
+  isGuest?: boolean
 }
 
-export default function PackageCards({ products }: PackageCardsProps) {
+export default function PackageCards({ products, isGuest = false }: PackageCardsProps) {
   const { addItem } = useCart()
   const navigate = useNavigate()
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -108,9 +109,16 @@ export default function PackageCards({ products }: PackageCardsProps) {
 
               {/* Price pill */}
               <div className="mt-1 mb-3">
-                <span className="text-[18px] sm:text-2xl font-black gradient-gold-text">
-                  R$ {pkgTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                </span>
+                {isGuest ? (
+                  <div className="flex items-center gap-1.5">
+                    <Lock className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                    <span className="text-sm text-muted-foreground font-medium">Ver preço ao cadastrar</span>
+                  </div>
+                ) : (
+                  <span className="text-[18px] sm:text-2xl font-black gradient-gold-text">
+                    R$ {pkgTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  </span>
+                )}
               </div>
 
               {(() => {
@@ -161,39 +169,53 @@ export default function PackageCards({ products }: PackageCardsProps) {
                 );
               })()}
 
-              <div className="space-y-1 text-[10px] sm:text-xs text-muted-foreground mb-3">
-                <div className="flex items-center gap-1.5 text-green-700 font-semibold leading-tight">
-                  <TrendingUp className="w-3.5 h-3.5 shrink-0" />
-                  <span>
-                    Potencial de retorno estimado*{' '}
-                    <span className="whitespace-nowrap">R$ {dynamicRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
-                  </span>
+              {!isGuest && (
+                <div className="space-y-1 text-[10px] sm:text-xs text-muted-foreground mb-3">
+                  <div className="flex items-center gap-1.5 text-green-700 font-semibold leading-tight">
+                    <TrendingUp className="w-3.5 h-3.5 shrink-0" />
+                    <span>
+                      Potencial de retorno estimado*{' '}
+                      <span className="whitespace-nowrap">R$ {dynamicRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                    </span>
+                  </div>
                 </div>
-              </div>
+              )}
 
               <div className="flex-1" />
 
-              <button
-                onClick={() => handleSelectPackage(pkg.id)}
-                className={`w-full flex items-center justify-center gap-2 py-2 sm:py-2.5 rounded-lg text-xs font-bold transition-all tracking-wide ${addedPkgId === pkg.id
-                  ? 'bg-green-600 shadow-none text-white'
-                  : pkg.highlight
-                    ? 'bg-amber-500 hover:bg-amber-600 shadow-sm text-white'
-                    : 'bg-surface-alt font-semibold text-foreground border border-border hover:bg-gold hover:text-white hover:border-gold'
+              {isGuest ? (
+                <Link
+                  to="/cadastro"
+                  className={`w-full flex items-center justify-center gap-2 py-2 sm:py-2.5 rounded-lg text-xs font-bold transition-all tracking-wide ${pkg.highlight
+                    ? 'bg-amber-500 hover:bg-amber-600 text-white'
+                    : 'border border-gold-border text-gold-text hover:bg-gold hover:text-white'
                   }`}
-              >
-                {addedPkgId === pkg.id ? (
-                  <>
-                    <Check className="w-4 h-4" />
-                    Adicionado!
-                  </>
-                ) : (
-                  <>
-                    <ShoppingCart className="w-4 h-4" />
-                    Adicionar Pacote
-                  </>
-                )}
-              </button>
+                >
+                  Cadastre-se para comprar
+                </Link>
+              ) : (
+                <button
+                  onClick={() => handleSelectPackage(pkg.id)}
+                  className={`w-full flex items-center justify-center gap-2 py-2 sm:py-2.5 rounded-lg text-xs font-bold transition-all tracking-wide ${addedPkgId === pkg.id
+                    ? 'bg-green-600 shadow-none text-white'
+                    : pkg.highlight
+                      ? 'bg-amber-500 hover:bg-amber-600 shadow-sm text-white'
+                      : 'bg-surface-alt font-semibold text-foreground border border-border hover:bg-gold hover:text-white hover:border-gold'
+                    }`}
+                >
+                  {addedPkgId === pkg.id ? (
+                    <>
+                      <Check className="w-4 h-4" />
+                      Adicionado!
+                    </>
+                  ) : (
+                    <>
+                      <ShoppingCart className="w-4 h-4" />
+                      Adicionar Pacote
+                    </>
+                  )}
+                </button>
+              )}
               <button
                 onClick={() => setDetailsPkgId(pkg.id)}
                 className="w-full mt-2 py-2 text-xs font-bold text-muted-foreground hover:text-gold transition-colors underline bg-transparent border-none"
@@ -248,8 +270,9 @@ export default function PackageCards({ products }: PackageCardsProps) {
                         <tr>
                           <th className="py-2.5 px-3 rounded-tl-lg">Produto</th>
                           <th className="py-2.5 px-3 text-center">Und.</th>
-                          <th className="py-2.5 px-3 text-right">Preço</th>
-                          <th className="py-2.5 px-3 text-right rounded-tr-lg">Total</th>
+                          {!isGuest && <th className="py-2.5 px-3 text-right">Preço</th>}
+                          {!isGuest && <th className="py-2.5 px-3 text-right rounded-tr-lg">Total</th>}
+                          {isGuest && <th className="py-2.5 px-3 text-right rounded-tr-lg" />}
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-border">
@@ -257,19 +280,23 @@ export default function PackageCards({ products }: PackageCardsProps) {
                           <tr key={idx} className="hover:bg-surface/50 transition-colors">
                             <td className="py-3 px-3 font-medium text-foreground text-xs">{item.product.id === 'not_found' ? `${item.originalName} (Sem estoque)` : item.product.name}</td>
                             <td className="py-3 px-3 text-center text-muted-foreground text-xs">{item.qty}x</td>
-                            <td className="py-3 px-3 text-right text-muted-foreground text-xs tabular-nums">R$ {item.product.price.toFixed(2)}</td>
-                            <td className="py-3 px-3 text-right font-semibold text-foreground text-xs tabular-nums opacity-90">
-                              {item.product.id === 'not_found' ? '-' : `R$ ${(item.product.price * item.qty).toFixed(2)}`}
-                            </td>
+                            {!isGuest && <td className="py-3 px-3 text-right text-muted-foreground text-xs tabular-nums">R$ {item.product.price.toFixed(2)}</td>}
+                            {!isGuest && (
+                              <td className="py-3 px-3 text-right font-semibold text-foreground text-xs tabular-nums opacity-90">
+                                {item.product.id === 'not_found' ? '-' : `R$ ${(item.product.price * item.qty).toFixed(2)}`}
+                              </td>
+                            )}
                           </tr>
                         ))}
                       </tbody>
-                      <tfoot className="border-t-2 border-border font-bold text-foreground">
-                        <tr>
-                          <td colSpan={3} className="py-3 px-3 text-right">Total do Pacote</td>
-                          <td className="py-3 px-3 text-right text-base text-gold-text">R$ {entry.selected.reduce((sum, item) => sum + (item.product.id !== 'not_found' ? item.product.price : 0) * item.qty, 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
-                        </tr>
-                      </tfoot>
+                      {!isGuest && (
+                        <tfoot className="border-t-2 border-border font-bold text-foreground">
+                          <tr>
+                            <td colSpan={3} className="py-3 px-3 text-right">Total do Pacote</td>
+                            <td className="py-3 px-3 text-right text-base text-gold-text">R$ {entry.selected.reduce((sum, item) => sum + (item.product.id !== 'not_found' ? item.product.price : 0) * item.qty, 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                          </tr>
+                        </tfoot>
+                      )}
                     </table>
                   </div>
                   <div className="p-4 sm:p-5 border-t border-border bg-surface flex justify-end gap-3">
@@ -277,18 +304,27 @@ export default function PackageCards({ products }: PackageCardsProps) {
                       onClick={() => setDetailsPkgId(null)}
                       className="px-4 py-2 text-sm font-semibold text-muted-foreground hover:text-foreground hover:bg-surface-alt rounded-lg transition-colors"
                     >
-                      Cancelar
+                      {isGuest ? 'Fechar' : 'Cancelar'}
                     </button>
-                    <button
-                      onClick={() => {
-                        handleSelectPackage(entry.pkg.id);
-                        setDetailsPkgId(null);
-                      }}
-                      className="w-full sm:w-auto px-6 py-2.5 bg-gold text-white font-bold rounded-lg shadow-sm hover:-translate-y-0.5 transition-transform flex items-center justify-center gap-2"
-                    >
-                      <ShoppingCart className="w-4 h-4" />
-                      Adicionar {entry.pkg.name}
-                    </button>
+                    {isGuest ? (
+                      <Link
+                        to="/cadastro"
+                        className="w-full sm:w-auto px-6 py-2.5 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-lg shadow-sm hover:-translate-y-0.5 transition-transform flex items-center justify-center gap-2"
+                      >
+                        Criar conta grátis para comprar
+                      </Link>
+                    ) : (
+                      <button
+                        onClick={() => {
+                          handleSelectPackage(entry.pkg.id);
+                          setDetailsPkgId(null);
+                        }}
+                        className="w-full sm:w-auto px-6 py-2.5 bg-gold text-white font-bold rounded-lg shadow-sm hover:-translate-y-0.5 transition-transform flex items-center justify-center gap-2"
+                      >
+                        <ShoppingCart className="w-4 h-4" />
+                        Adicionar {entry.pkg.name}
+                      </button>
+                    )}
                   </div>
                 </>
               )

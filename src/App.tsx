@@ -23,13 +23,14 @@ import AdminCategorias from "./pages/admin/Categorias";
 import AdminUpsell from "./pages/admin/Upsell";
 import AdminFinanceiro from "./pages/admin/Financeiro";
 import AdminCrmDebug from "./pages/admin/CrmDebug";
+import RedefinirSenha from "./pages/RedefinirSenha";
 import NotFound from "./pages/NotFound";
 import WhatsAppButton from "./components/landing/WhatsAppButton";
 import { useLocation } from "react-router-dom";
 
 function ConditionalWhatsApp() {
   const { pathname } = useLocation();
-  if (pathname.startsWith('/admin') || pathname === '/cadastro' || pathname === '/login') return null;
+  if (pathname.startsWith('/admin') || pathname === '/cadastro' || pathname === '/login' || pathname === '/redefinir-senha') return null;
   return <WhatsAppButton />;
 }
 
@@ -48,8 +49,9 @@ const App = () => (
                 <Route path="/" element={<Navigate to="/login" replace />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/cadastro" element={<Cadastro />} />
+                <Route path="/redefinir-senha" element={<RedefinirSenha />} />
+                <Route path="/catalogo" element={<Catalogo />} />
                 <Route element={<ProtectedRoute />}>
-                  <Route path="/catalogo" element={<Catalogo />} />
                   <Route path="/checkout" element={<Checkout />} />
                   <Route path="/pedido/sucesso/:id" element={<PedidoSucesso />} />
                   <Route path="/meus-pedidos" element={<MeusPedidos />} />
