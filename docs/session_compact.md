@@ -1,87 +1,135 @@
 # session_compact.md — Compactação da sessão longa
-# Atualizado em: 2026-03-09
+# Atualizado em: 2026-03-23
 
 ## 1. Objetivo
 
-Resumo compacto da conversa longa para retomada rápida com qualquer IA.
+Resumo compacto para retomada rápida com qualquer IA.
 
 ---
 
-## 2. Resumo executivo
+## 2. Estado atual do projeto
 
-O projeto CRM do Rei dos Cachos avançou da fundação até a primeira versão operacional da Etapa 4.
+### Branch ativa
+`feature/bloco-ajustes-comercial-auth-pricing` — **NÃO mergeada para main ainda.**
 
-### Etapa 2
-Tracking de eventos (cadastro, visita, produto, carrinho, checkout, compra, abandono). Correções de types/schema, CRM debug, cadastro, deduplicação e sobreposição de botão. Status: `QA_APPROVED_COM_RESSALVAS` (purchase_completed pende teste real com MP).
-
-### Etapa 3
-Motor de tags via trigger SQL, backfill, visualização e gestão de tags, filtro por tag, dispatcher WhatsApp com UAZAPI validado em produção, kanban redesenhado, scroll horizontal corrigido, perfis novos sem nome corrigido. Status: `QA_APPROVED`.
-
-### Etapa 4 (2026-03-09)
-- Ambiente local no novo PC configurado (fix: nome do arquivo `.env.local`).
-- Migrations `20250313000006` (automations) e `20250313000007` (dispatch_queue) aplicadas manualmente.
-- Tabela `crm_dispatch_queue`, funções `claim_crm_queue_items` e `reset_stuck_crm_queue_items` criadas.
-- `crm-queue-processor` deployado e ativo.
-- `pg_net` e `pg_cron` confirmadas ativas. Job a cada 1 minuto.
-- Automação de recuperação de carrinho: operacional.
-- Boas-vindas e Fidelizacao: inativas (duplicidades identificadas, aguardam validação).
-- Disparo manual testado com sucesso.
-
-Status: `OPERATIONAL_V1`
+### Infra
+- Supabase project ref: `kjfsmwtwbreapipifjtu`
+- Frontend: Vercel (auto-deploy de `main`)
+- WhatsApp: UAZAPI (não alterar)
+- Pagamentos: MercadoPago (produção ativo)
 
 ---
 
-## 3. Estado atual resumido
+## 3. O que foi implementado nesta rodada
 
-### Concluído
-- Etapa 1 (DONE)
-- Etapa 2 (QA_APPROVED_COM_RESSALVAS)
-- Etapa 3 (QA_APPROVED)
-- Etapa 4 v1 (OPERATIONAL_V1)
+### BLOCO 1 — Correções de UX (concluído e validado)
 
-### Pendências de Etapa 4
-- Editor de mensagens das automações
-- UX "Tags Vinculadas"
-- Visualização da fila no admin
-- Blindagem contra duplicidade de seeds/migrations de automações
-- Remover duplicatas de Boas-vindas e Fidelizacao antes de ativar
+**Reset de senha:**
+- `src/pages/RedefinirSenha.tsx` — nova página pública que consome o token `PASSWORD_RECOVERY` via `onAuthStateChange`, form de nova senha, redireciona para `/login` on success
+- `src/App.tsx` — rota pública `/redefinir-senha` adicionada
+- `src/pages/Login.tsx` — `redirectTo` aponta para `/redefinir-senha`
+
+**Catálogo público:**
+- `/catalogo` movido para fora do `ProtectedRoute` — acesso sem login
+- `isGuest = !user` propagado para componentes filhos
+- Preços ocultos para guests (ícone Lock + CTA cadastro)
+- Carousel: blur nos itens 5+ para guests; drag-scroll desktop fixado
+- PackageCards: preços e CTA substituídos para guests
+- "Ver todos" via `?view=todos` — flat grid ordenado por categoria
+- Header do catálogo restaurado: logo + "Rei dos Cachos" + "atacado"
+
+**Funil do admin:**
+- `src/hooks/useSessionTracking.ts` — `statusRank` e `shouldUpdateStatus` com lógica comercial correta (comprou=10, nunca regride; abandonou permite retomada para checkout/carrinho)
+- Migration `20260323000001_fix_funnel_priority_guard.sql` — `detect_abandoned_carts()` com `AND status <> 'comprou'` para nunca sobrescrever compra com abandono
+
+### BLOCO 2 — Vendedores e Financeiro (concluído e validado)
+
+**FASE 1 — Banco de dados (aplicado em produção via `supabase db push`):**
+- Migration `20260323000002_sellers_table.sql`:
+  - Tabela `sellers`: `id, name, code, email, phone, commission_pct, is_default, active, created_at, updated_at`
+  - Trigger `update_sellers_updated_at` — mantém `updated_at`
+  - Trigger `sellers_enforce_single_default` — garante no máximo 1 seller padrão (BEFORE INSERT OR UPDATE OF is_default)
+  - UNIQUE INDEX parcial `sellers_single_default_idx WHERE is_default = true` — proteção de race condition
+  - RLS: somente `is_admin()` tem acesso
+- Migration `20260323000003_orders_seller_id.sql`:
+  - `ALTER TABLE orders ADD COLUMN seller_id uuid REFERENCES sellers(id) ON DELETE SET NULL`
+  - Index `orders_seller_id_idx`
+  - RPC `create_manual_order` atualizada: parâmetro `p_seller_id uuid DEFAULT NULL`, resolução server-side (explícito > padrão ativo > NULL), incluído no INSERT e no evento CRM
+
+**FASE 2 — Edge function (deployado em produção):**
+- `supabase/functions/create-order/index.ts`:
+  - `seller_id?: string` na interface `OrderRequest`
+  - Bloco 7.5: resolve seller — usa `body.seller_id` ou busca `sellers WHERE is_default=true AND active=true LIMIT 1` ou NULL
+  - `seller_id: resolvedSellerId` no INSERT de `orders`
+
+**FASE 3 — UI Admin (na branch, build ok):**
+- `src/pages/admin/Vendedores.tsx` — CRUD completo: tabela com toggle ativo/inativo, badge padrão, botão "Tornar padrão", modal criar/editar com todos os campos, confirmação de delete
+- `src/components/admin/AdminLayout.tsx` — item "Vendedores" com `UserCheck` icon entre Marketing e Usuários
+- `src/App.tsx` — rota `/admin/vendedores`
+
+**FASE 4 — Pedidos com seller (na branch, build ok):**
+- `src/pages/admin/Pedidos.tsx`:
+  - Interface `Order` com `seller_id` e `sellers(name, code)`
+  - Query com join `sellers(name, code)`
+  - Filtro por vendedor no header (select dropdown)
+  - Badge amber nos cards do kanban com código/nome do seller
+  - Linha "Vendedor:" no detalhe expandido mobile
+
+**FASE 5 — Financeiro com breakdown (na branch, build ok):**
+- `src/pages/admin/Financeiro.tsx`:
+  - Interface e query com `seller_id, sellers(name, code, commission_pct)`
+  - `sellerBreakdown` no useMemo: agrupa pedidos pagos do mês por seller
+  - Seção "Por Vendedor — Mês Atual": tabela com nome, código, pedidos, faturamento, comissão calculada (só aparece quando há dados)
+
+**Seletor de seller no novo pedido manual:**
+- `src/pages/admin/NewOrder.tsx`:
+  - Query sellers ativos
+  - Select "Vendedor" na seção Detalhes com opção "Usar vendedor padrão"
+  - `p_seller_id` incluído no payload do `create_manual_order`
+
+### Guard-rails (commitados em main)
+- `AGENTS.md` — contrato para agentes IA
+- `docs/GUARDRAILS.md` — 10 seções de regras congeladas
+- `docs/RELEASE_CHECKLIST.md` — checklist de smoke test
 
 ---
 
-## 4. Decisões importantes
+## 4. Sellers em produção
 
-1. Claude = backend, SQL, RLS, edge functions, dispatcher, automações.
-2. Ant = frontend, UX, admin, kanban, CRM debug, filtros, visual.
-3. Sempre pensar em paralelização.
-4. Preferir 1 prompt consolidado quando a tarefa for leve/documental.
-5. Não expor secrets em handoff.
-6. Evitar metáforas e respostas longas demais; ser direto.
-7. Para UX crítica, validar por print e não apenas por handoff.
-8. Manter apenas automação de carrinho ativa até UX/admin evoluir.
+| Nome | Código | Padrão | Ativo |
+|------|--------|--------|-------|
+| Rebeca Santos | REBECA | sim | sim |
+
+ID: `1e8638de-d8e2-44df-8cfa-e506c16c9724`
 
 ---
 
-## 5. UAZAPI
+## 5. O que está pendente (próxima rodada)
 
-- API oficial do WhatsApp: UAZAPI
-- Dispatcher funcionando em produção; endpoint e secrets corretos.
-- Não escrever credenciais reais em handoff.
-
----
-
-## 6. Últimos problemas relevantes resolvidos
-
-- CRM debug quebrando por colunas incompatíveis com o schema
-- Cadastro não persistindo profile corretamente
-- Kanban com cards ilegíveis / scroll horizontal
-- Ambiente local no novo PC (fix: nome do arquivo `.env.local`)
-- Duplicidades de automações identificadas no banco
+- [ ] Merge `feature/bloco-ajustes-comercial-auth-pricing` → `main` (e Vercel deploy)
+- [ ] BLOCO 3A — Operação de salão: role `salao`, `SalaoRoute`, tela `/salao/pedido`
+- [ ] BLOCO 3B — Preços por parceiro: tabela `partner_prices`, override no catálogo, validação server-side no create-order
+- [ ] Editor de mensagens das automações CRM
+- [ ] Painel da fila `crm_dispatch_queue` no admin
+- [ ] Configurar Redirect URL no Supabase Dashboard: adicionar `<dominio>/redefinir-senha`
 
 ---
 
-## 7. Próximos passos
+## 6. Decisões importantes
 
-- Editor de mensagens das automações (CLD ou ANT)
-- Painel da fila `crm_dispatch_queue` no admin (ANT)
-- UX "Tags Vinculadas" (ANT)
-- Verificar e remover duplicatas de Boas-vindas/Fidelizacao antes de ativar
+1. Trigger + UNIQUE INDEX para `sellers.is_default` — trigger para operação normal, índice para race condition e bypass
+2. `create-order` edge function resolve seller server-side — nunca confiar no frontend para isso
+3. `create_manual_order` RPC: `p_seller_id DEFAULT NULL` — retrocompatível com todas as chamadas existentes
+4. `/catalogo` é rota pública — nunca mover de volta para `ProtectedRoute`
+5. `shouldUpdateStatus`: `comprou` é terminal e nunca regride; `abandonou` permite retomada para checkout/carrinho
+6. Branch `feature/bloco-ajustes-comercial-auth-pricing` ainda não mergeada para main — frontend das mudanças desta rodada só vai para Vercel após o merge
+7. Não expor secrets em handoff
+
+---
+
+## 7. Últimos problemas resolvidos
+
+- `supabase db push` falhou com "Cannot find project ref" → fix: `supabase link --project-ref kjfsmwtwbreapipifjtu`
+- Conflict no merge com remote main (10+ commits à frente) → resolvido preservando ambos os lados
+- Pedidos de teste criados manualmente atualizados/deletados via Node.js com service role key
+- Seller Rebeca aparecendo desativada: foi clique acidental no toggle durante resposta do chat (não há código que desative automaticamente)
