@@ -26,6 +26,7 @@ import AdminCrmDebug from "./pages/admin/CrmDebug";
 import RedefinirSenha from "./pages/RedefinirSenha";
 import AdminNewOrder from "./pages/admin/NewOrder";
 import AdminMarketing from "./pages/admin/Marketing";
+import AdminVendedores from "./pages/admin/Vendedores";
 import NotFound from "./pages/NotFound";
 import WhatsAppButton from "./components/landing/WhatsAppButton";
 import PixelTracker from "./components/PixelTracker";
@@ -71,6 +72,7 @@ const App = () => (
                     <Route path="/admin/upsell" element={<AdminUpsell />} />
                     <Route path="/admin/financeiro" element={<AdminFinanceiro />} />
                     <Route path="/admin/marketing" element={<AdminMarketing />} />
+                    <Route path="/admin/vendedores" element={<AdminVendedores />} />
                     <Route path="/admin/crm" element={<AdminCrmDebug />} />
                   </Route>
                 </Route>
