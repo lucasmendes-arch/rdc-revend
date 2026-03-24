@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
-import { DollarSign, ShoppingCart, TrendingUp, Target, Loader, Clock, Package } from 'lucide-react'
+import { DollarSign, ShoppingCart, TrendingUp, Target, Loader, Clock, Package, UserCheck } from 'lucide-react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import AdminLayout from '@/components/admin/AdminLayout'
 
@@ -17,6 +17,8 @@ interface Order {
   created_at: string
   customer_name: string
   customer_whatsapp: string
+  seller_id?: string | null
+  sellers?: { name: string; code: string | null; commission_pct: number } | null
 }
 
 interface OrderItem {
@@ -59,7 +61,7 @@ export default function AdminFinanceiro() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('orders')
-        .select('id, status, total, subtotal, shipping, created_at, customer_name, customer_whatsapp')
+        .select('id, status, total, subtotal, shipping, created_at, customer_name, customer_whatsapp, seller_id, sellers(name, code, commission_pct)')
         .order('created_at', { ascending: false })
 
       if (error) throw error
@@ -159,6 +161,24 @@ export default function AdminFinanceiro() {
       .sort((a, b) => b[1].revenue - a[1].revenue)
       .slice(0, 5)
 
+    // Seller breakdown — month paid orders
+    const sellerMap = new Map<string, { name: string; code: string | null; commission_pct: number; count: number; revenue: number }>()
+    for (const order of monthOrders) {
+      if (!order.sellers) continue
+      const key = order.seller_id!
+      const existing = sellerMap.get(key) || {
+        name: order.sellers.name,
+        code: order.sellers.code,
+        commission_pct: order.sellers.commission_pct,
+        count: 0,
+        revenue: 0,
+      }
+      existing.count += 1
+      existing.revenue += Number(order.total)
+      sellerMap.set(key, existing)
+    }
+    const sellerBreakdown = Array.from(sellerMap.values()).sort((a, b) => b.revenue - a.revenue)
+
     return {
       todayRevenue, weekRevenue, monthRevenue,
       todayCount: todayOrders.length,
@@ -168,6 +188,7 @@ export default function AdminFinanceiro() {
       pendingOrders, pendingTotal,
       chartData, topProducts,
       customOrders, customRevenue,
+      sellerBreakdown,
     }
   }, [allOrders, allOrderItems, monthlyGoal, dateFrom, dateTo])
 
@@ -388,6 +409,54 @@ export default function AdminFinanceiro() {
               </ResponsiveContainer>
             </div>
           </div>
+
+          {/* === SELLER BREAKDOWN === */}
+          {stats.sellerBreakdown.length > 0 && (
+            <div className="bg-white rounded-xl border border-border p-5 shadow-sm">
+              <div className="flex items-center gap-2 mb-4">
+                <UserCheck className="w-4 h-4 text-gold-text" />
+                <h3 className="text-sm font-bold text-foreground">Por Vendedor — Mês Atual</h3>
+              </div>
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-xs text-muted-foreground border-b border-border">
+                    <th className="text-left py-2 font-semibold">Vendedor</th>
+                    <th className="text-center py-2 font-semibold">Pedidos</th>
+                    <th className="text-right py-2 font-semibold">Faturamento</th>
+                    <th className="text-right py-2 font-semibold">Comissão</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {stats.sellerBreakdown.map((seller) => {
+                    const commission = seller.revenue * (seller.commission_pct / 100)
+                    return (
+                      <tr key={seller.name} className="hover:bg-surface-alt/50">
+                        <td className="py-2.5 pr-2">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium text-foreground text-xs">{seller.name}</span>
+                            {seller.code && (
+                              <span className="px-1.5 py-0.5 rounded bg-surface-alt text-[9px] font-mono font-semibold text-muted-foreground">
+                                {seller.code}
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="py-2.5 text-center text-muted-foreground text-xs">{seller.count}</td>
+                        <td className="py-2.5 text-right font-bold text-foreground text-xs">R$ {fmt(seller.revenue)}</td>
+                        <td className="py-2.5 text-right text-xs">
+                          {seller.commission_pct > 0 ? (
+                            <span className="font-semibold text-amber-700">R$ {fmt(commission)}</span>
+                          ) : (
+                            <span className="text-muted-foreground/50">—</span>
+                          )}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
 
           {/* === BOTTOM SECTION: Side by side === */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

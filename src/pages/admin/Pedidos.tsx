@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Loader, ChevronDown, Plus, Globe, MonitorSmartphone, Tag, Hand, MessageSquare } from 'lucide-react';
+import { Loader, ChevronDown, Plus, Globe, Tag, Hand, MessageSquare, UserCheck } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
@@ -22,6 +22,8 @@ interface Order {
   origin?: string;
   notes?: string | null;
   coupon_id?: string | null;
+  seller_id?: string | null;
+  sellers?: { name: string; code: string | null } | null;
   created_at: string;
   order_items: Array<{
     id: string;
@@ -50,6 +52,17 @@ const AdminPedidos = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [filterSeller, setFilterSeller] = useState<string>('');
+
+  const { data: sellers = [] } = useQuery({
+    queryKey: ['admin-sellers'],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('sellers').select('id, name, code').eq('active', true).order('name')
+      if (error) throw error
+      return (data || []) as { id: string; name: string; code: string | null }[]
+    },
+    staleTime: 60 * 1000,
+  })
 
   const { data: orders = [], isLoading, error } = useQuery({
     queryKey: ['admin-orders'],
@@ -59,6 +72,7 @@ const AdminPedidos = () => {
         .select(
           `
           *,
+          sellers ( name, code ),
           order_items (
             id,
             product_name_snapshot,
@@ -73,7 +87,7 @@ const AdminPedidos = () => {
       if (error) throw error;
       return (data || []) as Order[];
     },
-    staleTime: 30 * 1000, // 30 seconds
+    staleTime: 30 * 1000,
   });
 
   const updateStatusMutation = useMutation({
@@ -155,13 +169,30 @@ const AdminPedidos = () => {
     }
   };
 
-  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+  const filteredOrders = filterSeller
+    ? orders.filter(o => o.seller_id === filterSeller)
+    : orders
 
   return (
     <AdminLayout>
       <div className="bg-white border-b border-border sticky top-0 lg:top-0 z-30">
         <div className="px-4 sm:px-6 py-4 flex items-center justify-between gap-3">
-          <h1 className="text-xl sm:text-2xl font-bold text-foreground">Pedidos</h1>
+          <div className="flex items-center gap-3 min-w-0">
+            <h1 className="text-xl sm:text-2xl font-bold text-foreground shrink-0">Pedidos</h1>
+            {sellers.length > 0 && (
+              <select
+                value={filterSeller}
+                onChange={(e) => setFilterSeller(e.target.value)}
+                className="text-xs px-2.5 py-1.5 rounded-lg border border-border bg-white text-foreground focus:outline-none focus:ring-2 focus:ring-gold max-w-[160px] truncate"
+              >
+                <option value="">Todos vendedores</option>
+                <option value="__none__" disabled style={{ display: 'none' }} />
+                {sellers.map(s => (
+                  <option key={s.id} value={s.id}>{s.code || s.name}</option>
+                ))}
+              </select>
+            )}
+          </div>
           <button
             onClick={() => navigate('/admin/pedidos/novo')}
             className="flex items-center gap-2 px-4 py-2 rounded-xl btn-gold text-sm font-semibold shrink-0"
@@ -188,18 +219,18 @@ const AdminPedidos = () => {
           </div>
         )}
 
-        {!isLoading && !error && orders.length === 0 && (
+        {!isLoading && !error && filteredOrders.length === 0 && (
           <div className="text-center py-16">
             <p className="text-muted-foreground">Nenhum pedido encontrado</p>
           </div>
         )}
 
-        {!isLoading && !error && orders.length > 0 && (
+        {!isLoading && !error && filteredOrders.length > 0 && (
           <>
             {/* Desktop Kanban / Grid View */}
             <div className="hidden md:grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 mb-8">
               {statusOptions.map((status, index) => {
-                const columnOrders = orders.filter((o) => o.status === status);
+                const columnOrders = filteredOrders.filter((o) => o.status === status);
 
                 // Hide empty negative statuses to keep the kanban clean
                 if (columnOrders.length === 0 && (status === 'cancelado' || status === 'expirado')) return null;
@@ -250,6 +281,15 @@ const AdminPedidos = () => {
                                   <span title="Pedido Manual"><Hand className="w-3 h-3 text-slate-400" /></span>
                                 ) : (
                                   <span title="Feito pelo Site"><Globe className="w-3 h-3 text-slate-400" /></span>
+                                )}
+                                {order.sellers && (
+                                  <span
+                                    title={`Vendedor: ${order.sellers.name}`}
+                                    className="flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 text-[9px] font-bold border border-amber-100"
+                                  >
+                                    <UserCheck className="w-2.5 h-2.5" />
+                                    {order.sellers.code || order.sellers.name.split(' ')[0]}
+                                  </span>
                                 )}
                               </div>
                               <span className="text-[11px] font-medium text-slate-400 bg-slate-50 px-2 py-0.5 rounded-full border border-slate-100">{orderDate}</span>
@@ -364,7 +404,7 @@ const AdminPedidos = () => {
 
             {/* Mobile Card View */}
             <div className="md:hidden space-y-4">
-              {orders.map((order) => {
+              {filteredOrders.map((order) => {
                 const isExpanded = expandedId === order.id;
                 const statusInfo = statusConfig[order.status] || { label: order.status, color: 'bg-gray-100 text-gray-600' };
                 const orderNumber = order.id.slice(0, 8).toUpperCase();
@@ -417,6 +457,12 @@ const AdminPedidos = () => {
                           <p>
                             <span className="text-muted-foreground">Data:</span> {orderDate}
                           </p>
+                          {order.sellers && (
+                            <p>
+                              <span className="text-muted-foreground">Vendedor:</span>{' '}
+                              <strong className="text-amber-700">{order.sellers.name}</strong>
+                            </p>
+                          )}
                           {order.delivery_method === 'pickup' && (
                             <p>
                               <span className="text-muted-foreground">Entrega:</span> <strong className="text-amber-600">Retirada na Loja ({order.pickup_unit_slug === 'linhares' ? 'Linhares' : order.pickup_unit_slug === 'serra' ? 'Serra' : order.pickup_unit_slug === 'teixeira' ? 'Teixeira' : order.pickup_unit_slug})</strong>
