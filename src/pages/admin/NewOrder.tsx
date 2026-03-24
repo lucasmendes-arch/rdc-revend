@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Loader, Search, Plus, Minus, Trash2, ArrowLeft, ShoppingCart } from 'lucide-react';
+import { Loader, Search, Plus, Minus, Trash2, ArrowLeft, ShoppingCart, UserCheck } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 import AdminLayout from '@/components/admin/AdminLayout';
@@ -94,6 +94,7 @@ const NewOrder = () => {
   
   const [deliveryMethod, setDeliveryMethod]       = useState<'shipping' | 'pickup'>('shipping');
   const [pickupUnitSlug, setPickupUnitSlug]       = useState<string | null>(null);
+  const [selectedSellerId, setSelectedSellerId]   = useState<string>('');
 
   // -- Coupon States --
   const [couponCode, setCouponCode] = useState('');
@@ -101,6 +102,20 @@ const NewOrder = () => {
   const [isValidatingCoupon, setIsValidatingCoupon] = useState(false);
 
   // ── Queries ─────────────────────────────────────────────────────────────────
+
+  const { data: sellers = [] } = useQuery<{ id: string; name: string; code: string | null; is_default: boolean }[]>({
+    queryKey: ['admin-sellers'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('sellers')
+        .select('id, name, code, is_default')
+        .eq('active', true)
+        .order('name');
+      if (error) throw error;
+      return data || [];
+    },
+    staleTime: 60 * 1000,
+  });
 
   const { data: allProfiles = [], isLoading: loadingProfiles } = useQuery<CustomerProfile[]>({
     queryKey: ['all-profiles'],
@@ -379,6 +394,7 @@ const NewOrder = () => {
       p_discount:       discountAmount,
       p_coupon_id:      appliedCoupon?.id || null,
       p_created_at:     createdAt ? new Date(createdAt).toISOString() : null,
+      p_seller_id:      selectedSellerId || null,
     };
 
     setIsSaving(true);
@@ -852,6 +868,28 @@ const NewOrder = () => {
                 ))}
               </select>
             </div>
+
+            {/* Vendedor */}
+            {sellers.length > 0 && (
+              <div className="sm:col-span-2">
+                <label className="block text-xs font-semibold text-foreground mb-1.5 flex items-center gap-1.5">
+                  <UserCheck className="w-3.5 h-3.5 text-amber-600" />
+                  Vendedor
+                </label>
+                <select
+                  value={selectedSellerId}
+                  onChange={e => setSelectedSellerId(e.target.value)}
+                  className="w-full px-3 py-2.5 rounded-xl border border-input text-sm focus:ring-2 focus:ring-amber-400 focus:outline-none bg-white"
+                >
+                  <option value="">Usar vendedor padrão</option>
+                  {sellers.map(s => (
+                    <option key={s.id} value={s.id}>
+                      {s.name}{s.code ? ` (${s.code})` : ''}{s.is_default ? ' — padrão' : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
           </div>
 
           {/* Método de Entrega */}
