@@ -16,7 +16,7 @@
 - OPERATIONAL_V1
 
 ### Etapa 5 — Fluxo de Parceiros e Salões (Atual)
-- Parcialmente Integrado (Role `salao`, `is_partner`, UI Admin/Catalogo atualizada)
+- AUDITADO_PRONTO_PARA_MERGE (2 rodadas de auditoria técnica concluídas, 7 bloqueios corrigidos)
 
 ---
 

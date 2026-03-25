@@ -1,6 +1,6 @@
 # SCHEMA.md — Single Source of Truth · RDC Revend
-> Atualizado em: 2026-03-17
-> Gerado a partir das migrations `20250221000001` → `20250317000004`
+> Atualizado em: 2026-03-24
+> Gerado a partir das migrations `20250221000001` → `20260324000015`
 > **LEIA ESTE ARQUIVO antes de escrever qualquer query, RPC call ou type definition no frontend.**
 
 ---
@@ -118,10 +118,12 @@ Pedidos de venda.
 | pickup_unit_slug | text | YES | NULL | — |
 | pickup_unit_address | text | YES | NULL | — |
 | discount_amount | numeric(10,2) | NO | `0` | — |
+| seller_id | uuid | YES | NULL | sellers.id |
 
 > **ATENÇÃO:** campo de data é `created_at`, NÃO `order_date` ou `date`.
 > `discount_amount` é o valor efetivo do desconto aplicado (cupom percent/fixed). 0 se sem desconto.
 > Status válidos: `recebido`, `aguardando_pagamento`, `pago`, `separacao`, `enviado`, `entregue`, `concluido`, `cancelado`, `expirado`.
+> `origin` válidos: `'site'`, `'whatsapp'`, `'loja_fisica'`, `'outro'`, `'salao'`.
 > `delivery_method` válidos: `'shipping'` (envio), `'pickup'` (retirada na loja).
 > Constraints: se `pickup`, `pickup_unit_slug` e `pickup_unit_address` são obrigatórios e `shipping` deve ser 0.
 
@@ -141,7 +143,7 @@ Unidades físicas disponíveis para retirada de pedidos.
 | created_at | timestamptz | NO | `now()` | — |
 
 > RLS: leitura pública, escrita admin-only.
-> Slugs atuais: `'linhares'`, `'serra'`, `'teixeira'`.
+> Slugs atuais: `'linhares'`, `'serra'`, `'teixeira'`, `'colatina'`, `'sao-gabriel'`.
 
 ---
 
@@ -415,13 +417,48 @@ Log de sincronizações com a Nuvemshop.
 
 ---
 
+### `sellers`
+Vendedores vinculáveis a pedidos.
+
+| Coluna | Tipo | Nullable | Default | FK |
+|--------|------|----------|---------|-----|
+| id | uuid | NO | `gen_random_uuid()` | — |
+| name | text | NO | — | — |
+| code | text | YES | NULL | — |
+| active | boolean | NO | `true` | — |
+| is_default | boolean | NO | `false` | — |
+| created_at | timestamptz | NO | `now()` | — |
+
+> RLS: admin-only para escrita. Leitura via RPC `get_active_sellers_for_dropdown` (admin + salao).
+
+---
+
+### `admin_audit_logs`
+Log de auditoria para operações destrutivas do admin.
+
+| Coluna | Tipo | Nullable | Default | FK |
+|--------|------|----------|---------|-----|
+| id | uuid | NO | `gen_random_uuid()` | — |
+| admin_id | uuid | YES | NULL | auth.users.id |
+| entity_type | text | NO | — | — |
+| entity_id | uuid | NO | — | — |
+| action | text | NO | — | — |
+| created_at | timestamptz | NO | `now()` | — |
+
+> `entity_type` válidos: `'order'`, `'client'`.
+> RLS: admin-only (leitura e escrita).
+
+---
+
 ## Views
 
 ### `catalog_products_public`
 Projeção segura de `catalog_products` para leitura anônima.
 `security_invoker = true`.
 Colunas: `id`, `name`, `description_html`, `price`, `compare_at_price`, `images`, `main_image`, `is_highlight`, `category_id`, `category_type`, `created_at`, `updated_at`.
-**Não expõe:** `is_active`, `source`, `is_professional`, `nuvemshop_product_id`.
+**Não expõe:** `is_active`, `source`, `is_professional`, `nuvemshop_product_id`, `partner_price`.
+
+> **Segurança `partner_price`:** Anon tem column-level SELECT em `catalog_products` excluindo `partner_price`. O frontend não solicita `partner_price` para não-parceiros. Apenas `authenticated` com `is_partner = true` acessa o preço de parceiro.
 
 ### `last_sync_run`
 Último registro de `catalog_sync_runs` ordenado por `started_at DESC LIMIT 1`.
@@ -517,6 +554,78 @@ Acessível por: `authenticated`.
 
 ---
 
+### `is_salao`
+```
+is_salao() → boolean
+```
+Retorna true se o usuário autenticado tem `role = 'salao'`. SECURITY DEFINER para evitar recursão RLS.
+
+---
+
+### `search_customers_for_salao`
+```
+search_customers_for_salao(p_search text, p_limit int DEFAULT 10)
+  → TABLE (id uuid, full_name text, phone text, email text, is_partner boolean)
+```
+Busca clientes (`role = 'user'`) por nome ou telefone normalizado (regexp_replace para dígitos).
+Máximo 20 resultados. Acessível por: `authenticated` (admin ou salao verificado internamente).
+
+---
+
+### `create_salao_order`
+```
+create_salao_order(
+  p_user_id          uuid,
+  p_items            jsonb,
+  p_notes            text        DEFAULT NULL,
+  p_payment_method   text        DEFAULT NULL,
+  p_order_date       timestamptz DEFAULT NULL,
+  p_seller_id        uuid        DEFAULT NULL,
+  p_pickup_unit_slug text        DEFAULT NULL
+) → uuid
+```
+Cria pedido pelo operador do salão. Calcula subtotal server-side a partir dos preços reais do `catalog_products` (ignora preço do frontend). Aplica `partner_price` se cliente é parceiro. Status fixo `recebido`, origin fixo `salao`, delivery_method fixo `pickup`. Resolve seller padrão se não informado. Unidade de pickup obrigatória.
+Acessível por: `authenticated` (salao verificado internamente).
+
+---
+
+### `get_active_sellers_for_dropdown`
+```
+get_active_sellers_for_dropdown() → TABLE (id uuid, name text, code text)
+```
+Retorna vendedores ativos para dropdowns. Acessível por: `authenticated` (admin ou salao).
+
+---
+
+### `admin_delete_order`
+```
+admin_delete_order(p_order_id uuid) → boolean
+```
+Hard-delete de pedido com auditoria. Remove order_items, crm_events vinculados e o pedido.
+Acessível por: `authenticated` (admin verificado internamente).
+
+---
+
+### `admin_delete_test_client`
+```
+admin_delete_test_client(p_client_id uuid) → boolean
+```
+Hard-delete de cliente de teste (sem pedidos vinculados). Remove tags, sessões, eventos e profile.
+Não remove de `auth.users` (limitação Supabase SQL).
+Acessível por: `authenticated` (admin verificado internamente).
+
+---
+
+### `get_all_profiles`
+```
+get_all_profiles()
+  → TABLE (id uuid, full_name text, phone text, business_type text, email text, is_partner boolean)
+```
+Lista todos os perfis com `role = 'user'` para o admin.
+Acessível por: `authenticated` (admin verificado internamente).
+
+---
+
 ### `get_crm_customer_debug`
 ```
 get_crm_customer_debug(p_user_id uuid) → jsonb
@@ -579,7 +688,7 @@ Retorno: contagem de pedidos liberados.
 | profiles | price_category | `'retail'`, `'wholesale'`, `'vip'` |
 | catalog_products | category_type | `'alto_giro'`, `'maior_margem'`, `'recompra_alta'`, NULL |
 | orders | status | `'recebido'`, `'aguardando_pagamento'`, `'pago'`, `'separacao'`, `'enviado'`, `'entregue'`, `'concluido'`, `'cancelado'`, `'expirado'` |
-| orders | origin | `'site'`, `'whatsapp'`, `'loja_fisica'`, `'outro'`, NULL |
+| orders | origin | `'site'`, `'whatsapp'`, `'loja_fisica'`, `'outro'`, `'salao'`, NULL |
 | orders | delivery_method | `'shipping'`, `'pickup'` |
 | order_items | qty | `> 0` |
 | client_sessions | status | `'visitou'`, `'visualizou_produto'`, `'adicionou_carrinho'`, `'iniciou_checkout'`, `'comprou'`, `'abandonou'` |

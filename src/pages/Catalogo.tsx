@@ -129,10 +129,10 @@ const Catalogo = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const viewAll = searchParams.get('view') === 'todos';
   const setViewAll = (v: boolean) => setSearchParams(v ? { view: 'todos' } : {}, { replace: true });
-  const { data: products = [], isLoading, error } = useCatalogProducts();
+  const { user, role, isPartner, loading: isLoadingAuth } = useAuth();
+  const { data: products = [], isLoading, error } = useCatalogProducts({ includePartnerPrice: isPartner });
   const { data: dbCategories = [] } = useCategories();
   const { items: cart, addItem, updateQty, removeItem, clearCart, total: cartTotal, count: cartCount, minOrderValue, cartOpen, setCartOpen } = useCart();
-  const { user, role, isPartner, loading: isLoadingAuth } = useAuth();
   const isGuest = !isLoadingAuth && !user;
   useTrackPageView('Catálogo');
   const trackAddToCart = useTrackAddToCart();

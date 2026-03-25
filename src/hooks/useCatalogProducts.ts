@@ -17,22 +17,35 @@ export interface PublicProduct {
   category: { id: string; name: string; slug: string; sort_order: number } | null
 }
 
-export function useCatalogProducts() {
+/**
+ * Hook para buscar produtos do catálogo público.
+ *
+ * @param includePartnerPrice Se true, inclui partner_price na query (requer authenticated).
+ *   Quando false (default), a coluna não é solicitada — anon não tem SELECT nela.
+ */
+export function useCatalogProducts(opts?: { includePartnerPrice?: boolean }) {
+  const includePartnerPrice = opts?.includePartnerPrice ?? false
+
   return useQuery({
-    queryKey: ['catalog-products'],
+    queryKey: ['catalog-products', includePartnerPrice],
     queryFn: async () => {
+      const baseCols = 'id, name, main_image, price, compare_at_price, description_html, is_active, category_type, is_professional, is_highlight, category_id, categories(id, name, slug, sort_order)'
+      const selectCols = includePartnerPrice
+        ? `${baseCols}, partner_price`
+        : baseCols
+
       const { data, error } = await supabase
         .from('catalog_products')
-        .select('id, name, main_image, price, partner_price, compare_at_price, description_html, is_active, category_type, is_professional, is_highlight, category_id, categories(id, name, slug, sort_order)')
+        .select(selectCols)
         .eq('is_active', true)
         .order('updated_at', { ascending: false })
 
       if (error) {
         throw error
       }
-      // Supabase returns the join as `categories` (table name), remap to `category`
       return (data || []).map((p: any) => ({
         ...p,
+        partner_price: p.partner_price ?? null,
         category: p.categories ?? null,
         categories: undefined,
       })) as PublicProduct[]

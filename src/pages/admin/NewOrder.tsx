@@ -317,18 +317,17 @@ const NewOrder = () => {
 
     setIsCreating(true);
     try {
-      const emailObj = { value: `cliente.${Date.now()}.${cleanPhone.slice(-4)}@sememail.local` };
+      const mockEmail = `cliente.${Date.now()}.${cleanPhone.slice(-4)}@sememail.local`;
+      const randomPassword = Math.random().toString(36).slice(-8) + 'A1!';
 
       // Make API call to our create-user Edge Function
       const { data, error } = await supabase.functions.invoke('create-user', {
         body: {
-          email: emailObj.value,
-          password: `Pwd${cleanPhone}*RdC`, // Simple predictable default password
-          user_metadata: {
-            full_name: newClientName,
-            phone: newClientPhone,
-            role: 'client'
-          }
+          email: mockEmail,
+          password: randomPassword,
+          role: 'user',
+          full_name: newClientName,
+          phone: newClientPhone,
         }
       });
 
