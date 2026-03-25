@@ -8,11 +8,12 @@ const ALLOWED_ORIGINS = [
 
 function getCorsHeaders(req: Request) {
   const origin = req.headers.get('Origin') || ''
-  const allowedOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0]
+  const isLocalhost = origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:')
+  const allowedOrigin = (ALLOWED_ORIGINS.includes(origin) || isLocalhost) ? origin : ALLOWED_ORIGINS[0]
   return {
     'Access-Control-Allow-Origin': allowedOrigin,
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-client-info, apikey',
   }
 }
 
@@ -58,31 +59,42 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Verify caller is admin (requires Authorization header)
+    // Verify caller (admin or salao role required for this action)
     const authHeader = req.headers.get('Authorization')
-    if (authHeader) {
-      const anonKey = Deno.env.get("SUPABASE_ANON_KEY") || ''
-      const callerClient = createClient(supabaseUrl, anonKey, {
-        global: { headers: { Authorization: authHeader } },
-      })
-      const { data: { user: caller } } = await callerClient.auth.getUser()
-      if (caller) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('role')
-          .eq('id', caller.id)
-          .single()
-
-        if (profile?.role !== 'admin') {
-          return new Response(
-            JSON.stringify({ error: "Apenas administradores podem criar usuários" }),
-            { status: 403, headers: { "Content-Type": "application/json", ...getCorsHeaders(req) } }
-          );
-        }
-      }
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: "Cabeçalho de autorização ausente" }),
+        { status: 401, headers: { "Content-Type": "application/json", ...getCorsHeaders(req) } }
+      );
     }
 
-    const { email, password, role } = await req.json();
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY") || ''
+    const callerClient = createClient(supabaseUrl, anonKey, {
+      global: { headers: { Authorization: authHeader } },
+    })
+    const { data: { user: caller }, error: authError } = await callerClient.auth.getUser()
+
+    if (authError || !caller) {
+      return new Response(
+        JSON.stringify({ error: "Sessão inválida ou expirada. Por favor, faça login novamente." }),
+        { status: 401, headers: { "Content-Type": "application/json", ...getCorsHeaders(req) } }
+      );
+    }
+
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', caller.id)
+      .single()
+
+    if (profile?.role !== 'admin' && profile?.role !== 'salao') {
+      return new Response(
+        JSON.stringify({ error: "Apenas administradores ou operadores de salão podem criar usuários" }),
+        { status: 403, headers: { "Content-Type": "application/json", ...getCorsHeaders(req) } }
+      );
+    }
+
+    const { email, password, role, full_name, phone } = await req.json();
 
     if (!email || !password) {
       return new Response(
@@ -118,14 +130,21 @@ Deno.serve(async (req) => {
 
     const userId = userData.user.id;
 
-    // Set role in profiles table
+    // Set role and additional details in profiles table
+    const profileData = { 
+      id: userId, 
+      role: userRole,
+      ...(full_name && { full_name }),
+      ...(phone && { phone })
+    };
+
     const { error: profileError } = await supabase
       .from("profiles")
-      .upsert({ id: userId, role: userRole }, { onConflict: "id" });
+      .upsert(profileData, { onConflict: "id" });
 
     if (profileError) {
       return new Response(
-        JSON.stringify({ error: `Usuário criado mas erro ao definir role: ${profileError.message}` }),
+        JSON.stringify({ error: `Usuário criado mas erro ao definir perfil: ${profileError.message}` }),
         { status: 500, headers: { "Content-Type": "application/json", ...getCorsHeaders(req) } }
       );
     }
@@ -133,7 +152,7 @@ Deno.serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: true,
-        user: { id: userId, email, role: userRole },
+        user: { id: userId, email, role: userRole, full_name, phone },
       }),
       { status: 200, headers: { "Content-Type": "application/json", ...getCorsHeaders(req) } }
     );

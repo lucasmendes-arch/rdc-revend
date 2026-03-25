@@ -8,6 +8,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { CartProvider } from "@/contexts/CartContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { AdminRoute } from "@/components/AdminRoute";
+import { SalaoRoute } from "@/components/SalaoRoute";
 import Login from "./pages/Login";
 import Catalogo from "./pages/Catalogo";
 import Cadastro from "./pages/Cadastro";
@@ -27,6 +28,7 @@ import RedefinirSenha from "./pages/RedefinirSenha";
 import AdminNewOrder from "./pages/admin/NewOrder";
 import AdminMarketing from "./pages/admin/Marketing";
 import AdminVendedores from "./pages/admin/Vendedores";
+import SalaoNovoPedido from "./pages/salao/NovoPedido";
 import NotFound from "./pages/NotFound";
 import WhatsAppButton from "./components/landing/WhatsAppButton";
 import PixelTracker from "./components/PixelTracker";
@@ -34,7 +36,7 @@ import { useLocation } from "react-router-dom";
 
 function ConditionalWhatsApp() {
   const { pathname } = useLocation();
-  if (pathname.startsWith('/admin') || pathname === '/cadastro' || pathname === '/login' || pathname === '/redefinir-senha') return null;
+  if (pathname.startsWith('/admin') || pathname.startsWith('/salao') || pathname === '/cadastro' || pathname === '/login' || pathname === '/redefinir-senha') return null;
   return <WhatsAppButton />;
 }
 
@@ -74,6 +76,10 @@ const App = () => (
                     <Route path="/admin/marketing" element={<AdminMarketing />} />
                     <Route path="/admin/vendedores" element={<AdminVendedores />} />
                     <Route path="/admin/crm" element={<AdminCrmDebug />} />
+                  </Route>
+                  <Route element={<SalaoRoute />}>
+                    <Route path="/salao" element={<Navigate to="/salao/pedido" replace />} />
+                    <Route path="/salao/pedido" element={<SalaoNovoPedido />} />
                   </Route>
                 </Route>
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

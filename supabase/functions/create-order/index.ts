@@ -46,6 +46,7 @@ interface OrderRequest {
   coupon_code?: string
   coupon_id?: string
   discount_amount?: number
+  seller_id?: string
 }
 
 serve(async (req: Request) => {
@@ -367,6 +368,19 @@ serve(async (req: Request) => {
     // Total = subtotal + shipping - coupon discount (never negative)
     const total = Math.round(Math.max((subtotal + shipping - couponDiscount), 0) * 100) / 100
 
+    // 7.5. Resolve seller_id: explicit > default active > null
+    let resolvedSellerId: string | null = body.seller_id || null
+    if (!resolvedSellerId) {
+      const { data: defaultSeller } = await serviceClient
+        .from('sellers')
+        .select('id')
+        .eq('is_default', true)
+        .eq('active', true)
+        .limit(1)
+        .single()
+      resolvedSellerId = defaultSeller?.id ?? null
+    }
+
     // 8. Create order (using service client to bypass RLS — we already verified auth)
     const { data: order, error: orderError } = await serviceClient
       .from('orders')
@@ -386,6 +400,7 @@ serve(async (req: Request) => {
         pickup_unit_address: pickupUnitAddress,
         coupon_id: couponId,
         discount_amount: couponDiscount,
+        seller_id: resolvedSellerId,
       })
       .select('id')
       .single()

@@ -16,12 +16,14 @@ interface CustomerProfile {
   phone: string | null;
   business_type: string | null;
   email?: string;
+  is_partner?: boolean;
 }
 
 interface Product {
   id: string;
   name: string;
   price: number;
+  partner_price: number | null;
   main_image: string | null;
   category_id: string | null;
 }
@@ -90,11 +92,19 @@ const NewOrder = () => {
   const [discountValue, setDiscountValue]         = useState('');
   const [isSaving, setIsSaving]                   = useState(false);
   const [isExploding, setIsExploding]             = useState(false);
-  const [createdAt, setCreatedAt]                 = useState(new Date().toISOString().slice(0, 16));
+  // Get time taking timezone into account
+  const nowStr = new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+  const [createdAt, setCreatedAt]                 = useState(nowStr);
   
   const [deliveryMethod, setDeliveryMethod]       = useState<'shipping' | 'pickup'>('shipping');
   const [pickupUnitSlug, setPickupUnitSlug]       = useState<string | null>(null);
   const [selectedSellerId, setSelectedSellerId]   = useState<string>('');
+
+  // -- Modal Criar Cliente --
+  const [isCreatingClient, setIsCreatingClient] = useState(false);
+  const [newClientName, setNewClientName]       = useState('');
+  const [newClientPhone, setNewClientPhone]     = useState('');
+  const [isCreating, setIsCreating]             = useState(false);
 
   // -- Coupon States --
   const [couponCode, setCouponCode] = useState('');
@@ -117,7 +127,7 @@ const NewOrder = () => {
     staleTime: 60 * 1000,
   });
 
-  const { data: allProfiles = [], isLoading: loadingProfiles } = useQuery<CustomerProfile[]>({
+  const { data: allProfiles = [], isLoading: loadingProfiles, refetch: refetchProfiles } = useQuery<CustomerProfile[]>({
     queryKey: ['all-profiles'],
     queryFn: async () => {
       const { data, error } = await supabase.rpc('get_all_profiles');
@@ -132,9 +142,9 @@ const NewOrder = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('catalog_products')
-        .select('id, name, price, main_image, category_id')
+        .select('id, name, price, partner_price, main_image, category_id')
         .eq('is_active', true)
-        .order('name');
+        .order('updated_at', { ascending: false });
       if (error) throw error;
       return (data || []) as Product[];
     },
@@ -224,6 +234,8 @@ const NewOrder = () => {
   // ── Handlers ─────────────────────────────────────────────────────────────────
 
   async function addToCartOrExplode(product: Product, isBulk = false) {
+    const finalPrice = selectedCustomer?.is_partner && product.partner_price ? product.partner_price : product.price;
+
     setCartItems(prev => {
       const existing = prev.find(i => i.product_id === product.id);
       if (existing) {
@@ -237,7 +249,7 @@ const NewOrder = () => {
         product_id:   product.id,
         product_name: product.name,
         quantity:     1,
-        price:        product.price,
+        price:        finalPrice,
         main_image:   product.main_image,
       }];
     });
@@ -260,6 +272,8 @@ const NewOrder = () => {
         for (const item of entry.selected) {
           if (item.product.id === 'not_found' ) continue;
           
+          const finalPPrice = selectedCustomer?.is_partner && item.product.partner_price ? item.product.partner_price : item.product.price;
+
           const existing = currentCart.find(i => i.product_id === item.product.id);
           if (existing) {
             currentCart = currentCart.map(i => i.product_id === item.product.id 
@@ -271,7 +285,7 @@ const NewOrder = () => {
               product_id: item.product.id,
               product_name: item.product.name,
               quantity: item.qty,
-              price: item.product.price,
+              price: finalPPrice, // dynamic
               main_image: item.product.main_image
             });
           }
@@ -285,6 +299,85 @@ const NewOrder = () => {
     } catch (err) {
       console.error("Error adding package:", err);
       toast.error("Erro ao adicionar pacote", { id: loadingToast });
+    }
+  };
+
+  const handleCreateClient = async () => {
+    if (!newClientName.trim() || !newClientPhone.trim()) {
+      toast.error('Preencha nome e telefone (obrigatórios)');
+      return;
+    }
+    
+    // Simplest phone format allowed by default edge function payload validation
+    const cleanPhone = newClientPhone.replace(/\D/g, ''); 
+    if (cleanPhone.length < 10) {
+      toast.error('Telefone inválido. Digite o DDD + número.');
+      return;
+    }
+
+    setIsCreating(true);
+    try {
+      const emailObj = { value: `cliente.${Date.now()}.${cleanPhone.slice(-4)}@sememail.local` };
+
+      // Make API call to our create-user Edge Function
+      const { data, error } = await supabase.functions.invoke('create-user', {
+        body: {
+          email: emailObj.value,
+          password: `Pwd${cleanPhone}*RdC`, // Simple predictable default password
+          user_metadata: {
+            full_name: newClientName,
+            phone: newClientPhone,
+            role: 'client'
+          }
+        }
+      });
+
+      if (error) {
+        console.error("Error creating user from Edge Function:", error);
+        throw error;
+      }
+      
+      const newUserId = data.user.id;
+      
+      // Wait a moment for trigger to create the profile
+      await new Promise(r => setTimeout(r, 1000));
+      
+      // Get the newly created profile
+      const { data: newProfile, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', newUserId)
+        .single();
+        
+      if (profileError && profileError.code !== 'PGRST116') {
+         console.warn("Could not fetch new profile immediately, trying again later...");
+      }
+
+      const clientToSelect: CustomerProfile = newProfile || {
+        id: newUserId,
+        full_name: newClientName,
+        phone: newClientPhone,
+        business_type: null,
+      };
+
+      toast.success('Cliente cadastrado e selecionado!');
+      
+      // Setup the state to use this client immediately
+      setSelectedCustomer(clientToSelect);
+      setIsCreatingClient(false);
+      setNewClientName('');
+      setNewClientPhone('');
+      setCustomerSearch('');
+      
+      // Invalidate the cache right away so it appears on next load
+      refetchProfiles();
+      
+    } catch (err) {
+      console.error('Error creating client:', err);
+      toast.error('Erro ao cadastrar cliente. Verifique se o telefone ou e-mail já estão em uso.');
+    } finally {
+      setIsCreating(true); // Small hack: force loader visibility
+      setTimeout(() => setIsCreating(false), 500); 
     }
   };
 
@@ -470,7 +563,12 @@ const NewOrder = () => {
               ) : (
                 <div className="divide-y divide-border border border-border rounded-xl overflow-hidden max-h-52 overflow-y-auto">
                   {filteredCustomers.length === 0 && (
-                    <p className="text-xs text-muted-foreground py-4 text-center">Nenhum cliente encontrado</p>
+                    <div className="py-4 text-center">
+                       <p className="text-xs text-muted-foreground mb-3">Nenhum cliente encontrado</p>
+                       <button onClick={() => setIsCreatingClient(true)} className="text-xs flex items-center gap-1 mx-auto text-amber-600 font-medium bg-amber-50 px-3 py-1.5 rounded-lg border border-amber-200 hover:bg-amber-100 transition-colors">
+                         <Plus className="w-3 h-3" /> Cadastrar Novo
+                       </button>
+                    </div>
                   )}
                   {filteredCustomers.map(profile => (
                     <button
@@ -478,10 +576,22 @@ const NewOrder = () => {
                       onClick={() => { setSelectedCustomer(profile); setCustomerSearch(''); }}
                       className="w-full text-left px-4 py-3 hover:bg-surface-alt transition-colors"
                     >
-                      <p className="text-sm font-medium text-foreground">{profile.full_name || 'Sem nome'}</p>
+                      <p className="text-sm font-medium text-foreground">
+                        {profile.full_name || 'Sem nome'}
+                        {profile.is_partner && (
+                           <span className="ml-2 text-[10px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded font-bold uppercase">Parceiro</span>
+                        )}
+                      </p>
                       <p className="text-xs text-muted-foreground">{profile.phone || 'Sem telefone'} · {profile.business_type || '—'}</p>
                     </button>
                   ))}
+                  {filteredCustomers.length > 0 && (
+                      <div className="p-3 bg-amber-50 border-t-2 border-amber-200 text-center">
+                         <button onClick={() => setIsCreatingClient(true)} className="flex items-center gap-1.5 mx-auto text-sm text-amber-700 font-bold hover:text-amber-900 transition-colors">
+                            <Plus className="w-4 h-4" /> Cadastrar Cliente Novo
+                         </button>
+                      </div>
+                  )}
                 </div>
               )}
             </div>
@@ -502,14 +612,20 @@ const NewOrder = () => {
 
           <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-thin">
             {packageSelections.map(({ pkg, selected }) => {
-              const pkgTotal = selected.reduce((sum, item) => sum + (item.product.id !== 'not_found' ? item.product.price : 0) * item.qty, 0);
-              const uniqueImages = Array.from(
+              const pkgTotal = selected.reduce((sum, item) => {
+                 if (item.product.id === 'not_found') return sum;
+                 const finalPPrice = selectedCustomer?.is_partner && item.product.partner_price ? item.product.partner_price : item.product.price;
+                 return sum + finalPPrice * item.qty;
+              }, 0);
+              const allUniqueImages = Array.from(
                 new Set(
                   selected
                     .filter(item => item.product.id !== 'not_found' && item.product.main_image)
                     .map(item => item.product.main_image)
                 )
-              ).slice(0, 4);
+              );
+              const displayImages = allUniqueImages.slice(0, 5);
+              const remaining = pkg.displayProductCount - displayImages.length;
 
               return (
                 <div 
@@ -519,18 +635,21 @@ const NewOrder = () => {
                   <div className="flex flex-col">
                     <h3 className="font-bold text-sm text-foreground group-hover:text-amber-600 transition-colors">{pkg.name}</h3>
                     <p className="text-[10px] text-muted-foreground line-clamp-1">{pkg.description}</p>
+                    <span className="text-[11px] font-bold text-amber-600 mt-0.5">
+                      {pkg.displayProductCount} Produtos Inclusos
+                    </span>
                   </div>
 
                   <div className="flex items-center">
                     <div className="flex -space-x-3">
-                      {uniqueImages.map((imgUrl, i) => (
+                      {displayImages.map((imgUrl, i) => (
                         <div key={i} className="w-8 h-8 rounded-full border-2 border-white bg-white overflow-hidden shadow-sm">
                           <img src={imgUrl as string} className="w-full h-full object-cover" />
                         </div>
                       ))}
-                      {pkg.displayProductCount > uniqueImages.length && (
+                      {remaining > 0 && (
                         <div className="w-8 h-8 rounded-full border-2 border-white bg-slate-50 flex items-center justify-center text-[10px] font-bold text-slate-400">
-                          +{pkg.displayProductCount - uniqueImages.length}
+                          +{remaining}
                         </div>
                       )}
                     </div>
@@ -539,7 +658,7 @@ const NewOrder = () => {
                   <div className="flex items-center justify-between mt-auto">
                     <div className="flex flex-col">
                       <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-tighter">Total Pacote</span>
-                      <span className="text-sm font-black text-foreground">R$ {pkgTotal.toFixed(2)}</span>
+                      <span className="text-sm font-black text-foreground">R$ {pkgTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
                     </div>
                     <button
                       onClick={() => handleSelectPackage(pkg.id)}
@@ -960,6 +1079,67 @@ const NewOrder = () => {
         </div>
 
       </div>
+      {/* Modal Criar Cliente Rápido */}
+      {isCreatingClient && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => !isCreating && setIsCreatingClient(false)} />
+          <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 flex flex-col gap-5 animate-in fade-in zoom-in-95 duration-200">
+            <div>
+              <h3 className="font-bold text-lg text-foreground mb-1 flex items-center gap-2">
+                <UserCheck className="w-5 h-5 text-amber-500" />
+                Novo Cliente
+              </h3>
+              <p className="text-xs text-muted-foreground">O cadastro será criado rapidamente sem necessidade de e-mail.</p>
+            </div>
+            
+            <div className="space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-muted-foreground">Nome Completo</label>
+                <input
+                  type="text"
+                  value={newClientName}
+                  onChange={e => setNewClientName(e.target.value)}
+                  placeholder="Ex: João Silva"
+                  disabled={isCreating}
+                  className="w-full px-3 py-2 rounded-xl border border-input focus:ring-2 focus:ring-amber-400 focus:outline-none disabled:opacity-50"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-muted-foreground">WhatsApp (DDD + Número)</label>
+                <input
+                  type="text"
+                  value={newClientPhone}
+                  onChange={e => {
+                    const val = e.target.value.replace(/\D/g, '');
+                    if (val.length <= 11) setNewClientPhone(val);
+                  }}
+                  placeholder="27999999999"
+                  disabled={isCreating}
+                  maxLength={15}
+                  className="w-full px-3 py-2 rounded-xl border border-input focus:ring-2 focus:ring-amber-400 focus:outline-none disabled:opacity-50 font-mono"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={() => setIsCreatingClient(false)}
+                disabled={isCreating}
+                className="flex-1 py-2.5 rounded-xl font-bold text-muted-foreground hover:bg-surface-alt transition-colors disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleCreateClient}
+                disabled={isCreating || !newClientName.trim() || !newClientPhone.trim() || newClientPhone.replace(/\D/g, '').length < 10}
+                className="flex-1 py-2.5 rounded-xl bg-amber-500 text-white font-bold hover:bg-amber-600 transition-colors disabled:opacity-50 flex justify-center items-center"
+              >
+                {isCreating ? <Loader className="w-4 h-4 animate-spin" /> : 'Cadastrar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </AdminLayout>
   );
 };

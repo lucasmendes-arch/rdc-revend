@@ -6,6 +6,7 @@ export interface PublicProduct {
   name: string
   main_image: string | null
   price: number
+  partner_price: number | null
   compare_at_price: number | null
   description_html: string | null
   is_active: boolean
@@ -22,7 +23,7 @@ export function useCatalogProducts() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('catalog_products')
-        .select('id, name, main_image, price, compare_at_price, description_html, is_active, category_type, is_professional, is_highlight, category_id, categories(id, name, slug, sort_order)')
+        .select('id, name, main_image, price, partner_price, compare_at_price, description_html, is_active, category_type, is_professional, is_highlight, category_id, categories(id, name, slug, sort_order)')
         .eq('is_active', true)
         .order('updated_at', { ascending: false })
 

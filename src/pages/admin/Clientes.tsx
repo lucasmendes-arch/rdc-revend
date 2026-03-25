@@ -1,10 +1,11 @@
-import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useState, useMemo } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
+import { toast } from 'sonner'
 import {
   Loader, Eye, MousePointerClick, ShoppingCart, CreditCard,
-  CheckCircle, XCircle, X, User, Phone, Mail,
-  Building2, FileText, Package, Clock, Calendar, Users, DollarSign, Sparkles, AlertTriangle
+  CheckCircle, XCircle, X, User, Phone, Mail, Filter,
+  Building2, FileText, Package, Clock, Calendar, Users, DollarSign, Sparkles, AlertTriangle, Trash2
 } from 'lucide-react'
 import { CustomerTimeline } from '@/components/admin/CustomerTimeline'
 import AdminLayout from '@/components/admin/AdminLayout'
@@ -163,7 +164,7 @@ function getClientName(session: ClientSession): string {
 import { getTagColorClasses } from '@/utils/crm'
 
 // --- Detail Panel ---
-function ClientDetailPanel({ session, onClose }: { session: ClientSession; onClose: () => void }) {
+function ClientDetailPanel({ session, onClose, onDeleteClick }: { session: ClientSession; onClose: () => void; onDeleteClick: () => void }) {
   const profile = session.profile
   const orders = session.orders || []
   const stageInfo = funnelStages.find(s => s.key === session.status) || funnelStages[0]
@@ -343,6 +344,18 @@ function ClientDetailPanel({ session, onClose }: { session: ClientSession; onClo
           {session.user_id && (
             <CustomerTimeline userId={session.user_id} />
           )}
+
+          {/* Danger Zone */}
+          <div className="px-6 py-6 mt-4 border-t border-red-100 bg-red-50/30">
+            <button
+              onClick={onDeleteClick}
+              className="w-full py-2.5 px-4 rounded-xl border border-red-200 text-red-600 bg-red-50 hover:bg-red-100 font-bold text-sm transition-colors flex items-center justify-center gap-2"
+            >
+              <Trash2 className="w-4 h-4" />
+              Excluir Cliente (Apenas Testes)
+            </button>
+            <p className="text-[10px] text-slate-500 text-center mt-2">Ação administrativa condicional irreversível</p>
+          </div>
         </div>
       </div>
     </>
@@ -366,13 +379,29 @@ function InfoRow({ icon: Icon, label, value }: { icon: typeof User; label: strin
   )
 }
 
-// --- Main Page ---
-import { useMemo } from 'react'
-import { Filter } from 'lucide-react'
-
 export default function AdminClientes() {
+  const queryClient = useQueryClient()
   const [selectedSession, setSelectedSession] = useState<ClientSession | null>(null)
   const [selectedTagFilter, setSelectedTagFilter] = useState<string>('')
+  const [clientToDelete, setClientToDelete] = useState<ClientSession | null>(null)
+
+  const deleteClientMutation = useMutation({
+    mutationFn: async (clientId: string) => {
+      const { error } = await supabase.rpc('admin_delete_test_client', { p_client_id: clientId })
+      if (error) throw error
+      return clientId
+    },
+    onSuccess: () => {
+      toast.success('Cliente de teste excluído permanentemente')
+      setClientToDelete(null)
+      setSelectedSession(null)
+      queryClient.invalidateQueries({ queryKey: ['client-sessions'] })
+    },
+    onError: (err: any) => {
+      console.error("DEBUG DELETE CLIENT ERROR:", err)
+      toast.error(`Falha: ${err.message || 'Verifique se ele possui pedidos.'}`)
+    }
+  })
 
   const { data: sessions = [], isLoading } = useQuery({
     queryKey: ['client-sessions'],
@@ -665,7 +694,54 @@ export default function AdminClientes() {
         <ClientDetailPanel
           session={selectedSession}
           onClose={() => setSelectedSession(null)}
+          onDeleteClick={() => setClientToDelete(selectedSession)}
         />
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {clientToDelete && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
+            <div className="p-6 text-center">
+              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4 text-red-600">
+                <AlertTriangle className="w-8 h-8" />
+              </div>
+              <h3 className="text-xl font-bold text-slate-900 mb-2">Excluir Cliente?</h3>
+              {clientToDelete.orders && clientToDelete.orders.length > 0 ? (
+                <>
+                  <p className="text-sm text-amber-700 font-medium bg-amber-50 p-3 rounded-lg border border-amber-200 mb-6">
+                    Bloqueado: Este cliente possui {clientToDelete.orders.length} pedido(s) vinculados. Você deve excluir os pedidos antes de excluir o cliente.
+                  </p>
+                  <button onClick={() => setClientToDelete(null)} className="w-full py-3 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold transition-colors">Voltar</button>
+                </>
+              ) : (
+                <>
+                  <p className="text-sm text-slate-500 mb-6">Esta ação apagará o cadastro inteiro deste cliente (sessão e CRM). Confirma a exclusão de <strong>{getClientName(clientToDelete)}</strong>?</p>
+                  
+                  <div className="flex flex-col gap-3">
+                    <button
+                      onClick={() => {
+                        const targetId = clientToDelete.user_id || clientToDelete.id
+                        deleteClientMutation.mutate(targetId)
+                      }}
+                      disabled={deleteClientMutation.isPending}
+                      className="w-full py-3 px-4 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold transition-colors disabled:opacity-50 flex items-center justify-center"
+                    >
+                      {deleteClientMutation.isPending ? <Loader className="w-5 h-5 animate-spin" /> : "Sim, Excluir Cliente"}
+                    </button>
+                    <button
+                      onClick={() => setClientToDelete(null)}
+                      disabled={deleteClientMutation.isPending}
+                      className="w-full py-3 px-4 border border-slate-200 text-slate-700 hover:bg-slate-50 rounded-xl font-bold transition-colors"
+                    >
+                      Cancelar e Manter
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
       )}
     </AdminLayout>
   )

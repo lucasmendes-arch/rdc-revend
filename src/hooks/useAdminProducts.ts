@@ -7,6 +7,7 @@ export interface CatalogProduct {
   name: string
   description_html?: string | null
   price: number
+  partner_price?: number | null
   compare_at_price?: number | null
   images?: string[] | null
   main_image?: string | null
@@ -28,7 +29,7 @@ export function useAdminProducts() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('catalog_products')
-        .select('id, nuvemshop_product_id, name, description_html, price, compare_at_price, main_image, is_active, source, created_at, updated_at, category_type, is_professional, is_highlight, category_id, categories(id, name)')
+        .select('id, nuvemshop_product_id, name, description_html, price, partner_price, compare_at_price, main_image, is_active, source, created_at, updated_at, category_type, is_professional, is_highlight, category_id, categories(id, name)')
         .order('updated_at', { ascending: false })
 
       if (error) throw error
@@ -72,6 +73,7 @@ export function useCreateProduct() {
     mutationFn: async (product: {
       name: string
       price: number
+      partner_price?: number | null
       compare_at_price?: number | null
       main_image?: string | null
       is_active: boolean

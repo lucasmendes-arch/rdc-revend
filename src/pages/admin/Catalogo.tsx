@@ -22,6 +22,7 @@ export default function AdminCatalogo() {
   const [createForm, setCreateForm] = useState({
     name: '',
     price: 0,
+    partner_price: 0,
     compare_at_price: null as number | null,
     main_image: '',
     is_active: true,
@@ -75,6 +76,7 @@ export default function AdminCatalogo() {
         id: editingId,
         name: editForm.name,
         price: editForm.price,
+        partner_price: editForm.partner_price,
         compare_at_price: editForm.compare_at_price,
         main_image: editForm.main_image,
         is_active: editForm.is_active,
@@ -131,6 +133,7 @@ export default function AdminCatalogo() {
       await createMutation.mutateAsync({
         name: createForm.name,
         price: createForm.price,
+        partner_price: createForm.partner_price || 0,
         compare_at_price: createForm.compare_at_price,
         main_image: createForm.main_image || null,
         is_active: createForm.is_active,
@@ -140,7 +143,7 @@ export default function AdminCatalogo() {
         category_id: createForm.category_id,
       })
       setCreating(false)
-      setCreateForm({ name: '', price: 0, compare_at_price: null, main_image: '', is_active: true, category_type: null, is_professional: false, is_highlight: false, category_id: null })
+      setCreateForm({ name: '', price: 0, partner_price: 0, compare_at_price: null, main_image: '', is_active: true, category_type: null, is_professional: false, is_highlight: false, category_id: null })
     } catch (err) {
       alert(`Erro ao criar: ${err instanceof Error ? err.message : 'Desconhecido'}`)
     }
@@ -330,13 +333,20 @@ export default function AdminCatalogo() {
                             </div>
                           </div>
                         </td>
-                        <td className="px-4 py-4 text-foreground font-black text-sm sm:text-base whitespace-nowrap">
-                          R$ {product.price.toFixed(2)}
-                          {product.compare_at_price && (
-                            <div className="text-xs text-muted-foreground font-medium line-through mt-0.5">
-                              R$ {product.compare_at_price.toFixed(2)}
-                            </div>
-                          )}
+                        <td className="px-4 py-4 whitespace-nowrap">
+                          <div className="flex flex-col gap-1">
+                            <span className="text-sm font-black text-foreground">R$ {product.price.toFixed(2)}</span>
+                            {product.partner_price != null && product.partner_price > 0 && (
+                              <div className="text-xs font-bold text-amber-700 bg-amber-100 px-1 inline-block rounded self-start">
+                                Parc: R$ {product.partner_price.toFixed(2)}
+                              </div>
+                            )}
+                            {product.compare_at_price && (
+                              <div className="text-xs text-muted-foreground font-medium line-through">
+                                De: R$ {product.compare_at_price.toFixed(2)}
+                              </div>
+                            )}
+                          </div>
                         </td>
                         <td className="px-4 py-4">
                           <select
@@ -439,13 +449,24 @@ export default function AdminCatalogo() {
 
               <div>
                 <label className="block text-sm font-medium text-foreground mb-1">Preço de Atacado *</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={createForm.price || ''}
-                  onChange={(e) => setCreateForm({ ...createForm, price: parseFloat(e.target.value) || 0 })}
-                  className="w-full px-3 py-2 rounded-lg border border-border bg-white focus:outline-none focus:ring-2 focus:ring-gold"
-                />
+                <div className="flex gap-3">
+                  <input
+                    placeholder="Catálogo Varejo/Atacado"
+                    type="number"
+                    step="0.01"
+                    value={createForm.price || ''}
+                    onChange={(e) => setCreateForm({ ...createForm, price: parseFloat(e.target.value) || 0 })}
+                    className="w-full px-3 py-2 rounded-lg border border-border bg-white focus:outline-none focus:ring-2 focus:ring-gold"
+                  />
+                  <input
+                    placeholder="Preço Parceiro"
+                    type="number"
+                    step="0.01"
+                    value={createForm.partner_price || ''}
+                    onChange={(e) => setCreateForm({ ...createForm, partner_price: parseFloat(e.target.value) || 0 })}
+                    className="w-full px-3 py-2 rounded-lg border border-amber-300 bg-amber-50 focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder:text-amber-700 placeholder:opacity-70 text-amber-900"
+                  />
+                </div>
               </div>
 
               <div>
@@ -600,14 +621,29 @@ export default function AdminCatalogo() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-foreground mb-1">Preço de Atacado</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={editForm.price || 0}
-                  onChange={(e) => setEditForm({ ...editForm, price: parseFloat(e.target.value) })}
-                  className="w-full px-3 py-2 rounded-lg border border-border bg-white focus:outline-none focus:ring-2 focus:ring-gold"
-                />
+                <label className="block text-sm font-medium text-foreground mb-1">Preços</label>
+                <div className="flex gap-3">
+                  <div className="flex-1">
+                    <label className="block text-[10px] text-muted-foreground uppercase font-bold mb-1">Catálogo</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={editForm.price ?? 0}
+                      onChange={(e) => setEditForm({ ...editForm, price: parseFloat(e.target.value) })}
+                      className="w-full px-3 py-2 rounded-lg border border-border bg-white focus:outline-none focus:ring-2 focus:ring-gold"
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <label className="block text-[10px] text-amber-700 uppercase font-bold mb-1">Parceiro</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={editForm.partner_price ?? 0}
+                      onChange={(e) => setEditForm({ ...editForm, partner_price: parseFloat(e.target.value) })}
+                      className="w-full px-3 py-2 rounded-lg border border-amber-300 bg-amber-50 focus:outline-none focus:ring-2 focus:ring-amber-500 text-amber-900"
+                    />
+                  </div>
+                </div>
               </div>
 
               <div>

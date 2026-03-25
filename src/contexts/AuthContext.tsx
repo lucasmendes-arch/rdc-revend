@@ -2,34 +2,35 @@ import { createContext, useContext, useEffect, useRef, useState } from 'react'
 import { Session, User } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
 
-export type UserRole = 'user' | 'admin' | null
+export type UserRole = 'user' | 'admin' | 'salao' | null
 
 interface AuthContextType {
   user: User | null
   session: Session | null
   loading: boolean
   role: UserRole
+  isPartner: boolean
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-async function fetchRole(userId: string): Promise<UserRole> {
+async function fetchAccountMetadata(userId: string): Promise<{role: UserRole, is_partner: boolean}> {
   try {
     const { data, error } = await supabase
       .from('profiles')
-      .select('role')
+      .select('role, is_partner')
       .eq('id', userId)
       .maybeSingle()
 
     if (error) {
       console.warn('fetchRole error:', error.message)
-      return 'user'
+      return { role: 'user', is_partner: false }
     }
-    if (!data) return 'user'
-    return data.role as UserRole
+    if (!data) return { role: 'user', is_partner: false }
+    return { role: data.role as UserRole, is_partner: !!data.is_partner }
   } catch (e) {
     console.warn('[AUTH] fetchRole exception:', e)
-    return 'user'
+    return { role: 'user', is_partner: false }
   }
 }
 
@@ -38,6 +39,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
   const [role, setRole] = useState<UserRole>(null)
+  const [isPartner, setIsPartner] = useState(false)
   const initialized = useRef(false)
 
   useEffect(() => {
@@ -52,14 +54,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
       if (session?.user) {
         // Fetch role before finishing loading to avoid route redirects
-        fetchRole(session.user.id).then(r => {
-          // console.log('[AUTH] role:', r)
-          setRole(r)
-        }).catch(() => setRole('user')).finally(() => {
+        fetchAccountMetadata(session.user.id).then(meta => {
+          // console.log('[AUTH] role:', meta.role)
+          setRole(meta.role)
+          setIsPartner(meta.is_partner)
+        }).catch(() => {
+          setRole('user')
+          setIsPartner(false)
+        }).finally(() => {
           setLoading(false)
         })
       } else {
         setRole(null)
+        setIsPartner(false)
         setLoading(false)
       }
     })
@@ -80,7 +87,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, [])
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, role }}>
+    <AuthContext.Provider value={{ user, session, loading, role, isPartner }}>
       {children}
     </AuthContext.Provider>
   )

@@ -1,5 +1,5 @@
 # current_status.md — Estado atual do projeto
-# Atualizado em: 2026-03-09
+# Atualizado em: 2026-03-24
 
 ## Status geral
 
@@ -14,6 +14,9 @@
 
 ### Etapa 4 — Automações WhatsApp operacionais
 - OPERATIONAL_V1
+
+### Etapa 5 — Fluxo de Parceiros e Salões (Atual)
+- Parcialmente Integrado (Role `salao`, `is_partner`, UI Admin/Catalogo atualizada)
 
 ---
 

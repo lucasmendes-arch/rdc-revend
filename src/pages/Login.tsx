@@ -59,9 +59,26 @@ const Login = () => {
         return;
       }
 
+      // Determine where to redirect based on role
       const state = location.state as LocationState | null;
-      const returnTo = state?.returnTo || "/catalogo";
-      navigate(returnTo, { replace: true });
+      if (state?.returnTo) {
+        navigate(state.returnTo, { replace: true });
+      } else {
+        // Fetch role to decide default destination
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('role')
+            .eq('id', user.id)
+            .maybeSingle();
+          if (profile?.role === 'salao') {
+            navigate('/salao/pedido', { replace: true });
+            return;
+          }
+        }
+        navigate('/catalogo', { replace: true });
+      }
     } catch (err) {
       setLoading(false);
       setError("Erro ao fazer login. Tente novamente.");

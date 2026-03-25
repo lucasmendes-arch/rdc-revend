@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Loader, ChevronDown, Plus, Globe, Tag, Hand, MessageSquare, UserCheck } from 'lucide-react';
+import { Loader, ChevronDown, Plus, Globe, Tag, Hand, MessageSquare, UserCheck, Trash2, AlertTriangle } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
@@ -53,6 +53,7 @@ const AdminPedidos = () => {
   const queryClient = useQueryClient();
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [filterSeller, setFilterSeller] = useState<string>('');
+  const [orderToDelete, setOrderToDelete] = useState<Order | null>(null);
 
   const { data: sellers = [] } = useQuery({
     queryKey: ['admin-sellers'],
@@ -139,6 +140,23 @@ const AdminPedidos = () => {
   const handleStatusChange = (orderId: string, newStatus: typeof statusOptions[number]) => {
     updateStatusMutation.mutate({ orderId, status: newStatus });
   };
+
+  const deleteOrderMutation = useMutation({
+    mutationFn: async (orderId: string) => {
+      const { error } = await supabase.rpc('admin_delete_order', { p_order_id: orderId });
+      if (error) throw error;
+      return orderId;
+    },
+    onSuccess: () => {
+      toast.success('Pedido excluído permanentemente');
+      setOrderToDelete(null);
+      queryClient.invalidateQueries({ queryKey: ['admin-orders'] });
+    },
+    onError: (err: any) => {
+      console.error("DEBUG DELETE ERROR:", err);
+      toast.error(`Falha ao excluir: ${err.message || 'Erro desconhecido'}`);
+    }
+  });
 
   // Drag and drop handlers
   const handleDragStart = (e: React.DragEvent, orderId: string) => {
@@ -269,35 +287,40 @@ const AdminPedidos = () => {
                             onDragEnd={handleDragEnd}
                             className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 hover:shadow-md transition-shadow hover:border-gold/40 group relative flex flex-col gap-1.5 cursor-grab active:cursor-grabbing"
                           >
-                            <div className="flex items-start justify-between">
-                              <div className="flex items-center gap-1.5">
+                            <div className="flex items-center justify-between gap-2 mb-1.5">
+                              <div className="flex items-center gap-1.5 min-w-0">
                                 <Link
                                   to={`/pedido/sucesso/${order.id}`}
-                                  className="text-sm font-extrabold text-gold-text hover:underline"
+                                  className="text-[13px] font-extrabold text-gold-text hover:underline shrink-0"
                                 >
                                   #{orderNumber}
                                 </Link>
                                 {order.origin === 'manual' ? (
-                                  <span title="Pedido Manual"><Hand className="w-3 h-3 text-slate-400" /></span>
+                                  <span title="Pedido Manual" className="shrink-0"><Hand className="w-3 h-3 text-slate-400" /></span>
                                 ) : (
-                                  <span title="Feito pelo Site"><Globe className="w-3 h-3 text-slate-400" /></span>
-                                )}
-                                {order.sellers && (
-                                  <span
-                                    title={`Vendedor: ${order.sellers.name}`}
-                                    className="flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 text-[9px] font-bold border border-amber-100"
-                                  >
-                                    <UserCheck className="w-2.5 h-2.5" />
-                                    {order.sellers.code || order.sellers.name.split(' ')[0]}
-                                  </span>
+                                  <span title="Feito pelo Site" className="shrink-0"><Globe className="w-3 h-3 text-slate-400" /></span>
                                 )}
                               </div>
-                              <span className="text-[11px] font-medium text-slate-400 bg-slate-50 px-2 py-0.5 rounded-full border border-slate-100">{orderDate}</span>
+                              <div className="flex items-center gap-1 shrink-0">
+                                <span className="text-[10px] font-medium text-slate-400">{orderDate}</span>
+                                <button onClick={(e) => { e.stopPropagation(); setOrderToDelete(order); }} className="text-slate-300 hover:text-red-500 transition-colors p-1" title="Excluir Pedido">
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
                             </div>
 
                             <div>
-                              <div className="flex flex-wrap items-center gap-1.5 mb-0.5">
-                                <p className="text-[13px] font-bold text-slate-700 truncate max-w-[130px]" title={order.customer_name}>{order.customer_name}</p>
+                              <div className="flex flex-wrap items-center gap-1.5 mb-1">
+                                <p className="text-[13px] font-bold text-slate-700 truncate max-w-[120px]" title={order.customer_name}>{order.customer_name}</p>
+                                {order.sellers && (
+                                  <span
+                                    title={`Vendedor: ${order.sellers.name}`}
+                                    className="flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 text-[9px] font-bold border border-amber-100 shrink-0"
+                                  >
+                                    <UserCheck className="w-2.5 h-2.5 shrink-0" />
+                                    <span>{order.sellers.code || order.sellers.name.split(' ')[0]}</span>
+                                  </span>
+                                )}
                                 {order.delivery_method === 'pickup' && (
                                   <span className="bg-amber-100 text-amber-800 text-[9px] px-1.5 py-0.5 rounded font-bold uppercase shrink-0" title={`Retirada: ${order.pickup_unit_address || order.pickup_unit_slug}`}>
                                     Retirada ({order.pickup_unit_slug === 'linhares' ? 'LIN' : order.pickup_unit_slug === 'serra' ? 'SER' : order.pickup_unit_slug === 'teixeira' ? 'TEIX' : order.pickup_unit_slug})
@@ -355,11 +378,11 @@ const AdminPedidos = () => {
                               </div>
                             </div>
 
-                            <div className="flex items-center justify-between mt-1 pt-3 border-t border-slate-100">
-                              <div className="flex flex-col">
-                                <span className="font-black text-slate-800 tracking-tight">R$ {order.total.toFixed(2)}</span>
+                            <div className="flex items-center justify-between mt-1 pt-3 border-t border-slate-100 gap-2">
+                              <div className="flex flex-col min-w-0 shrink-0">
+                                <span className="font-black text-slate-800 tracking-tight whitespace-nowrap">R$ {order.total.toFixed(2)}</span>
                                 {order.discount_amount > 0 && (
-                                  <span className="text-[9px] text-emerald-600 font-bold flex items-center gap-0.5 mt-0.5">
+                                  <span className="text-[9px] text-emerald-600 font-bold flex items-center gap-0.5 mt-0.5 whitespace-nowrap">
                                     <Tag className="w-2.5 h-2.5" /> -R$ {order.discount_amount.toFixed(2)}
                                   </span>
                                 )}
@@ -374,7 +397,7 @@ const AdminPedidos = () => {
                                   )
                                 }
                                 disabled={updateStatusMutation.isPending}
-                                className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border-0 cursor-pointer shadow-sm outline-none transition-transform hover:scale-105 active:scale-95 ${statusInfo.color}`}
+                                className={`w-full max-w-[110px] px-1.5 py-1 rounded-md text-[10px] font-bold border-0 cursor-pointer shadow-sm outline-none transition-transform hover:scale-105 active:scale-95 ${statusInfo.color}`}
                               >
                                 {statusOptions.map((s) => (
                                   <option key={s} value={s}>
@@ -513,12 +536,21 @@ const AdminPedidos = () => {
                           </select>
                         </div>
 
-                        <Link
-                          to={`/pedido/sucesso/${order.id}`}
-                          className="block text-center px-4 py-2 rounded-lg text-sm font-medium border border-gold-border bg-gold-light text-gold-text hover:bg-gold-light/80 transition-colors"
-                        >
-                          Ver Detalhes
-                        </Link>
+                        <div className="flex gap-2">
+                          <Link
+                            to={`/pedido/sucesso/${order.id}`}
+                            className="flex-1 text-center px-4 py-2 rounded-lg text-sm font-medium border border-gold-border bg-gold-light text-gold-text hover:bg-gold-light/80 transition-colors"
+                          >
+                            Ver Detalhes
+                          </Link>
+                          <button
+                            onClick={() => setOrderToDelete(order)}
+                            className="px-4 py-2 rounded-lg border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 transition-colors flex items-center justify-center"
+                            aria-label="Excluir Pedido"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -529,6 +561,38 @@ const AdminPedidos = () => {
           </>
         )}
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {orderToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
+            <div className="p-6 text-center">
+              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4 text-red-600">
+                <AlertTriangle className="w-8 h-8" />
+              </div>
+              <h3 className="text-xl font-bold text-slate-900 mb-2">Excluir Pedido #{orderToDelete.id.slice(0, 8).toUpperCase()}?</h3>
+              <p className="text-sm text-slate-500 mb-6">Esta ação é irreversível. O pedido será destruído permanentemente do histórico e estatísticas.</p>
+              
+              <div className="flex flex-col gap-3">
+                <button
+                  onClick={() => deleteOrderMutation.mutate(orderToDelete.id)}
+                  disabled={deleteOrderMutation.isPending}
+                  className="w-full py-3 px-4 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold transition-colors disabled:opacity-50 flex items-center justify-center"
+                >
+                  {deleteOrderMutation.isPending ? <Loader className="w-5 h-5 animate-spin" /> : "Excluir pedido"}
+                </button>
+                <button
+                  onClick={() => setOrderToDelete(null)}
+                  disabled={deleteOrderMutation.isPending}
+                  className="w-full py-3 px-4 border border-slate-200 text-slate-700 hover:bg-slate-50 rounded-xl font-bold transition-colors"
+                >
+                  Manter pedido
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </AdminLayout>
   );
 };

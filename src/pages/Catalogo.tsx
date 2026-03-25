@@ -132,7 +132,7 @@ const Catalogo = () => {
   const { data: products = [], isLoading, error } = useCatalogProducts();
   const { data: dbCategories = [] } = useCategories();
   const { items: cart, addItem, updateQty, removeItem, clearCart, total: cartTotal, count: cartCount, minOrderValue, cartOpen, setCartOpen } = useCart();
-  const { user, role, loading: isLoadingAuth } = useAuth();
+  const { user, role, isPartner, loading: isLoadingAuth } = useAuth();
   const isGuest = !isLoadingAuth && !user;
   useTrackPageView('Catálogo');
   const trackAddToCart = useTrackAddToCart();
@@ -390,7 +390,7 @@ const Catalogo = () => {
       addItem({
         id: product.id,
         name: product.name,
-        price: product.price,
+        price: isPartner && product.partner_price ? product.partner_price : product.price,
         image: product.main_image,
       });
       if (qty > 1) {
@@ -399,7 +399,8 @@ const Catalogo = () => {
     }
 
     // Track add to cart
-    trackAddToCart(cartCount + qty, product.name, product.price * qty);
+    const finalPrice = isPartner && product.partner_price ? product.partner_price : product.price;
+    trackAddToCart(cartCount + qty, product.name, finalPrice * qty);
 
     // Visual feedback
     setAddedId(product.id);
@@ -501,6 +502,16 @@ const Catalogo = () => {
                     </Link>
                   )}
 
+                  {role === 'salao' && (
+                    <Link
+                      to="/salao/pedido"
+                      className="p-1.5 hover:bg-white/10 rounded-full transition-colors flex items-center justify-center"
+                      title="Área do Salão"
+                    >
+                      <Crown className="w-5 h-5" />
+                    </Link>
+                  )}
+
                   <button
                     onClick={handleLogout}
                     className="p-1.5 hover:bg-white/10 rounded-full transition-colors flex items-center justify-center"
@@ -581,6 +592,17 @@ const Catalogo = () => {
                   >
                     <ShieldCheck className="w-4 h-4" />
                     <span>Admin</span>
+                  </Link>
+                )}
+
+                {role === 'salao' && (
+                  <Link
+                    to="/salao/pedido"
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-transparent text-sm font-medium text-white hover:bg-white/10 transition-all bg-white/5"
+                    title="Área do Salão"
+                  >
+                    <Crown className="w-4 h-4" />
+                    <span>Salão</span>
                   </Link>
                 )}
 
@@ -762,7 +784,7 @@ const Catalogo = () => {
               </div>
 
               <div className="mb-4">
-                <PackageCards products={products} isGuest={isGuest} />
+                <PackageCards products={products} isGuest={isGuest} isPartner={isPartner} />
               </div>
             </div>
           )}
@@ -782,6 +804,7 @@ const Catalogo = () => {
                   onSelect={handleSelectProduct}
                   getSuggestedPrice={getSuggestedPrice}
                   isGuest={isGuest}
+                  isPartner={isPartner}
                   onViewAll={() => setViewAll(true)}
                 />
               )}
@@ -803,7 +826,7 @@ const Catalogo = () => {
             {!debouncedSearch && !viewAll && !isLoading && !error && products.length > 0 && (
               <div className="hidden sm:block">
                 <div className="mb-8">
-                  <PackageCards products={products} isGuest={isGuest} />
+                  <PackageCards products={products} isGuest={isGuest} isPartner={isPartner} />
                 </div>
               </div>
             )}
@@ -940,7 +963,15 @@ const Catalogo = () => {
                                   </div>
                                 ) : (
                                   <div className="text-sm font-bold text-foreground mb-2">
-                                    R$ {product.price.toFixed(2)}
+                                    {isPartner && product.partner_price ? (
+                                      <div className="flex items-center gap-1.5 font-bold">
+                                        <span className="text-[10px] line-through text-muted-foreground/50">R$ {product.price.toFixed(2)}</span>
+                                        <span className="text-amber-600">R$ {product.partner_price.toFixed(2)}</span>
+                                        <span className="text-[8px] bg-amber-100 text-amber-700 px-1 rounded uppercase tracking-tighter">Parceiro</span>
+                                      </div>
+                                    ) : (
+                                      <>R$ {product.price.toFixed(2)}</>
+                                    )}
                                   </div>
                                 )}
                                 {isGuest ? (
@@ -1013,6 +1044,7 @@ const Catalogo = () => {
                               onSelect={handleSelectProduct}
                               getSuggestedPrice={getSuggestedPrice}
                               isGuest={isGuest}
+                              isPartner={isPartner}
                               onViewAll={() => setViewAll(true)}
                             />
                           </div>
@@ -1204,14 +1236,21 @@ const Catalogo = () => {
                       </div>
                     ) : (
                       <>
-                        <div className="text-muted-foreground mb-0.5">Custo</div>
+                        <div className="text-muted-foreground mb-0.5">Custo {isPartner && selectedProduct.partner_price && "(Parceiro)"}</div>
                         <div className="text-base sm:text-lg font-bold text-foreground mb-2">
-                          R$ {selectedProduct.price.toFixed(2)}
+                          {isPartner && selectedProduct.partner_price ? (
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm line-through text-muted-foreground/50">R$ {selectedProduct.price.toFixed(2)}</span>
+                              <span className="text-amber-600">R$ {selectedProduct.partner_price.toFixed(2)}</span>
+                            </div>
+                          ) : (
+                            <>R$ {selectedProduct.price.toFixed(2)}</>
+                          )}
                         </div>
                         <div className="border-t border-border pt-2">
                           <div className="text-muted-foreground mb-0.5">Preço de Venda (Sugerido)</div>
                           <div className="text-base sm:text-lg font-bold gradient-gold-text">
-                            R$ {getSuggestedPrice(selectedProduct.price, selectedProduct.compare_at_price).toFixed(2)}
+                            R$ {getSuggestedPrice(isPartner && selectedProduct.partner_price ? selectedProduct.partner_price : selectedProduct.price, selectedProduct.compare_at_price).toFixed(2)}
                           </div>
                         </div>
                       </>

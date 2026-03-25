@@ -9,9 +9,10 @@ import type { PublicProduct } from '@/hooks/useCatalogProducts'
 interface PackageCardsProps {
   products: PublicProduct[]
   isGuest?: boolean
+  isPartner?: boolean
 }
 
-export default function PackageCards({ products, isGuest = false }: PackageCardsProps) {
+export default function PackageCards({ products, isGuest = false, isPartner = false }: PackageCardsProps) {
   const { addItem } = useCart()
   const navigate = useNavigate()
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -60,7 +61,8 @@ export default function PackageCards({ products, isGuest = false }: PackageCards
     let addedCount = 0
     for (const item of entry.selected) {
       if (item.product.id === 'not_found' ) continue
-      addItem({ id: item.product.id, name: item.product.name, price: item.product.price, image: item.product.main_image }, item.qty)
+      const finalPrice = isPartner && item.product.partner_price ? item.product.partner_price : item.product.price;
+      addItem({ id: item.product.id, name: item.product.name, price: finalPrice, image: item.product.main_image }, item.qty)
       addedCount += item.qty
     }
 
@@ -85,7 +87,11 @@ export default function PackageCards({ products, isGuest = false }: PackageCards
         className="flex gap-4 sm:gap-6 overflow-x-auto snap-x snap-mandatory scroll-smooth px-3 sm:px-4 pl-4 lg:px-8 pt-4 pb-4 sm:pt-6 sm:pb-6 scrollbar-none w-full"
       >
         {packageSelections.map(({ pkg, selected }) => {
-          const pkgTotal = selected.reduce((sum, item) => sum + (item.product.id !== 'not_found' ? item.product.price : 0) * item.qty, 0);
+          const pkgTotal = selected.reduce((sum, item) => {
+            if (item.product.id === 'not_found') return sum;
+            const finalPrice = isPartner && item.product.partner_price ? item.product.partner_price : item.product.price;
+            return sum + (finalPrice * item.qty);
+          }, 0);
           const totalItems = selected.reduce((sum, item) => sum + item.qty, 0);
           const multiplierValue = parseFloat(pkg.multiplier.replace('x', ''));
           const dynamicRevenue = pkgTotal * multiplierValue;
@@ -122,6 +128,9 @@ export default function PackageCards({ products, isGuest = false }: PackageCards
                 ) : (
                   <span className="text-[18px] sm:text-2xl font-black gradient-gold-text">
                     R$ {pkgTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    {isPartner && (
+                      <span className="ml-2 text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded uppercase align-middle">Atacado</span>
+                    )}
                   </span>
                 )}
               </div>
@@ -286,10 +295,14 @@ export default function PackageCards({ products, isGuest = false }: PackageCards
                           <tr key={idx} className="hover:bg-surface/50 transition-colors">
                             <td className="py-3 px-3 font-medium text-foreground text-xs">{item.product.id === 'not_found' ? `${item.originalName} (Sem estoque)` : item.product.name}</td>
                             <td className="py-3 px-3 text-center text-muted-foreground text-xs">{item.qty}x</td>
-                            {!isGuest && <td className="py-3 px-3 text-right text-muted-foreground text-xs tabular-nums">R$ {item.product.price.toFixed(2)}</td>}
+                            {!isGuest && (
+                              <td className="py-3 px-3 text-right text-muted-foreground text-xs tabular-nums">
+                                R$ {(isPartner && item.product.partner_price ? item.product.partner_price : item.product.price).toFixed(2)}
+                              </td>
+                            )}
                             {!isGuest && (
                               <td className="py-3 px-3 text-right font-semibold text-foreground text-xs tabular-nums opacity-90">
-                                {item.product.id === 'not_found' ? '-' : `R$ ${(item.product.price * item.qty).toFixed(2)}`}
+                                {item.product.id === 'not_found' ? '-' : `R$ ${((isPartner && item.product.partner_price ? item.product.partner_price : item.product.price) * item.qty).toFixed(2)}`}
                               </td>
                             )}
                           </tr>
@@ -299,7 +312,13 @@ export default function PackageCards({ products, isGuest = false }: PackageCards
                         <tfoot className="border-t-2 border-border font-bold text-foreground">
                           <tr>
                             <td colSpan={3} className="py-3 px-3 text-right">Total do Pacote</td>
-                            <td className="py-3 px-3 text-right text-base text-gold-text">R$ {entry.selected.reduce((sum, item) => sum + (item.product.id !== 'not_found' ? item.product.price : 0) * item.qty, 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                            <td className="py-3 px-3 text-right text-base text-gold-text">
+                              R$ {entry.selected.reduce((sum, item) => {
+                                if (item.product.id === 'not_found') return sum;
+                                const price = isPartner && item.product.partner_price ? item.product.partner_price : item.product.price;
+                                return sum + (price * item.qty);
+                              }, 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                            </td>
                           </tr>
                         </tfoot>
                       )}

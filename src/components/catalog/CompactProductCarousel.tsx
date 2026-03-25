@@ -12,6 +12,7 @@ interface CompactProductCarouselProps {
     onSelect: (product: PublicProduct) => void
     getSuggestedPrice: (price: number, compareTo: number | null) => number
     isGuest?: boolean
+    isPartner?: boolean
     onViewAll?: () => void
 }
 
@@ -27,6 +28,7 @@ export default function CompactProductCarousel({
     onSelect,
     getSuggestedPrice,
     isGuest = false,
+    isPartner = false,
     onViewAll,
 }: CompactProductCarouselProps) {
     const [activeIndex, setActiveIndex] = useState(0)
@@ -191,7 +193,14 @@ export default function CompactProductCarousel({
                                         </div>
                                     ) : (
                                         <div className="text-sm sm:text-base md:text-[15px] lg:text-base font-bold text-foreground mb-2 sm:mb-3">
-                                            R$ {product.price.toFixed(2)}
+                                            {isPartner && product.partner_price ? (
+                                                <div className="flex flex-col">
+                                                    <span className="text-[10px] line-through text-muted-foreground/50 font-medium">R$ {product.price.toFixed(2)}</span>
+                                                    <span className="text-amber-600">R$ {product.partner_price.toFixed(2)}</span>
+                                                </div>
+                                            ) : (
+                                                <>R$ {product.price.toFixed(2)}</>
+                                            )}
                                         </div>
                                     )}
 

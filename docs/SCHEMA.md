@@ -39,6 +39,7 @@ Perfil do usuário. Criado automaticamente por trigger ao registrar em `auth.use
 | address_city | text | YES | NULL | — |
 | address_state | text | YES | NULL | — |
 | price_category | text | NO | `'retail'` | — |
+| is_partner | boolean | NO | `false` | — |
 | clickup_task_id | text | YES | NULL | — |
 | lead_source | text | YES | NULL | — |
 | lead_status | text | YES | NULL | — |
@@ -61,6 +62,7 @@ Produtos do catálogo B2B.
 | name | text | NO | — | — |
 | description_html | text | YES | NULL | — |
 | price | numeric(10,2) | NO | `0` | — |
+| partner_price | numeric(10,2) | YES | NULL | — |
 | compare_at_price | numeric(10,2) | YES | NULL | — |
 | images | text[] | YES | NULL | — |
 | main_image | text | YES | NULL | — |
@@ -573,7 +575,7 @@ Retorno: contagem de pedidos liberados.
 
 | Tabela | Coluna | Valores válidos |
 |--------|--------|----------------|
-| profiles | role | — (free text, tipicamente `'user'` / `'admin'`) |
+| profiles | role | `'user'`, `'admin'`, `'salao'` |
 | profiles | price_category | `'retail'`, `'wholesale'`, `'vip'` |
 | catalog_products | category_type | `'alto_giro'`, `'maior_margem'`, `'recompra_alta'`, NULL |
 | orders | status | `'recebido'`, `'aguardando_pagamento'`, `'pago'`, `'separacao'`, `'enviado'`, `'entregue'`, `'concluido'`, `'cancelado'`, `'expirado'` |
