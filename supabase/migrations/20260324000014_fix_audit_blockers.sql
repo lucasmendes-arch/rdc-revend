@@ -15,6 +15,24 @@
 
 
 -- ============================================================================
+-- PRE-FIX: Dropar funções cujo return type muda nesta migration.
+-- CREATE OR REPLACE não permite alterar o return type; DROP necessário.
+-- Também cobre o caso em que _013 não pôde rodar (função ainda com 4 cols).
+-- ============================================================================
+
+-- search_customers_for_salao: 4 cols → 5 cols (adiciona is_partner)
+DROP FUNCTION IF EXISTS public.search_customers_for_salao(text, int);
+
+-- get_all_profiles: adicionando is_partner ao return type
+DROP FUNCTION IF EXISTS public.get_all_profiles();
+
+-- create_salao_order: assinatura mudou de 4 params para 7 na _005;
+-- dropar todas as variantes para garantir limpeza.
+DROP FUNCTION IF EXISTS public.create_salao_order(uuid, jsonb, text, text);
+DROP FUNCTION IF EXISTS public.create_salao_order(uuid, jsonb, text, text, timestamptz, uuid, text);
+
+
+-- ============================================================================
 -- FIX 1: create_salao_order — corrigir ON CONFLICT em client_sessions
 -- ============================================================================
 
@@ -266,6 +284,42 @@ BEGIN
     LIMIT v_safe_limit;
 END;
 $$;
+
+-- ============================================================================
+-- FIX 3: Recriar get_all_profiles com is_partner no return type
+-- (Dropada no PRE-FIX acima; _013 foi marcada applied mas não executou)
+-- ============================================================================
+
+CREATE OR REPLACE FUNCTION public.get_all_profiles()
+RETURNS TABLE (
+  id uuid,
+  full_name text,
+  phone text,
+  business_type text,
+  email text,
+  is_partner boolean
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  IF NOT public.is_admin() THEN
+    RAISE EXCEPTION 'Acesso negado';
+  END IF;
+
+  RETURN QUERY
+    SELECT
+      p.id, p.full_name, p.phone, p.business_type, u.email::text, p.is_partner
+    FROM public.profiles p
+    JOIN auth.users u ON u.id = p.id
+    WHERE p.role = 'user'
+    ORDER BY p.full_name ASC;
+END;
+$$;
+
+REVOKE EXECUTE ON FUNCTION public.get_all_profiles() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.get_all_profiles() TO authenticated;
 
 -- Force schema reload
 NOTIFY pgrst, 'reload schema';
