@@ -15,14 +15,16 @@ const key = supabaseAnonKey || 'placeholder-key'
 
 export const supabase = createClient(url, key)
 
-/** Call a Supabase Edge Function via fetch */
-export async function callEdgeFunction(functionName: string, body: Record<string, unknown>) {
-  const authHeader = ['Bearer', supabaseAnonKey].join(' ')
+/** Call a Supabase Edge Function via fetch (uses admin session JWT when available) */
+export async function callEdgeFunction(functionName: string, body: Record<string, unknown>, extraHeaders?: Record<string, string>) {
+  const { data: { session } } = await supabase.auth.getSession()
+  const token = session?.access_token || supabaseAnonKey
   const response = await fetch(`${supabaseUrl}/functions/v1/${functionName}`, {
     method: 'POST',
     headers: {
-      'Authorization': authHeader,
+      'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json',
+      ...extraHeaders,
     },
     body: JSON.stringify(body),
   })

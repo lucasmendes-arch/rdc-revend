@@ -28,6 +28,7 @@ import RedefinirSenha from "./pages/RedefinirSenha";
 import AdminNewOrder from "./pages/admin/NewOrder";
 import AdminMarketing from "./pages/admin/Marketing";
 import AdminVendedores from "./pages/admin/Vendedores";
+import AdminSyncHistory from "./pages/admin/SyncHistory";
 import SalaoNovoPedido from "./pages/salao/NovoPedido";
 import NotFound from "./pages/NotFound";
 import WhatsAppButton from "./components/landing/WhatsAppButton";
@@ -75,6 +76,7 @@ const App = () => (
                     <Route path="/admin/financeiro" element={<AdminFinanceiro />} />
                     <Route path="/admin/marketing" element={<AdminMarketing />} />
                     <Route path="/admin/vendedores" element={<AdminVendedores />} />
+                    <Route path="/admin/sync-history" element={<AdminSyncHistory />} />
                     <Route path="/admin/crm" element={<AdminCrmDebug />} />
                   </Route>
                   <Route element={<SalaoRoute />}>

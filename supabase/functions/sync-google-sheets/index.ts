@@ -12,7 +12,7 @@ function getCorsHeaders(req: Request) {
   return {
     'Access-Control-Allow-Origin': allowedOrigin,
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-confirm-sync',
   }
 }
 
@@ -40,6 +40,15 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // Guard: require explicit confirmation header to prevent accidental sync
+    const confirmHeader = req.headers.get("x-confirm-sync");
+    if (confirmHeader !== "true") {
+      return new Response(
+        JSON.stringify({ error: "Missing x-confirm-sync header. Sync must be explicitly confirmed." }),
+        { status: 400, headers: { "Content-Type": "application/json", ...getCorsHeaders(req) } }
+      );
+    }
+
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     const googleApiKey = Deno.env.get("GOOGLE_SHEETS_API_KEY");
@@ -59,6 +68,34 @@ Deno.serve(async (req) => {
     }
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // --- Audit: extract admin user ID from JWT ---
+    let triggeredBy: string | null = null;
+    const authHeader = req.headers.get("Authorization") || "";
+    if (authHeader.startsWith("Bearer ")) {
+      const jwt = authHeader.slice(7);
+      try {
+        const payload = JSON.parse(atob(jwt.split(".")[1]));
+        triggeredBy = payload.sub || null;
+      } catch {
+        // anon key or malformed — triggeredBy stays null
+      }
+    }
+
+    // --- Rate limit: max 1 sync per 60 seconds ---
+    const rateLimitKey = `sync:google_sheets:${triggeredBy || "anon"}`;
+    const { data: allowed } = await supabase.rpc("check_rate_limit", {
+      p_key: rateLimitKey,
+      p_max_requests: 1,
+      p_window_seconds: 60,
+    });
+    if (allowed === false) {
+      return new Response(
+        JSON.stringify({ error: "Rate limited. Aguarde 60 segundos entre sincronizações." }),
+        { status: 429, headers: { "Content-Type": "application/json", ...getCorsHeaders(req) } }
+      );
+    }
+
     const { sheetId } = await req.json();
 
     if (!sheetId) {

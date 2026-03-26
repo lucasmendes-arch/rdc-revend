@@ -401,12 +401,14 @@ Controle de rate limit por chave.
 ---
 
 ### `catalog_sync_runs`
-Log de sincronizações com a Nuvemshop.
+Log de sincronizações com a Nuvemshop e Google Sheets.
 
 | Coluna | Tipo | Nullable | Default | FK |
 |--------|------|----------|---------|-----|
 | id | uuid | NO | `gen_random_uuid()` | — |
 | status | text | NO | — | — |
+| source | text | NO | `'nuvemshop'` | — |
+| triggered_by | uuid | YES | NULL | auth.users.id |
 | imported | int | NO | `0` | — |
 | updated | int | NO | `0` | — |
 | skipped | int | NO | `0` | — |
@@ -414,6 +416,9 @@ Log de sincronizações com a Nuvemshop.
 | error_message | text | YES | NULL | — |
 | started_at | timestamptz | NO | `now()` | — |
 | finished_at | timestamptz | YES | NULL | — |
+
+> `source` válidos: `'nuvemshop'`, `'google_sheets'`.
+> `triggered_by` registra o UUID do admin que disparou a sincronização.
 
 ---
 

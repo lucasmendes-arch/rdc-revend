@@ -182,7 +182,7 @@ function getCorsHeaders(req: Request) {
   return {
     'Access-Control-Allow-Origin': allowedOrigin,
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-confirm-sync',
   }
 }
 
@@ -205,6 +205,18 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // Guard: require explicit confirmation header to prevent accidental sync
+    const confirmHeader = req.headers.get("x-confirm-sync");
+    if (confirmHeader !== "true") {
+      return new Response(
+        JSON.stringify({ error: "Missing x-confirm-sync header. Sync must be explicitly confirmed." }),
+        {
+          status: 400,
+          headers: { "Content-Type": "application/json", ...getCorsHeaders(req) },
+        }
+      );
+    }
+
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
@@ -219,6 +231,46 @@ Deno.serve(async (req) => {
     }
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // --- Audit: extract admin user ID from JWT ---
+    let triggeredBy: string | null = null;
+    const authHeader = req.headers.get("Authorization") || "";
+    if (authHeader.startsWith("Bearer ")) {
+      const jwt = authHeader.slice(7);
+      try {
+        // Decode JWT payload (no verification needed — Supabase gateway already validated)
+        const payload = JSON.parse(atob(jwt.split(".")[1]));
+        triggeredBy = payload.sub || null;
+      } catch {
+        // anon key or malformed — triggeredBy stays null
+      }
+    }
+
+    // --- Rate limit: max 1 sync per 60 seconds per source ---
+    const rateLimitKey = `sync:nuvemshop:${triggeredBy || "anon"}`;
+    const { data: allowed } = await supabase.rpc("check_rate_limit", {
+      p_key: rateLimitKey,
+      p_max_requests: 1,
+      p_window_seconds: 60,
+    });
+    if (allowed === false) {
+      return new Response(
+        JSON.stringify({ error: "Rate limited. Aguarde 60 segundos entre sincronizações." }),
+        {
+          status: 429,
+          headers: { "Content-Type": "application/json", ...getCorsHeaders(req) },
+        }
+      );
+    }
+
+    // --- Parse body for dry_run flag ---
+    let dryRun = false;
+    try {
+      const body = await req.json();
+      dryRun = body?.dry_run === true;
+    } catch {
+      // empty body is OK for non-dry-run
+    }
 
     const storeId = Deno.env.get("NUVEMSHOP_STORE_ID");
     const token = Deno.env.get("NUVEMSHOP_ACCESS_TOKEN");
@@ -236,10 +288,65 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Create sync run
+    // Fetch products from Nuvemshop
+    const { products, error: fetchError } = await fetchNuvemshopProducts(
+      storeId,
+      token,
+      userAgent
+    );
+
+    if (fetchError) {
+      return new Response(
+        JSON.stringify({ error: fetchError }),
+        {
+          status: 500,
+          headers: { "Content-Type": "application/json", ...getCorsHeaders(req) },
+        }
+      );
+    }
+
+    // --- Dry-run: compute preview without writing ---
+    if (dryRun) {
+      const preview = { to_import: 0, to_update: 0, unchanged: 0, total_source: products.length, details: [] as { name: string; action: string }[] };
+      for (const nuvemProduct of products) {
+        const mapped = mapProduct(nuvemProduct);
+        const { data: existing } = await supabase
+          .from("catalog_products")
+          .select("id, name, price, is_active")
+          .eq("nuvemshop_product_id", mapped.nuvemshop_product_id)
+          .single();
+
+        if (existing) {
+          const changed = existing.name !== mapped.name || Number(existing.price) !== mapped.price || existing.is_active !== mapped.is_active;
+          if (changed) {
+            preview.to_update++;
+            preview.details.push({ name: mapped.name, action: "update" });
+          } else {
+            preview.unchanged++;
+          }
+        } else {
+          preview.to_import++;
+          preview.details.push({ name: mapped.name, action: "import" });
+        }
+      }
+      // Limit details to first 50 for payload size
+      preview.details = preview.details.slice(0, 50);
+
+      return new Response(
+        JSON.stringify({ success: true, dry_run: true, preview }),
+        { status: 200, headers: { "Content-Type": "application/json", ...getCorsHeaders(req) } }
+      );
+    }
+
+    // --- Real sync ---
+    // Create sync run with audit info
     const { data: syncRun, error: syncRunError } = await supabase
       .from("catalog_sync_runs")
-      .insert({ status: "running" })
+      .insert({
+        status: "running",
+        source: "nuvemshop",
+        triggered_by: triggeredBy,
+      })
       .select()
       .single();
 
@@ -254,32 +361,6 @@ Deno.serve(async (req) => {
     }
 
     const syncRunId = syncRun.id;
-
-    // Fetch products from Nuvemshop
-    const { products, error: fetchError } = await fetchNuvemshopProducts(
-      storeId,
-      token,
-      userAgent
-    );
-
-    if (fetchError) {
-      await supabase
-        .from("catalog_sync_runs")
-        .update({
-          status: "error",
-          error_message: fetchError,
-          finished_at: new Date().toISOString(),
-        })
-        .eq("id", syncRunId);
-
-      return new Response(
-        JSON.stringify({ error: fetchError, syncRunId }),
-        {
-          status: 500,
-          headers: { "Content-Type": "application/json", ...getCorsHeaders(req) },
-        }
-      );
-    }
 
     // Upsert products
     const result = await upsertProducts(supabase, products);

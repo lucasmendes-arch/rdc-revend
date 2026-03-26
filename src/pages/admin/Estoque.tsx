@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase, callEdgeFunction } from '@/lib/supabase'
-import { Loader, RefreshCw, Minus, Plus, Search, Save, Package, Check } from 'lucide-react'
+import { Loader, RefreshCw, Minus, Plus, Search, Save, Package, Check, AlertTriangle } from 'lucide-react'
 import AdminLayout from '@/components/admin/AdminLayout'
+import { isProduction } from '@/lib/environment'
 
 interface InventoryItem {
   id: string
@@ -125,6 +126,8 @@ export default function AdminEstoque() {
   const queryClient = useQueryClient()
   const [sheetId, setSheetId] = useState(() => localStorage.getItem('rdc_google_sheet_id') || '')
   const [searchTerm, setSearchTerm] = useState('')
+  const [showSyncConfirm, setShowSyncConfirm] = useState(false)
+  const [syncConfirmText, setSyncConfirmText] = useState('')
 
   const { data: inventory = [], isLoading } = useQuery({
     queryKey: ['inventory'],
@@ -165,7 +168,7 @@ export default function AdminEstoque() {
     mutationFn: async () => {
       if (!sheetId) throw new Error('Informe o ID da planilha Google Sheets')
       localStorage.setItem('rdc_google_sheet_id', sheetId)
-      return callEdgeFunction('sync-google-sheets', { sheetId })
+      return callEdgeFunction('sync-google-sheets', { sheetId }, { 'x-confirm-sync': 'true' })
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['inventory'] })
@@ -239,6 +242,49 @@ export default function AdminEstoque() {
 
   return (
     <AdminLayout>
+      {/* Sync Confirmation Modal (production only) */}
+      {showSyncConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white rounded-xl shadow-xl p-6 max-w-md mx-4">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
+                <AlertTriangle className="w-5 h-5 text-red-600" />
+              </div>
+              <div>
+                <h3 className="font-bold text-foreground">Sincronizar estoque em PRODUÇÃO</h3>
+                <p className="text-sm text-muted-foreground">Esta ação altera o estoque real dos produtos.</p>
+              </div>
+            </div>
+            <p className="text-sm text-foreground mb-3">
+              Digite <strong className="text-red-600">SINCRONIZAR</strong> para confirmar:
+            </p>
+            <input
+              type="text"
+              value={syncConfirmText}
+              onChange={(e) => setSyncConfirmText(e.target.value)}
+              placeholder="SINCRONIZAR"
+              className="w-full border border-border rounded-lg px-3 py-2 text-sm mb-4 focus:outline-none focus:ring-2 focus:ring-red-500"
+              autoFocus
+            />
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => { setShowSyncConfirm(false); setSyncConfirmText('') }}
+                className="px-4 py-2 rounded-lg border border-border text-sm hover:bg-gray-50"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => { setShowSyncConfirm(false); setSyncConfirmText(''); syncMutation.mutate() }}
+                disabled={syncConfirmText !== 'SINCRONIZAR'}
+                className="px-4 py-2 rounded-lg bg-red-600 text-white text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed hover:bg-red-700"
+              >
+                Confirmar sincronização
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="bg-white border-b border-border sticky top-0 lg:top-0 z-30">
         <div className="px-4 sm:px-6 py-4 flex items-center justify-between gap-4">
           <div>
@@ -246,9 +292,18 @@ export default function AdminEstoque() {
             <p className="text-sm text-muted-foreground mt-1">Gerencie o estoque dos produtos</p>
           </div>
           <button
-            onClick={() => syncMutation.mutate()}
+            onClick={() => {
+              if (isProduction) {
+                setShowSyncConfirm(true)
+                setSyncConfirmText('')
+              } else {
+                syncMutation.mutate()
+              }
+            }}
             disabled={syncMutation.isPending}
-            className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg btn-gold text-white text-sm disabled:opacity-70"
+            className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg text-white text-sm disabled:opacity-70 ${
+              isProduction ? 'bg-red-600 hover:bg-red-700' : 'btn-gold'
+            }`}
           >
             <RefreshCw className={`w-4 h-4 ${syncMutation.isPending ? 'animate-spin' : ''}`} />
             <span className="hidden sm:inline">Sincronizar</span>

@@ -122,7 +122,9 @@ export function useDeleteProduct() {
 export interface SyncResult {
   success: boolean
   syncRunId: string
-  result: {
+  dry_run?: boolean
+  preview?: DryRunPreview
+  result?: {
     imported: number
     updated: number
     total: number
@@ -131,36 +133,55 @@ export interface SyncResult {
   }
 }
 
+export interface DryRunPreview {
+  to_import: number
+  to_update: number
+  unchanged: number
+  total_source: number
+  details: Array<{ name: string; action: string }>
+}
+
+async function callSyncNuvemshop(options: { dryRun?: boolean } = {}): Promise<SyncResult> {
+  const { data: { session } } = await supabase.auth.getSession()
+  const token = session?.access_token || import.meta.env.VITE_SUPABASE_ANON_KEY
+
+  const response = await fetch(
+    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sync-nuvemshop`,
+    {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        'x-confirm-sync': 'true',
+      },
+      body: JSON.stringify({ dry_run: options.dryRun || false }),
+    }
+  )
+
+  const data = await response.json()
+
+  if (!response.ok) {
+    const errorMsg = data.error || data.message || JSON.stringify(data)
+    console.error('Sync error:', errorMsg)
+    throw new Error(errorMsg)
+  }
+
+  return data as SyncResult
+}
+
 export function useNuvemshopSync() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async (): Promise<SyncResult> => {
-      const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
-
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sync-nuvemshop`,
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${anonKey}`,
-            'Content-Type': 'application/json',
-          },
-        }
-      )
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        const errorMsg = data.error || data.message || JSON.stringify(data)
-        console.error('Sync error:', errorMsg)
-        throw new Error(errorMsg)
-      }
-
-      return data as SyncResult
-    },
+    mutationFn: async (): Promise<SyncResult> => callSyncNuvemshop(),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-products'] })
     },
+  })
+}
+
+export function useNuvemshopDryRun() {
+  return useMutation({
+    mutationFn: async (): Promise<SyncResult> => callSyncNuvemshop({ dryRun: true }),
   })
 }

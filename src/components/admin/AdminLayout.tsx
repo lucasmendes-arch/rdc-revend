@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { Package, ShoppingCart, Users, Warehouse, UserCog, Menu, X, ExternalLink, Tag, Zap, DollarSign, GitBranch, Megaphone, UserCheck } from 'lucide-react'
+import { Package, ShoppingCart, Users, Warehouse, UserCog, Menu, X, ExternalLink, Tag, Zap, DollarSign, GitBranch, Megaphone, UserCheck, AlertTriangle, History } from 'lucide-react'
 import logo from '@/assets/logo-rei-dos-cachos.png'
+import { isProduction } from '@/lib/environment'
 
 const navItems = [
   { label: 'Catálogo', path: '/admin/catalogo', icon: Package },
@@ -13,6 +14,7 @@ const navItems = [
   { label: 'Marketing', path: '/admin/marketing', icon: Megaphone },
   { label: 'Vendedores', path: '/admin/vendedores', icon: UserCheck },
   { label: 'Usuários', path: '/admin/usuarios', icon: UserCog },
+  { label: 'Sync Log', path: '/admin/sync-history', icon: History },
   { label: 'CRM Debug', path: '/admin/crm', icon: GitBranch },
 ]
 
@@ -121,6 +123,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
       {/* Main Content */}
       <main className="flex-1 lg:ml-60 pt-14 lg:pt-0">
+        {isProduction && (
+          <div className="bg-red-600 text-white text-center text-xs font-bold py-1 flex items-center justify-center gap-1.5 sticky top-0 lg:top-0 z-30">
+            <AlertTriangle className="w-3.5 h-3.5" />
+            AMBIENTE DE PRODUÇÃO
+            <AlertTriangle className="w-3.5 h-3.5" />
+          </div>
+        )}
         {children}
       </main>
     </div>
