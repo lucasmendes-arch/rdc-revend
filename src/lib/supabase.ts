@@ -15,24 +15,17 @@ const key = supabaseAnonKey || 'placeholder-key'
 
 export const supabase = createClient(url, key)
 
-/** Call a Supabase Edge Function via fetch (uses admin session JWT when available) */
+/** Call a Supabase Edge Function (refreshes session then invokes) */
 export async function callEdgeFunction(functionName: string, body: Record<string, unknown>, extraHeaders?: Record<string, string>) {
-  const { data: { session } } = await supabase.auth.getSession()
-  const token = session?.access_token || supabaseAnonKey
-  const response = await fetch(`${supabaseUrl}/functions/v1/${functionName}`, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json',
-      ...extraHeaders,
-    },
-    body: JSON.stringify(body),
+  await supabase.auth.refreshSession()
+  const { data, error } = await supabase.functions.invoke(functionName, {
+    body,
+    headers: extraHeaders,
   })
 
-  if (!response.ok) {
-    const data = await response.json().catch(() => ({}))
-    throw new Error(data.error || data.message || `Edge function error: ${response.status}`)
+  if (error) {
+    throw new Error(error.message || `Edge function error: ${functionName}`)
   }
 
-  return response.json()
+  return data
 }

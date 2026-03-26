@@ -154,20 +154,23 @@ export default function AdminCatalogo() {
     }
   }
 
-  const handleSyncClick = async () => {
+  const handleSyncClick = () => {
     if (isProduction) {
-      // In production: run dry-run first, then show confirmation modal with preview
-      try {
-        const dryResult = await dryRunMutation.mutateAsync()
-        setDryRunPreview(dryResult.preview || null)
-      } catch (err) {
-        alert(`Erro no preview: ${err instanceof Error ? err.message : 'Desconhecido'}`)
-        return
-      }
+      // In production: open confirmation modal first, no server call yet
       setShowSyncConfirm(true)
       setSyncConfirmText('')
+      setDryRunPreview(null)
     } else {
       executeSync()
+    }
+  }
+
+  const handleLoadPreview = async () => {
+    try {
+      const dryResult = await dryRunMutation.mutateAsync()
+      setDryRunPreview(dryResult.preview || null)
+    } catch (err) {
+      alert(`Erro ao carregar preview: ${err instanceof Error ? err.message : 'Desconhecido'}`)
     }
   }
 
@@ -201,8 +204,8 @@ export default function AdminCatalogo() {
               </div>
             </div>
 
-            {/* Dry-run preview */}
-            {dryRunPreview && (
+            {/* Dry-run preview (loaded on demand inside modal) */}
+            {dryRunPreview ? (
               <div className="mb-4 p-3 bg-gray-50 rounded-lg border border-border text-sm">
                 <p className="font-semibold text-foreground mb-2">Preview da sincronização:</p>
                 <div className="grid grid-cols-2 gap-1 text-muted-foreground">
@@ -229,6 +232,18 @@ export default function AdminCatalogo() {
                   </details>
                 )}
               </div>
+            ) : (
+              <button
+                onClick={handleLoadPreview}
+                disabled={dryRunMutation.isPending}
+                className="mb-4 w-full px-3 py-2 rounded-lg border border-border text-sm text-muted-foreground hover:bg-gray-50 hover:text-foreground transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {dryRunMutation.isPending ? (
+                  <><RefreshCw className="w-3.5 h-3.5 animate-spin" /> Carregando preview...</>
+                ) : (
+                  'Carregar preview (opcional)'
+                )}
+              </button>
             )}
 
             <p className="text-sm text-foreground mb-3">
@@ -275,13 +290,13 @@ export default function AdminCatalogo() {
             </button>
             <button
               onClick={handleSyncClick}
-              disabled={syncMutation.isPending || dryRunMutation.isPending}
+              disabled={syncMutation.isPending}
               className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg text-white text-sm disabled:opacity-70 ${
                 isProduction ? 'bg-red-600 hover:bg-red-700' : 'btn-gold'
               }`}
             >
-              <RefreshCw className={`w-4 h-4 ${(syncMutation.isPending || dryRunMutation.isPending) ? 'animate-spin' : ''}`} />
-              <span className="hidden sm:inline">Sincronizar</span>
+              <RefreshCw className={`w-4 h-4 ${syncMutation.isPending ? 'animate-spin' : ''}`} />
+              <span className="hidden sm:inline">{isProduction ? 'Sync (prod)' : 'Sincronizar'}</span>
             </button>
           </div>
         </div>

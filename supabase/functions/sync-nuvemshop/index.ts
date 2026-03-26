@@ -182,7 +182,7 @@ function getCorsHeaders(req: Request) {
   return {
     'Access-Control-Allow-Origin': allowedOrigin,
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-confirm-sync',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-confirm-sync, x-client-info, apikey',
   }
 }
 

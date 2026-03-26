@@ -306,7 +306,7 @@ export default function AdminEstoque() {
             }`}
           >
             <RefreshCw className={`w-4 h-4 ${syncMutation.isPending ? 'animate-spin' : ''}`} />
-            <span className="hidden sm:inline">Sincronizar</span>
+            <span className="hidden sm:inline">{isProduction ? 'Sync (prod)' : 'Sincronizar'}</span>
           </button>
         </div>
       </div>

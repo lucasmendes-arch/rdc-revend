@@ -142,26 +142,16 @@ export interface DryRunPreview {
 }
 
 async function callSyncNuvemshop(options: { dryRun?: boolean } = {}): Promise<SyncResult> {
-  const { data: { session } } = await supabase.auth.getSession()
-  const token = session?.access_token || import.meta.env.VITE_SUPABASE_ANON_KEY
+  // Force session refresh to avoid expired JWT → 401
+  await supabase.auth.refreshSession()
 
-  const response = await fetch(
-    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sync-nuvemshop`,
-    {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-        'x-confirm-sync': 'true',
-      },
-      body: JSON.stringify({ dry_run: options.dryRun || false }),
-    }
-  )
+  const { data, error } = await supabase.functions.invoke('sync-nuvemshop', {
+    headers: { 'x-confirm-sync': 'true' },
+    body: { dry_run: options.dryRun || false },
+  })
 
-  const data = await response.json()
-
-  if (!response.ok) {
-    const errorMsg = data.error || data.message || JSON.stringify(data)
+  if (error) {
+    const errorMsg = error.message || 'Erro na sincronização'
     console.error('Sync error:', errorMsg)
     throw new Error(errorMsg)
   }
