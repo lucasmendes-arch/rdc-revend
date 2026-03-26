@@ -35,7 +35,7 @@ const Checkout = () => {
   const [couponCode, setCouponCode] = useState('');
   const [couponDiscount, setCouponDiscount] = useState(0);
   const [couponId, setCouponId] = useState<string | null>(null);
-  const [couponType, setCouponType] = useState<'fixed' | 'percent' | 'free_shipping' | null>(null);
+  const [couponType, setCouponType] = useState<'fixed' | 'percent' | 'free_shipping' | 'shipping_percent' | null>(null);
   const [isValidatingCoupon, setIsValidatingCoupon] = useState(false);
 
   const [step, setStep] = useState<Step>(1);
@@ -126,7 +126,11 @@ const Checkout = () => {
   // Shipping = 20% of subtotal (cartTotal already includes upsell if added via addItem)
   const shippingEstimate = Math.round(cartTotal * 0.20 * 100) / 100;
   const shippingValue = deliveryMethod === 'pickup' ? 0 : (couponType === 'free_shipping' ? 0 : shippingEstimate);
-  const orderTotal = Math.round(Math.max(cartTotal + shippingValue - couponDiscount, 0) * 100) / 100;
+  const shippingDiscountAmount = couponType === 'shipping_percent'
+    ? Math.round(shippingEstimate * couponDiscount / 100 * 100) / 100
+    : 0;
+  const effectiveDiscount = couponType === 'shipping_percent' ? shippingDiscountAmount : couponDiscount;
+  const orderTotal = Math.round(Math.max(cartTotal + shippingValue - effectiveDiscount, 0) * 100) / 100;
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value: rawValue } = e.target;
@@ -220,7 +224,7 @@ const Checkout = () => {
 
       if (rpcError) throw rpcError;
       
-      const res = data as { valid: boolean; id?: string; type?: 'fixed' | 'percent' | 'free_shipping'; value?: number; error?: string };
+      const res = data as { valid: boolean; id?: string; type?: 'fixed' | 'percent' | 'free_shipping' | 'shipping_percent'; value?: number; error?: string };
 
       if (!res.valid) {
         throw new Error(res.error || 'Cupom inválido ou expirado');
@@ -332,7 +336,7 @@ const Checkout = () => {
         delivery_method: deliveryMethod,
         pickup_unit_slug: pickupUnitSlug,
         notes: finalNotes,
-        discount_amount: couponDiscount,
+        discount_amount: effectiveDiscount,
         coupon_id: couponId,
         coupon_code: couponCode
       };
@@ -468,15 +472,21 @@ const Checkout = () => {
                   <span className="text-muted-foreground">Frete</span>
                   <span className="text-muted-foreground italic text-xs">Calculado na próxima etapa</span>
                 </div>
-                {couponDiscount > 0 && (
+                {couponDiscount > 0 && couponType !== 'shipping_percent' && (
                   <div className="flex items-center justify-between text-sm text-green-600 font-bold">
                     <span>Desconto (Cupom)</span>
                     <span>- R$ {couponDiscount.toFixed(2)}</span>
                   </div>
                 )}
+                {shippingDiscountAmount > 0 && (
+                  <div className="flex items-center justify-between text-sm text-green-600 font-bold">
+                    <span>Desconto no Frete ({couponDiscount}%)</span>
+                    <span>- R$ {shippingDiscountAmount.toFixed(2)}</span>
+                  </div>
+                )}
                 <div className="flex items-center justify-between text-lg sm:text-xl font-black pt-3 border-t-2 border-amber-100">
                   <span className="uppercase tracking-tight text-foreground/80">Subtotal Geral</span>
-                  <span className="gradient-gold-text">R$ {(cartTotal - couponDiscount).toFixed(2)}</span>
+                  <span className="gradient-gold-text">R$ {(cartTotal - effectiveDiscount).toFixed(2)}</span>
                 </div>
               </div>
 
@@ -934,7 +944,7 @@ const Checkout = () => {
               </div>
               {couponDiscount > 0 && (
                 <p className="mt-2 text-xs text-green-600 font-bold flex items-center gap-1">
-                  <Check className="w-3 h-3" /> {couponType === 'free_shipping' ? 'Frete Grátis aplicado!' : `Desconto de R$ ${couponDiscount.toFixed(2)} aplicado!`}
+                  <Check className="w-3 h-3" /> {couponType === 'free_shipping' ? 'Frete Grátis aplicado!' : couponType === 'shipping_percent' ? `${couponDiscount}% de desconto no frete aplicado!` : `Desconto de R$ ${couponDiscount.toFixed(2)} aplicado!`}
                 </p>
               )}
             </div>
@@ -966,6 +976,11 @@ const Checkout = () => {
                       <span className="text-muted-foreground line-through text-xs">R$ {shippingEstimate.toFixed(2)}</span>
                       <span className="text-emerald-600 font-bold">Grátis</span>
                     </div>
+                  ) : couponType === 'shipping_percent' ? (
+                    <div className="flex flex-col items-end">
+                      <span className="text-muted-foreground line-through text-xs">R$ {shippingEstimate.toFixed(2)}</span>
+                      <span className="text-emerald-600 font-bold">R$ {(shippingEstimate - shippingDiscountAmount).toFixed(2)}</span>
+                    </div>
                   ) : (
                     <span>+ R$ {shippingEstimate.toFixed(2)}</span>
                   )}
@@ -977,10 +992,16 @@ const Checkout = () => {
                 )}
               </div>
 
-              {couponDiscount > 0 && couponType !== 'free_shipping' && (
+              {couponDiscount > 0 && couponType !== 'free_shipping' && couponType !== 'shipping_percent' && (
                 <div className="flex items-center justify-between text-sm text-green-600 font-bold">
                   <span>Desconto (Cupom)</span>
                   <span>- R$ {couponDiscount.toFixed(2)}</span>
+                </div>
+              )}
+              {shippingDiscountAmount > 0 && (
+                <div className="flex items-center justify-between text-sm text-green-600 font-bold">
+                  <span>Desconto no Frete ({couponDiscount}%)</span>
+                  <span>- R$ {shippingDiscountAmount.toFixed(2)}</span>
                 </div>
               )}
 

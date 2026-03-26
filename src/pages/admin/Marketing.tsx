@@ -15,7 +15,7 @@ const Marketing = () => {
   const [creatingCoupon, setCreatingCoupon] = useState(false);
   const [newCoupon, setNewCoupon] = useState({
     code: '',
-    discount_type: 'percent' as 'fixed' | 'percent' | 'free_shipping',
+    discount_type: 'percent' as 'fixed' | 'percent' | 'free_shipping' | 'shipping_percent',
     discount_value: '',
     usage_limit: '',
     expires_at: '',
@@ -239,19 +239,20 @@ const Marketing = () => {
                   <label className="block text-xs font-bold text-muted-foreground uppercase mb-1">Tipo</label>
                   <select
                     value={newCoupon.discount_type}
-                    onChange={(e) => setNewCoupon(prev => ({ ...prev, discount_type: e.target.value as 'fixed' | 'percent' | 'free_shipping' }))}
+                    onChange={(e) => setNewCoupon(prev => ({ ...prev, discount_type: e.target.value as 'fixed' | 'percent' | 'free_shipping' | 'shipping_percent' }))}
                     className="w-full px-3 py-2.5 rounded-xl border border-input text-sm focus:ring-2 focus:ring-amber-400 focus:outline-none bg-white"
                   >
                     <option value="percent">Porcentagem (%)</option>
                     <option value="fixed">Valor Fixo (R$)</option>
                     <option value="free_shipping">Frete Grátis</option>
+                    <option value="shipping_percent">% Desconto Frete</option>
                   </select>
                 </div>
 
                 <div>
                   <label className="block text-xs font-bold text-muted-foreground uppercase mb-1">Valor</label>
                   <div className="relative">
-                    {newCoupon.discount_type === 'percent' ? (
+                    {(newCoupon.discount_type === 'percent' || newCoupon.discount_type === 'shipping_percent') ? (
                       <Percent className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                     ) : (
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-xs font-bold">R$</span>
@@ -261,7 +262,7 @@ const Marketing = () => {
                       value={newCoupon.discount_type === 'free_shipping' ? '0' : newCoupon.discount_value}
                       disabled={newCoupon.discount_type === 'free_shipping'}
                       onChange={(e) => setNewCoupon(prev => ({ ...prev, discount_value: e.target.value }))}
-                      placeholder="10"
+                      placeholder={newCoupon.discount_type === 'shipping_percent' ? '50' : '10'}
                       className={`w-full ${newCoupon.discount_type === 'fixed' ? 'pl-9' : 'pr-10'} py-2.5 rounded-xl border border-input text-sm focus:ring-2 focus:ring-amber-400 focus:outline-none disabled:bg-surface-alt disabled:cursor-not-allowed`}
                     />
                   </div>
@@ -344,8 +345,9 @@ const Marketing = () => {
                           </td>
                           <td className="px-6 py-4">
                             <span className="font-bold text-foreground">
-                              {coupon.discount_type === 'fixed' ? `R$ ${coupon.discount_value.toFixed(2)}` : 
-                               coupon.discount_type === 'percent' ? `${coupon.discount_value}%` : 'Frete Grátis'}
+                              {coupon.discount_type === 'fixed' ? `R$ ${coupon.discount_value.toFixed(2)}` :
+                               coupon.discount_type === 'percent' ? `${coupon.discount_value}%` :
+                               coupon.discount_type === 'shipping_percent' ? `${coupon.discount_value}% Frete` : 'Frete Grátis'}
                             </span>
                           </td>
                           <td className="px-6 py-4">

@@ -7,7 +7,7 @@ export interface StoreSettings {
 export interface Coupon {
   id: string;
   code: string;
-  discount_type: 'fixed' | 'percent' | 'free_shipping';
+  discount_type: 'fixed' | 'percent' | 'free_shipping' | 'shipping_percent';
   discount_value: number;
   usage_limit: number | null;
   used_count: number;

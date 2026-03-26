@@ -231,8 +231,9 @@ Cupons de desconto.
 | updated_at | timestamptz | NO | `now()` | — |
 
 > `code` deve ser sempre UPPERCASE (enforced por CHECK).
-> `discount_type` válidos: `percent`, `fixed`, `free_shipping`.
+> `discount_type` válidos: `percent`, `fixed`, `free_shipping`, `shipping_percent`.
 > Quando `discount_type = 'free_shipping'`, `discount_value` pode ser `0`.
+> Quando `discount_type = 'shipping_percent'`, `discount_value` é a % de desconto sobre o frete (ex: 50 = 50% off no frete).
 > **ATENÇÃO:** campo de expiração é `expires_at`, NÃO `expiration_date`.
 > RLS: anon/authenticated NÃO podem listar cupons diretamente — use a RPC `validate_coupon`.
 
@@ -698,7 +699,7 @@ Retorno: contagem de pedidos liberados.
 | order_items | qty | `> 0` |
 | client_sessions | status | `'visitou'`, `'visualizou_produto'`, `'adicionou_carrinho'`, `'iniciou_checkout'`, `'comprou'`, `'abandonou'` |
 | coupons | code | UPPERCASE (enforced por CHECK) |
-| coupons | discount_type | `'percent'`, `'fixed'`, `'free_shipping'` |
+| coupons | discount_type | `'percent'`, `'fixed'`, `'free_shipping'`, `'shipping_percent'` |
 | coupons | discount_value | `> 0` |
 | crm_events | event_type | `'visitou'`, `'visualizou_produto'`, `'adicionou_carrinho'`, `'iniciou_checkout'`, `'comprou'`, `'abandonou'`, `'user_registered'`, `'purchase_completed'`, `'cart_abandoned'`, `'checkout_abandoned'`, `'order_created'`, `'tag_added'`, `'inactivity_detected'`, `'profile_completed'`, `'profile_synced'` |
 | integration_outbox | status | `'pending'`, `'processing'`, `'delivered'`, `'failed'` |

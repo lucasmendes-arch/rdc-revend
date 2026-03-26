@@ -307,6 +307,7 @@ serve(async (req: Request) => {
     let couponDiscount = 0
     let couponType: string | null = null
     let isFreeShipping = false
+    let shippingDiscountPercent = 0
 
     if (body.coupon_code || body.coupon_id) {
       // If coupon_code provided, validate via RPC (authoritative)
@@ -328,6 +329,8 @@ serve(async (req: Request) => {
             couponDiscount = Math.round(subtotal * couponResult.value / 100 * 100) / 100
           } else if (couponResult.type === 'fixed') {
             couponDiscount = Math.min(couponResult.value, subtotal)
+          } else if (couponResult.type === 'shipping_percent') {
+            shippingDiscountPercent = couponResult.value
           }
         }
         // If coupon is invalid, silently ignore (frontend already validated — this is a safety net)
@@ -349,6 +352,8 @@ serve(async (req: Request) => {
             couponDiscount = Math.round(subtotal * coupon.discount_value / 100 * 100) / 100
           } else if (coupon.discount_type === 'fixed') {
             couponDiscount = Math.min(coupon.discount_value, subtotal)
+          } else if (coupon.discount_type === 'shipping_percent') {
+            shippingDiscountPercent = coupon.discount_value
           }
         }
       }
@@ -363,6 +368,11 @@ serve(async (req: Request) => {
       const expectedShipping = Math.round(subtotal * 0.20 * 100) / 100
       // Use server-calculated shipping if client value diverges too much (max R$0.10 tolerance)
       shipping = Math.abs(shippingFromClient - expectedShipping) < 0.10 ? shippingFromClient : expectedShipping
+    }
+
+    // shipping_percent: calculate discount based on actual shipping value
+    if (shippingDiscountPercent > 0) {
+      couponDiscount = Math.round(shipping * shippingDiscountPercent / 100 * 100) / 100
     }
 
     // Total = subtotal + shipping - coupon discount (never negative)
