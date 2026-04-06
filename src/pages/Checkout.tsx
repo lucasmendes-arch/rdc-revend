@@ -346,7 +346,6 @@ const Checkout = () => {
       // Use raw fetch to have full control over auth headers
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
       const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
-      console.log('[checkout] session uid:', session.user.id, '| token prefix:', session.access_token.slice(0, 20));
 
       const fnRes = await fetch(`${supabaseUrl}/functions/v1/create-order`, {
         method: 'POST',
@@ -359,7 +358,6 @@ const Checkout = () => {
       });
 
       const fnData = await fnRes.json().catch(() => ({}));
-      console.log('[checkout] fn status:', fnRes.status, '| body:', JSON.stringify(fnData));
 
       if (!fnRes.ok) {
         throw new Error(fnData?.error || `Erro ${fnRes.status} ao criar pedido`);
