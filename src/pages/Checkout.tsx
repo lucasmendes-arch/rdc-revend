@@ -343,26 +343,26 @@ const Checkout = () => {
         coupon_code: couponCode
       };
 
-      // Pass the fresh access_token explicitly — avoids SDK using a stale cached token
-      const { data: fnData, error: fnError } = await supabase.functions.invoke('create-order', {
-        body: orderBody,
+      // Use raw fetch to have full control over auth headers
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
+      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
+      console.log('[checkout] session uid:', session.user.id, '| token prefix:', session.access_token.slice(0, 20));
+
+      const fnRes = await fetch(`${supabaseUrl}/functions/v1/create-order`, {
+        method: 'POST',
         headers: {
-          Authorization: `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+          'apikey': supabaseAnonKey,
         },
+        body: JSON.stringify(orderBody),
       });
 
-      if (fnError) {
-        // If 401, the edge function might need re-deploy or JWT config change
-        let msg = fnError.message || 'Erro ao criar pedido';
-        if (msg.includes('Invalid JWT') || msg.includes('401')) {
-          msg = 'Erro de autenticacao com o servidor. Tente fazer logout e login novamente.';
-        }
-        throw new Error(msg);
-      }
+      const fnData = await fnRes.json().catch(() => ({}));
+      console.log('[checkout] fn status:', fnRes.status, '| body:', JSON.stringify(fnData));
 
-      if (fnData?.error) {
-        const details = fnData.details as string[] | undefined;
-        throw new Error(details ? `${fnData.error}:\n${details.join('\n')}` : fnData.error);
+      if (!fnRes.ok) {
+        throw new Error(fnData?.error || `Erro ${fnRes.status} ao criar pedido`);
       }
 
       // NOTE: 'comprou' status should only be set when payment is confirmed by the gateway
