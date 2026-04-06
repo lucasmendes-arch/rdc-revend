@@ -286,9 +286,11 @@ const Checkout = () => {
         return;
       }
 
-      // Ensure we have a valid session before calling the edge function
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
+      // Ensure we have a fresh, valid session before calling the edge function.
+      // getSession() returns the cached session which may have an expired access_token.
+      // refreshSession() forces renewal and returns the new access_token.
+      const { data: { session }, error: sessionError } = await supabase.auth.refreshSession();
+      if (sessionError || !session) {
         setError('Sessao expirada. Faca login novamente.');
         setLoading(false);
         return;
@@ -341,9 +343,12 @@ const Checkout = () => {
         coupon_code: couponCode
       };
 
-      // Try supabase.functions.invoke first (sends auth automatically)
+      // Pass the fresh access_token explicitly — avoids SDK using a stale cached token
       const { data: fnData, error: fnError } = await supabase.functions.invoke('create-order', {
         body: orderBody,
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
       });
 
       if (fnError) {
