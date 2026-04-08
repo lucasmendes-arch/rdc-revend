@@ -82,3 +82,12 @@ _Registro de decisões arquiteturais relevantes, com contexto e consequências._
 **Contexto:** Seeds criam automações de boas-vindas, carrinho abandonado e checkout. Templates são placeholders.
 **Decisão:** Todas criadas com `is_active = false`. Admin ativa manualmente após configurar API WhatsApp real.
 **Consequência:** Nenhuma automação dispara em produção até ativação explícita.
+
+---
+
+## [D-10] Segmentação comercial — profile como source of truth + snapshot no pedido
+
+**Data:** 2026-04-08
+**Contexto:** Necessidade de classificar clientes como `network_partner` ou `wholesale_buyer` para relatórios e regras de negócio diferenciadas.
+**Decisão:** `profiles.customer_segment` é a source of truth (editável pelo admin via RPC). `orders.customer_segment_snapshot` é uma cópia congelada no momento da criação do pedido (via RPCs e edge function). Backfill inicial usou `is_partner` como proxy (`true` → `network_partner`, `false` → `wholesale_buyer`).
+**Consequência:** Alterar o segmento de um cliente não retroage pedidos antigos. Relatórios por período usam o snapshot do pedido, não o perfil atual. NULL é permitido para legado ambíguo.

@@ -252,3 +252,27 @@ Ver `docs/backlog_future.md`.
 
 ### Documentação
 - `docs/SCHEMA.md` criado — single source of truth de todas as tabelas, views, RPCs e CHECKs
+
+---
+
+## ✅ Segmentação Comercial de Clientes (concluída 2026-04-08)
+
+### Backend
+- `profiles.customer_segment` — source of truth (`network_partner` / `wholesale_buyer`, nullable)
+- `orders.customer_segment_snapshot` — snapshot congelado no momento do pedido
+- Backfill automático: `is_partner=true` → `network_partner`, `false` → `wholesale_buyer`
+- RPC `admin_update_customer_segment(p_user_id, p_segment)` — SECURITY DEFINER, admin-only
+- `get_all_profiles()` recriada (DROP + CREATE) para incluir `customer_segment`
+- `create_manual_order` e `create_salao_order` atualizadas para herdar segmento
+- Edge function `create-order` faz snapshot do segmento do profile
+- Migration: `20260408000001_customer_segment.sql`
+
+### Frontend
+- Dropdown de segmento no painel de detalhe do cliente (`Clientes.tsx`)
+- Optimistic update via React Query (`client-sessions` cache)
+- Badges coloridos: laranja/dourado (Parceiro da Rede), teal (Comprador Atacado)
+
+### Financeiro (refinamento visual)
+- Filtro por período com presets (Hoje, 7d, 15d, Mês atual, Mês passado, Custom)
+- Hero card com gradiente dourado
+- Chart comparativo mês atual vs mês anterior dentro do grid de cards
