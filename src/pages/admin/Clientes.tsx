@@ -35,6 +35,7 @@ interface ClientProfile {
   business_type: string | null
   employees: string | null
   revenue: string | null
+  customer_segment: string | null
 }
 
 interface ClientSession {
@@ -164,12 +165,59 @@ function getClientName(session: ClientSession): string {
 import { getTagColorClasses } from '@/utils/crm'
 
 // --- Detail Panel ---
+const SEGMENT_OPTIONS = [
+  { value: '', label: 'Não classificado' },
+  { value: 'network_partner', label: 'Parceiro da Rede' },
+  { value: 'wholesale_buyer', label: 'Comprador Atacado' },
+] as const
+
+const segmentLabel = (v: string | null) =>
+  SEGMENT_OPTIONS.find(o => o.value === (v || ''))?.label || v || 'Não classificado'
+
+const segmentBadgeColor = (v: string | null) => {
+  if (v === 'network_partner') return 'bg-amber-100 text-amber-700 border-amber-300'
+  if (v === 'wholesale_buyer') return 'bg-teal-100 text-teal-700 border-teal-300'
+  return 'bg-gray-100 text-gray-500 border-gray-200'
+}
+
 function ClientDetailPanel({ session, onClose, onDeleteClick }: { session: ClientSession; onClose: () => void; onDeleteClick: () => void }) {
+  const queryClient = useQueryClient()
   const profile = session.profile
   const orders = session.orders || []
   const stageInfo = funnelStages.find(s => s.key === session.status) || funnelStages[0]
   const StageIcon = stageInfo.icon
   const labels = getClientLabels(session)
+
+  const segmentMutation = useMutation({
+    mutationFn: async (segment: string | null) => {
+      const { error } = await supabase.rpc('admin_update_customer_segment', {
+        p_user_id: session.user_id!,
+        p_segment: segment,
+      })
+      if (error) throw error
+    },
+    onMutate: async (newSegment) => {
+      await queryClient.cancelQueries({ queryKey: ['client-sessions'] })
+      const prev = queryClient.getQueryData(['client-sessions'])
+      queryClient.setQueryData(['client-sessions'], (old: any) => {
+        if (!old) return old
+        return old.map((s: any) =>
+          s.user_id === session.user_id
+            ? { ...s, profile: { ...s.profile, customer_segment: newSegment } }
+            : s,
+        )
+      })
+      return { prev }
+    },
+    onSuccess: () => {
+      toast.success('Segmento atualizado')
+      queryClient.invalidateQueries({ queryKey: ['client-sessions'] })
+    },
+    onError: (err: any, _v, context) => {
+      if (context?.prev) queryClient.setQueryData(['client-sessions'], context.prev)
+      toast.error('Erro ao atualizar: ' + (err?.message || 'erro desconhecido'))
+    },
+  })
 
   const clientName = getClientName(session)
   const initials = clientName.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
@@ -197,6 +245,11 @@ function ClientDetailPanel({ session, onClose, onDeleteClick }: { session: Clien
                   {l.text}
                 </span>
               ))}
+              {profile?.customer_segment && (
+                <span className={`inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded-full border ${segmentBadgeColor(profile.customer_segment)}`}>
+                  {segmentLabel(profile.customer_segment)}
+                </span>
+              )}
               {session.tags?.map(t => (
                 <span key={t.id} className={`inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded-full border ${getTagColorClasses(t.slug)}`}>
                   {t.name}
@@ -253,6 +306,31 @@ function ClientDetailPanel({ session, onClose, onDeleteClick }: { session: Clien
               )}
             </div>
           </div>
+
+          {/* Commercial Segment */}
+          {session.user_id && (
+            <div className="px-6 py-4 border-b border-border">
+              <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">Segmento Comercial</h3>
+              <div className="flex items-center gap-3">
+                <select
+                  value={profile?.customer_segment || ''}
+                  onChange={e => segmentMutation.mutate(e.target.value || null)}
+                  disabled={segmentMutation.isPending}
+                  className="px-3 py-1.5 text-sm border border-border rounded-lg bg-white focus:ring-2 focus:ring-gold focus:border-gold"
+                >
+                  {SEGMENT_OPTIONS.map(o => (
+                    <option key={o.value} value={o.value}>{o.label}</option>
+                  ))}
+                </select>
+                {segmentMutation.isPending && <Loader className="w-4 h-4 animate-spin text-muted-foreground" />}
+                {profile?.customer_segment && (
+                  <span className={`inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded-full border ${segmentBadgeColor(profile.customer_segment)}`}>
+                    {segmentLabel(profile.customer_segment)}
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Cart info */}
           {session.cart_items_count > 0 && orders.length === 0 && (
@@ -435,6 +513,7 @@ export default function AdminClientes() {
             business_type: p.business_type,
             employees: p.employees,
             revenue: p.revenue,
+            customer_segment: p.customer_segment ?? null,
           }]))
         }
 
@@ -642,10 +721,15 @@ export default function AdminClientes() {
                                 )}
                               </div>
 
-                              {/* Prioriade 3: Tags Discretas */}
-                              {session.tags && session.tags.length > 0 && (
+                              {/* Prioriade 3: Segmento + Tags */}
+                              {(session.profile?.customer_segment || (session.tags && session.tags.length > 0)) && (
                                 <div className="flex items-center flex-wrap gap-1.5 pt-2 border-t border-slate-50 min-h-[34px]">
-                                  {session.tags.slice(0, 3).map(t => (
+                                  {session.profile?.customer_segment && (
+                                    <span className={`inline-flex items-center text-[10px] sm:text-[11px] font-bold px-2 py-0.5 rounded-full border ${segmentBadgeColor(session.profile.customer_segment)}`}>
+                                      {segmentLabel(session.profile.customer_segment)}
+                                    </span>
+                                  )}
+                                  {session.tags?.slice(0, 3).map(t => (
                                     <span key={t.id} className="inline-flex items-center text-[10px] sm:text-[11px] font-medium px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200 max-w-full" title={t.name}>
                                       <span className="truncate">{t.name}</span>
                                     </span>

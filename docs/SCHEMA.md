@@ -1,6 +1,6 @@
 # SCHEMA.md — Single Source of Truth · RDC Revend
-> Atualizado em: 2026-03-24
-> Gerado a partir das migrations `20250221000001` → `20260324000015`
+> Atualizado em: 2026-04-08
+> Gerado a partir das migrations `20250221000001` → `20260408000001`
 > **LEIA ESTE ARQUIVO antes de escrever qualquer query, RPC call ou type definition no frontend.**
 
 ---
@@ -47,7 +47,9 @@ Perfil do usuário. Criado automaticamente por trigger ao registrar em `auth.use
 | integration_notes | text | YES | NULL | — |
 | last_synced_at | timestamptz | YES | NULL | — |
 | updated_by | text | YES | NULL | — |
+| customer_segment | text | YES | NULL | — |
 
+> `customer_segment` válidos: `'network_partner'`, `'wholesale_buyer'`. NULL = não classificado (legado pendente de revisão). Source of truth da segmentação comercial do cliente.
 > Colunas de integração (Etapa 9): `clickup_task_id`, `lead_source`, `lead_status`, `assigned_seller`, `integration_notes`, `last_synced_at`, `updated_by` — todas nullable, usadas pelo fluxo n8n/ClickUp.
 
 ---
@@ -119,7 +121,9 @@ Pedidos de venda.
 | pickup_unit_address | text | YES | NULL | — |
 | discount_amount | numeric(10,2) | NO | `0` | — |
 | seller_id | uuid | YES | NULL | sellers.id |
+| customer_segment_snapshot | text | YES | NULL | — |
 
+> `customer_segment_snapshot` válidos: `'network_partner'`, `'wholesale_buyer'`. Snapshot da classificação do cliente no momento da criação do pedido. NULL = pedido legado ou cliente sem classificação.
 > **ATENÇÃO:** campo de data é `created_at`, NÃO `order_date` ou `date`.
 > `discount_amount` é o valor efetivo do desconto aplicado (cupom percent/fixed). 0 se sem desconto.
 > Status válidos: `recebido`, `aguardando_pagamento`, `pago`, `separacao`, `enviado`, `entregue`, `concluido`, `cancelado`, `expirado`.
@@ -625,9 +629,18 @@ Acessível por: `authenticated` (admin verificado internamente).
 ### `get_all_profiles`
 ```
 get_all_profiles()
-  → TABLE (id uuid, full_name text, phone text, business_type text, email text, is_partner boolean)
+  → TABLE (id uuid, full_name text, phone text, business_type text, email text, is_partner boolean, customer_segment text)
 ```
 Lista todos os perfis com `role = 'user'` para o admin.
+Acessível por: `authenticated` (admin verificado internamente).
+
+---
+
+### `admin_update_customer_segment`
+```
+admin_update_customer_segment(p_user_id UUID, p_segment TEXT) → void
+```
+Atualiza a classificação comercial de um cliente. `p_segment` aceita `'network_partner'`, `'wholesale_buyer'` ou `NULL` (para desclassificar).
 Acessível por: `authenticated` (admin verificado internamente).
 
 ---
@@ -692,6 +705,8 @@ Retorno: contagem de pedidos liberados.
 |--------|--------|----------------|
 | profiles | role | `'user'`, `'admin'`, `'salao'` |
 | profiles | price_category | `'retail'`, `'wholesale'`, `'vip'` |
+| profiles | customer_segment | `'network_partner'`, `'wholesale_buyer'`, NULL |
+| orders | customer_segment_snapshot | `'network_partner'`, `'wholesale_buyer'`, NULL |
 | catalog_products | category_type | `'alto_giro'`, `'maior_margem'`, `'recompra_alta'`, NULL |
 | orders | status | `'recebido'`, `'aguardando_pagamento'`, `'pago'`, `'separacao'`, `'enviado'`, `'entregue'`, `'concluido'`, `'cancelado'`, `'expirado'` |
 | orders | origin | `'site'`, `'whatsapp'`, `'loja_fisica'`, `'outro'`, `'salao'`, NULL |

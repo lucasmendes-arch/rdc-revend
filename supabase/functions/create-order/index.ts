@@ -99,6 +99,17 @@ serve(async (req: Request) => {
       )
     }
 
+    // 1.6. Fetch customer segment from profile for order snapshot
+    let customerSegment: string | null = null
+    {
+      const { data: profile } = await serviceClient
+        .from('profiles')
+        .select('customer_segment')
+        .eq('id', user.id)
+        .single()
+      customerSegment = profile?.customer_segment ?? null
+    }
+
     // 2. Parse and validate request body
     const body: OrderRequest = await req.json()
 
@@ -411,6 +422,7 @@ serve(async (req: Request) => {
         coupon_id: couponId,
         discount_amount: couponDiscount,
         seller_id: resolvedSellerId,
+        customer_segment_snapshot: customerSegment,
       })
       .select('id')
       .single()
