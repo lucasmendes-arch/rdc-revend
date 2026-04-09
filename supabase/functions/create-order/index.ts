@@ -10,16 +10,15 @@ declare const Deno: {
 };
 const ALLOWED_ORIGINS = [
   'https://rdc-revend.vercel.app',
-  'http://localhost:8080',
-  'http://localhost:8083',
-  'http://localhost:5173',
 ]
 
 function getCorsHeaders(req: Request) {
   const origin = req.headers.get('Origin') || ''
-  const allowedOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0]
+  const isLocalhost = origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:')
+  const allowedOrigin = (ALLOWED_ORIGINS.includes(origin) || isLocalhost) ? origin : ALLOWED_ORIGINS[0]
   return {
     'Access-Control-Allow-Origin': allowedOrigin,
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   }
 }
@@ -547,10 +546,10 @@ serve(async (req: Request) => {
           payment_methods: {
             excluded_payment_types: [
               { id: 'ticket' },
-              // If user chose PIX, exclude credit/debit cards; if credit, exclude bank_transfer (PIX)
               ...(body.payment_method === 'pix' ? [{ id: 'credit_card' }, { id: 'debit_card' }] : []),
               ...(body.payment_method === 'credit' ? [{ id: 'bank_transfer' }] : []),
             ],
+            ...(body.payment_method === 'pix' ? { default_payment_method_id: 'pix' } : {}),
             ...(body.payment_method === 'credit' && body.installments ? { installments: body.installments } : {}),
           },
           auto_return: 'approved',

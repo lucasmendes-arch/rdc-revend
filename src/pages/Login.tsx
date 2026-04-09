@@ -72,6 +72,10 @@ const Login = () => {
             .select('role')
             .eq('id', user.id)
             .maybeSingle();
+          if (profile?.role === 'admin') {
+            navigate('/admin/financeiro', { replace: true });
+            return;
+          }
           if (profile?.role === 'salao') {
             navigate('/salao/pedido', { replace: true });
             return;

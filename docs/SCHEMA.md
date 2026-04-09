@@ -391,6 +391,7 @@ Idempotência de webhooks externos.
 | processed_at | timestamptz | NO | `now()` | — |
 
 > PK composta: `(source, external_id)`.
+> RLS: habilitado, sem policies permissivas. Acesso exclusivo via service_role (edge functions). Grants revogados de anon/authenticated.
 
 ---
 
@@ -402,6 +403,8 @@ Controle de rate limit por chave.
 | key | text | NO | — | — |
 | window_start | timestamptz | NO | `now()` | — |
 | request_count | int | NO | `1` | — |
+
+> RLS: habilitado, sem policies permissivas. Acesso exclusivo via `check_rate_limit()` (SECURITY DEFINER). Grants revogados de anon/authenticated.
 
 ---
 
