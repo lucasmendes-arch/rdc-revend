@@ -48,7 +48,8 @@ const Login = () => {
     setError("");
 
     try {
-      const { error: signInError } = await supabase.auth.signInWithPassword({
+      // Fetch role BEFORE signIn to avoid race with onAuthStateChange
+      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
         email: form.email,
         password: form.password,
       });
@@ -64,13 +65,12 @@ const Login = () => {
       if (state?.returnTo) {
         navigate(state.returnTo, { replace: true });
       } else {
-        // Fetch role to decide default destination
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
+        const userId = signInData.user?.id;
+        if (userId) {
           const { data: profile } = await supabase
             .from('profiles')
             .select('role')
-            .eq('id', user.id)
+            .eq('id', userId)
             .maybeSingle();
           if (profile?.role === 'admin') {
             navigate('/admin/financeiro', { replace: true });
