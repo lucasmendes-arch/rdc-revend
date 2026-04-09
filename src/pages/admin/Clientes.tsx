@@ -464,7 +464,7 @@ export default function AdminClientes() {
   const queryClient = useQueryClient()
   const [selectedSession, setSelectedSession] = useState<ClientSession | null>(null)
   const [selectedTagFilter, setSelectedTagFilter] = useState<string>('')
-  const [selectedSegmentFilter, setSelectedSegmentFilter] = useState<string>('')
+  const [selectedSegmentFilter, setSelectedSegmentFilter] = useState<string>('wholesale_buyer')
   const [clientToDelete, setClientToDelete] = useState<ClientSession | null>(null)
 
   const deleteClientMutation = useMutation({
