@@ -297,7 +297,7 @@ const AdminPedidos = () => {
                       {summary.count} pedido{summary.count !== 1 ? 's' : ''}
                     </span>
                   }
-                  className={`min-w-[160px] flex-1 shrink-0 ring-inset ring-1 ${summary.count > 0 ? style.ring : 'ring-transparent opacity-80'}`}
+                  className={`min-w-[130px] sm:min-w-[155px] flex-1 shrink-0 ring-inset ring-1 ${summary.count > 0 ? style.ring : 'ring-transparent opacity-80'}`}
                 />
               );
             })}
@@ -313,7 +313,7 @@ const AdminPedidos = () => {
           .kanban-scroll::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 8px; border: 3px solid #f8fafc; }
           .kanban-scroll::-webkit-scrollbar-thumb:hover { background-color: #94a3b8; }
         `}} />
-        <div className="absolute inset-0 overflow-x-auto overflow-y-hidden kanban-scroll px-4 sm:px-6 lg:px-8 pt-5 pb-6">
+        <div className="absolute inset-0 overflow-x-auto overflow-y-hidden kanban-scroll px-3 sm:px-6 lg:px-8 pt-3 sm:pt-5 pb-4 sm:pb-6">
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-24 w-full">
             <Loader className="w-8 h-8 animate-spin text-zinc-400 mb-4" />
@@ -342,7 +342,7 @@ const AdminPedidos = () => {
               return (
                 <div
                   key={`col-${status}`}
-                  className="flex flex-col w-[320px] bg-zinc-100/60 rounded-xl border border-zinc-200/80 shrink-0 self-stretch max-h-[75vh] flex-nowrap shadow-sm"
+                  className="flex flex-col w-[260px] sm:w-[300px] lg:w-[320px] bg-zinc-100/60 rounded-xl border border-zinc-200/80 shrink-0 self-stretch max-h-[75vh] flex-nowrap shadow-sm"
                   onDragOver={handleDragOver}
                   onDrop={(e) => handleDrop(e, status as typeof statusOptions[number])}
                 >
@@ -386,7 +386,7 @@ const AdminPedidos = () => {
                             
                             <button
                               onClick={(e) => { e.stopPropagation(); setOrderToDelete(order); }}
-                              className="text-zinc-300 hover:text-red-500 hover:bg-red-50 p-1.5 rounded-md transition-colors shrink-0 opacity-0 group-hover:opacity-100"
+                              className="text-zinc-300 hover:text-red-500 hover:bg-red-50 p-1.5 rounded-md transition-colors shrink-0 opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
                               title="Excluir"
                             >
                               <Trash2 className="w-4 h-4" />

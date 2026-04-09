@@ -623,7 +623,7 @@ export default function AdminClientes() {
             ) : undefined
           }
           actionNode={
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <AdminSelect
                 options={[
                   { value: 'wholesale_buyer', label: 'Comprador Atacado' },
@@ -662,7 +662,7 @@ export default function AdminClientes() {
                   {funnelStages.length} etapas
                 </span>
               }
-              className="min-w-[150px] flex-1 shrink-0 ring-inset ring-1 ring-zinc-600/10"
+              className="min-w-[120px] sm:min-w-[120px] sm:min-w-[150px] flex-1 shrink-0 ring-inset ring-1 ring-zinc-600/10"
             />
             <AdminSummaryCard
               label="Compraram"
@@ -673,7 +673,7 @@ export default function AdminClientes() {
                   {totalSessions > 0 ? `${((grouped['comprou']?.length || 0) / totalSessions * 100).toFixed(0)}% do total` : '—'}
                 </span>
               }
-              className={`min-w-[150px] flex-1 shrink-0 ring-inset ring-1 ${(grouped['comprou']?.length || 0) > 0 ? 'ring-emerald-600/20' : 'ring-transparent opacity-80'}`}
+              className={`min-w-[120px] sm:min-w-[150px] flex-1 shrink-0 ring-inset ring-1 ${(grouped['comprou']?.length || 0) > 0 ? 'ring-emerald-600/20' : 'ring-transparent opacity-80'}`}
             />
             <AdminSummaryCard
               label="Abandonaram"
@@ -684,7 +684,7 @@ export default function AdminClientes() {
                   {totalSessions > 0 ? `${((grouped['abandonou']?.length || 0) / totalSessions * 100).toFixed(0)}% do total` : '—'}
                 </span>
               }
-              className={`min-w-[150px] flex-1 shrink-0 ring-inset ring-1 ${(grouped['abandonou']?.length || 0) > 0 ? 'ring-red-600/20' : 'ring-transparent opacity-80'}`}
+              className={`min-w-[120px] sm:min-w-[150px] flex-1 shrink-0 ring-inset ring-1 ${(grouped['abandonou']?.length || 0) > 0 ? 'ring-red-600/20' : 'ring-transparent opacity-80'}`}
             />
             <AdminSummaryCard
               icon={TrendingUp}
@@ -696,7 +696,7 @@ export default function AdminClientes() {
                   visitou → comprou
                 </span>
               }
-              className="min-w-[150px] flex-1 shrink-0 ring-inset ring-1 ring-gold/20"
+              className="min-w-[120px] sm:min-w-[150px] flex-1 shrink-0 ring-inset ring-1 ring-gold/20"
             />
           </div>
         )}
@@ -710,7 +710,7 @@ export default function AdminClientes() {
           .funnel-scroll::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 8px; border: 3px solid #f8fafc; }
           .funnel-scroll::-webkit-scrollbar-thumb:hover { background-color: #94a3b8; }
         `}} />
-        <div className="absolute inset-0 overflow-x-auto overflow-y-hidden funnel-scroll px-4 sm:px-6 lg:px-8 pt-5 pb-6">
+        <div className="absolute inset-0 overflow-x-auto overflow-y-hidden funnel-scroll px-3 sm:px-6 lg:px-8 pt-3 sm:pt-5 pb-4 sm:pb-6">
           {isLoading ? (
             <div className="flex flex-col items-center justify-center py-24 w-full">
               <Loader className="w-8 h-8 animate-spin text-zinc-400 mb-4" />
@@ -730,7 +730,7 @@ export default function AdminClientes() {
                 const colors = stageColorConfig[stage.key]
 
                 return (
-                  <div key={stage.key} className="flex flex-col w-[320px] bg-zinc-100/60 rounded-xl border border-zinc-200/80 shrink-0 self-stretch max-h-[75vh] flex-nowrap shadow-sm">
+                  <div key={stage.key} className="flex flex-col w-[260px] sm:w-[300px] lg:w-[320px] bg-zinc-100/60 rounded-xl border border-zinc-200/80 shrink-0 self-stretch max-h-[75vh] flex-nowrap shadow-sm">
                     {/* Column Header */}
                     <div className="p-3 border-b border-zinc-200/60 sticky top-0 bg-white/60 backdrop-blur-md rounded-t-xl z-20 flex items-center justify-between">
                       <div className="flex items-center gap-2">
@@ -757,7 +757,7 @@ export default function AdminClientes() {
                             <button
                               key={session.id}
                               onClick={() => setSelectedSession(session)}
-                              className="w-full text-left bg-white p-3 md:p-3.5 rounded-xl shadow-[0_2px_8px_-4px_rgba(0,0,0,0.05)] hover:shadow-md border border-zinc-200/80 hover:border-zinc-300 transition-all duration-200 cursor-pointer group flex flex-col gap-2.5 relative"
+                              className="w-full text-left bg-white p-2.5 sm:p-3 md:p-3.5 rounded-xl shadow-[0_2px_8px_-4px_rgba(0,0,0,0.05)] hover:shadow-md border border-zinc-200/80 hover:border-zinc-300 transition-all duration-200 cursor-pointer group flex flex-col gap-2 sm:gap-2.5 relative"
                             >
                               {/* Identity */}
                               <div className="flex items-start justify-between gap-3 w-full">

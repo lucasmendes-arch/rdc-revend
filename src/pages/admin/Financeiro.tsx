@@ -485,9 +485,9 @@ export default function AdminFinanceiro() {
           <p className="text-muted-foreground text-sm">Carregando dados financeiros...</p>
         </div>
       ) : (
-        <div className="px-4 sm:px-6 lg:px-8 py-5 lg:py-6 space-y-4 lg:space-y-6 max-w-[1680px]">
+        <div className="px-3 sm:px-6 lg:px-8 py-4 lg:py-6 space-y-3 sm:space-y-4 lg:space-y-6 max-w-[1680px]">
 
-          <div className="grid grid-cols-2 lg:grid-cols-[1fr_0.7fr_0.7fr_0.7fr_1fr] gap-3 lg:gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-[1fr_0.7fr_0.7fr_1fr] gap-2 sm:gap-3 lg:gap-4">
 
             {/* 1 — Faturamento (hero) */}
             <div className="col-span-2 lg:col-span-1 bg-gradient-to-br from-gray-900 via-[#2a1a05] to-amber-950 rounded-xl p-3 lg:p-4 shadow-lg text-white relative overflow-hidden border border-amber-900/30 flex flex-col justify-between">
@@ -534,19 +534,7 @@ export default function AdminFinanceiro() {
               </div>
             </div>
 
-            {/* 4 — Conversão (compact, NEW) */}
-            <div className="bg-white rounded-xl border border-border p-3 shadow-sm h-full flex flex-col justify-between">
-              <div className="flex items-center gap-1.5 mb-1">
-                <UserCheck className="w-3.5 h-3.5 text-violet-500" />
-                <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Conversão (Funil)</span>
-              </div>
-              <p className="text-lg font-black text-foreground">{stats.conversionRate.toFixed(1)}%</p>
-              <p className="text-[9px] text-muted-foreground mt-1">
-                {stats.boughtSessions} compras / {stats.totalSessions} visi{stats.totalSessions !== 1 ? 'tas' : 'ta'}
-              </p>
-            </div>
-
-            {/* 5 — Meta Mensal (same size as Faturamento) */}
+            {/* 4 — Meta Mensal (same size as Faturamento) */}
             <div className="col-span-2 lg:col-span-1 bg-white rounded-xl border border-border p-3 lg:p-4 shadow-sm h-full flex flex-col justify-between">
               <div className="flex items-center justify-between mb-1">
                 <div className="flex items-center gap-1.5">
@@ -611,7 +599,7 @@ export default function AdminFinanceiro() {
           {/* ══════════════════════════════════════════════════════
               SECTION 2 — SECONDARY MINI-CARDS
               ══════════════════════════════════════════════════════ */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 lg:gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3 lg:gap-4">
             <AdminSummaryCard
               icon={DollarSign} label="Hoje" iconColor="text-emerald-500"
               value={`R$ ${fmt(stats.todayRevenue)}`}
@@ -647,7 +635,7 @@ export default function AdminFinanceiro() {
           {/* ══════════════════════════════════════════════════════
               SECTION 3 — CHART + BOTTOM BLOCKS
               ══════════════════════════════════════════════════════ */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 lg:gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4 lg:gap-6">
 
             {/* Chart: always current month vs previous month */}
             <div className="lg:col-span-2 bg-white rounded-xl border border-border p-4 lg:p-5 shadow-sm">
@@ -715,8 +703,8 @@ export default function AdminFinanceiro() {
             </div>
 
             {/* Seller Breakdown */}
-            <div className="bg-white rounded-xl border border-border p-5 lg:p-7 shadow-sm">
-              <div className="flex items-center gap-2 mb-4 lg:mb-5">
+            <div className="bg-white rounded-xl border border-border p-4 lg:p-6 shadow-sm">
+              <div className="flex items-center gap-2 mb-3 lg:mb-5">
                 <UserCheck className="w-4 h-4 text-gold-text" />
                 <h3 className="text-sm lg:text-base font-bold text-foreground">Vendas por vendedor</h3>
               </div>
@@ -726,7 +714,7 @@ export default function AdminFinanceiro() {
                   <p className="text-xs text-muted-foreground">Nenhuma venda com vendedor vinculado</p>
                 </div>
               ) : (
-                <div className="space-y-3 lg:space-y-4">
+                <div className="space-y-2.5 lg:space-y-4">
                   {stats.sellerBreakdown.map(seller => {
                     const commission = seller.revenue * (seller.commission_pct / 100)
                     const pctOfTotal = stats.periodRevenue > 0 ? (seller.revenue / stats.periodRevenue) * 100 : 0
@@ -765,8 +753,8 @@ export default function AdminFinanceiro() {
 
             {/* Seller Monthly Goals */}
             {stats.sellerBreakdown.some(s => s.monthly_goal > 0) && (
-              <div className="bg-white rounded-xl border border-border p-5 lg:p-7 shadow-sm">
-                <div className="flex items-center gap-2 mb-4 lg:mb-5">
+              <div className="bg-white rounded-xl border border-border p-4 lg:p-6 shadow-sm">
+                <div className="flex items-center gap-2 mb-3 lg:mb-5">
                   <Target className="w-4 h-4 text-gold-text" />
                   <h3 className="text-sm lg:text-base font-bold text-foreground">Metas individuais</h3>
                   <span className="text-[10px] text-muted-foreground ml-auto">mês atual</span>
@@ -825,8 +813,8 @@ export default function AdminFinanceiro() {
             )}
 
             {/* Top Products */}
-            <div className="bg-white rounded-xl border border-border p-5 lg:p-7 shadow-sm">
-              <div className="flex items-center gap-2 mb-4 lg:mb-5">
+            <div className="bg-white rounded-xl border border-border p-4 lg:p-6 shadow-sm">
+              <div className="flex items-center gap-2 mb-3 lg:mb-5">
                 <Package className="w-4 h-4 text-gold-text" />
                 <h3 className="text-sm lg:text-base font-bold text-foreground">Top 5 produtos</h3>
               </div>
@@ -836,7 +824,7 @@ export default function AdminFinanceiro() {
                   <p className="text-xs text-muted-foreground">Nenhuma venda no período</p>
                 </div>
               ) : (
-                <div className="space-y-3 lg:space-y-4">
+                <div className="space-y-2.5 lg:space-y-4">
                   {stats.topProducts.map(([name, data], i) => {
                     const maxRevenue = stats.topProducts[0]?.[1].revenue || 1
                     const pct = (data.revenue / maxRevenue) * 100
@@ -863,7 +851,7 @@ export default function AdminFinanceiro() {
             </div>
 
             {/* Pending Orders (always global) */}
-            <div className="bg-white rounded-xl border border-border p-5 lg:p-7 shadow-sm">
+            <div className="bg-white rounded-xl border border-border p-4 lg:p-6 shadow-sm">
               <div className="flex items-center justify-between mb-4 lg:mb-5">
                 <div className="flex items-center gap-2">
                   <Clock className="w-4 h-4 text-orange-500" />
@@ -902,8 +890,8 @@ export default function AdminFinanceiro() {
             </div>
 
             {/* Origin Breakdown */}
-            <div className="bg-white rounded-xl border border-border p-5 lg:p-7 shadow-sm">
-              <div className="flex items-center gap-2 mb-4 lg:mb-5">
+            <div className="bg-white rounded-xl border border-border p-4 lg:p-6 shadow-sm">
+              <div className="flex items-center gap-2 mb-3 lg:mb-5">
                 <TrendingUp className="w-4 h-4 text-gold-text" />
                 <h3 className="text-sm lg:text-base font-bold text-foreground">Vendas por canal</h3>
               </div>
@@ -913,7 +901,7 @@ export default function AdminFinanceiro() {
                   <p className="text-xs text-muted-foreground">Nenhuma venda no período</p>
                 </div>
               ) : (
-                <div className="space-y-3 lg:space-y-4">
+                <div className="space-y-2.5 lg:space-y-4">
                   {stats.originBreakdown.map(([origin, data]) => {
                     const pct = stats.periodRevenue > 0 ? (data.revenue / stats.periodRevenue) * 100 : 0
                     return (
