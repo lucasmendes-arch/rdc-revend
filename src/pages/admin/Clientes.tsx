@@ -464,6 +464,7 @@ export default function AdminClientes() {
   const queryClient = useQueryClient()
   const [selectedSession, setSelectedSession] = useState<ClientSession | null>(null)
   const [selectedTagFilter, setSelectedTagFilter] = useState<string>('')
+  const [selectedSegmentFilter, setSelectedSegmentFilter] = useState<string>('')
   const [clientToDelete, setClientToDelete] = useState<ClientSession | null>(null)
 
   const deleteClientMutation = useMutation({
@@ -578,9 +579,15 @@ export default function AdminClientes() {
   }, [sessions])
 
   const filteredSessions = useMemo(() => {
-    if (!selectedTagFilter) return sessions
-    return sessions.filter(s => s.tags?.some(t => t.id === selectedTagFilter))
-  }, [sessions, selectedTagFilter])
+    let result = sessions
+    if (selectedSegmentFilter) {
+      result = result.filter(s => s.profile?.customer_segment === selectedSegmentFilter)
+    }
+    if (selectedTagFilter) {
+      result = result.filter(s => s.tags?.some(t => t.id === selectedTagFilter))
+    }
+    return result
+  }, [sessions, selectedTagFilter, selectedSegmentFilter])
 
   const grouped = Object.fromEntries(
     funnelStages.map(s => [s.key, filteredSessions.filter(sess => sess.status === s.key)])
@@ -607,7 +614,7 @@ export default function AdminClientes() {
       <div className="bg-white border-b border-border sticky top-0 z-30 shadow-sm flex flex-col w-full text-left">
         <AdminHeader
           title="Clientes"
-          subtitle={`Funil de vendas em tempo real. ${totalSessions > 0 ? `${conversionRate}% de conversão.` : ''}`}
+          subtitle={`${selectedSegmentFilter ? `${segmentLabel(selectedSegmentFilter)} · ` : ''}Funil de vendas em tempo real.${totalSessions > 0 ? ` ${conversionRate}% de conversão.` : ''}`}
           badge={
             !isLoading && totalSessions > 0 ? (
               <span className="px-2.5 py-1 rounded-full bg-zinc-100 text-zinc-600 text-xs font-semibold border border-zinc-200 shadow-sm">
@@ -616,16 +623,29 @@ export default function AdminClientes() {
             ) : undefined
           }
           actionNode={
-            availableTags.length > 0 ? (
+            <div className="flex items-center gap-2">
               <AdminSelect
-                options={availableTags.map(t => ({ value: t.id, label: t.name }))}
-                value={selectedTagFilter}
-                onChange={setSelectedTagFilter}
-                placeholder="Filtrar tag"
-                icon={Tag}
-                allLabel="Todas as tags"
+                options={[
+                  { value: 'wholesale_buyer', label: 'Comprador Atacado' },
+                  { value: 'network_partner', label: 'Parceiro da Rede' },
+                ]}
+                value={selectedSegmentFilter}
+                onChange={setSelectedSegmentFilter}
+                placeholder="Tipo"
+                icon={Users}
+                allLabel="Todos os tipos"
               />
-            ) : undefined
+              {availableTags.length > 0 && (
+                <AdminSelect
+                  options={availableTags.map(t => ({ value: t.id, label: t.name }))}
+                  value={selectedTagFilter}
+                  onChange={setSelectedTagFilter}
+                  placeholder="Filtrar tag"
+                  icon={Tag}
+                  allLabel="Todas as tags"
+                />
+              )}
+            </div>
           }
         />
 
