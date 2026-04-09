@@ -1,10 +1,16 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Loader, ChevronDown, Plus, Globe, Tag, Hand, MessageSquare, UserCheck, Trash2, AlertTriangle } from 'lucide-react';
+import { Loader, ChevronDown, Plus, Globe, Tag, Hand, MessageSquare, UserCheck, Trash2, AlertTriangle, Package, Calendar } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 import AdminLayout from '@/components/admin/AdminLayout';
+import { AdminHeader } from '@/components/admin/ui/AdminHeader';
+import { AdminPeriodFilter } from '@/components/admin/ui/AdminPeriodFilter';
+import { PeriodPresetKey } from '@/components/admin/ui/presets';
+import { AdminSummaryCard } from '@/components/admin/ui/AdminSummaryCard';
+import { AdminSelect } from '@/components/admin/ui/AdminSelect';
+import { startOfMonth, endOfMonth, startOfDay, endOfDay, subDays, subMonths, format, parseISO } from 'date-fns';
 
 interface Order {
   id: string;
@@ -34,16 +40,16 @@ interface Order {
   }>;
 }
 
-const statusConfig: Record<string, { label: string; color: string }> = {
-  recebido: { label: 'Recebido', color: 'bg-blue-100 text-blue-700' },
-  aguardando_pagamento: { label: 'Aguardando Pgto', color: 'bg-orange-100 text-orange-700' },
-  pago: { label: 'Pago', color: 'bg-emerald-100 text-emerald-700' },
-  separacao: { label: 'Separação', color: 'bg-yellow-100 text-yellow-700' },
-  enviado: { label: 'Enviado', color: 'bg-purple-100 text-purple-700' },
-  entregue: { label: 'Entregue', color: 'bg-teal-100 text-teal-700' },
-  concluido: { label: 'Concluído', color: 'bg-green-100 text-green-700' },
-  cancelado: { label: 'Cancelado', color: 'bg-red-100 text-red-700' },
-  expirado: { label: 'Expirado', color: 'bg-gray-100 text-gray-500' },
+const statusConfig: Record<string, { label: string; bg: string; text: string; ring: string; indicator: string }> = {
+  recebido: { label: 'Recebido', bg: 'bg-blue-50', text: 'text-blue-700', ring: 'ring-blue-600/20', indicator: 'bg-blue-400' },
+  aguardando_pagamento: { label: 'Aguard. Pgto', bg: 'bg-amber-50', text: 'text-amber-700', ring: 'ring-amber-600/20', indicator: 'bg-amber-400' },
+  pago: { label: 'Pago', bg: 'bg-emerald-50', text: 'text-emerald-700', ring: 'ring-emerald-600/20', indicator: 'bg-emerald-400' },
+  separacao: { label: 'Em Separação', bg: 'bg-purple-50', text: 'text-purple-700', ring: 'ring-purple-600/20', indicator: 'bg-purple-400' },
+  enviado: { label: 'Enviado', bg: 'bg-sky-50', text: 'text-sky-700', ring: 'ring-sky-600/20', indicator: 'bg-sky-400' },
+  entregue: { label: 'Entregue', bg: 'bg-teal-50', text: 'text-teal-700', ring: 'ring-teal-600/20', indicator: 'bg-teal-400' },
+  concluido: { label: 'Concluído', bg: 'bg-zinc-100', text: 'text-zinc-700', ring: 'ring-zinc-600/20', indicator: 'bg-zinc-400' },
+  cancelado: { label: 'Cancelado', bg: 'bg-red-50', text: 'text-red-700', ring: 'ring-red-600/20', indicator: 'bg-red-400' },
+  expirado: { label: 'Expirado', bg: 'bg-slate-100', text: 'text-slate-500', ring: 'ring-slate-500/20', indicator: 'bg-slate-400' },
 };
 
 const statusOptions = ['recebido', 'aguardando_pagamento', 'pago', 'separacao', 'enviado', 'entregue', 'concluido', 'cancelado', 'expirado'] as const;
@@ -51,9 +57,40 @@ const statusOptions = ['recebido', 'aguardando_pagamento', 'pago', 'separacao', 
 const AdminPedidos = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [filterSeller, setFilterSeller] = useState<string>('');
   const [orderToDelete, setOrderToDelete] = useState<Order | null>(null);
+
+  // Date Filter State
+  const [dateFilterType, setDateFilterType] = useState<PeriodPresetKey>('esteMes');
+  const [customDates, setCustomDates] = useState({
+    start: format(startOfMonth(new Date()), 'yyyy-MM-dd'),
+    end: format(endOfDay(new Date()), 'yyyy-MM-dd')
+  });
+
+  const dateRange = useMemo(() => {
+    const today = new Date();
+    switch (dateFilterType) {
+      case 'hoje':
+        return { start: startOfDay(today), end: endOfDay(today) };
+      case '7dias':
+        return { start: startOfDay(subDays(today, 7)), end: endOfDay(today) };
+      case '30dias':
+        return { start: startOfDay(subDays(today, 30)), end: endOfDay(today) };
+      case 'esteMes':
+        return { start: startOfMonth(today), end: endOfDay(today) };
+      case 'mesPassado': {
+        const lastMonth = subMonths(today, 1);
+        return { start: startOfMonth(lastMonth), end: endOfMonth(lastMonth) };
+      }
+      case 'customizado':
+        return {
+          start: startOfDay(parseISO(customDates.start || format(today, 'yyyy-MM-dd'))),
+          end: endOfDay(parseISO(customDates.end || format(today, 'yyyy-MM-dd')))
+        };
+      default:
+        return { start: startOfMonth(today), end: endOfDay(today) };
+    }
+  }, [dateFilterType, customDates]);
 
   const { data: sellers = [] } = useQuery({
     queryKey: ['admin-sellers'],
@@ -63,15 +100,14 @@ const AdminPedidos = () => {
       return (data || []) as { id: string; name: string; code: string | null }[]
     },
     staleTime: 60 * 1000,
-  })
+  });
 
   const { data: orders = [], isLoading, error } = useQuery({
-    queryKey: ['admin-orders'],
+    queryKey: ['admin-orders', dateRange.start.toISOString(), dateRange.end.toISOString()],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('orders')
-        .select(
-          `
+        .select(`
           *,
           sellers ( name, code ),
           order_items (
@@ -81,8 +117,9 @@ const AdminPedidos = () => {
             line_total,
             catalog_products ( main_image )
           )
-        `
-        )
+        `)
+        .gte('created_at', dateRange.start.toISOString())
+        .lte('created_at', dateRange.end.toISOString())
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -99,41 +136,30 @@ const AdminPedidos = () => {
         .eq('id', orderId)
         .select()
         .single();
-
       if (error) throw error;
       return data;
     },
     onMutate: async ({ orderId, status }) => {
       await queryClient.cancelQueries({ queryKey: ['admin-orders'] });
-      const previousOrders = queryClient.getQueryData<Order[]>(['admin-orders']);
-
-      // Optimistically update the UI
+      const previousOrders = queryClient.getQueryData<Order[]>(['admin-orders', dateRange.start.toISOString(), dateRange.end.toISOString()]);
       if (previousOrders) {
-        queryClient.setQueryData<Order[]>(['admin-orders'], old =>
-          old?.map(order =>
-            order.id === orderId ? { ...order, status } : order
-          )
+        queryClient.setQueryData<Order[]>(['admin-orders', dateRange.start.toISOString(), dateRange.end.toISOString()], old =>
+          old?.map(order => order.id === orderId ? { ...order, status } : order)
         );
       }
       return { previousOrders };
     },
     onError: (err: any, variables, context) => {
       if (context?.previousOrders) {
-        queryClient.setQueryData(['admin-orders'], context.previousOrders);
+        queryClient.setQueryData(['admin-orders', dateRange.start.toISOString(), dateRange.end.toISOString()], context.previousOrders);
       }
-      console.error("DEBUG STATUS ERROR:", err);
-      const errDetail = err?.details || err?.hint || '';
-      const message = err?.message ? `${err.message} ${errDetail}` : 'Erro ao atualizar status';
-      toast.error(`Falha no DB: ${message}`);
+      toast.error('Erro ao atualizar status');
     },
     onSettled: () => {
-      // Delay invalidation slightly to allow backend replication/commit to settle
-      setTimeout(() => {
-        queryClient.invalidateQueries({ queryKey: ['admin-orders'] });
-      }, 500);
+      setTimeout(() => { queryClient.invalidateQueries({ queryKey: ['admin-orders'] }); }, 500);
     },
     onSuccess: () => {
-      toast.success('Status atualizado!');
+      toast.success('Status atualizado');
     },
   });
 
@@ -148,445 +174,336 @@ const AdminPedidos = () => {
       return orderId;
     },
     onSuccess: () => {
-      toast.success('Pedido excluído permanentemente');
+      toast.success('Pedido excluído');
       setOrderToDelete(null);
       queryClient.invalidateQueries({ queryKey: ['admin-orders'] });
     },
     onError: (err: any) => {
-      console.error("DEBUG DELETE ERROR:", err);
-      toast.error(`Falha ao excluir: ${err.message || 'Erro desconhecido'}`);
+      toast.error('Falha ao excluir');
     }
   });
 
-  // Drag and drop handlers
   const handleDragStart = (e: React.DragEvent, orderId: string) => {
     e.dataTransfer.setData('orderId', orderId);
     e.dataTransfer.effectAllowed = 'move';
-    // Small delay to prevent the dragged element from becoming invisible immediately
-    setTimeout(() => {
-      const target = e.target as HTMLElement;
-      if (target) target.classList.add('opacity-50');
-    }, 0);
+    setTimeout(() => { const target = e.target as HTMLElement; if (target) target.classList.add('opacity-40'); }, 0);
   };
-
   const handleDragEnd = (e: React.DragEvent) => {
     const target = e.target as HTMLElement;
-    if (target) target.classList.remove('opacity-50');
+    if (target) target.classList.remove('opacity-40');
   };
-
   const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault(); // Necessary to allow dropping
+    e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
   };
-
   const handleDrop = (e: React.DragEvent, newStatus: typeof statusOptions[number]) => {
     e.preventDefault();
     const orderId = e.dataTransfer.getData('orderId');
-    if (orderId) {
-      handleStatusChange(orderId, newStatus);
-    }
+    if (orderId) handleStatusChange(orderId, newStatus);
   };
 
-  const filteredOrders = filterSeller
-    ? orders.filter(o => o.seller_id === filterSeller)
-    : orders
+  const filteredOrders = useMemo(() => {
+    return filterSeller ? orders.filter(o => o.seller_id === filterSeller) : orders;
+  }, [orders, filterSeller]);
+
+  // Overall KPIs
+  const kpis = useMemo(() => {
+    const active = filteredOrders.filter(o => !['cancelado', 'expirado'].includes(o.status));
+    const totalRevenue = active.reduce((acc, curr) => acc + curr.total, 0);
+    return { count: active.length, revenue: totalRevenue };
+  }, [filteredOrders]);
+
+  // Status Summary
+  const statusSummary = useMemo(() => {
+    const summary: Record<string, { count: number; total: number }> = {};
+    statusOptions.forEach(s => summary[s] = { count: 0, total: 0 });
+    filteredOrders.forEach(o => {
+      if (summary[o.status]) {
+        summary[o.status].count += 1;
+        summary[o.status].total += o.total;
+      }
+    });
+    return summary;
+  }, [filteredOrders]);
 
   return (
     <AdminLayout>
-      <div className="bg-white border-b border-border sticky top-0 lg:top-0 z-30">
-        <div className="px-4 sm:px-6 py-4 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3 min-w-0">
-            <h1 className="text-xl sm:text-2xl font-bold text-foreground shrink-0">Pedidos</h1>
-            {sellers.length > 0 && (
-              <select
-                value={filterSeller}
-                onChange={(e) => setFilterSeller(e.target.value)}
-                className="text-xs px-2.5 py-1.5 rounded-lg border border-border bg-white text-foreground focus:outline-none focus:ring-2 focus:ring-gold max-w-[160px] truncate"
+      <div className="bg-white border-b border-border sticky top-0 z-30 shadow-sm flex flex-col w-full text-left">
+        <AdminHeader 
+          title="Pedidos"
+          subtitle={`Visão gerencial e operacional das vendas do período. ${kpis.count} ativos.`}
+          badge={
+            <span className="px-2.5 py-1 rounded-full bg-zinc-100 text-zinc-600 text-xs font-semibold border border-zinc-200 shadow-sm">
+              R$ {kpis.revenue.toFixed(2)}
+            </span>
+          }
+          actionNode={
+            <>
+              {sellers.length > 0 && (
+                <AdminSelect
+                  options={sellers.map(s => ({ value: s.id, label: s.code || s.name }))}
+                  value={filterSeller}
+                  onChange={setFilterSeller}
+                  placeholder="Vendedor"
+                  icon={UserCheck}
+                  allLabel="Todos"
+                />
+              )}
+              <button
+                onClick={() => navigate('/admin/pedidos/novo')}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-zinc-900 text-white text-sm font-semibold hover:bg-zinc-800 transition-colors shadow-sm shrink-0"
               >
-                <option value="">Todos vendedores</option>
-                <option value="__none__" disabled style={{ display: 'none' }} />
-                {sellers.map(s => (
-                  <option key={s.id} value={s.id}>{s.code || s.name}</option>
-                ))}
-              </select>
-            )}
+                <Plus className="w-4 h-4" />
+                <span>Novo</span>
+              </button>
+            </>
+          }
+        />
+        <AdminPeriodFilter 
+          presets={[
+            { key: 'hoje', label: 'Hoje' },
+            { key: '7dias', label: '7 D' },
+            { key: '30dias', label: '30 D' },
+            { key: 'esteMes', label: 'Este Mês' },
+            { key: 'mesPassado', label: 'Mês Passado' },
+            { key: 'customizado', label: 'Personalizado' }
+          ]}
+          activePreset={dateFilterType}
+          onPresetChange={setDateFilterType}
+          customDateFrom={customDates.start}
+          customDateTo={customDates.end}
+          onCustomDateFromChange={v => setCustomDates(prev => ({ ...prev, start: v }))}
+          onCustomDateToChange={v => setCustomDates(prev => ({ ...prev, end: v }))}
+          customPresetKey="customizado"
+        />
+
+        {/* Camada 1: Resumo Executivo Horizontal (Mini cards) */}
+        {!isLoading && !error && filteredOrders.length > 0 && (
+          <div className="w-full border-t border-zinc-100 bg-zinc-50/50 py-3 px-4 sm:px-6 lg:px-8 overflow-x-auto flex flex-nowrap gap-3 items-center" style={{ scrollbarWidth: 'thin' }}>
+            {statusOptions.map(status => {
+              const summary = statusSummary[status];
+              if (summary.count === 0 && (status === 'cancelado' || status === 'expirado')) return null;
+              const style = statusConfig[status];
+
+
+              return (
+                <AdminSummaryCard
+                  key={`summary-${status}`}
+                  label={style.label}
+                  value={`R$ ${summary.total.toFixed(0)}`}
+                  indicatorColor={style.indicator}
+                  subtitle={
+                    <span className={`inline-block text-[11px] font-bold px-1.5 py-0.5 rounded-md ${summary.count === 0 ? 'bg-zinc-100 text-zinc-400' : 'bg-zinc-50 text-zinc-600 border border-zinc-100'}`}>
+                      {summary.count} pedido{summary.count !== 1 ? 's' : ''}
+                    </span>
+                  }
+                  className={`min-w-[160px] flex-1 shrink-0 ring-inset ring-1 ${summary.count > 0 ? style.ring : 'ring-transparent opacity-80'}`}
+                />
+              );
+            })}
           </div>
-          <button
-            onClick={() => navigate('/admin/pedidos/novo')}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl btn-gold text-sm font-semibold shrink-0"
-          >
-            <Plus className="w-4 h-4" />
-            <span className="hidden sm:inline">Novo Pedido Manual</span>
-            <span className="sm:hidden">Novo</span>
-          </button>
-        </div>
+        )}
       </div>
 
-      <div className="px-4 sm:px-6 py-8">
-        {isLoading && (
-          <div className="text-center py-16">
-            <Loader className="w-8 h-8 animate-spin text-gold-text mx-auto mb-4" />
-            <p className="text-muted-foreground">Carregando pedidos...</p>
+      {/* Camada 2: Board Operacional com Navegação Segura e Scroll Grosso Evidente */}
+      <div className="w-full flex-1 min-w-0 relative border-t border-zinc-100 shadow-inner bg-zinc-50/40 min-h-[calc(100vh-210px)]">
+        <style dangerouslySetInnerHTML={{__html: `
+          .kanban-scroll::-webkit-scrollbar { height: 16px; }
+          .kanban-scroll::-webkit-scrollbar-track { background: transparent; border-top: 1px solid #e2e8f0; border-bottom: 1px solid #e2e8f0; }
+          .kanban-scroll::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 8px; border: 3px solid #f8fafc; }
+          .kanban-scroll::-webkit-scrollbar-thumb:hover { background-color: #94a3b8; }
+        `}} />
+        <div className="absolute inset-0 overflow-x-auto overflow-y-hidden kanban-scroll px-4 sm:px-6 lg:px-8 pt-5 pb-6">
+        {isLoading ? (
+          <div className="flex flex-col items-center justify-center py-24 w-full">
+            <Loader className="w-8 h-8 animate-spin text-zinc-400 mb-4" />
+            <p className="text-sm font-medium text-zinc-500">Sincronizando operação...</p>
           </div>
-        )}
-
-        {error && (
-          <div className="p-4 rounded-lg bg-red-50 border border-red-200 text-red-700">
-            <p className="font-medium">Erro ao carregar pedidos</p>
-            <p className="text-sm">{error instanceof Error ? error.message : 'Desconhecido'}</p>
+        ) : error ? (
+          <div className="p-4 rounded-xl bg-red-50 border border-red-200 text-red-700 max-w-md mx-auto mt-10 w-full">
+            <p className="font-semibold flex items-center gap-2"><AlertTriangle className="w-5 h-5"/> Erro de sistema</p>
+            <p className="text-sm mt-1 opacity-90">{error instanceof Error ? error.message : 'Falha na comunicação com o banco.'}</p>
           </div>
-        )}
-
-        {!isLoading && !error && filteredOrders.length === 0 && (
-          <div className="text-center py-16">
-            <p className="text-muted-foreground">Nenhum pedido encontrado</p>
+        ) : filteredOrders.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-32 bg-white rounded-2xl border border-zinc-200 border-dashed max-w-4xl mx-auto shadow-sm w-full">
+            <Calendar className="w-12 h-12 text-zinc-300 mb-4" />
+            <h3 className="text-lg font-bold text-zinc-700">Tudo limpo por aqui</h3>
+            <p className="text-zinc-500 text-sm mt-1 mb-6 text-center max-w-xs">Não há registros para o período e filtro selecionados.</p>
           </div>
-        )}
+        ) : (
+          <div className="flex gap-4 min-w-max h-full items-start">
+            {/* Camada 2: Board Operacional */}
+            {statusOptions.map((status) => {
+              const columnOrders = filteredOrders.filter((o) => o.status === status);
+              if (columnOrders.length === 0 && (status === 'cancelado' || status === 'expirado')) return null;
 
-        {!isLoading && !error && filteredOrders.length > 0 && (
-          <>
-            {/* Desktop Kanban / Grid View */}
-            <div className="hidden md:grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 mb-8">
-              {statusOptions.map((status, index) => {
-                const columnOrders = filteredOrders.filter((o) => o.status === status);
+              const style = statusConfig[status];
 
-                // Hide empty negative statuses to keep the kanban clean
-                if (columnOrders.length === 0 && (status === 'cancelado' || status === 'expirado')) return null;
-
-                const statusInfo = statusConfig[status] || { label: status, color: 'bg-gray-100 text-gray-600' };
-
-                return (
-                  <div
-                    key={status}
-                    className="flex flex-col min-h-[400px] max-h-[80vh] bg-[#f8f9fa] rounded-2xl shadow-sm border border-slate-200 overflow-hidden relative"
-                    onDragOver={handleDragOver}
-                    onDrop={(e) => handleDrop(e, status as typeof statusOptions[number])}
-                  >
-                    {/* Header */}
-                    <div className="p-3.5 border-b border-slate-200 flex items-center justify-between bg-white z-10 sticky top-0">
-                      <div className="flex items-center gap-2">
-                        <span className={`w-2.5 h-2.5 rounded-full ${statusInfo.color.split(' ')[0]} shadow-inner`}></span>
-                        <h3 className="font-bold text-xs text-slate-800 uppercase tracking-wide">{statusInfo.label}</h3>
-                      </div>
-                      <span className="bg-slate-100 text-slate-500 text-xs font-bold px-2.5 py-1 rounded-full border border-slate-200 shadow-sm leading-none">
-                        {columnOrders.length}
-                      </span>
-                    </div>
-
-                    {/* Cards Container */}
-                    <div className="flex-1 overflow-y-auto p-3 space-y-3 scrollbar-thin">
-                      {columnOrders.map((order) => {
-                        const orderNumber = order.id.slice(0, 8).toUpperCase();
-                        const orderDate = new Date(order.created_at).toLocaleDateString('pt-BR');
-
-                        return (
-                          <div
-                            key={order.id}
-                            draggable
-                            onDragStart={(e) => handleDragStart(e, order.id)}
-                            onDragEnd={handleDragEnd}
-                            className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 hover:shadow-md transition-shadow hover:border-gold/40 group relative flex flex-col gap-1.5 cursor-grab active:cursor-grabbing"
-                          >
-                            <div className="flex items-center justify-between gap-2 mb-1.5">
-                              <div className="flex items-center gap-1.5 min-w-0">
-                                <Link
-                                  to={`/pedido/sucesso/${order.id}`}
-                                  className="text-[13px] font-extrabold text-gold-text hover:underline shrink-0"
-                                >
-                                  #{orderNumber}
-                                </Link>
-                                {order.origin === 'manual' ? (
-                                  <span title="Pedido Manual" className="shrink-0"><Hand className="w-3 h-3 text-slate-400" /></span>
-                                ) : (
-                                  <span title="Feito pelo Site" className="shrink-0"><Globe className="w-3 h-3 text-slate-400" /></span>
-                                )}
-                              </div>
-                              <div className="flex items-center gap-1 shrink-0">
-                                <span className="text-[10px] font-medium text-slate-400">{orderDate}</span>
-                                <button onClick={(e) => { e.stopPropagation(); setOrderToDelete(order); }} className="text-slate-300 hover:text-red-500 transition-colors p-1" title="Excluir Pedido">
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
-                              </div>
-                            </div>
-
-                            <div>
-                              <div className="flex flex-wrap items-center gap-1.5 mb-1">
-                                <p className="text-[13px] font-bold text-slate-700 truncate max-w-[120px]" title={order.customer_name}>{order.customer_name}</p>
-                                {order.sellers && (
-                                  <span
-                                    title={`Vendedor: ${order.sellers.name}`}
-                                    className="flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 text-[9px] font-bold border border-amber-100 shrink-0"
-                                  >
-                                    <UserCheck className="w-2.5 h-2.5 shrink-0" />
-                                    <span>{order.sellers.code || order.sellers.name.split(' ')[0]}</span>
-                                  </span>
-                                )}
-                                {order.delivery_method === 'pickup' && (
-                                  <span className="bg-amber-100 text-amber-800 text-[9px] px-1.5 py-0.5 rounded font-bold uppercase shrink-0" title={`Retirada: ${order.pickup_unit_address || order.pickup_unit_slug}`}>
-                                    Retirada ({order.pickup_unit_slug === 'linhares' ? 'LIN' : order.pickup_unit_slug === 'serra' ? 'SER' : order.pickup_unit_slug === 'teixeira' ? 'TEIX' : order.pickup_unit_slug})
-                                  </span>
-                                )}
-                              </div>
-                              <p className="text-[11px] text-slate-500 truncate">{order.customer_whatsapp}</p>
-                              {order.notes && (
-                                <div className="mt-1.5 flex items-start gap-1">
-                                  <MessageSquare className="w-3 h-3 text-amber-500 mt-0.5 shrink-0" />
-                                  <p className="text-[10px] text-slate-500 italic line-clamp-2 leading-tight" title={order.notes}>{order.notes}</p>
-                                </div>
-                              )}
-                            </div>
-
-                            {/* Small Items preview with Thumbnails */}
-                            <div className="py-3 mt-1 border-t border-dashed border-slate-100">
-                              <div className="text-[10px] text-slate-400 font-semibold mb-2 uppercase tracking-wider flex justify-between">
-                                <span>Itens do Pedido ({order.order_items.reduce((acc, item) => acc + item.qty, 0)})</span>
-                              </div>
-                              <div className="flex -space-x-3.5 sm:-space-x-4 pl-1">
-                                {order.order_items.slice(0, 4).map((item, idx) => {
-                                  let imgUrl = null;
-                                  if (Array.isArray(item.catalog_products)) {
-                                    imgUrl = item.catalog_products[0]?.main_image;
-                                  } else {
-                                    imgUrl = item.catalog_products?.main_image;
-                                  }
-
-                                  return (
-                                    <div
-                                      key={item.id}
-                                      className="w-10 h-10 sm:w-12 sm:h-12 shrink-0 rounded-full border-2 sm:border-[3px] border-white bg-white overflow-hidden shadow-sm relative hover:scale-110 transition-transform"
-                                      style={{ zIndex: idx }}
-                                      title={`${item.qty}x ${item.product_name_snapshot}`}
-                                    >
-                                      {imgUrl ? (
-                                        <img src={imgUrl} alt="" className="w-full h-full object-cover" />
-                                      ) : (
-                                        <div className="w-full h-full flex items-center justify-center bg-slate-50 text-[12px] font-bold text-slate-400">
-                                          {item.product_name_snapshot.substring(0, 1).toUpperCase()}
-                                        </div>
-                                      )}
-                                    </div>
-                                  );
-                                })}
-                                {order.order_items.length > 4 && (
-                                  <div
-                                    className="w-10 h-10 sm:w-12 sm:h-12 shrink-0 rounded-full border-2 sm:border-[3px] border-white bg-surface-alt text-muted-foreground flex items-center justify-center text-[11px] sm:text-[14px] font-bold shadow-sm relative"
-                                    style={{ zIndex: 10 }}
-                                  >
-                                    +{order.order_items.length - 4}
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-
-                            <div className="flex items-center justify-between mt-1 pt-3 border-t border-slate-100 gap-2">
-                              <div className="flex flex-col min-w-0 shrink-0">
-                                <span className="font-black text-slate-800 tracking-tight whitespace-nowrap">R$ {order.total.toFixed(2)}</span>
-                                {order.discount_amount > 0 && (
-                                  <span className="text-[9px] text-emerald-600 font-bold flex items-center gap-0.5 mt-0.5 whitespace-nowrap">
-                                    <Tag className="w-2.5 h-2.5" /> -R$ {order.discount_amount.toFixed(2)}
-                                  </span>
-                                )}
-                              </div>
-
-                              <select
-                                value={order.status}
-                                onChange={(e) =>
-                                  handleStatusChange(
-                                    order.id,
-                                    e.target.value as typeof statusOptions[number]
-                                  )
-                                }
-                                disabled={updateStatusMutation.isPending}
-                                className={`w-full max-w-[110px] px-1.5 py-1 rounded-md text-[10px] font-bold border-0 cursor-pointer shadow-sm outline-none transition-transform hover:scale-105 active:scale-95 ${statusInfo.color}`}
-                              >
-                                {statusOptions.map((s) => (
-                                  <option key={s} value={s}>
-                                    {statusConfig[s].label}
-                                  </option>
-                                ))}
-                              </select>
-                            </div>
-                          </div>
-                        );
-                      })}
-
-                      {/* Empty Column Placeholder */}
-                      {columnOrders.length === 0 && (
-                        <div className="flex flex-col items-center justify-center py-10 opacity-60">
-                          <div className="w-12 h-12 rounded-full border-2 border-dashed border-slate-300 flex items-center justify-center text-slate-400 mb-3">
-                            <span className="block w-4 h-0.5 bg-slate-300 rounded-full"></span>
-                          </div>
-                          <p className="text-xs font-semibold text-slate-400">Nenhum pedido</p>
-                        </div>
-                      )}
+              return (
+                <div
+                  key={`col-${status}`}
+                  className="flex flex-col w-[320px] bg-zinc-100/60 rounded-xl border border-zinc-200/80 shrink-0 self-stretch max-h-[75vh] flex-nowrap shadow-sm"
+                  onDragOver={handleDragOver}
+                  onDrop={(e) => handleDrop(e, status as typeof statusOptions[number])}
+                >
+                  <div className={`p-3 border-b border-zinc-200/60 sticky top-0 bg-white/60 backdrop-blur-md rounded-t-xl z-20 flex items-center justify-between`}>
+                    <div className="flex items-center gap-2">
+                       <div className={`w-2 h-2 rounded-full ring-2 ${style.bg.replace('50', '400')} ${style.ring}`}></div>
+                       <h3 className="font-bold text-[13px] text-zinc-800 tracking-tight">{style.label}</h3>
                     </div>
                   </div>
-                );
-              })}
-            </div>
 
-            {/* Mobile Card View */}
-            <div className="md:hidden space-y-4">
-              {filteredOrders.map((order) => {
-                const isExpanded = expandedId === order.id;
-                const statusInfo = statusConfig[order.status] || { label: order.status, color: 'bg-gray-100 text-gray-600' };
-                const orderNumber = order.id.slice(0, 8).toUpperCase();
-                const orderDate = new Date(order.created_at).toLocaleDateString('pt-BR');
+                  <div className="flex-1 overflow-y-auto p-2.5 space-y-2.5 scrollbar-thin">
+                    {columnOrders.map((order) => {
+                      const orderNumber = order.id.slice(0, 8).toUpperCase();
+                      const itemsCount = order.order_items.reduce((acc, item) => acc + item.qty, 0);
 
-                return (
-                  <div key={order.id} className="bg-white rounded-2xl shadow-card overflow-hidden">
-                    {/* Header */}
-                    <button
-                      onClick={() => setExpandedId(isExpanded ? null : order.id)}
-                      className="w-full text-left p-4 hover:bg-surface-alt transition-colors flex items-center justify-between gap-3"
-                    >
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1.5 mb-1">
-                          <p className="font-semibold text-foreground">Pedido #{orderNumber}</p>
-                          {order.origin === 'manual' ? (
-                            <span title="Pedido Manual" className="flex shrink-0"><Hand className="w-3 h-3 text-slate-400" /></span>
-                          ) : (
-                            <span title="Feito pelo Site" className="flex shrink-0"><Globe className="w-3 h-3 text-slate-400" /></span>
-                          )}
-                        </div>
-                        <p className="text-xs text-muted-foreground">{order.customer_name}</p>
-                        <div className="flex items-center gap-2 mt-1">
-                          <p className="text-sm font-semibold text-foreground">
-                            R$ {order.total.toFixed(2)}
-                          </p>
-                          {order.discount_amount > 0 && (
-                            <span className="text-[10px] text-emerald-600 font-bold bg-emerald-50 px-1.5 rounded">
-                              -R$ {order.discount_amount.toFixed(2)}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                      <ChevronDown
-                        className={`w-5 h-5 text-muted-foreground flex-shrink-0 transition-transform ${isExpanded ? 'rotate-180' : ''
-                          }`}
-                      />
-                    </button>
+                      return (
+                        <div
+                          key={order.id}
+                          draggable
+                          onDragStart={(e) => handleDragStart(e, order.id)}
+                          onDragEnd={handleDragEnd}
+                          className="bg-white p-3 md:p-3.5 rounded-xl shadow-[0_2px_8px_-4px_rgba(0,0,0,0.05)] hover:shadow-md border border-zinc-200/80 hover:border-zinc-300 transition-all cursor-grab active:cursor-grabbing group relative"
+                        >
+                          <div className="flex items-start justify-between mb-2">
+                            <div className="flex flex-col gap-0.5 min-w-0">
+                               <Link
+                                to={`/pedido/sucesso/${order.id}`}
+                                className="text-[13px] font-bold text-zinc-900 group-hover:text-zinc-600 transition-colors flex items-center gap-1.5 shrink-0"
+                              >
+                                #{orderNumber}
+                                {order.origin === 'manual' ? (
+                                  <Hand className="w-3.5 h-3.5 text-zinc-400" title="Pedido Manual" />
+                                ) : (
+                                  <Globe className="w-3.5 h-3.5 text-blue-400" title="Feito pelo Site" />
+                                )}
+                              </Link>
+                              <span className="text-[11px] font-medium text-zinc-400 leading-none">
+                                {new Date(order.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
+                              </span>
+                            </div>
+                            
+                            <button
+                              onClick={(e) => { e.stopPropagation(); setOrderToDelete(order); }}
+                              className="text-zinc-300 hover:text-red-500 hover:bg-red-50 p-1.5 rounded-md transition-colors shrink-0 opacity-0 group-hover:opacity-100"
+                              title="Excluir"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
 
-                    {/* Expanded content */}
-                    {isExpanded && (
-                      <div className="border-t border-border p-4 space-y-4">
-                        <div className="space-y-2 text-sm">
-                          <p>
-                            <span className="text-muted-foreground">WhatsApp:</span> {order.customer_whatsapp}
-                          </p>
-                          <p>
-                            <span className="text-muted-foreground">E-mail:</span> {order.customer_email}
-                          </p>
-                          <p>
-                            <span className="text-muted-foreground">Data:</span> {orderDate}
-                          </p>
-                          {order.sellers && (
-                            <p>
-                              <span className="text-muted-foreground">Vendedor:</span>{' '}
-                              <strong className="text-amber-700">{order.sellers.name}</strong>
-                            </p>
-                          )}
-                          {order.delivery_method === 'pickup' && (
-                            <p>
-                              <span className="text-muted-foreground">Entrega:</span> <strong className="text-amber-600">Retirada na Loja ({order.pickup_unit_slug === 'linhares' ? 'Linhares' : order.pickup_unit_slug === 'serra' ? 'Serra' : order.pickup_unit_slug === 'teixeira' ? 'Teixeira' : order.pickup_unit_slug})</strong>
-                            </p>
-                          )}
+                          <div className="mb-3">
+                            <h4 className="text-[13px] md:text-[14px] font-bold text-zinc-800 leading-snug truncate">
+                              {order.customer_name}
+                            </h4>
+                            <div className="flex items-center gap-2 mt-0.5">
+                              <span className="text-[11px] md:text-[12px] text-zinc-500 font-medium truncate">
+                                {order.customer_whatsapp}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="flex flex-wrap items-center gap-1.5 mb-3.5">
+                            {order.sellers && (
+                              <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-bold ring-1 ring-inset ${style.ring} ${style.bg} ${style.text}`}>
+                                <UserCheck className="w-3 h-3" />
+                                {order.sellers.code || order.sellers.name.split(' ')[0]}
+                              </span>
+                            )}
+                            {order.delivery_method === 'pickup' && (
+                              <span className={`inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-bold tracking-tight ring-1 ring-inset ${style.ring} ${style.bg} ${style.text} opacity-90`}>
+                                RETIRADA ({order.pickup_unit_slug?.substring(0, 4).toUpperCase()})
+                              </span>
+                            )}
+                            {itemsCount > 0 && (
+                              <span className="inline-flex items-center px-1.5 py-0.5 bg-zinc-50 text-zinc-500 border border-zinc-200 rounded-md text-[10px] font-bold">
+                                {itemsCount} {itemsCount === 1 ? 'item' : 'itens'}
+                              </span>
+                            )}
+                          </div>
+
                           {order.notes && (
-                            <div className="p-2 bg-amber-50 border border-amber-100 rounded text-amber-800 text-xs italic">
-                              <span className="font-semibold flex items-center gap-1 mb-0.5"><MessageSquare className="w-3 h-3" /> Observações:</span>
-                              {order.notes}
+                            <div className="mb-3.5 bg-zinc-50/80 border border-zinc-100 p-2 rounded-lg flex items-start gap-1.5">
+                              <MessageSquare className="w-3.5 h-3.5 text-zinc-400 mt-0.5 shrink-0" />
+                              <p className="text-[11px] font-medium text-zinc-600 leading-relaxed line-clamp-2">
+                                {order.notes}
+                              </p>
                             </div>
                           )}
-                        </div>
 
-                        <div className="border-t border-border pt-4">
-                          <p className="text-xs font-semibold text-muted-foreground mb-2">Itens:</p>
-                          <div className="space-y-2">
-                            {order.order_items.map((item) => (
-                              <div key={item.id} className="flex justify-between text-xs">
-                                <span className="text-foreground">{item.product_name_snapshot}</span>
-                                <span className="font-medium text-foreground">
-                                  {item.qty}x R$ {item.line_total.toFixed(2)}
+                          <div className="pt-3 border-t border-zinc-100 flex items-center justify-between gap-3">
+                             <div className="flex flex-col min-w-0">
+                                <span className="font-extrabold text-[14px] md:text-[15px] text-zinc-900 tracking-tight leading-none">
+                                  R$ {order.total.toFixed(2)}
                                 </span>
-                              </div>
-                            ))}
+                                {order.discount_amount > 0 && (
+                                  <span className="text-[9px] text-emerald-600 font-bold flex items-center gap-0.5 mt-1 whitespace-nowrap">
+                                    <Tag className="w-2 h-2" /> -R$ {order.discount_amount.toFixed(2)}
+                                  </span>
+                                )}
+                             </div>
+                             
+                             <div className="relative isolate shrink-0">
+                                <select
+                                  value={order.status}
+                                  onChange={(e) => handleStatusChange(order.id, e.target.value as typeof statusOptions[number])}
+                                  disabled={updateStatusMutation.isPending}
+                                  className={`appearance-none pl-2 pr-6 py-1.5 rounded-lg text-[11px] font-bold border-0 ring-1 ring-inset ${style.ring} ${style.bg} ${style.text} outline-none focus:ring-2 focus:ring-zinc-400 cursor-pointer transition-all disabled:opacity-50 min-w-[100px] max-w-[130px]`}
+                                >
+                                  {statusOptions.map((s) => (
+                                    <option key={s} value={s}>{statusConfig[s].label}</option>
+                                  ))}
+                                </select>
+                                <ChevronDown className={`w-3 h-3 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none ${style.text}`} />
+                             </div>
                           </div>
                         </div>
+                      );
+                    })}
 
-                        <div className="border-t border-border pt-4">
-                          <label className="text-xs font-semibold text-muted-foreground block mb-2">
-                            Status
-                          </label>
-                          <select
-                            value={order.status}
-                            onChange={(e) =>
-                              handleStatusChange(
-                                order.id,
-                                e.target.value as typeof statusOptions[number]
-                              )
-                            }
-                            disabled={updateStatusMutation.isPending}
-                            className={`w-full px-3 py-2 rounded-lg text-sm font-semibold border-0 cursor-pointer ${statusInfo.color}`}
-                          >
-                            {statusOptions.map((s) => (
-                              <option key={s} value={s}>
-                                {statusConfig[s].label}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-
-                        <div className="flex gap-2">
-                          <Link
-                            to={`/pedido/sucesso/${order.id}`}
-                            className="flex-1 text-center px-4 py-2 rounded-lg text-sm font-medium border border-gold-border bg-gold-light text-gold-text hover:bg-gold-light/80 transition-colors"
-                          >
-                            Ver Detalhes
-                          </Link>
-                          <button
-                            onClick={() => setOrderToDelete(order)}
-                            className="px-4 py-2 rounded-lg border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 transition-colors flex items-center justify-center"
-                            aria-label="Excluir Pedido"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
+                    {columnOrders.length === 0 && (
+                      <div className="h-16 flex items-center justify-center rounded-xl border border-zinc-200 border-dashed bg-white/50">
+                        <span className="text-[11px] font-semibold text-zinc-400">Nenhum pedido</span>
                       </div>
                     )}
                   </div>
-                );
-              })}
-            </div>
-
-          </>
+                </div>
+              );
+            })}
+          </div>
         )}
+        </div>
       </div>
 
-      {/* Delete Confirmation Modal */}
       {orderToDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-900/40 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl">
             <div className="p-6 text-center">
-              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4 text-red-600">
-                <AlertTriangle className="w-8 h-8" />
+              <div className="w-14 h-14 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-100">
+                <AlertTriangle className="w-6 h-6 text-red-500" />
               </div>
-              <h3 className="text-xl font-bold text-slate-900 mb-2">Excluir Pedido #{orderToDelete.id.slice(0, 8).toUpperCase()}?</h3>
-              <p className="text-sm text-slate-500 mb-6">Esta ação é irreversível. O pedido será destruído permanentemente do histórico e estatísticas.</p>
+              <h3 className="text-lg font-bold text-zinc-900 mb-2">
+                Excluir Pedido #{orderToDelete.id.slice(0, 8).toUpperCase()}?
+              </h3>
+              <p className="text-sm text-zinc-500 mb-6 px-2">
+                Esta ação apagará permanentemente os dados. O histórico não poderá ser desfeito.
+              </p>
               
-              <div className="flex flex-col gap-3">
-                <button
-                  onClick={() => deleteOrderMutation.mutate(orderToDelete.id)}
-                  disabled={deleteOrderMutation.isPending}
-                  className="w-full py-3 px-4 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold transition-colors disabled:opacity-50 flex items-center justify-center"
-                >
-                  {deleteOrderMutation.isPending ? <Loader className="w-5 h-5 animate-spin" /> : "Excluir pedido"}
-                </button>
+              <div className="flex gap-3">
                 <button
                   onClick={() => setOrderToDelete(null)}
                   disabled={deleteOrderMutation.isPending}
-                  className="w-full py-3 px-4 border border-slate-200 text-slate-700 hover:bg-slate-50 rounded-xl font-bold transition-colors"
+                  className="flex-1 py-2.5 bg-white border border-zinc-200 hover:bg-zinc-50 text-zinc-700 rounded-xl text-sm font-bold transition-colors"
                 >
-                  Manter pedido
+                  Cancelar
+                </button>
+                <button
+                  onClick={() => deleteOrderMutation.mutate(orderToDelete.id)}
+                  disabled={deleteOrderMutation.isPending}
+                  className="flex-1 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-sm font-bold transition-colors flex items-center justify-center"
+                >
+                  {deleteOrderMutation.isPending ? <Loader className="w-4 h-4 animate-spin" /> : "Excluir"}
                 </button>
               </div>
             </div>
@@ -598,3 +515,4 @@ const AdminPedidos = () => {
 };
 
 export default AdminPedidos;
+

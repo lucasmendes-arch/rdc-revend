@@ -4,11 +4,14 @@ import { supabase } from '@/lib/supabase'
 import { toast } from 'sonner'
 import {
   Loader, Eye, MousePointerClick, ShoppingCart, CreditCard,
-  CheckCircle, XCircle, X, User, Phone, Mail, Filter,
-  Building2, FileText, Package, Clock, Calendar, Users, DollarSign, Sparkles, AlertTriangle, Trash2
+  CheckCircle, XCircle, X, User, Phone, Mail, Tag,
+  Building2, FileText, Package, Clock, Calendar, Users, DollarSign, Sparkles, AlertTriangle, Trash2, TrendingUp, UserX
 } from 'lucide-react'
 import { CustomerTimeline } from '@/components/admin/CustomerTimeline'
 import AdminLayout from '@/components/admin/AdminLayout'
+import { AdminHeader } from '@/components/admin/ui/AdminHeader'
+import { AdminSummaryCard } from '@/components/admin/ui/AdminSummaryCard'
+import { AdminSelect } from '@/components/admin/ui/AdminSelect'
 
 interface OrderItem {
   id: string
@@ -224,40 +227,40 @@ function ClientDetailPanel({ session, onClose, onDeleteClick }: { session: Clien
 
   return (
     <>
-      <div className="fixed inset-0 bg-black/40 z-40 transition-opacity" onClick={onClose} />
+      <div className="fixed inset-0 bg-zinc-900/40 z-40 transition-opacity backdrop-blur-sm" onClick={onClose} />
 
       <div className="fixed right-0 top-0 bottom-0 w-full max-w-lg bg-white z-50 shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
         {/* Header */}
-        <div className="border-b border-border px-6 py-5 flex items-start gap-4">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center text-white font-bold text-lg shadow-md flex-shrink-0">
+        <div className="border-b border-zinc-200 px-5 py-4 flex items-start gap-3.5">
+          <div className="w-12 h-12 rounded-xl bg-zinc-900 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
             {initials}
           </div>
           <div className="flex-1 min-w-0">
-            <h2 className="text-lg font-bold text-foreground truncate">{clientName}</h2>
-            <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
-              <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full text-white shadow-sm ${stageInfo.indicatorColor}`}>
+            <h2 className="text-base font-bold text-zinc-900 truncate">{clientName}</h2>
+            <div className="flex flex-wrap items-center gap-1.5 mt-2">
+              <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-md ring-1 ring-inset text-white ${stageInfo.indicatorColor}`}>
                 <StageIcon className="w-3 h-3" />
                 {stageInfo.label}
               </span>
               {labels.map(l => (
-                <span key={l.text} className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full border ${l.color}`}>
+                <span key={l.text} className={`inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-md ring-1 ring-inset ${l.color}`}>
                   <l.icon className="w-2.5 h-2.5" />
                   {l.text}
                 </span>
               ))}
               {profile?.customer_segment && (
-                <span className={`inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded-full border ${segmentBadgeColor(profile.customer_segment)}`}>
+                <span className={`inline-flex items-center text-[10px] font-bold px-1.5 py-0.5 rounded-md ring-1 ring-inset ${segmentBadgeColor(profile.customer_segment).replace(/border-/g, 'ring-')}`}>
                   {segmentLabel(profile.customer_segment)}
                 </span>
               )}
               {session.tags?.map(t => (
-                <span key={t.id} className={`inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded-full border ${getTagColorClasses(t.slug)}`}>
+                <span key={t.id} className="inline-flex items-center text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-zinc-50 text-zinc-600 ring-1 ring-inset ring-zinc-200">
                   {t.name}
                 </span>
               ))}
             </div>
           </div>
-          <button onClick={onClose} className="p-2 rounded-xl hover:bg-slate-100 transition-colors text-muted-foreground flex-shrink-0">
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-zinc-100 transition-colors text-zinc-400 hover:text-zinc-600 flex-shrink-0">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -265,8 +268,8 @@ function ClientDetailPanel({ session, onClose, onDeleteClick }: { session: Clien
         {/* Content */}
         <div className="flex-1 overflow-y-auto">
           {/* Client Profile */}
-          <div className="px-6 py-5 border-b border-border">
-            <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-4">Dados do Cadastro</h3>
+          <div className="px-5 py-4 border-b border-zinc-200">
+            <h3 className="text-[11px] font-bold text-zinc-400 uppercase tracking-widest mb-3.5">Dados do Cadastro</h3>
             <div className="space-y-3">
               {profile?.full_name && (
                 <InfoRow icon={User} label="Nome Completo" value={profile.full_name} />
@@ -290,41 +293,41 @@ function ClientDetailPanel({ session, onClose, onDeleteClick }: { session: Clien
                 <InfoRow icon={DollarSign} label="Faturamento Estimado" value={revenueLabels[profile.revenue] || profile.revenue} />
               )}
               {profile && !profile.full_name && !profile.phone && !profile.document && (
-                <div className="bg-amber-50 border border-amber-200 text-amber-700 p-3 rounded-xl text-xs flex items-center gap-2">
+                <div className="bg-amber-50 ring-1 ring-inset ring-amber-200 text-amber-700 p-3 rounded-lg text-xs flex items-center gap-2">
                   <AlertTriangle className="w-4 h-4 flex-shrink-0" />
-                  <p>O perfil deste usuário está incompleto ou pendente de atualização. As informações detalhadas podem demorar alguns minutos para refletir no sistema caso ele tenha acabado de se cadastrar.</p>
+                  <p>Perfil incompleto ou pendente de atualização.</p>
                 </div>
               )}
               {!profile && session.user_id && (
-                <div className="bg-slate-50 border border-slate-200 text-slate-600 p-3 rounded-xl text-xs flex items-center gap-2">
-                  <Loader className="w-4 h-4 animate-spin flex-shrink-0 text-slate-400" />
-                  <p>Aguardando sincronização de perfil (perfil base criado, dependendo do salvamento de atributos adicionais).</p>
+                <div className="bg-zinc-50 ring-1 ring-inset ring-zinc-200 text-zinc-600 p-3 rounded-lg text-xs flex items-center gap-2">
+                  <Loader className="w-4 h-4 animate-spin flex-shrink-0 text-zinc-400" />
+                  <p>Aguardando sincronização de perfil.</p>
                 </div>
               )}
               {!profile && !session.user_id && !session.email && (
-                <p className="text-sm text-muted-foreground italic">Visitante anônimo — sem dados de perfil vinculados</p>
+                <p className="text-sm text-zinc-400 italic">Visitante anônimo — sem dados de perfil</p>
               )}
             </div>
           </div>
 
           {/* Commercial Segment */}
           {session.user_id && (
-            <div className="px-6 py-4 border-b border-border">
-              <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">Segmento Comercial</h3>
+            <div className="px-5 py-4 border-b border-zinc-200">
+              <h3 className="text-[11px] font-bold text-zinc-400 uppercase tracking-widest mb-3">Segmento Comercial</h3>
               <div className="flex items-center gap-3">
                 <select
                   value={profile?.customer_segment || ''}
                   onChange={e => segmentMutation.mutate(e.target.value || null)}
                   disabled={segmentMutation.isPending}
-                  className="px-3 py-1.5 text-sm border border-border rounded-lg bg-white focus:ring-2 focus:ring-gold focus:border-gold"
+                  className="appearance-none px-3 py-1.5 text-sm font-medium border border-zinc-200 rounded-lg bg-white focus:ring-2 focus:ring-zinc-400 focus:outline-none transition-all"
                 >
                   {SEGMENT_OPTIONS.map(o => (
                     <option key={o.value} value={o.value}>{o.label}</option>
                   ))}
                 </select>
-                {segmentMutation.isPending && <Loader className="w-4 h-4 animate-spin text-muted-foreground" />}
+                {segmentMutation.isPending && <Loader className="w-4 h-4 animate-spin text-zinc-400" />}
                 {profile?.customer_segment && (
-                  <span className={`inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded-full border ${segmentBadgeColor(profile.customer_segment)}`}>
+                  <span className={`inline-flex items-center text-[10px] font-bold px-1.5 py-0.5 rounded-md ring-1 ring-inset ${segmentBadgeColor(profile.customer_segment).replace(/border-/g, 'ring-')}`}>
                     {segmentLabel(profile.customer_segment)}
                   </span>
                 )}
@@ -334,18 +337,18 @@ function ClientDetailPanel({ session, onClose, onDeleteClick }: { session: Clien
 
           {/* Cart info */}
           {session.cart_items_count > 0 && orders.length === 0 && (
-            <div className="px-6 py-5 border-b border-border">
-              <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-4">Carrinho</h3>
-              <div className="flex items-center gap-3 bg-amber-50 rounded-xl p-4 border border-amber-200">
-                <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center flex-shrink-0">
-                  <ShoppingCart className="w-5 h-5 text-amber-600" />
+            <div className="px-5 py-4 border-b border-zinc-200">
+              <h3 className="text-[11px] font-bold text-zinc-400 uppercase tracking-widest mb-3.5">Carrinho</h3>
+              <div className="flex items-center gap-3 bg-amber-50 rounded-lg p-3.5 ring-1 ring-inset ring-amber-200">
+                <div className="w-9 h-9 rounded-lg bg-amber-100 flex items-center justify-center flex-shrink-0">
+                  <ShoppingCart className="w-4 h-4 text-amber-600" />
                 </div>
                 <div>
                   <p className="text-sm font-bold text-amber-800">
                     {session.cart_items_count} {session.cart_items_count === 1 ? 'item' : 'itens'} no carrinho
                   </p>
-                  <p className="text-xs text-amber-600 mt-0.5">
-                    Detalhes dos itens não disponíveis (armazenados no navegador do cliente)
+                  <p className="text-[11px] text-amber-600 mt-0.5">
+                    Armazenado no navegador do cliente
                   </p>
                 </div>
               </div>
@@ -354,26 +357,26 @@ function ClientDetailPanel({ session, onClose, onDeleteClick }: { session: Clien
 
           {/* Orders */}
           {orders.length > 0 && (
-            <div className="px-6 py-5 border-b border-border">
-              <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-4">
+            <div className="px-5 py-4 border-b border-zinc-200">
+              <h3 className="text-[11px] font-bold text-zinc-400 uppercase tracking-widest mb-3.5">
                 Pedidos ({orders.length})
               </h3>
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {orders.map((order) => {
                   const statusInfo = orderStatusLabels[order.status] || { label: order.status, color: 'bg-gray-100 text-gray-600' }
                   return (
-                    <div key={order.id} className="bg-slate-50 rounded-xl border border-slate-200 overflow-hidden">
-                      <div className="px-4 py-3 flex items-center justify-between border-b border-slate-200 bg-white">
-                        <div className="flex items-center gap-3">
-                          <span className="text-sm font-bold text-foreground">#{order.id.slice(0, 8).toUpperCase()}</span>
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${statusInfo.color}`}>{statusInfo.label}</span>
+                    <div key={order.id} className="bg-zinc-50 rounded-xl border border-zinc-200/80 overflow-hidden">
+                      <div className="px-3.5 py-2.5 flex items-center justify-between border-b border-zinc-200/60 bg-white">
+                        <div className="flex items-center gap-2.5">
+                          <span className="text-[13px] font-bold text-zinc-900">#{order.id.slice(0, 8).toUpperCase()}</span>
+                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md ring-1 ring-inset ${statusInfo.color.replace(/bg-/, 'ring-').replace(/text-.*/, '')} ${statusInfo.color}`}>{statusInfo.label}</span>
                         </div>
                         <div className="text-right">
-                          <p className="text-sm font-black text-foreground">R$ {Number(order.total).toFixed(2)}</p>
-                          <p className="text-[10px] text-muted-foreground">{new Date(order.created_at).toLocaleDateString('pt-BR')}</p>
+                          <p className="text-[13px] font-extrabold text-zinc-900">R$ {Number(order.total).toFixed(2)}</p>
+                          <p className="text-[10px] text-zinc-400 font-medium">{new Date(order.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}</p>
                         </div>
                       </div>
-                      <div className="p-3 space-y-2">
+                      <div className="p-2.5 space-y-1.5">
                         {order.order_items.map((item) => {
                           let imgUrl: string | null = null
                           if (Array.isArray(item.catalog_products)) {
@@ -382,19 +385,19 @@ function ClientDetailPanel({ session, onClose, onDeleteClick }: { session: Clien
                             imgUrl = item.catalog_products?.main_image || null
                           }
                           return (
-                            <div key={item.id} className="flex items-center gap-3 bg-white rounded-lg p-2.5 border border-slate-100">
+                            <div key={item.id} className="flex items-center gap-2.5 bg-white rounded-lg p-2 border border-zinc-100">
                               {imgUrl ? (
-                                <img src={imgUrl} alt="" className="w-11 h-11 rounded-lg object-cover flex-shrink-0 shadow-sm" />
+                                <img src={imgUrl} alt="" className="w-10 h-10 rounded-lg object-cover flex-shrink-0" />
                               ) : (
-                                <div className="w-11 h-11 rounded-lg bg-slate-100 flex items-center justify-center flex-shrink-0">
-                                  <Package className="w-5 h-5 text-slate-400" />
+                                <div className="w-10 h-10 rounded-lg bg-zinc-100 flex items-center justify-center flex-shrink-0">
+                                  <Package className="w-4 h-4 text-zinc-400" />
                                 </div>
                               )}
                               <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium text-foreground truncate">{item.product_name_snapshot}</p>
-                                <p className="text-xs text-muted-foreground mt-0.5">{item.qty}× R$ {Number(item.unit_price_snapshot).toFixed(2)}</p>
+                                <p className="text-[13px] font-medium text-zinc-800 truncate">{item.product_name_snapshot}</p>
+                                <p className="text-[11px] text-zinc-400 mt-0.5">{item.qty}× R$ {Number(item.unit_price_snapshot).toFixed(2)}</p>
                               </div>
-                              <span className="text-sm font-bold text-foreground flex-shrink-0">R$ {Number(item.line_total).toFixed(2)}</span>
+                              <span className="text-[13px] font-bold text-zinc-800 flex-shrink-0">R$ {Number(item.line_total).toFixed(2)}</span>
                             </div>
                           )
                         })}
@@ -407,8 +410,8 @@ function ClientDetailPanel({ session, onClose, onDeleteClick }: { session: Clien
           )}
 
           {/* Activity */}
-          <div className="px-6 py-5 bg-slate-50">
-            <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-4">Atividade da Sessão</h3>
+          <div className="px-5 py-4 bg-zinc-50">
+            <h3 className="text-[11px] font-bold text-zinc-400 uppercase tracking-widest mb-3.5">Atividade da Sessão</h3>
             <div className="space-y-3">
               <InfoRow icon={Calendar} label="Primeira visita" value={new Date(session.created_at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })} />
               <InfoRow icon={Clock} label="Última atividade" value={new Date(session.updated_at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })} />
@@ -424,15 +427,15 @@ function ClientDetailPanel({ session, onClose, onDeleteClick }: { session: Clien
           )}
 
           {/* Danger Zone */}
-          <div className="px-6 py-6 mt-4 border-t border-red-100 bg-red-50/30">
+          <div className="px-5 py-5 mt-2 border-t border-zinc-200">
             <button
               onClick={onDeleteClick}
-              className="w-full py-2.5 px-4 rounded-xl border border-red-200 text-red-600 bg-red-50 hover:bg-red-100 font-bold text-sm transition-colors flex items-center justify-center gap-2"
+              className="w-full py-2.5 px-4 rounded-xl ring-1 ring-inset ring-red-200 text-red-600 bg-red-50 hover:bg-red-100 font-bold text-sm transition-colors flex items-center justify-center gap-2"
             >
               <Trash2 className="w-4 h-4" />
-              Excluir Cliente (Apenas Testes)
+              Excluir Cliente
             </button>
-            <p className="text-[10px] text-slate-500 text-center mt-2">Ação administrativa condicional irreversível</p>
+            <p className="text-[10px] text-zinc-400 text-center mt-2">Ação administrativa irreversível</p>
           </div>
         </div>
       </div>
@@ -446,12 +449,12 @@ function ClientDetailPanel({ session, onClose, onDeleteClick }: { session: Clien
 function InfoRow({ icon: Icon, label, value }: { icon: typeof User; label: string; value: string }) {
   return (
     <div className="flex items-center gap-3">
-      <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center flex-shrink-0">
-        <Icon className="w-4 h-4 text-slate-500" />
+      <div className="w-8 h-8 rounded-lg bg-zinc-100 flex items-center justify-center flex-shrink-0">
+        <Icon className="w-4 h-4 text-zinc-500" />
       </div>
       <div className="min-w-0">
-        <p className="text-[11px] text-muted-foreground leading-none">{label}</p>
-        <p className="text-sm font-medium text-foreground truncate mt-0.5">{value}</p>
+        <p className="text-[11px] text-zinc-500 leading-none">{label}</p>
+        <p className="text-sm font-medium text-zinc-800 truncate mt-0.5">{value}</p>
       </div>
     </div>
   )
@@ -588,97 +591,142 @@ export default function AdminClientes() {
     ? ((grouped['comprou']?.length || 0) / totalSessions * 100).toFixed(1)
     : '0'
 
+  // Stage color config matching Pedidos' ring/bg/text pattern
+  const stageColorConfig: Record<string, { ring: string; bg: string; text: string }> = {
+    visitou:              { ring: 'ring-zinc-600/15',    bg: 'bg-zinc-50',    text: 'text-zinc-600' },
+    visualizou_produto:   { ring: 'ring-blue-600/20',    bg: 'bg-blue-50',    text: 'text-blue-700' },
+    adicionou_carrinho:   { ring: 'ring-amber-600/20',   bg: 'bg-amber-50',   text: 'text-amber-700' },
+    iniciou_checkout:     { ring: 'ring-purple-600/20',  bg: 'bg-purple-50',  text: 'text-purple-700' },
+    comprou:              { ring: 'ring-emerald-600/20', bg: 'bg-emerald-50', text: 'text-emerald-700' },
+    abandonou:            { ring: 'ring-red-600/20',     bg: 'bg-red-50',     text: 'text-red-700' },
+  }
+
   return (
     <AdminLayout>
-      <div className="bg-white border-b border-border sticky top-0 lg:top-0 z-30">
-        <div className="px-4 sm:px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-foreground">Clientes — Funil de Vendas</h1>
-            <p className="text-sm text-muted-foreground mt-1">Acompanhe a jornada dos seus clientes em tempo real</p>
+      {/* ── HEADER ── */}
+      <div className="bg-white border-b border-border sticky top-0 z-30 shadow-sm flex flex-col w-full text-left">
+        <AdminHeader
+          title="Clientes"
+          subtitle={`Funil de vendas em tempo real. ${totalSessions > 0 ? `${conversionRate}% de conversão.` : ''}`}
+          badge={
+            !isLoading && totalSessions > 0 ? (
+              <span className="px-2.5 py-1 rounded-full bg-zinc-100 text-zinc-600 text-xs font-semibold border border-zinc-200 shadow-sm">
+                {totalSessions} clientes
+              </span>
+            ) : undefined
+          }
+          actionNode={
+            availableTags.length > 0 ? (
+              <AdminSelect
+                options={availableTags.map(t => ({ value: t.id, label: t.name }))}
+                value={selectedTagFilter}
+                onChange={setSelectedTagFilter}
+                placeholder="Filtrar tag"
+                icon={Tag}
+                allLabel="Todas as tags"
+              />
+            ) : undefined
+          }
+        />
+
+        {/* ── SUMMARY CARDS ── */}
+        {!isLoading && sessions.length > 0 && (
+          <div className="w-full border-t border-zinc-100 bg-zinc-50/50 py-3 px-4 sm:px-6 lg:px-8 overflow-x-auto flex flex-nowrap gap-3 items-center" style={{ scrollbarWidth: 'thin' }}>
+            <AdminSummaryCard
+              icon={Users}
+              iconColor="text-zinc-500"
+              label="Total clientes"
+              value={String(totalSessions)}
+              subtitle={
+                <span className="inline-block text-[11px] font-bold px-1.5 py-0.5 rounded-md bg-zinc-50 text-zinc-600 border border-zinc-100">
+                  {funnelStages.length} etapas
+                </span>
+              }
+              className="min-w-[150px] flex-1 shrink-0 ring-inset ring-1 ring-zinc-600/10"
+            />
+            <AdminSummaryCard
+              label="Compraram"
+              indicatorColor="bg-emerald-400"
+              value={String(grouped['comprou']?.length || 0)}
+              subtitle={
+                <span className={`inline-block text-[11px] font-bold px-1.5 py-0.5 rounded-md ${(grouped['comprou']?.length || 0) > 0 ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-zinc-100 text-zinc-400'}`}>
+                  {totalSessions > 0 ? `${((grouped['comprou']?.length || 0) / totalSessions * 100).toFixed(0)}% do total` : '—'}
+                </span>
+              }
+              className={`min-w-[150px] flex-1 shrink-0 ring-inset ring-1 ${(grouped['comprou']?.length || 0) > 0 ? 'ring-emerald-600/20' : 'ring-transparent opacity-80'}`}
+            />
+            <AdminSummaryCard
+              label="Abandonaram"
+              indicatorColor="bg-red-400"
+              value={String(grouped['abandonou']?.length || 0)}
+              subtitle={
+                <span className={`inline-block text-[11px] font-bold px-1.5 py-0.5 rounded-md ${(grouped['abandonou']?.length || 0) > 0 ? 'bg-red-50 text-red-700 border border-red-100' : 'bg-zinc-100 text-zinc-400'}`}>
+                  {totalSessions > 0 ? `${((grouped['abandonou']?.length || 0) / totalSessions * 100).toFixed(0)}% do total` : '—'}
+                </span>
+              }
+              className={`min-w-[150px] flex-1 shrink-0 ring-inset ring-1 ${(grouped['abandonou']?.length || 0) > 0 ? 'ring-red-600/20' : 'ring-transparent opacity-80'}`}
+            />
+            <AdminSummaryCard
+              icon={TrendingUp}
+              iconColor="text-gold-text"
+              label="Conversão"
+              value={`${conversionRate}%`}
+              subtitle={
+                <span className="inline-block text-[11px] font-bold px-1.5 py-0.5 rounded-md bg-zinc-50 text-zinc-600 border border-zinc-100">
+                  visitou → comprou
+                </span>
+              }
+              className="min-w-[150px] flex-1 shrink-0 ring-inset ring-1 ring-gold/20"
+            />
           </div>
-          
-          <div className="flex items-center gap-2 w-full sm:w-auto mt-2 sm:mt-0">
-            <Filter className="w-4 h-4 text-slate-400 flex-shrink-0" />
-            <select
-              value={selectedTagFilter}
-              onChange={(e) => setSelectedTagFilter(e.target.value)}
-              className="w-full sm:w-64 text-sm bg-surface border border-input rounded-lg p-2 focus:ring-2 focus:ring-amber-400 focus:outline-none"
-            >
-              <option value="">Todas as Tags</option>
-              {availableTags.map(tag => (
-                <option key={tag.id} value={tag.id}>{tag.name} ({tag.type})</option>
-              ))}
-            </select>
-          </div>
-        </div>
+        )}
       </div>
 
-      {!isLoading && sessions.length > 0 && (
-        <div className="px-4 sm:px-6 py-4 bg-surface-alt border-b border-border">
-          <div className="flex flex-wrap gap-4 sm:gap-8 text-sm">
-            <div>
-              <span className="text-muted-foreground">Total clientes:</span>{' '}
-              <span className="font-bold text-foreground">{totalSessions}</span>
-            </div>
-            <div>
-              <span className="text-muted-foreground">Compraram:</span>{' '}
-              <span className="font-bold text-green-600">{grouped['comprou']?.length || 0}</span>
-            </div>
-            <div>
-              <span className="text-muted-foreground">Abandonaram:</span>{' '}
-              <span className="font-bold text-red-600">{grouped['abandonou']?.length || 0}</span>
-            </div>
-            <div>
-              <span className="text-muted-foreground">Taxa de conversão:</span>{' '}
-              <span className="font-bold text-foreground">{conversionRate}%</span>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <div className="w-full max-w-[100vw] lg:max-w-[calc(100vw-240px)] overflow-hidden">
-        <div className="py-8">
+      {/* ── FUNNEL BOARD ── */}
+      <div className="w-full flex-1 min-w-0 relative border-t border-zinc-100 shadow-inner bg-zinc-50/40 min-h-[calc(100vh-210px)]">
+        <style dangerouslySetInnerHTML={{__html: `
+          .funnel-scroll::-webkit-scrollbar { height: 16px; }
+          .funnel-scroll::-webkit-scrollbar-track { background: transparent; border-top: 1px solid #e2e8f0; border-bottom: 1px solid #e2e8f0; }
+          .funnel-scroll::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 8px; border: 3px solid #f8fafc; }
+          .funnel-scroll::-webkit-scrollbar-thumb:hover { background-color: #94a3b8; }
+        `}} />
+        <div className="absolute inset-0 overflow-x-auto overflow-y-hidden funnel-scroll px-4 sm:px-6 lg:px-8 pt-5 pb-6">
           {isLoading ? (
-            <div className="text-center py-16 px-4">
-              <Loader className="w-8 h-8 animate-spin text-gold-text mx-auto mb-4" />
-              <p className="text-muted-foreground">Carregando clientes...</p>
+            <div className="flex flex-col items-center justify-center py-24 w-full">
+              <Loader className="w-8 h-8 animate-spin text-zinc-400 mb-4" />
+              <p className="text-sm font-medium text-zinc-500">Sincronizando clientes...</p>
             </div>
           ) : sessions.length === 0 ? (
-            <div className="text-center py-16 px-4">
-              <p className="text-muted-foreground">Nenhum cliente registrado ainda.</p>
-              <p className="text-sm text-muted-foreground mt-2">Os clientes aparecerão aqui quando visitantes acessarem o catálogo.</p>
+            <div className="flex flex-col items-center justify-center py-32 bg-white rounded-2xl border border-zinc-200 border-dashed max-w-4xl mx-auto shadow-sm w-full">
+              <Users className="w-12 h-12 text-zinc-300 mb-4" />
+              <h3 className="text-lg font-bold text-zinc-700">Nenhum cliente ainda</h3>
+              <p className="text-zinc-500 text-sm mt-1 mb-6 text-center max-w-xs">Os clientes aparecerão aqui quando visitantes acessarem o catálogo.</p>
             </div>
           ) : (
-            <div className="flex overflow-x-auto pb-6 pl-4 sm:pl-6 scroll-smooth custom-scrollbar">
-              <div className="flex w-max min-w-full gap-4 xl:gap-6 items-stretch pr-4 sm:pr-6">
+            <div className="flex gap-4 min-w-max h-full items-start">
               {funnelStages.map((stage) => {
-                const Icon = stage.icon
+                const StageIcon = stage.icon
                 const items = grouped[stage.key] || []
+                const colors = stageColorConfig[stage.key]
 
                 return (
-                  <div key={stage.key} className="flex flex-col flex-shrink-0 w-[280px] xl:w-[320px] bg-slate-50/60 rounded-xl border border-border shadow-sm overflow-hidden">
-                    {/* Header Limpo Estilo CRM */}
-                    <div className="px-5 py-4 bg-white/60 border-b border-border relative flex flex-col gap-1.5 backdrop-blur-sm">
-                      {/* Accent color bar */}
-                      <div className={`absolute top-0 left-0 right-0 h-1 transition-colors ${stage.indicatorColor}`}></div>
-                      
-                      <div className="flex items-center justify-between mt-1">
-                        <div className="flex items-center gap-2 text-slate-800">
-                          <Icon className="w-4 h-4 text-slate-500" />
-                          <h3 className="text-[14px] font-bold tracking-tight">{stage.label}</h3>
-                        </div>
-                        <span className="text-xs font-bold text-slate-600 bg-white border border-slate-200 shadow-sm px-2.5 py-0.5 rounded-full">
-                          {items.length}
-                        </span>
+                  <div key={stage.key} className="flex flex-col w-[320px] bg-zinc-100/60 rounded-xl border border-zinc-200/80 shrink-0 self-stretch max-h-[75vh] flex-nowrap shadow-sm">
+                    {/* Column Header */}
+                    <div className="p-3 border-b border-zinc-200/60 sticky top-0 bg-white/60 backdrop-blur-md rounded-t-xl z-20 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className={`w-2 h-2 rounded-full ring-2 ${stage.indicatorColor} ${colors.ring}`} />
+                        <h3 className="font-bold text-[13px] text-zinc-800 tracking-tight">{stage.label}</h3>
                       </div>
-                      <p className="text-[11px] text-slate-500 font-medium truncate">{stage.subtitle}</p>
+                      <span className="text-[10px] font-bold text-zinc-500 bg-white border border-zinc-200 shadow-sm px-2 py-0.5 rounded-full">
+                        {items.length}
+                      </span>
                     </div>
 
-                    {/* Column Body / Dropzone */}
-                    <div className="flex-1 p-3 overflow-y-auto min-h-[500px] max-h-[75vh] space-y-3 custom-scrollbar">
+                    {/* Column Body */}
+                    <div className="flex-1 overflow-y-auto p-2.5 space-y-2.5 scrollbar-thin">
                       {items.length === 0 ? (
-                        <div className="flex items-center justify-center p-8 border-2 border-dashed border-slate-200 rounded-lg bg-white/30">
-                          <p className="text-xs text-slate-400 font-medium">Nenhum cliente neste estágio</p>
+                        <div className="h-16 flex items-center justify-center rounded-xl border border-zinc-200 border-dashed bg-white/50">
+                          <span className="text-[11px] font-semibold text-zinc-400">Nenhum cliente</span>
                         </div>
                       ) : (
                         items.slice(0, 30).map((session) => {
@@ -689,73 +737,64 @@ export default function AdminClientes() {
                             <button
                               key={session.id}
                               onClick={() => setSelectedSession(session)}
-                              className="w-full text-left bg-white rounded-lg border border-slate-200 p-4 hover:border-slate-300 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-pointer group flex flex-col gap-3 relative"
+                              className="w-full text-left bg-white p-3 md:p-3.5 rounded-xl shadow-[0_2px_8px_-4px_rgba(0,0,0,0.05)] hover:shadow-md border border-zinc-200/80 hover:border-zinc-300 transition-all duration-200 cursor-pointer group flex flex-col gap-2.5 relative"
                             >
-                              {/* Prioriade 1: Identidade (Nome e Data) */}
+                              {/* Identity */}
                               <div className="flex items-start justify-between gap-3 w-full">
-                                <h4 className="text-[14px] font-bold text-slate-900 group-hover:text-slate-700 leading-snug line-clamp-2" title={clientName}>
-                                  {clientName}
-                                </h4>
-                                <span className="text-[10px] text-slate-400 font-mono flex-shrink-0 pt-0.5" title="Última atualização">
-                                  {new Date(session.updated_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
-                                </span>
+                                <div className="flex flex-col gap-0.5 min-w-0">
+                                  <h4 className="text-[13px] md:text-[14px] font-bold text-zinc-800 group-hover:text-zinc-600 leading-snug line-clamp-2 transition-colors" title={clientName}>
+                                    {clientName}
+                                  </h4>
+                                  <span className="text-[11px] font-medium text-zinc-400 leading-none">
+                                    {new Date(session.updated_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
+                                  </span>
+                                </div>
                               </div>
 
-                              {/* Prioriade 2: Contato Comercial Claro (Sem Badges) */}
-                              <div className="flex items-center gap-1.5 text-slate-500">
+                              {/* Contact */}
+                              <div className="flex items-center gap-2 mt-0.5">
                                 {session.profile?.phone ? (
-                                  <>
-                                    <Phone className="w-3.5 h-3.5 text-slate-400" />
-                                    <span className="text-xs font-semibold">{session.profile.phone}</span>
-                                  </>
+                                  <span className="text-[11px] md:text-[12px] text-zinc-500 font-medium truncate">{session.profile.phone}</span>
                                 ) : session.user_id ? (
-                                  <>
-                                    <Clock className="w-3.5 h-3.5 text-slate-400" />
-                                    <span className="text-[11px] italic">Ficha incompleta</span>
-                                  </>
+                                  <span className="text-[11px] text-zinc-400 italic">Ficha incompleta</span>
                                 ) : (
-                                  <>
-                                    <User className="w-3.5 h-3.5 text-slate-400" />
-                                    <span className="text-[11px] italic">Visitante anônimo</span>
-                                  </>
+                                  <span className="text-[11px] text-zinc-400 italic">Visitante anônimo</span>
                                 )}
                               </div>
 
-                              {/* Prioriade 3: Segmento + Tags */}
+                              {/* Segment + Tags */}
                               {(session.profile?.customer_segment || (session.tags && session.tags.length > 0)) && (
-                                <div className="flex items-center flex-wrap gap-1.5 pt-2 border-t border-slate-50 min-h-[34px]">
+                                <div className="flex flex-wrap items-center gap-1.5 mb-0.5">
                                   {session.profile?.customer_segment && (
-                                    <span className={`inline-flex items-center text-[10px] sm:text-[11px] font-bold px-2 py-0.5 rounded-full border ${segmentBadgeColor(session.profile.customer_segment)}`}>
+                                    <span className={`inline-flex items-center text-[10px] font-bold px-1.5 py-0.5 rounded-md ring-1 ring-inset ${segmentBadgeColor(session.profile.customer_segment).replace('border-', 'ring-')}`}>
                                       {segmentLabel(session.profile.customer_segment)}
                                     </span>
                                   )}
                                   {session.tags?.slice(0, 3).map(t => (
-                                    <span key={t.id} className="inline-flex items-center text-[10px] sm:text-[11px] font-medium px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200 max-w-full" title={t.name}>
+                                    <span key={t.id} className="inline-flex items-center text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-zinc-50 text-zinc-500 border border-zinc-200 max-w-full" title={t.name}>
                                       <span className="truncate">{t.name}</span>
                                     </span>
                                   ))}
                                   {session.tags.length > 3 && (
-                                    <span className="text-[10px] sm:text-[11px] font-medium px-1.5 py-0.5 rounded-full bg-slate-50 text-slate-500 border border-slate-200">+{session.tags.length - 3}</span>
+                                    <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-md bg-zinc-50 text-zinc-500 border border-zinc-200">+{session.tags.length - 3}</span>
                                   )}
                                 </div>
                               )}
 
-                              {/* Prioriade 4: Status do Carrinho e Rótulos (Footer Minimo) */}
+                              {/* Cart + Labels footer */}
                               {(labels.length > 0 || session.cart_items_count > 0) && (
-                                <div className="flex items-center justify-between gap-2 mt-auto pt-2 max-w-full">
-                                  <div className="flex items-center flex-wrap gap-2 text-slate-500 truncate">
+                                <div className="pt-2.5 border-t border-zinc-100 flex items-center justify-between gap-2 mt-auto">
+                                  <div className="flex items-center flex-wrap gap-2 text-zinc-500 truncate">
                                     {labels.map(l => (
                                       <span key={l.text} className="inline-flex items-center gap-1 text-[10px] font-medium">
-                                        <l.icon className="w-3 h-3 text-slate-400" />
+                                        <l.icon className="w-3 h-3 text-zinc-400" />
                                         <span className="truncate hidden sm:inline">{l.text}</span>
                                       </span>
                                     ))}
                                   </div>
-                                  
                                   {session.cart_items_count > 0 && (
-                                    <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-slate-600 flex-shrink-0 bg-slate-50 px-2 py-0.5 rounded-md border border-slate-100">
-                                      <ShoppingCart className="w-3 h-3 text-slate-400" />
-                                      {session.cart_items_count}
+                                    <span className="inline-flex items-center px-1.5 py-0.5 bg-zinc-50 text-zinc-500 border border-zinc-200 rounded-md text-[10px] font-bold">
+                                      {session.cart_items_count} {session.cart_items_count === 1 ? 'item' : 'itens'}
                                     </span>
                                   )}
                                 </div>
@@ -769,8 +808,7 @@ export default function AdminClientes() {
                 )
               })}
             </div>
-          </div>
-        )}
+          )}
         </div>
       </div>
 
@@ -784,41 +822,41 @@ export default function AdminClientes() {
 
       {/* Delete Confirmation Modal */}
       {clientToDelete && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-zinc-900/40 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl">
             <div className="p-6 text-center">
-              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4 text-red-600">
-                <AlertTriangle className="w-8 h-8" />
+              <div className="w-14 h-14 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-100">
+                <AlertTriangle className="w-6 h-6 text-red-500" />
               </div>
-              <h3 className="text-xl font-bold text-slate-900 mb-2">Excluir Cliente?</h3>
+              <h3 className="text-lg font-bold text-zinc-900 mb-2">Excluir Cliente?</h3>
               {clientToDelete.orders && clientToDelete.orders.length > 0 ? (
                 <>
                   <p className="text-sm text-amber-700 font-medium bg-amber-50 p-3 rounded-lg border border-amber-200 mb-6">
                     Bloqueado: Este cliente possui {clientToDelete.orders.length} pedido(s) vinculados. Você deve excluir os pedidos antes de excluir o cliente.
                   </p>
-                  <button onClick={() => setClientToDelete(null)} className="w-full py-3 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold transition-colors">Voltar</button>
+                  <button onClick={() => setClientToDelete(null)} className="w-full py-3 px-4 bg-zinc-100 hover:bg-zinc-200 text-zinc-700 rounded-xl font-bold transition-colors">Voltar</button>
                 </>
               ) : (
                 <>
-                  <p className="text-sm text-slate-500 mb-6">Esta ação apagará o cadastro inteiro deste cliente (sessão e CRM). Confirma a exclusão de <strong>{getClientName(clientToDelete)}</strong>?</p>
-                  
-                  <div className="flex flex-col gap-3">
+                  <p className="text-sm text-zinc-500 mb-6 px-2">Esta ação apagará o cadastro inteiro deste cliente (sessão e CRM). Confirma a exclusão de <strong>{getClientName(clientToDelete)}</strong>?</p>
+
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => setClientToDelete(null)}
+                      disabled={deleteClientMutation.isPending}
+                      className="flex-1 py-3 px-4 border border-zinc-200 text-zinc-700 hover:bg-zinc-50 rounded-xl font-bold transition-colors"
+                    >
+                      Cancelar
+                    </button>
                     <button
                       onClick={() => {
                         const targetId = clientToDelete.user_id || clientToDelete.id
                         deleteClientMutation.mutate(targetId)
                       }}
                       disabled={deleteClientMutation.isPending}
-                      className="w-full py-3 px-4 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold transition-colors disabled:opacity-50 flex items-center justify-center"
+                      className="flex-1 py-3 px-4 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold transition-colors disabled:opacity-50 flex items-center justify-center"
                     >
-                      {deleteClientMutation.isPending ? <Loader className="w-5 h-5 animate-spin" /> : "Sim, Excluir Cliente"}
-                    </button>
-                    <button
-                      onClick={() => setClientToDelete(null)}
-                      disabled={deleteClientMutation.isPending}
-                      className="w-full py-3 px-4 border border-slate-200 text-slate-700 hover:bg-slate-50 rounded-xl font-bold transition-colors"
-                    >
-                      Cancelar e Manter
+                      {deleteClientMutation.isPending ? <Loader className="w-5 h-5 animate-spin" /> : "Excluir"}
                     </button>
                   </div>
                 </>
