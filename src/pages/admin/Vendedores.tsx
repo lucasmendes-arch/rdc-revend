@@ -11,6 +11,7 @@ interface Seller {
   email: string | null
   phone: string | null
   commission_pct: number
+  monthly_goal: number
   is_default: boolean
   active: boolean
   created_at: string
@@ -22,6 +23,7 @@ const EMPTY_FORM = {
   email: '',
   phone: '',
   commission_pct: 0,
+  monthly_goal: 0,
   is_default: false,
   active: true,
 }
@@ -56,6 +58,7 @@ export default function AdminVendedores() {
         email: payload.email.trim() || null,
         phone: payload.phone.trim() || null,
         commission_pct: payload.commission_pct,
+        monthly_goal: payload.monthly_goal,
         is_default: payload.is_default,
         active: payload.active,
       }
@@ -133,6 +136,7 @@ export default function AdminVendedores() {
       email: seller.email ?? '',
       phone: seller.phone ?? '',
       commission_pct: seller.commission_pct,
+      monthly_goal: seller.monthly_goal,
       is_default: seller.is_default,
       active: seller.active,
     })
@@ -155,7 +159,12 @@ export default function AdminVendedores() {
       alert('Comissão deve ser entre 0 e 100')
       return
     }
-    saveMutation.mutate({ id: editingId, payload: { ...form, commission_pct: pct } })
+    const goal = Number(form.monthly_goal)
+    if (isNaN(goal) || goal < 0) {
+      alert('Meta mensal deve ser >= 0')
+      return
+    }
+    saveMutation.mutate({ id: editingId, payload: { ...form, commission_pct: pct, monthly_goal: goal } })
   }
 
   return (
@@ -200,6 +209,7 @@ export default function AdminVendedores() {
                     <th className="px-4 py-3 text-left text-sm font-semibold text-foreground">Código</th>
                     <th className="px-4 py-3 text-left text-sm font-semibold text-foreground hidden md:table-cell">Telefone</th>
                     <th className="px-4 py-3 text-center text-sm font-semibold text-foreground">Comissão</th>
+                    <th className="px-4 py-3 text-center text-sm font-semibold text-foreground hidden sm:table-cell">Meta mensal</th>
                     <th className="px-4 py-3 text-center text-sm font-semibold text-foreground">Ativo</th>
                     <th className="px-4 py-3 text-center text-sm font-semibold text-foreground">Padrão</th>
                     <th className="px-4 py-3 text-right text-sm font-semibold text-foreground">Ações</th>
@@ -223,6 +233,13 @@ export default function AdminVendedores() {
                       </td>
                       <td className="px-4 py-3 text-sm text-center">
                         <span className="font-medium text-foreground">{seller.commission_pct}%</span>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-center hidden sm:table-cell">
+                        {seller.monthly_goal > 0 ? (
+                          <span className="font-medium text-foreground">R$ {seller.monthly_goal.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
+                        ) : (
+                          <span className="text-muted-foreground/40">—</span>
+                        )}
                       </td>
                       <td className="px-4 py-3 text-center">
                         <button
@@ -322,17 +339,18 @@ export default function AdminVendedores() {
                 />
               </div>
 
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1">Telefone</label>
+                <input
+                  type="text"
+                  value={form.phone}
+                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                  className="w-full px-3 py-2 rounded-lg border border-border bg-white focus:outline-none focus:ring-2 focus:ring-gold"
+                  placeholder="(11) 99999-9999"
+                />
+              </div>
+
               <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-1">Telefone</label>
-                  <input
-                    type="text"
-                    value={form.phone}
-                    onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                    className="w-full px-3 py-2 rounded-lg border border-border bg-white focus:outline-none focus:ring-2 focus:ring-gold"
-                    placeholder="(11) 99999-9999"
-                  />
-                </div>
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-1">Comissão %</label>
                   <input
@@ -343,6 +361,18 @@ export default function AdminVendedores() {
                     value={form.commission_pct}
                     onChange={(e) => setForm({ ...form, commission_pct: parseFloat(e.target.value) || 0 })}
                     className="w-full px-3 py-2 rounded-lg border border-border bg-white focus:outline-none focus:ring-2 focus:ring-gold"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-1">Meta mensal R$</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="100"
+                    value={form.monthly_goal}
+                    onChange={(e) => setForm({ ...form, monthly_goal: parseFloat(e.target.value) || 0 })}
+                    className="w-full px-3 py-2 rounded-lg border border-border bg-white focus:outline-none focus:ring-2 focus:ring-gold"
+                    placeholder="0 = sem meta"
                   />
                 </div>
               </div>

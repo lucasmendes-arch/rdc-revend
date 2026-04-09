@@ -1,6 +1,6 @@
 # SCHEMA.md — Single Source of Truth · RDC Revend
-> Atualizado em: 2026-04-08
-> Gerado a partir das migrations `20250221000001` → `20260408000001`
+> Atualizado em: 2026-04-09
+> Gerado a partir das migrations `20250221000001` → `20260409000001`
 > **LEIA ESTE ARQUIVO antes de escrever qualquer query, RPC call ou type definition no frontend.**
 
 ---
@@ -440,6 +440,8 @@ Vendedores vinculáveis a pedidos.
 | code | text | YES | NULL | — |
 | active | boolean | NO | `true` | — |
 | is_default | boolean | NO | `false` | — |
+| commission_pct | numeric(5,2) | NO | `0` | — |
+| monthly_goal | numeric(10,2) | NO | `0` | — |
 | created_at | timestamptz | NO | `now()` | — |
 
 > RLS: admin-only para escrita. Leitura via RPC `get_active_sellers_for_dropdown` (admin + salao).

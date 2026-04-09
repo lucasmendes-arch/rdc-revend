@@ -10,6 +10,10 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from 'recharts'
 import AdminLayout from '@/components/admin/AdminLayout'
+import { AdminHeader } from '@/components/admin/ui/AdminHeader'
+import { AdminPeriodFilter } from '@/components/admin/ui/AdminPeriodFilter'
+import { ADMIN_DEFAULT_PERIOD_PRESETS } from '@/components/admin/ui/presets'
+import { AdminSummaryCard } from '@/components/admin/ui/AdminSummaryCard'
 
 // Statuses that mean "payment confirmed" (post-payment flow)
 const PAID_STATUSES = ['pago', 'separacao', 'enviado', 'entregue', 'concluido']
@@ -28,7 +32,7 @@ interface Order {
   customer_whatsapp: string
   user_id: string
   seller_id?: string | null
-  sellers?: { name: string; code: string | null; commission_pct: number } | null
+  sellers?: { name: string; code: string | null; commission_pct: number; monthly_goal: number }[] | null
 }
 
 interface OrderItem {
@@ -39,17 +43,6 @@ interface OrderItem {
 }
 
 type PeriodPreset = 'today' | 'yesterday' | 'week' | 'month' | 'last_month' | '3months' | '6months' | 'custom'
-
-const PRESETS: { key: PeriodPreset; label: string }[] = [
-  { key: 'today', label: 'Hoje' },
-  { key: 'yesterday', label: 'Ontem' },
-  { key: 'week', label: 'Semana' },
-  { key: 'month', label: 'Este mês' },
-  { key: 'last_month', label: 'Mês passado' },
-  { key: '3months', label: '3 meses' },
-  { key: '6months', label: '6 meses' },
-  { key: 'custom', label: 'Personalizado' },
-]
 
 const DEFAULT_MONTHLY_GOAL = 50000
 
@@ -215,21 +208,7 @@ function VariationBadge({ current, previous, invert }: { current: number; previo
   )
 }
 
-// --- Mini stat card ---
-function MiniCard({ icon: Icon, label, value, sub, iconColor }: {
-  icon: React.ElementType; label: string; value: string; sub?: string; iconColor?: string
-}) {
-  return (
-    <div className="bg-white rounded-lg border border-border p-3 lg:p-4 shadow-sm">
-      <div className="flex items-center gap-1.5 mb-2 lg:mb-2.5">
-        <Icon className={`w-3.5 h-3.5 lg:w-4 lg:h-4 ${iconColor || 'text-muted-foreground'}`} />
-        <span className="text-[10px] lg:text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</span>
-      </div>
-      <p className="text-sm lg:text-base font-bold text-foreground leading-tight">{value}</p>
-      {sub && <p className="text-[10px] lg:text-[11px] text-muted-foreground mt-1 lg:mt-1.5">{sub}</p>}
-    </div>
-  )
-}
+
 
 export default function AdminFinanceiro() {
   const [editingGoal, setEditingGoal] = useState(false)
@@ -258,7 +237,7 @@ export default function AdminFinanceiro() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('orders')
-        .select('id, status, total, subtotal, shipping, discount_amount, origin, delivery_method, created_at, customer_name, customer_whatsapp, user_id, seller_id, sellers(name, code, commission_pct)')
+        .select('id, status, total, subtotal, shipping, discount_amount, origin, delivery_method, created_at, customer_name, customer_whatsapp, user_id, seller_id, sellers(name, code, commission_pct, monthly_goal)')
         .order('created_at', { ascending: false })
       if (error) throw error
       return (data || []) as Order[]
@@ -274,6 +253,19 @@ export default function AdminFinanceiro() {
         .select('product_name_snapshot, qty, line_total, order_id')
       if (error) throw error
       return (data || []) as OrderItem[]
+    },
+    staleTime: 60_000,
+  })
+
+  // Fetch client sessions to match CRM funnel conversion logic
+  const { data: allSessions = [] } = useQuery({
+    queryKey: ['admin-financeiro-sessions'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('client_sessions')
+        .select('id, status, created_at')
+      if (error) throw error
+      return data || []
     },
     staleTime: 60_000,
   })
@@ -333,6 +325,15 @@ export default function AdminFinanceiro() {
     const periodCustomerIds = new Set(periodOrders.map(o => o.user_id))
     const compCustomerIds = new Set(compOrders.map(o => o.user_id))
 
+    // Funnel Conversion logic (Matching CRM Clientes tab): Comprou / Total Sessions
+    const periodSessions = allSessions.filter(s => {
+      const d = new Date(s.created_at)
+      return d >= periodStart && d <= periodEnd
+    })
+    const boughtSessions = periodSessions.filter(s => s.status === 'comprou')
+    const totalSessions = periodSessions.length
+    const conversionRate = totalSessions > 0 ? (boughtSessions.length / totalSessions) * 100 : 0
+
     // Today/week quick stats (always from today, regardless of filter)
     const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate())
     const todayOrders = paidOrders.filter(o => new Date(o.created_at) >= startOfToday)
@@ -344,8 +345,9 @@ export default function AdminFinanceiro() {
 
     // Commission total
     const periodCommission = periodOrders.reduce((s, o) => {
-      if (!o.sellers) return s
-      return s + Number(o.total) * (o.sellers.commission_pct / 100)
+      const seller = o.sellers?.[0]
+      if (!seller) return s
+      return s + Number(o.total) * (seller.commission_pct / 100)
     }, 0)
 
     // Origin breakdown
@@ -392,14 +394,33 @@ export default function AdminFinanceiro() {
       .sort((a, b) => b[1].revenue - a[1].revenue)
       .slice(0, 5)
 
-    // Seller breakdown
-    const sellerMap = new Map<string, { name: string; code: string | null; commission_pct: number; count: number; revenue: number }>()
-    for (const order of periodOrders) {
-      if (!order.sellers) continue
+    // Seller breakdown (period)
+    const sellerMap = new Map<string, { name: string; code: string | null; commission_pct: number; monthly_goal: number; count: number; revenue: number; monthRevenue: number }>()
+    // First pass: month revenue per seller (for goal tracking)
+    const monthStartSeller = new Date(now.getFullYear(), now.getMonth(), 1)
+    for (const order of paidOrders) {
+      const seller = order.sellers?.[0]
+      if (!seller) continue
+      const orderDate = new Date(order.created_at)
+      if (orderDate < monthStartSeller) continue
       const key = order.seller_id!
       const e = sellerMap.get(key) || {
-        name: order.sellers.name, code: order.sellers.code,
-        commission_pct: order.sellers.commission_pct, count: 0, revenue: 0,
+        name: seller.name, code: seller.code,
+        commission_pct: seller.commission_pct, monthly_goal: seller.monthly_goal || 0,
+        count: 0, revenue: 0, monthRevenue: 0,
+      }
+      e.monthRevenue += Number(order.total)
+      sellerMap.set(key, e)
+    }
+    // Second pass: period revenue per seller
+    for (const order of periodOrders) {
+      const seller = order.sellers?.[0]
+      if (!seller) continue
+      const key = order.seller_id!
+      const e = sellerMap.get(key) || {
+        name: seller.name, code: seller.code,
+        commission_pct: seller.commission_pct, monthly_goal: seller.monthly_goal || 0,
+        count: 0, revenue: 0, monthRevenue: 0,
       }
       e.count += 1
       e.revenue += Number(order.total)
@@ -418,12 +439,13 @@ export default function AdminFinanceiro() {
       periodDiscount, periodShipping, periodCommission,
       periodCustomerCount: periodCustomerIds.size,
       compCustomerCount: compCustomerIds.size,
+      conversionRate, totalSessions, boughtSessions: boughtSessions.length,
       originBreakdown,
       chartData,
       chartCurrentMonthName, chartPrevMonthName,
       topProducts, sellerBreakdown,
     }
-  }, [allOrders, allOrderItems, monthlyGoal, bounds, activePreset])
+  }, [allOrders, allOrderItems, monthlyGoal, bounds, allSessions])
 
   const originLabels: Record<string, string> = {
     site: 'Site', whatsapp: 'WhatsApp', loja_fisica: 'Loja Fisica',
@@ -442,50 +464,19 @@ export default function AdminFinanceiro() {
     <AdminLayout>
       {/* ── HEADER ── */}
       <div className="bg-white border-b border-border sticky top-0 lg:top-0 z-30">
-        <div className="px-4 sm:px-6 lg:px-8 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-foreground">Financeiro</h1>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              {bounds.periodLabel} — comparando com {bounds.compLabel}
-            </p>
-          </div>
-        </div>
-
-        {/* Period presets */}
-        <div className="px-4 sm:px-6 lg:px-8 pb-3 flex items-center gap-1.5 flex-wrap">
-          {PRESETS.map(p => (
-            <button
-              key={p.key}
-              onClick={() => handlePresetClick(p.key)}
-              className={`px-3 py-1.5 text-xs font-medium rounded-full border transition-colors ${
-                activePreset === p.key
-                  ? 'bg-gold text-white border-gold shadow-sm'
-                  : 'bg-white text-muted-foreground border-border hover:border-gold-border hover:text-foreground'
-              }`}
-            >
-              {p.label}
-            </button>
-          ))}
-
-          {activePreset === 'custom' && (
-            <div className="flex items-center gap-2 ml-2">
-              <div className="flex items-center gap-1.5">
-                <label className="text-[10px] text-muted-foreground font-medium">De</label>
-                <input
-                  type="date" value={customDateFrom} onChange={e => setCustomDateFrom(e.target.value)}
-                  className="px-2 py-1.5 text-xs border border-border rounded-lg focus:ring-2 focus:ring-gold bg-white"
-                />
-              </div>
-              <div className="flex items-center gap-1.5">
-                <label className="text-[10px] text-muted-foreground font-medium">Até</label>
-                <input
-                  type="date" value={customDateTo} onChange={e => setCustomDateTo(e.target.value)}
-                  className="px-2 py-1.5 text-xs border border-border rounded-lg focus:ring-2 focus:ring-gold bg-white"
-                />
-              </div>
-            </div>
-          )}
-        </div>
+        <AdminHeader 
+          title="Financeiro"
+          subtitle={`${bounds.periodLabel} — comparando com ${bounds.compLabel}`}
+        />
+        <AdminPeriodFilter 
+          presets={ADMIN_DEFAULT_PERIOD_PRESETS}
+          activePreset={activePreset}
+          onPresetChange={(k) => handlePresetClick(k as PeriodPreset)}
+          customDateFrom={customDateFrom}
+          customDateTo={customDateTo}
+          onCustomDateFromChange={setCustomDateFrom}
+          onCustomDateToChange={setCustomDateTo}
+        />
       </div>
 
       {isLoading ? (
@@ -494,64 +485,73 @@ export default function AdminFinanceiro() {
           <p className="text-muted-foreground text-sm">Carregando dados financeiros...</p>
         </div>
       ) : (
-        <div className="px-4 sm:px-6 lg:px-8 py-6 lg:py-8 space-y-6 lg:space-y-10 max-w-[1680px]">
+        <div className="px-4 sm:px-6 lg:px-8 py-5 lg:py-6 space-y-4 lg:space-y-6 max-w-[1680px]">
 
-          {/* ══════════════════════════════════════════════════════
-              SECTION 1 — PRIMARY KPIs
-              ══════════════════════════════════════════════════════ */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
+          <div className="grid grid-cols-2 lg:grid-cols-[1fr_0.7fr_0.7fr_0.7fr_1fr] gap-3 lg:gap-4">
 
-            {/* Hero: Period Revenue */}
-            <div className="sm:col-span-2 lg:col-span-1 bg-gradient-to-br from-gray-900 via-[#2a1a05] to-amber-950 rounded-xl p-4 lg:p-5 shadow-lg text-white relative overflow-hidden border border-amber-900/30">
+            {/* 1 — Faturamento (hero) */}
+            <div className="col-span-2 lg:col-span-1 bg-gradient-to-br from-gray-900 via-[#2a1a05] to-amber-950 rounded-xl p-3 lg:p-4 shadow-lg text-white relative overflow-hidden border border-amber-900/30 flex flex-col justify-between">
               <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/10 rounded-full -translate-y-10 translate-x-10 blur-2xl" />
               <div className="absolute bottom-0 left-0 w-20 h-20 bg-amber-500/8 rounded-full translate-y-6 -translate-x-6 blur-xl" />
               <div className="relative">
-                <div className="flex items-center gap-2 mb-2">
+                <div className="flex items-center gap-2 mb-1.5">
                   <div className="w-6 h-6 rounded-md bg-amber-500/20 flex items-center justify-center">
                     <DollarSign className="w-3.5 h-3.5 text-amber-400" />
                   </div>
                   <span className="text-[10px] lg:text-[11px] font-semibold uppercase tracking-widest text-amber-300/70">Faturamento</span>
                 </div>
-                <p className="text-xl sm:text-2xl lg:text-3xl font-black tracking-tight">R$ {fmt(stats.periodRevenue)}</p>
-                <div className="mt-2">
+                <p className="text-xl sm:text-2xl lg:text-2xl font-black tracking-tight">R$ {fmt(stats.periodRevenue)}</p>
+                <div className="flex items-center gap-1.5 mt-1.5">
                   <VariationBadge current={stats.periodRevenue} previous={stats.compRevenue} />
-                  <p className="text-[11px] text-white/50 mt-0.5">vs {bounds.compLabel}</p>
+                  <span className="text-[10px] text-white/50">vs {bounds.compLabel}</span>
                 </div>
               </div>
             </div>
 
-            {/* Paid Orders */}
-            <div className="bg-white rounded-xl border border-border p-4 lg:p-5 shadow-sm">
-              <div className="flex items-center gap-2 mb-1.5">
-                <ShoppingCart className="w-4 h-4 text-muted-foreground" />
-                <span className="text-[10px] lg:text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Pedidos pagos</span>
+            {/* 2 — Pedidos Pagos (compact) */}
+            <div className="bg-white rounded-xl border border-border p-3 shadow-sm h-full flex flex-col justify-between">
+              <div className="flex items-center gap-1.5 mb-1">
+                <ShoppingCart className="w-3.5 h-3.5 text-muted-foreground" />
+                <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Pagos</span>
               </div>
-              <p className="text-xl lg:text-2xl font-black text-foreground">{stats.periodCount}</p>
-              <div className="mt-1.5">
+              <p className="text-lg font-black text-foreground">{stats.periodCount}</p>
+              <div className="flex items-center gap-1.5 mt-1">
                 <VariationBadge current={stats.periodCount} previous={stats.compCount} />
-                <p className="text-[11px] text-muted-foreground mt-0.5">vs {bounds.compLabel}</p>
+                <span className="text-[9px] text-muted-foreground">vs {bounds.compLabel}</span>
               </div>
             </div>
 
-            {/* Ticket Medio */}
-            <div className="bg-white rounded-xl border border-border p-4 lg:p-5 shadow-sm">
-              <div className="flex items-center gap-2 mb-1.5">
-                <BarChart3 className="w-4 h-4 text-muted-foreground" />
-                <span className="text-[10px] lg:text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Ticket médio</span>
+            {/* 3 — Ticket Médio (compact) */}
+            <div className="bg-white rounded-xl border border-border p-3 shadow-sm h-full flex flex-col justify-between">
+              <div className="flex items-center gap-1.5 mb-1">
+                <BarChart3 className="w-3.5 h-3.5 text-muted-foreground" />
+                <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Ticket</span>
               </div>
-              <p className="text-xl lg:text-2xl font-black text-foreground">R$ {fmt(stats.periodTicket)}</p>
-              <div className="mt-1.5">
+              <p className="text-lg font-black text-foreground">R$ {fmt(stats.periodTicket)}</p>
+              <div className="flex items-center gap-1.5 mt-1">
                 <VariationBadge current={stats.periodTicket} previous={stats.compTicket} />
-                <p className="text-[11px] text-muted-foreground mt-0.5">vs {bounds.compLabel}</p>
+                <span className="text-[9px] text-muted-foreground">vs {bounds.compLabel}</span>
               </div>
             </div>
 
-            {/* Monthly Goal (always current month) */}
-            <div className="bg-white rounded-xl border border-border p-4 lg:p-5 shadow-sm">
-              <div className="flex items-center justify-between mb-1.5">
-                <div className="flex items-center gap-2">
-                  <Target className="w-4 h-4 text-gold-text" />
-                  <span className="text-[10px] lg:text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Meta mensal</span>
+            {/* 4 — Conversão (compact, NEW) */}
+            <div className="bg-white rounded-xl border border-border p-3 shadow-sm h-full flex flex-col justify-between">
+              <div className="flex items-center gap-1.5 mb-1">
+                <UserCheck className="w-3.5 h-3.5 text-violet-500" />
+                <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Conversão (Funil)</span>
+              </div>
+              <p className="text-lg font-black text-foreground">{stats.conversionRate.toFixed(1)}%</p>
+              <p className="text-[9px] text-muted-foreground mt-1">
+                {stats.boughtSessions} compras / {stats.totalSessions} visi{stats.totalSessions !== 1 ? 'tas' : 'ta'}
+              </p>
+            </div>
+
+            {/* 5 — Meta Mensal (same size as Faturamento) */}
+            <div className="col-span-2 lg:col-span-1 bg-white rounded-xl border border-border p-3 lg:p-4 shadow-sm h-full flex flex-col justify-between">
+              <div className="flex items-center justify-between mb-1">
+                <div className="flex items-center gap-1.5">
+                  <Target className="w-3.5 h-3.5 text-gold-text" />
+                  <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Meta mensal</span>
                 </div>
                 {editingGoal ? (
                   <div className="flex items-center gap-1">
@@ -580,12 +580,12 @@ export default function AdminFinanceiro() {
                 )}
               </div>
 
-              <div className="flex items-end gap-2 mb-1.5">
+              <div className="flex items-end gap-2 mb-1">
                 <span className="text-xl lg:text-2xl font-black text-foreground">{stats.goalPct.toFixed(0)}%</span>
-                <span className="text-xs text-muted-foreground mb-0.5">de R$ {fmtCompact(monthlyGoal)}</span>
+                <span className="text-[10px] text-muted-foreground mb-0.5">de R$ {fmtCompact(monthlyGoal)}</span>
               </div>
 
-              <div className="w-full bg-surface-alt rounded-full h-2 overflow-hidden">
+              <div className="w-full bg-surface-alt rounded-full h-1.5 overflow-hidden">
                 <div
                   className={`h-full rounded-full transition-all duration-500 ${
                     stats.goalPct >= 100
@@ -599,11 +599,11 @@ export default function AdminFinanceiro() {
               </div>
 
               {stats.remainingGoal > 0 ? (
-                <p className="text-[10px] text-muted-foreground mt-1.5">
+                <p className="text-[10px] text-muted-foreground mt-1">
                   Faltam R$ {fmtCompact(stats.remainingGoal)} &middot; R$ {fmtCompact(stats.dailyTarget)}/dia &middot; {stats.daysRemaining}d restantes
                 </p>
               ) : (
-                <p className="text-[10px] font-semibold text-emerald-600 mt-1.5">Meta atingida!</p>
+                <p className="text-[10px] font-semibold text-emerald-600 mt-1">Meta atingida!</p>
               )}
             </div>
           </div>
@@ -612,35 +612,35 @@ export default function AdminFinanceiro() {
               SECTION 2 — SECONDARY MINI-CARDS
               ══════════════════════════════════════════════════════ */}
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 lg:gap-4">
-            <MiniCard
+            <AdminSummaryCard
               icon={DollarSign} label="Hoje" iconColor="text-emerald-500"
               value={`R$ ${fmt(stats.todayRevenue)}`}
-              sub={`${stats.todayCount} pedido${stats.todayCount !== 1 ? 's' : ''}`}
+              subtitle={`${stats.todayCount} pedido${stats.todayCount !== 1 ? 's' : ''}`}
             />
-            <MiniCard
+            <AdminSummaryCard
               icon={CalendarDays} label="Semana" iconColor="text-blue-500"
               value={`R$ ${fmt(stats.weekRevenue)}`}
-              sub={`${stats.weekCount} pedido${stats.weekCount !== 1 ? 's' : ''}`}
+              subtitle={`${stats.weekCount} pedido${stats.weekCount !== 1 ? 's' : ''}`}
             />
-            <MiniCard
+            <AdminSummaryCard
               icon={Clock} label="Pendentes" iconColor="text-orange-500"
               value={`R$ ${fmt(stats.pendingTotal)}`}
-              sub={`${stats.pendingOrders.length} pedido${stats.pendingOrders.length !== 1 ? 's' : ''}`}
+              subtitle={`${stats.pendingOrders.length} pedido${stats.pendingOrders.length !== 1 ? 's' : ''}`}
             />
-            <MiniCard
+            <AdminSummaryCard
               icon={Percent} label="Descontos" iconColor="text-rose-500"
               value={`R$ ${fmt(stats.periodDiscount)}`}
-              sub="no período"
+              subtitle="no período"
             />
-            <MiniCard
+            <AdminSummaryCard
               icon={Truck} label="Frete" iconColor="text-sky-500"
               value={`R$ ${fmt(stats.periodShipping)}`}
-              sub="no período"
+              subtitle="no período"
             />
-            <MiniCard
+            <AdminSummaryCard
               icon={Users} label="Clientes" iconColor="text-violet-500"
               value={String(stats.periodCustomerCount)}
-              sub={stats.compCustomerCount > 0 ? `${stats.compCustomerCount} no anterior` : undefined}
+              subtitle={stats.compCustomerCount > 0 ? `${stats.compCustomerCount} no anterior` : undefined}
             />
           </div>
 
@@ -762,6 +762,67 @@ export default function AdminFinanceiro() {
                 </div>
               )}
             </div>
+
+            {/* Seller Monthly Goals */}
+            {stats.sellerBreakdown.some(s => s.monthly_goal > 0) && (
+              <div className="bg-white rounded-xl border border-border p-5 lg:p-7 shadow-sm">
+                <div className="flex items-center gap-2 mb-4 lg:mb-5">
+                  <Target className="w-4 h-4 text-gold-text" />
+                  <h3 className="text-sm lg:text-base font-bold text-foreground">Metas individuais</h3>
+                  <span className="text-[10px] text-muted-foreground ml-auto">mês atual</span>
+                </div>
+                <div className="space-y-4">
+                  {stats.sellerBreakdown
+                    .filter(s => s.monthly_goal > 0)
+                    .sort((a, b) => (b.monthRevenue / b.monthly_goal) - (a.monthRevenue / a.monthly_goal))
+                    .map(seller => {
+                      const pct = Math.min((seller.monthRevenue / seller.monthly_goal) * 100, 100)
+                      const remaining = Math.max(seller.monthly_goal - seller.monthRevenue, 0)
+                      const now = new Date()
+                      const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()
+                      const daysLeft = daysInMonth - now.getDate()
+                      const dailyNeeded = daysLeft > 0 ? remaining / daysLeft : 0
+                      return (
+                        <div key={seller.name}>
+                          <div className="flex items-center justify-between mb-1">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-semibold text-foreground">{seller.name}</span>
+                              {seller.code && (
+                                <span className="px-1.5 py-0.5 rounded bg-surface-alt text-[9px] font-mono font-semibold text-muted-foreground">
+                                  {seller.code}
+                                </span>
+                              )}
+                            </div>
+                            <span className={`text-xs font-black ${pct >= 100 ? 'text-emerald-600' : pct >= 70 ? 'text-foreground' : 'text-amber-600'}`}>
+                              {pct.toFixed(0)}%
+                            </span>
+                          </div>
+                          <div className="w-full bg-surface-alt rounded-full h-2.5 overflow-hidden">
+                            <div
+                              className={`h-full rounded-full transition-all duration-500 ${
+                                pct >= 100 ? 'bg-emerald-500' : pct >= 70 ? 'bg-gold' : 'bg-amber-400'
+                              }`}
+                              style={{ width: `${pct}%` }}
+                            />
+                          </div>
+                          <div className="flex items-center justify-between mt-1">
+                            <span className="text-[10px] text-muted-foreground">
+                              R$ {fmt(seller.monthRevenue)} de R$ {fmtCompact(seller.monthly_goal)}
+                            </span>
+                            {remaining > 0 ? (
+                              <span className="text-[10px] text-muted-foreground">
+                                faltam R$ {fmtCompact(remaining)} {daysLeft > 0 && <>&middot; R$ {fmtCompact(dailyNeeded)}/dia</>}
+                              </span>
+                            ) : (
+                              <span className="text-[10px] font-semibold text-emerald-600">Meta atingida!</span>
+                            )}
+                          </div>
+                        </div>
+                      )
+                    })}
+                </div>
+              </div>
+            )}
 
             {/* Top Products */}
             <div className="bg-white rounded-xl border border-border p-5 lg:p-7 shadow-sm">
