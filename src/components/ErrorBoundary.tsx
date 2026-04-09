@@ -8,6 +8,20 @@ interface State {
   hasError: boolean
 }
 
+function isChunkLoadError(error: Error): boolean {
+  const msg = error.message || ''
+  return (
+    error.name === 'ChunkLoadError' ||
+    msg.includes('Failed to fetch dynamically imported module') ||
+    msg.includes('Loading chunk') ||
+    msg.includes('Loading CSS chunk') ||
+    msg.includes('error loading dynamically imported module') ||
+    (msg.includes('Importing a module script failed') && msg.includes('assets/'))
+  )
+}
+
+const RELOAD_KEY = 'rdc_chunk_reload'
+
 export class ErrorBoundary extends Component<Props, State> {
   constructor(props: Props) {
     super(props)
@@ -20,6 +34,18 @@ export class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, info: React.ErrorInfo) {
     console.error('ErrorBoundary caught:', error, info.componentStack)
+
+    // Auto-reload once on chunk load errors (stale deploy)
+    if (isChunkLoadError(error)) {
+      const lastReload = sessionStorage.getItem(RELOAD_KEY)
+      const now = Date.now()
+      // Only auto-reload if we haven't done it in the last 30s (avoid infinite loop)
+      if (!lastReload || now - Number(lastReload) > 30_000) {
+        sessionStorage.setItem(RELOAD_KEY, String(now))
+        window.location.reload()
+        return
+      }
+    }
   }
 
   render() {
