@@ -55,7 +55,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
         <div className="p-3 border-t border-white/10">
           <Link
-            to="/"
+            to="/catalogo"
             className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-white/60 hover:text-white hover:bg-white/10 transition-colors"
           >
             <ExternalLink className="w-4 h-4" />
@@ -108,7 +108,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             })}
             <div className="border-t border-white/10 pt-2 mt-2">
               <Link
-                to="/"
+                to="/catalogo"
                 onClick={() => setMobileOpen(false)}
                 className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-white/60 hover:text-white hover:bg-white/10 transition-colors"
               >
