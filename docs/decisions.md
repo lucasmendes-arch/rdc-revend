@@ -91,3 +91,39 @@ _Registro de decisões arquiteturais relevantes, com contexto e consequências._
 **Contexto:** Necessidade de classificar clientes como `network_partner` ou `wholesale_buyer` para relatórios e regras de negócio diferenciadas.
 **Decisão:** `profiles.customer_segment` é a source of truth (editável pelo admin via RPC). `orders.customer_segment_snapshot` é uma cópia congelada no momento da criação do pedido (via RPCs e edge function). Backfill inicial usou `is_partner` como proxy (`true` → `network_partner`, `false` → `wholesale_buyer`).
 **Consequência:** Alterar o segmento de um cliente não retroage pedidos antigos. Relatórios por período usam o snapshot do pedido, não o perfil atual. NULL é permitido para legado ambíguo.
+
+---
+
+## [D-11] isPartner derivado de dois campos — is_partner boolean legado + customer_segment
+
+**Data:** 2026-04-10
+**Contexto:** Parceiros criados antes do campo `customer_segment` tinham `is_partner = true`. Parceiros criados após o backfill têm `is_partner = false` mas `customer_segment = 'network_partner'`.
+**Decisão:** `AuthContext.isPartner = !!data.is_partner || data.customer_segment === 'network_partner'`. Ambos os campos são verificados para máxima cobertura.
+**Consequência:** Novos parceiros precisam ter `customer_segment = 'network_partner'` via admin. O campo `is_partner` pode ser considerado legado mas não deve ser removido sem backfill.
+
+---
+
+## [D-12] Login de parceiros via telefone — resolução server-side sem Phone provider
+
+**Data:** 2026-04-10
+**Contexto:** Parceiros `network_partner` têm `auth_phone` no perfil e precisam logar com telefone + senha. O Supabase Phone provider exige OTP, incompatível com a arquitetura de senha fixa.
+**Decisão:** RPC `resolve_partner_login_email(p_phone)` acessível por `anon` resolve telefone → e-mail server-side. O frontend faz login normal com `signInWithPassword({ email, password })`. A detecção de telefone no campo é feita por heurística de dígitos (10-13 dígitos após strip de separadores).
+**Consequência:** O `auth_phone` em `profiles` precisa estar em E.164 e sincronizado com `access_status = 'active'`. Se o e-mail mudar, o login por telefone para de funcionar até atualização.
+
+---
+
+## [D-13] Ordenação manual de produtos — sort_order por categoria
+
+**Data:** 2026-04-10
+**Contexto:** O catálogo ordenava por `updated_at DESC`, impossibilitando controle manual da ordem de exibição.
+**Decisão:** `catalog_products.sort_order int DEFAULT 0`, índice em `(category_id, sort_order)`. Ordenação padrão do catálogo: `sort_order ASC, updated_at DESC`. Escrita via RPC SECURITY DEFINER `admin_update_product_sort_orders(jsonb)`. Admin UI com drag-and-drop por categoria.
+**Armadilha evitada:** O frontend re-ordenava os produtos localmente com `sortBy = 'name_asc'` como default, sobrescrevendo o sort_order do banco. Corrigido mudando o default para `'default'` (preserva ordem da query).
+
+---
+
+## [D-14] Tabelas de preço — price list merge no hook, não na query
+
+**Data:** 2026-04-10
+**Contexto:** Parceiros com `price_list_id` têm preços personalizados por produto via `price_list_items`.
+**Decisão:** `useCatalogProducts(fetchPriceList: true)` busca `get_my_price_list_items()` em paralelo e faz merge no `useMemo`: produtos com entry na price list têm `partner_price` sobrescrito. Produtos sem entry usam o preço padrão do catálogo.
+**Consequência:** Falha na RPC de price list não bloqueia o catálogo, mas exibe preço padrão. `priceListError` é exposto pelo hook para que o frontend possa alertar o usuário. Validação de NaN e price > 0 no merge garante que entradas corrompidas sejam ignoradas.

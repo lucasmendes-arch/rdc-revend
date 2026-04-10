@@ -130,7 +130,7 @@ const Catalogo = () => {
   const viewAll = searchParams.get('view') === 'todos';
   const setViewAll = (v: boolean) => setSearchParams(v ? { view: 'todos' } : {}, { replace: true });
   const { user, role, isPartner, loading: isLoadingAuth } = useAuth();
-  const { data: products = [], isLoading, error } = useCatalogProducts({ includePartnerPrice: isPartner, fetchPriceList: isPartner });
+  const { data: products = [], isLoading, error, priceListError } = useCatalogProducts({ includePartnerPrice: isPartner, fetchPriceList: isPartner });
   const { data: dbCategories = [] } = useCategories();
   const { items: cart, addItem, updateQty, removeItem, clearCart, total: cartTotal, count: cartCount, minOrderValue, cartOpen, setCartOpen } = useCart();
   const isGuest = !isLoadingAuth && !user;
@@ -914,6 +914,12 @@ const Catalogo = () => {
               <div className="mb-6 p-4 rounded-lg bg-red-50 border border-red-200 text-red-700">
                 <p className="font-medium">Erro ao carregar catálogo</p>
                 <p className="text-sm">{error instanceof Error ? error.message : 'Desconhecido'}</p>
+              </div>
+            )}
+
+            {priceListError && !error && (
+              <div className="mb-4 px-4 py-2.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-sm">
+                Não foi possível carregar sua tabela de preços. Os preços exibidos podem não refletir sua tabela personalizada.
               </div>
             )}
 

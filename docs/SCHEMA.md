@@ -1,6 +1,6 @@
 # SCHEMA.md — Single Source of Truth · RDC Revend
 > Atualizado em: 2026-04-10
-> Gerado a partir das migrations `20250221000001` → `20260409000004`
+> Gerado a partir das migrations `20250221000001` → `20260410000004`
 > **LEIA ESTE ARQUIVO antes de escrever qualquer query, RPC call ou type definition no frontend.**
 
 ---
@@ -85,6 +85,10 @@ Produtos do catálogo B2B.
 | is_professional | boolean | NO | `false` | — |
 | is_highlight | boolean | NO | `false` | — |
 | category_id | uuid | YES | NULL | categories.id |
+| sort_order | int | NO | `0` | — |
+
+> `sort_order`: posição manual do produto dentro de sua categoria. Ordenação padrão do catálogo: `sort_order ASC, updated_at DESC`. Gerenciado via admin drag-and-drop (RPC `admin_update_product_sort_orders`). Índice em `(category_id, sort_order)`.
+> RLS: leitura pública, escrita admin-only (via RPC SECURITY DEFINER).
 
 ---
 
@@ -731,6 +735,43 @@ Acessível por: `authenticated` (admin verificado internamente).
 admin_update_customer_segment(p_user_id UUID, p_segment TEXT) → void
 ```
 Atualiza a classificação comercial de um cliente. `p_segment` aceita `'network_partner'`, `'wholesale_buyer'` ou `NULL` (para desclassificar).
+Acessível por: `authenticated` (admin verificado internamente).
+
+---
+
+### `admin_update_profile`
+```
+admin_update_profile(
+  p_user_id      uuid,
+  p_full_name    text,
+  p_phone        text,
+  p_document_type text,
+  p_document     text,
+  p_business_type text,
+  p_employees    text,
+  p_revenue      text
+) → void
+```
+Atualiza dados cadastrais de um cliente (admin). Usa COALESCE — campos NULL preservam valor existente.
+Acessível por: `authenticated` (admin verificado internamente).
+
+---
+
+### `resolve_partner_login_email`
+```
+resolve_partner_login_email(p_phone text) → text
+```
+Resolve o e-mail de login de um parceiro a partir do telefone (E.164). Consulta `profiles` JOIN `auth.users` onde `auth_phone = p_phone` AND `customer_segment = 'network_partner'` AND `access_status = 'active'`. Retorna o e-mail ou NULL se não encontrado.
+Usado pelo login silencioso de parceiros (sem Supabase Phone provider).
+Acessível por: `anon`, `authenticated`.
+
+---
+
+### `admin_update_product_sort_orders`
+```
+admin_update_product_sort_orders(updates jsonb) → void
+```
+Atualiza `sort_order` em lote para múltiplos produtos. `updates` = `[{"id": "uuid", "sort_order": 0}, ...]`.
 Acessível por: `authenticated` (admin verificado internamente).
 
 ---

@@ -73,7 +73,11 @@ export function useCatalogProducts(opts?: {
   const data = useMemo(() => {
     const base = productsQuery.data ?? []
     if (!priceListQuery.data?.length) return base
-    const priceMap = new Map(priceListQuery.data.map(i => [i.product_id, Number(i.price)]))
+    const priceMap = new Map(
+      priceListQuery.data
+        .map(i => [i.product_id, Number(i.price)] as [string, number])
+        .filter(([, price]) => !isNaN(price) && price > 0)
+    )
     return base.map(p =>
       priceMap.has(p.id)
         ? { ...p, partner_price: priceMap.get(p.id)! }
@@ -85,5 +89,7 @@ export function useCatalogProducts(opts?: {
     ...productsQuery,
     data,
     isLoading: productsQuery.isLoading || (fetchPriceList && priceListQuery.isLoading),
+    // Surface price list error separately so callers can warn the user
+    priceListError: fetchPriceList ? priceListQuery.error : null,
   }
 }

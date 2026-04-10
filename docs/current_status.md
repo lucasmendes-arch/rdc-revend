@@ -1,5 +1,5 @@
 # current_status.md — Estado atual do projeto
-# Atualizado em: 2026-03-24
+# Atualizado em: 2026-04-10
 
 ## Status geral
 
@@ -15,8 +15,11 @@
 ### Etapa 4 — Automações WhatsApp operacionais
 - OPERATIONAL_V1
 
-### Etapa 5 — Fluxo de Parceiros e Salões (Atual)
-- AUDITADO_PRONTO_PARA_MERGE (2 rodadas de auditoria técnica concluídas, 7 bloqueios corrigidos)
+### Etapa 5 — Fluxo de Parceiros e Salões
+- OPERATIONAL_V1 (2026-04-10)
+
+### Etapa 6 — Portal do Parceiro + Catálogo Avançado (Atual)
+- IN_PROGRESS
 
 ---
 
@@ -112,8 +115,31 @@ Duplicidades das automações "Boas-vindas Novo Cliente" e "Fidelizacao Cliente 
 - Não ativar Boas-vindas nem Fidelizacao até resolver duplicidades e validar templates com a equipe.
 - Não expandir automações até evoluir UX/admin e ampliar validações.
 
-## Próximos candidatos de prompt
+## Funcionalidades entregues — 2026-04-10
 
-- Editor de mensagens das automações (CLD ou ANT)
-- Painel da fila crm_dispatch_queue no admin (ANT)
-- UX "Tags Vinculadas" (ANT)
+### Portal do Parceiro (network_partner)
+- Login silencioso por telefone (RPC `resolve_partner_login_email` → email → signInWithPassword)
+- Preços da tabela de preço aplicados no catálogo (`get_my_price_list_items` → merge no hook)
+- `isPartner` derivado de `is_partner boolean OR customer_segment = 'network_partner'`
+- PackageCards ocultos para parceiros
+- Popup de perfil incompleto suprimido para parceiros
+- Preço único (sem riscado), apenas preço da tabela definida
+
+### Admin — Catálogo
+- Ordenação manual de produtos por categoria (drag-and-drop, `sort_order`)
+- Edição de dados cadastrais do cliente no painel de detalhes
+- Vinculação de tabela de preço ao parceiro (dropdown, fix do bug de estado stale)
+- Badge "Uso Profissional" nos cards de produtos profissionais
+- Aplicação de preço por categoria (bulk upsert em `price_list_items`)
+
+## Pendências conhecidas
+
+- Editor de mensagens das automações CRM
+- Painel da fila crm_dispatch_queue no admin
+- `partner_price` acessível a `authenticated` não-parceiros se solicitado explicitamente (proteção apenas via lógica frontend — não há GRANT column-level para authenticated)
+
+## Próximos candidatos
+
+- Relatório de vendas por segmento (network_partner vs wholesale_buyer)
+- Histórico de pedidos no portal do parceiro
+- Notificações WhatsApp para parceiros
