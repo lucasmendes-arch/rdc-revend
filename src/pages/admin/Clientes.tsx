@@ -400,10 +400,7 @@ function ClientDetailPanel({ session, onClose, onDeleteClick }: { session: Clien
               <h3 className="text-[11px] font-bold text-zinc-400 uppercase tracking-widest mb-3">Tabela de Preço</h3>
               <div className="flex items-center gap-3">
                 <AdminSelect
-                  options={[
-                    { value: '', label: 'Preço padrão do catálogo' },
-                    ...availablePriceLists.map(l => ({ value: l.id, label: l.name })),
-                  ]}
+                  options={availablePriceLists.map(l => ({ value: l.id, label: l.name }))}
                   value={profile?.price_list_id || ''}
                   onChange={v => priceListMutation.mutate(v || null)}
                   placeholder="Preço padrão do catálogo"
