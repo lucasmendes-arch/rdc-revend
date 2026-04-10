@@ -5,7 +5,7 @@ import { toast } from 'sonner'
 import AdminLayout from '@/components/admin/AdminLayout'
 import {
   BadgeDollarSign, Plus, X, Loader, Package, Edit2,
-  Check, Trash2, Search, Users, Tag, Power, ArrowRight,
+  Check, Trash2, Search, Users, Tag, Power, ArrowRight, Layers,
 } from 'lucide-react'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -150,6 +150,10 @@ export default function AdminTabelasPreco() {
   // Remove item confirm
   const [removeItemId, setRemoveItemId] = useState<string | null>(null)
 
+  // Apply-by-category state
+  const [applyCatId, setApplyCatId] = useState('')
+  const [applyCatPrice, setApplyCatPrice] = useState('')
+
   // ── Queries ─────────────────────────────────────────────────────────
 
   const { data: priceLists = [], isLoading, error } = useQuery({
@@ -212,6 +216,19 @@ export default function AdminTabelasPreco() {
         .order('name')
       if (error) throw error
       return data as SimpleProduct[]
+    },
+    staleTime: 5 * 60 * 1000,
+  })
+
+  const { data: categories = [] } = useQuery({
+    queryKey: ['admin-categories-for-price-list'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('categories')
+        .select('id, name')
+        .order('name')
+      if (error) throw error
+      return data as { id: string; name: string }[]
     },
     staleTime: 5 * 60 * 1000,
   })
@@ -324,7 +341,47 @@ export default function AdminTabelasPreco() {
     onError: (err: any) => toast.error(err.message || 'Erro ao remover'),
   })
 
+  const applyCategoryMutation = useMutation({
+    mutationFn: async ({ categoryId, price, priceListId }: { categoryId: string; price: number; priceListId: string }) => {
+      // Fetch all active products in the selected category
+      const { data: products, error: fetchError } = await supabase
+        .from('catalog_products')
+        .select('id')
+        .eq('category_id', categoryId)
+        .eq('is_active', true)
+      if (fetchError) throw fetchError
+      if (!products || products.length === 0) throw new Error('Nenhum produto ativo nessa categoria.')
+
+      // Batch upsert
+      const rows = products.map(p => ({
+        price_list_id: priceListId,
+        product_id: p.id,
+        price,
+        updated_at: new Date().toISOString(),
+      }))
+      const { error: upsertError } = await supabase
+        .from('price_list_items')
+        .upsert(rows, { onConflict: 'price_list_id,product_id' })
+      if (upsertError) throw upsertError
+      return products.length
+    },
+    onSuccess: (count) => {
+      toast.success(`Preço aplicado em ${count} produto${count !== 1 ? 's' : ''}`)
+      queryClient.invalidateQueries({ queryKey: ['admin-price-list-items', selectedListId] })
+      setApplyCatId('')
+      setApplyCatPrice('')
+    },
+    onError: (err: any) => toast.error(err.message || 'Erro ao aplicar por categoria'),
+  })
+
   // ── Handlers ─────────────────────────────────────────────────────────
+
+  function handleApplyCategory() {
+    if (!currentList || !applyCatId) return
+    const price = parseFloat(applyCatPrice.replace(',', '.'))
+    if (isNaN(price) || price < 0) { toast.error('Preço inválido'); return }
+    applyCategoryMutation.mutate({ categoryId: applyCatId, price, priceListId: currentList.id })
+  }
 
   function openPanel(list: PriceList) {
     setSelectedListId(list.id)
@@ -334,6 +391,8 @@ export default function AdminTabelasPreco() {
     setProductSearch('')
     setEditingItemId(null)
     setRemoveItemId(null)
+    setApplyCatId('')
+    setApplyCatPrice('')
   }
 
   function closePanel() {
@@ -749,6 +808,56 @@ export default function AdminTabelasPreco() {
                         <Plus className="w-4 h-4" />
                       )}
                       Adicionar
+                    </button>
+                  </div>
+                </div>
+
+                {/* Apply by category */}
+                <div className="bg-zinc-50 rounded-xl border border-zinc-200 p-3.5 mt-3">
+                  <div className="flex items-center gap-1.5 mb-3">
+                    <Layers className="w-3.5 h-3.5 text-zinc-400" />
+                    <p className="text-[11px] font-bold text-zinc-400 uppercase tracking-widest">
+                      Aplicar por categoria
+                    </p>
+                  </div>
+                  <p className="text-[11px] text-zinc-400 mb-3">
+                    Define o mesmo preço para todos os produtos ativos de uma categoria de uma vez.
+                  </p>
+                  <select
+                    value={applyCatId}
+                    onChange={e => setApplyCatId(e.target.value)}
+                    className="w-full px-3 py-1.5 text-sm rounded-lg border border-zinc-200 bg-white focus:outline-none focus:ring-2 focus:ring-zinc-400 mb-2"
+                  >
+                    <option value="">Selecionar categoria...</option>
+                    {categories.map(c => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </select>
+                  <div className="flex gap-2">
+                    <div className="flex-1 relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-zinc-400 pointer-events-none">
+                        R$
+                      </span>
+                      <input
+                        type="text"
+                        value={applyCatPrice}
+                        onChange={e => setApplyCatPrice(e.target.value)}
+                        placeholder="0,00"
+                        onKeyDown={e => { if (e.key === 'Enter') handleApplyCategory() }}
+                        className="w-full pl-9 pr-3 py-1.5 text-sm rounded-lg border border-zinc-200 bg-white focus:outline-none focus:ring-2 focus:ring-zinc-400 font-mono"
+                      />
+                    </div>
+                    <button
+                      onClick={handleApplyCategory}
+                      disabled={!applyCatId || !applyCatPrice || applyCategoryMutation.isPending}
+                      className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-zinc-900 text-white text-sm font-medium disabled:opacity-40 hover:bg-zinc-700 transition-colors"
+                    >
+                      {applyCategoryMutation.isPending ? (
+                        <Loader className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Check className="w-4 h-4" />
+                      )}
+                      Aplicar
                     </button>
                   </div>
                 </div>
