@@ -1,11 +1,12 @@
 import { useState, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { supabase } from '@/lib/supabase'
+import { supabase, callEdgeFunction } from '@/lib/supabase'
 import { toast } from 'sonner'
 import {
   Loader, Eye, MousePointerClick, ShoppingCart, CreditCard,
   CheckCircle, XCircle, X, User, Phone, Mail, Tag,
-  Building2, FileText, Package, Clock, Calendar, Users, DollarSign, Sparkles, AlertTriangle, Trash2, TrendingUp, UserX
+  Building2, FileText, Package, Clock, Calendar, Users, DollarSign, Sparkles, AlertTriangle, Trash2, TrendingUp, UserX,
+  KeyRound, Copy, Lock, Unlock, MessageCircle, RefreshCw
 } from 'lucide-react'
 import { CustomerTimeline } from '@/components/admin/CustomerTimeline'
 import AdminLayout from '@/components/admin/AdminLayout'
@@ -39,6 +40,10 @@ interface ClientProfile {
   employees: string | null
   revenue: string | null
   customer_segment: string | null
+  access_status: string | null
+  auth_phone: string | null
+  credentials_created_at: string | null
+  last_password_reset_at: string | null
 }
 
 interface ClientSession {
@@ -335,6 +340,11 @@ function ClientDetailPanel({ session, onClose, onDeleteClick }: { session: Clien
             </div>
           )}
 
+          {/* Partner Access */}
+          {session.user_id && profile?.customer_segment === 'network_partner' && (
+            <PartnerAccessSection session={session} />
+          )}
+
           {/* Cart info */}
           {session.cart_items_count > 0 && orders.length === 0 && (
             <div className="px-5 py-4 border-b border-zinc-200">
@@ -460,6 +470,270 @@ function InfoRow({ icon: Icon, label, value }: { icon: typeof User; label: strin
   )
 }
 
+// ── Partner Access Section ────────────────────────────────────────────────────
+
+interface CredentialResult {
+  phone: string
+  created_password: string
+  partner_name: string
+}
+
+function PartnerAccessSection({ session }: { session: ClientSession }) {
+  const queryClient = useQueryClient()
+  const profile = session.profile!
+  const accessStatus = profile.access_status ?? 'not_created'
+
+  const [manualPassword, setManualPassword] = useState('')
+  const [showPasswordInput, setShowPasswordInput] = useState(false)
+  const [credResult, setCredResult] = useState<CredentialResult | null>(null)
+
+  async function invokeAction(action: string, password?: string) {
+    const body: Record<string, unknown> = { action, profile_id: session.user_id }
+    if (password) body.password = password
+    const data = await callEdgeFunction('admin-partner-credentials', body)
+    if (data?.error) throw new Error(data.error)
+    return data
+  }
+
+  const createMutation = useMutation({
+    mutationFn: () => invokeAction('create', manualPassword || undefined),
+    onSuccess: (data) => {
+      setCredResult({ phone: data.phone, created_password: data.created_password, partner_name: data.partner_name })
+      setManualPassword('')
+      setShowPasswordInput(false)
+      queryClient.setQueryData(['client-sessions'], (old: any) => {
+        if (!old) return old
+        return old.map((s: any) =>
+          s.user_id === session.user_id
+            ? { ...s, profile: { ...s.profile, access_status: 'active', auth_phone: data.phone, credentials_created_at: new Date().toISOString() } }
+            : s
+        )
+      })
+      toast.success('Acesso criado com sucesso')
+    },
+    onError: (err: any) => toast.error(err.message || 'Erro ao criar acesso'),
+  })
+
+  const resetMutation = useMutation({
+    mutationFn: () => invokeAction('reset_password', manualPassword || undefined),
+    onSuccess: (data) => {
+      setCredResult({ phone: data.phone, created_password: data.created_password, partner_name: data.partner_name })
+      setManualPassword('')
+      setShowPasswordInput(false)
+      queryClient.setQueryData(['client-sessions'], (old: any) => {
+        if (!old) return old
+        return old.map((s: any) =>
+          s.user_id === session.user_id
+            ? { ...s, profile: { ...s.profile, last_password_reset_at: new Date().toISOString() } }
+            : s
+        )
+      })
+      toast.success('Senha resetada com sucesso')
+    },
+    onError: (err: any) => toast.error(err.message || 'Erro ao resetar senha'),
+  })
+
+  const blockMutation = useMutation({
+    mutationFn: () => invokeAction('block'),
+    onSuccess: () => {
+      queryClient.setQueryData(['client-sessions'], (old: any) => {
+        if (!old) return old
+        return old.map((s: any) =>
+          s.user_id === session.user_id
+            ? { ...s, profile: { ...s.profile, access_status: 'blocked' } }
+            : s
+        )
+      })
+      toast.success('Acesso bloqueado')
+    },
+    onError: (err: any) => toast.error(err.message || 'Erro ao bloquear'),
+  })
+
+  const unblockMutation = useMutation({
+    mutationFn: () => invokeAction('unblock'),
+    onSuccess: () => {
+      queryClient.setQueryData(['client-sessions'], (old: any) => {
+        if (!old) return old
+        return old.map((s: any) =>
+          s.user_id === session.user_id
+            ? { ...s, profile: { ...s.profile, access_status: 'active' } }
+            : s
+        )
+      })
+      toast.success('Acesso desbloqueado')
+    },
+    onError: (err: any) => toast.error(err.message || 'Erro ao desbloquear'),
+  })
+
+  const isLoading = createMutation.isPending || resetMutation.isPending || blockMutation.isPending || unblockMutation.isPending
+
+  const statusConfig = {
+    not_created: { label: 'Sem acesso', classes: 'bg-zinc-100 text-zinc-500 ring-zinc-200' },
+    active:      { label: 'Ativo',      classes: 'bg-emerald-100 text-emerald-700 ring-emerald-200' },
+    blocked:     { label: 'Bloqueado',  classes: 'bg-red-100 text-red-600 ring-red-200' },
+  }
+  const statusInfo = statusConfig[accessStatus as keyof typeof statusConfig] ?? statusConfig.not_created
+
+  function copyToClipboard(text: string, label: string) {
+    navigator.clipboard.writeText(text).then(() => toast.success(`${label} copiado`))
+  }
+
+  function buildWhatsAppMessage(cred: CredentialResult) {
+    const origin = window.location.origin
+    return `Olá, ${cred.partner_name}! 🔑 Seu acesso ao portal Rei dos Cachos foi criado.\n\nLogin: ${cred.phone}\nSenha: ${cred.created_password}\nAcesse em: ${origin}/login\n\nGuarde esses dados.`
+  }
+
+  return (
+    <div className="px-5 py-4 border-b border-zinc-200">
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-[11px] font-bold text-zinc-400 uppercase tracking-widest">Acesso ao Portal</h3>
+        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md ring-1 ring-inset ${statusInfo.classes}`}>
+          {statusInfo.label}
+        </span>
+      </div>
+
+      {/* Metadata */}
+      {profile.credentials_created_at && (
+        <p className="text-[11px] text-zinc-400 mb-1">
+          Criado em {new Date(profile.credentials_created_at).toLocaleDateString('pt-BR')}
+          {profile.auth_phone && <> · Login: <span className="font-medium text-zinc-600">{profile.auth_phone}</span></>}
+        </p>
+      )}
+      {profile.last_password_reset_at && (
+        <p className="text-[11px] text-zinc-400 mb-3">
+          Senha resetada em {new Date(profile.last_password_reset_at).toLocaleDateString('pt-BR')}
+        </p>
+      )}
+
+      {/* Optional manual password input */}
+      {(accessStatus === 'not_created' || accessStatus === 'active') && showPasswordInput && (
+        <div className="flex items-center gap-2 mb-3">
+          <input
+            type="text"
+            placeholder="Senha personalizada (opcional)"
+            value={manualPassword}
+            onChange={e => setManualPassword(e.target.value)}
+            className="flex-1 px-3 py-1.5 text-sm border border-zinc-200 rounded-lg focus:ring-2 focus:ring-zinc-400 focus:outline-none bg-white"
+          />
+          <button onClick={() => { setShowPasswordInput(false); setManualPassword('') }} className="text-zinc-400 hover:text-zinc-600 p-1">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
+      {/* Actions */}
+      <div className="flex flex-wrap gap-2">
+        {accessStatus === 'not_created' && (
+          <>
+            <button
+              onClick={() => createMutation.mutate()}
+              disabled={isLoading}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold bg-zinc-900 text-white rounded-lg hover:bg-zinc-700 disabled:opacity-50 transition-colors"
+            >
+              {isLoading ? <Loader className="w-3.5 h-3.5 animate-spin" /> : <KeyRound className="w-3.5 h-3.5" />}
+              Criar Acesso
+            </button>
+            <button
+              onClick={() => setShowPasswordInput(v => !v)}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-zinc-200 rounded-lg hover:border-zinc-300 text-zinc-600 transition-colors"
+            >
+              Definir senha
+            </button>
+          </>
+        )}
+
+        {accessStatus === 'active' && (
+          <>
+            <button
+              onClick={() => resetMutation.mutate()}
+              disabled={isLoading}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold bg-zinc-900 text-white rounded-lg hover:bg-zinc-700 disabled:opacity-50 transition-colors"
+            >
+              {resetMutation.isPending ? <Loader className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+              Resetar Senha
+            </button>
+            <button
+              onClick={() => setShowPasswordInput(v => !v)}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-zinc-200 rounded-lg hover:border-zinc-300 text-zinc-600 transition-colors"
+            >
+              Definir senha
+            </button>
+            <button
+              onClick={() => blockMutation.mutate()}
+              disabled={isLoading}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold border border-red-200 text-red-600 bg-red-50 rounded-lg hover:bg-red-100 disabled:opacity-50 transition-colors"
+            >
+              {blockMutation.isPending ? <Loader className="w-3.5 h-3.5 animate-spin" /> : <Lock className="w-3.5 h-3.5" />}
+              Bloquear
+            </button>
+          </>
+        )}
+
+        {accessStatus === 'blocked' && (
+          <button
+            onClick={() => unblockMutation.mutate()}
+            disabled={isLoading}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold bg-zinc-900 text-white rounded-lg hover:bg-zinc-700 disabled:opacity-50 transition-colors"
+          >
+            {unblockMutation.isPending ? <Loader className="w-3.5 h-3.5 animate-spin" /> : <Unlock className="w-3.5 h-3.5" />}
+            Desbloquear
+          </button>
+        )}
+      </div>
+
+      {/* Credential result box */}
+      {credResult && (
+        <div className="mt-4 bg-zinc-900 rounded-xl p-4 space-y-3">
+          <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Credenciais geradas</p>
+
+          <div className="flex items-center justify-between gap-2 bg-zinc-800 rounded-lg px-3 py-2">
+            <div>
+              <p className="text-[10px] text-zinc-500 leading-none">Login</p>
+              <p className="text-sm font-mono font-bold text-white mt-0.5">{credResult.phone}</p>
+            </div>
+            <button onClick={() => copyToClipboard(credResult.phone, 'Login')} className="p-1.5 rounded-md hover:bg-zinc-700 text-zinc-400 hover:text-white transition-colors">
+              <Copy className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
+          <div className="flex items-center justify-between gap-2 bg-zinc-800 rounded-lg px-3 py-2">
+            <div>
+              <p className="text-[10px] text-zinc-500 leading-none">Senha</p>
+              <p className="text-sm font-mono font-bold text-white mt-0.5">{credResult.created_password}</p>
+            </div>
+            <button onClick={() => copyToClipboard(credResult.created_password, 'Senha')} className="p-1.5 rounded-md hover:bg-zinc-700 text-zinc-400 hover:text-white transition-colors">
+              <Copy className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
+          <div className="flex gap-2 pt-1">
+            <button
+              onClick={() => copyToClipboard(buildWhatsAppMessage(credResult), 'Mensagem')}
+              className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-bold bg-zinc-700 text-white rounded-lg hover:bg-zinc-600 transition-colors"
+            >
+              <Copy className="w-3.5 h-3.5" />
+              Copiar msg WA
+            </button>
+            <a
+              href={`https://wa.me/${credResult.phone.replace(/\D/g, '')}?text=${encodeURIComponent(buildWhatsAppMessage(credResult))}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-bold bg-emerald-600 text-white rounded-lg hover:bg-emerald-500 transition-colors"
+            >
+              <MessageCircle className="w-3.5 h-3.5" />
+              Abrir WhatsApp
+            </a>
+          </div>
+
+          <button onClick={() => setCredResult(null)} className="w-full text-[10px] text-zinc-600 hover:text-zinc-400 transition-colors pt-1">
+            Fechar
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function AdminClientes() {
   const queryClient = useQueryClient()
   const [selectedSession, setSelectedSession] = useState<ClientSession | null>(null)
@@ -518,6 +792,10 @@ export default function AdminClientes() {
             employees: p.employees,
             revenue: p.revenue,
             customer_segment: p.customer_segment ?? null,
+            access_status: p.access_status ?? 'not_created',
+            auth_phone: p.auth_phone ?? null,
+            credentials_created_at: p.credentials_created_at ?? null,
+            last_password_reset_at: p.last_password_reset_at ?? null,
           }]))
         }
 

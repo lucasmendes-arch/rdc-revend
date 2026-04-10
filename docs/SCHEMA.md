@@ -48,8 +48,13 @@ Perfil do usuário. Criado automaticamente por trigger ao registrar em `auth.use
 | last_synced_at | timestamptz | YES | NULL | — |
 | updated_by | text | YES | NULL | — |
 | customer_segment | text | YES | NULL | — |
+| access_status | text | YES | `'not_created'` | — |
+| auth_phone | text | YES | NULL | — |
+| credentials_created_at | timestamptz | YES | NULL | — |
+| last_password_reset_at | timestamptz | YES | NULL | — |
 
 > `customer_segment` válidos: `'network_partner'`, `'wholesale_buyer'`. NULL = não classificado (legado pendente de revisão). Source of truth da segmentação comercial do cliente.
+> `access_status` válidos: `'not_created'`, `'active'`, `'blocked'`. Gerenciado pela edge function `admin-partner-credentials`. `auth_phone` armazena o telefone normalizado E.164 usado como login.
 > Colunas de integração (Etapa 9): `clickup_task_id`, `lead_source`, `lead_status`, `assigned_seller`, `integration_notes`, `last_synced_at`, `updated_by` — todas nullable, usadas pelo fluxo n8n/ClickUp.
 
 ---
@@ -634,9 +639,15 @@ Acessível por: `authenticated` (admin verificado internamente).
 ### `get_all_profiles`
 ```
 get_all_profiles()
-  → TABLE (id uuid, full_name text, phone text, business_type text, email text, is_partner boolean, customer_segment text)
+  → TABLE (
+      id uuid, full_name text, phone text, document_type text, document text,
+      business_type text, employees text, revenue text, email text,
+      is_partner boolean, customer_segment text,
+      access_status text, auth_phone text,
+      credentials_created_at timestamptz, last_password_reset_at timestamptz
+    )
 ```
-Lista todos os perfis com `role = 'user'` para o admin.
+Lista todos os perfis com `role = 'user'` para o admin. Usa LEFT JOIN em `auth.users` para garantir que perfis sem e-mail ainda apareçam.
 Acessível por: `authenticated` (admin verificado internamente).
 
 ---
@@ -711,6 +722,7 @@ Retorno: contagem de pedidos liberados.
 | profiles | role | `'user'`, `'admin'`, `'salao'` |
 | profiles | price_category | `'retail'`, `'wholesale'`, `'vip'` |
 | profiles | customer_segment | `'network_partner'`, `'wholesale_buyer'`, NULL |
+| profiles | access_status | `'not_created'`, `'active'`, `'blocked'` |
 | orders | customer_segment_snapshot | `'network_partner'`, `'wholesale_buyer'`, NULL |
 | catalog_products | category_type | `'alto_giro'`, `'maior_margem'`, `'recompra_alta'`, NULL |
 | orders | status | `'recebido'`, `'aguardando_pagamento'`, `'pago'`, `'separacao'`, `'enviado'`, `'entregue'`, `'concluido'`, `'cancelado'`, `'expirado'` |

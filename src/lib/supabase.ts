@@ -15,12 +15,18 @@ const key = supabaseAnonKey || 'placeholder-key'
 
 export const supabase = createClient(url, key)
 
-/** Call a Supabase Edge Function (refreshes session then invokes) */
+/** Call a Supabase Edge Function (refreshes session then invokes with explicit token) */
 export async function callEdgeFunction(functionName: string, body: Record<string, unknown>, extraHeaders?: Record<string, string>) {
   await supabase.auth.refreshSession()
+  const { data: authData } = await supabase.auth.getSession()
+  const token = authData.session?.access_token
+
   const { data, error } = await supabase.functions.invoke(functionName, {
     body,
-    headers: extraHeaders,
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...extraHeaders,
+    },
   })
 
   if (error) {
