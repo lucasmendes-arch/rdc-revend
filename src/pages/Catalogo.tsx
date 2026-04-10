@@ -130,7 +130,7 @@ const Catalogo = () => {
   const viewAll = searchParams.get('view') === 'todos';
   const setViewAll = (v: boolean) => setSearchParams(v ? { view: 'todos' } : {}, { replace: true });
   const { user, role, isPartner, loading: isLoadingAuth } = useAuth();
-  const { data: products = [], isLoading, error } = useCatalogProducts({ includePartnerPrice: isPartner });
+  const { data: products = [], isLoading, error } = useCatalogProducts({ includePartnerPrice: isPartner, fetchPriceList: isPartner });
   const { data: dbCategories = [] } = useCategories();
   const { items: cart, addItem, updateQty, removeItem, clearCart, total: cartTotal, count: cartCount, minOrderValue, cartOpen, setCartOpen } = useCart();
   const isGuest = !isLoadingAuth && !user;
@@ -179,8 +179,8 @@ const Catalogo = () => {
   const [showProfilePopup, setShowProfilePopup] = useState(false)
 
   useEffect(() => {
-    // Only for logged-in, non-admin users
-    if (!user?.id || role === 'admin') return
+    // Only for logged-in, non-admin, non-partner users
+    if (!user?.id || role === 'admin' || isPartner) return
 
     const USER_VISITS_KEY = `rdc_profile_visits_${user.id}`
     const SESSION_DISMISSED_KEY = `rdc_popup_dismissed_${user.id}`
@@ -783,9 +783,11 @@ const Catalogo = () => {
                 </div>
               </div>
 
-              <div className="mb-4">
-                <PackageCards products={products} isGuest={isGuest} isPartner={isPartner} />
-              </div>
+              {!isPartner && (
+                <div className="mb-4">
+                  <PackageCards products={products} isGuest={isGuest} isPartner={isPartner} />
+                </div>
+              )}
             </div>
           )}
 
@@ -823,7 +825,7 @@ const Catalogo = () => {
             </div>
 
             {/* Package Cards Header (Desktop Only) — ocultar durante busca ou viewAll */}
-            {!debouncedSearch && !viewAll && !isLoading && !error && products.length > 0 && (
+            {!debouncedSearch && !viewAll && !isLoading && !error && products.length > 0 && !isPartner && (
               <div className="hidden sm:block">
                 <div className="mb-8">
                   <PackageCards products={products} isGuest={isGuest} isPartner={isPartner} />
