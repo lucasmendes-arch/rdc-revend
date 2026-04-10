@@ -965,15 +965,10 @@ const Catalogo = () => {
                                   </div>
                                 ) : (
                                   <div className="text-sm font-bold text-foreground mb-2">
-                                    {isPartner && product.partner_price ? (
-                                      <div className="flex items-center gap-1.5 font-bold">
-                                        <span className="text-[10px] line-through text-muted-foreground/50">R$ {product.price.toFixed(2)}</span>
-                                        <span className="text-amber-600">R$ {product.partner_price.toFixed(2)}</span>
-                                        <span className="text-[8px] bg-amber-100 text-amber-700 px-1 rounded uppercase tracking-tighter">Parceiro</span>
-                                      </div>
-                                    ) : (
-                                      <>R$ {product.price.toFixed(2)}</>
-                                    )}
+                                    {isPartner && product.partner_price
+                                      ? <>R$ {product.partner_price.toFixed(2)}</>
+                                      : <>R$ {product.price.toFixed(2)}</>
+                                    }
                                   </div>
                                 )}
                                 {isGuest ? (
@@ -1238,16 +1233,12 @@ const Catalogo = () => {
                       </div>
                     ) : (
                       <>
-                        <div className="text-muted-foreground mb-0.5">Custo {isPartner && selectedProduct.partner_price && "(Parceiro)"}</div>
+                        <div className="text-muted-foreground mb-0.5">Custo</div>
                         <div className="text-base sm:text-lg font-bold text-foreground mb-2">
-                          {isPartner && selectedProduct.partner_price ? (
-                            <div className="flex items-center gap-2">
-                              <span className="text-sm line-through text-muted-foreground/50">R$ {selectedProduct.price.toFixed(2)}</span>
-                              <span className="text-amber-600">R$ {selectedProduct.partner_price.toFixed(2)}</span>
-                            </div>
-                          ) : (
-                            <>R$ {selectedProduct.price.toFixed(2)}</>
-                          )}
+                          {isPartner && selectedProduct.partner_price
+                            ? <>R$ {selectedProduct.partner_price.toFixed(2)}</>
+                            : <>R$ {selectedProduct.price.toFixed(2)}</>
+                          }
                         </div>
                         <div className="border-t border-border pt-2">
                           <div className="text-muted-foreground mb-0.5">Preço de Venda (Sugerido)</div>
