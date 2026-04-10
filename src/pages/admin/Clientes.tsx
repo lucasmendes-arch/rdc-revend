@@ -6,7 +6,7 @@ import {
   Loader, Eye, MousePointerClick, ShoppingCart, CreditCard,
   CheckCircle, XCircle, X, User, Phone, Mail, Tag,
   Building2, FileText, Package, Clock, Calendar, Users, DollarSign, Sparkles, AlertTriangle, Trash2, TrendingUp, UserX,
-  KeyRound, Copy, Lock, Unlock, MessageCircle, RefreshCw, BadgeDollarSign
+  KeyRound, Copy, Lock, Unlock, MessageCircle, RefreshCw
 } from 'lucide-react'
 import { CustomerTimeline } from '@/components/admin/CustomerTimeline'
 import AdminLayout from '@/components/admin/AdminLayout'
@@ -397,29 +397,20 @@ function ClientDetailPanel({ session, onClose, onDeleteClick }: { session: Clien
           {/* Price List */}
           {session.user_id && profile?.customer_segment === 'network_partner' && (
             <div className="px-5 py-4 border-b border-zinc-200">
-              <h3 className="text-[11px] font-bold text-zinc-400 uppercase tracking-widest mb-3">
-                Tabela de Preço
-              </h3>
+              <h3 className="text-[11px] font-bold text-zinc-400 uppercase tracking-widest mb-3">Tabela de Preço</h3>
               <div className="flex items-center gap-3">
-                <BadgeDollarSign className="w-4 h-4 text-zinc-400 flex-shrink-0" />
-                <select
+                <AdminSelect
+                  options={[
+                    { value: '', label: 'Preço padrão do catálogo' },
+                    ...availablePriceLists.map(l => ({ value: l.id, label: l.name })),
+                  ]}
                   value={profile?.price_list_id || ''}
-                  onChange={e => priceListMutation.mutate(e.target.value || null)}
-                  disabled={priceListMutation.isPending}
-                  className="flex-1 appearance-none px-3 py-1.5 text-sm font-medium border border-zinc-200 rounded-lg bg-white focus:ring-2 focus:ring-zinc-400 focus:outline-none transition-all"
-                >
-                  <option value="">Preço padrão do catálogo</option>
-                  {availablePriceLists.map(l => (
-                    <option key={l.id} value={l.id}>{l.name}</option>
-                  ))}
-                </select>
-                {priceListMutation.isPending && <Loader className="w-4 h-4 animate-spin text-zinc-400 flex-shrink-0" />}
+                  onChange={v => priceListMutation.mutate(v || null)}
+                  placeholder="Preço padrão do catálogo"
+                  allLabel="Preço padrão do catálogo"
+                />
+                {priceListMutation.isPending && <Loader className="w-4 h-4 animate-spin text-zinc-400" />}
               </div>
-              {profile?.price_list_name && (
-                <p className="text-[11px] text-zinc-400 mt-2 pl-7">
-                  Tabela ativa: <span className="font-medium text-zinc-600">{profile.price_list_name}</span>
-                </p>
-              )}
             </div>
           )}
 
@@ -814,7 +805,7 @@ function PartnerAccessSection({ session }: { session: ClientSession }) {
 
 export default function AdminClientes() {
   const queryClient = useQueryClient()
-  const [selectedSession, setSelectedSession] = useState<ClientSession | null>(null)
+  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null)
   const [selectedTagFilter, setSelectedTagFilter] = useState<string>('')
   const [selectedSegmentFilter, setSelectedSegmentFilter] = useState<string>('wholesale_buyer')
   const [clientToDelete, setClientToDelete] = useState<ClientSession | null>(null)
@@ -828,7 +819,7 @@ export default function AdminClientes() {
     onSuccess: () => {
       toast.success('Cliente de teste excluído permanentemente')
       setClientToDelete(null)
-      setSelectedSession(null)
+      setSelectedSessionId(null)
       queryClient.invalidateQueries({ queryKey: ['client-sessions'] })
     },
     onError: (err: any) => {
@@ -950,6 +941,11 @@ export default function AdminClientes() {
   const grouped = Object.fromEntries(
     funnelStages.map(s => [s.key, filteredSessions.filter(sess => sess.status === s.key)])
   )
+
+  // Derive selected session from live query data so mutations reflect immediately
+  const selectedSession = selectedSessionId
+    ? (sessions.find(s => s.id === selectedSessionId) ?? null)
+    : null
 
   const totalSessions = filteredSessions.length
   const conversionRate = totalSessions > 0
@@ -1114,7 +1110,7 @@ export default function AdminClientes() {
                           return (
                             <button
                               key={session.id}
-                              onClick={() => setSelectedSession(session)}
+                              onClick={() => setSelectedSessionId(session.id)}
                               className="w-full text-left bg-white p-2.5 sm:p-3 md:p-3.5 rounded-xl shadow-[0_2px_8px_-4px_rgba(0,0,0,0.05)] hover:shadow-md border border-zinc-200/80 hover:border-zinc-300 transition-all duration-200 cursor-pointer group flex flex-col gap-2 sm:gap-2.5 relative"
                             >
                               {/* Identity */}
@@ -1193,7 +1189,7 @@ export default function AdminClientes() {
       {selectedSession && (
         <ClientDetailPanel
           session={selectedSession}
-          onClose={() => setSelectedSession(null)}
+          onClose={() => setSelectedSessionId(null)}
           onDeleteClick={() => setClientToDelete(selectedSession)}
         />
       )}
