@@ -110,9 +110,10 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Only allow admin role if caller is authenticated admin
-    // Default to 'user' for safety
-    const userRole = (role === "admin" && authHeader) ? "admin" : "user";
+    // Resolve role: salao and admin allowed; only admin can create another admin
+    const CREATABLE_ROLES = ['admin', 'salao']
+    const requestedRole = CREATABLE_ROLES.includes(role) ? role : 'user'
+    const userRole = requestedRole === 'admin' && profile?.role !== 'admin' ? 'salao' : requestedRole
 
     // Create user via Supabase Admin API
     const { data: userData, error: createError } = await supabase.auth.admin.createUser({
