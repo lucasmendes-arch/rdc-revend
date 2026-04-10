@@ -45,6 +45,13 @@ Sugestão de prompt para dar continuidade, com ID se aplicável.
 
 ---
 
+## Regra de Feature Freeze
+
+Antes de iniciar qualquer entrega, verificar se algum arquivo envolvido está em feature freeze (listado em `CLAUDE.md` > "Áreas em Feature Freeze"). Se estiver:
+- Registrar o alerta no handoff na seção **7. Riscos / Observações**
+- Confirmar que o checklist específico da área foi cumprido integralmente
+- Nunca omitir essa verificação
+
 ## Regras
 
 1. **Não omitir seções.** Se uma seção não se aplica, escrever "N/A" ou "Nenhum".

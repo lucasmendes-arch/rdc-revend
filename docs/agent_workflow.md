@@ -66,6 +66,19 @@ Antes de entregar para o próximo agente, verificar:
 | RLS está habilitado em tabelas novas | Claude |
 | Nenhum secret exposto no handoff | Ambos |
 
+## Feature Freeze — Áreas críticas
+
+Algumas áreas do projeto estão em **feature freeze permanente** por risco de impacto direto em receita ou dados de produção. Qualquer agente que receber uma tarefa envolvendo essas áreas **deve**:
+
+1. Alertar o humano imediatamente
+2. Aguardar confirmação explícita antes de prosseguir
+3. Cumprir o checklist específico da área antes de qualquer deploy
+4. Nunca alterar como efeito colateral de outra tarefa
+
+| Área | Arquivo | Checklist |
+|---|---|---|
+| Checkout (criação de pedidos) | `supabase/functions/create-order/index.ts` | `docs/create-order-contract.md` |
+
 ## Regra de retomada de sessão
 
 Ao iniciar nova sessão relevante:

@@ -25,6 +25,15 @@ function getCorsHeaders(req: Request) {
 
 const MIN_ORDER_TOTAL = 500
 
+// Structured logger — outputs JSON lines readable in Supabase Dashboard > Edge Functions > Logs
+function log(event: string, data?: Record<string, unknown>) {
+  console.log(JSON.stringify({ ts: new Date().toISOString(), event, ...data }))
+}
+function logError(event: string, err: unknown, data?: Record<string, unknown>) {
+  const message = err instanceof Error ? err.message : String(err)
+  console.error(JSON.stringify({ ts: new Date().toISOString(), event, error: message, ...data }))
+}
+
 interface CartItem {
   product_id: string
   qty: number
@@ -79,11 +88,14 @@ serve(async (req: Request) => {
     // Get the authenticated user
     const { data: { user }, error: authError } = await userClient.auth.getUser()
     if (authError || !user) {
+      log('auth_failed', { error: authError?.message })
       return new Response(
         JSON.stringify({ error: 'Usuário não autenticado' }),
         { status: 401, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
       )
     }
+
+    log('request_start', { user_id: user.id })
 
     // 1.5. Rate limiting: max 5 orders per user per 60 seconds
     const { data: allowed } = await serviceClient.rpc('check_rate_limit', {
@@ -92,6 +104,7 @@ serve(async (req: Request) => {
       p_window_seconds: 60,
     })
     if (allowed === false) {
+      log('rate_limit_hit', { user_id: user.id })
       return new Response(
         JSON.stringify({ error: 'Muitas requisições. Aguarde um momento antes de tentar novamente.' }),
         { status: 429, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
@@ -261,6 +274,7 @@ serve(async (req: Request) => {
     }
 
     if (outOfStock.length > 0) {
+      log('stock_insufficient', { user_id: user.id, items: outOfStock })
       return new Response(
         JSON.stringify({
           error: 'Estoque insuficiente',
@@ -427,12 +441,14 @@ serve(async (req: Request) => {
       .single()
 
     if (orderError || !order) {
-      console.error('Order creation error:', orderError)
+      logError('order_insert_failed', orderError, { user_id: user.id, subtotal, total })
       return new Response(
         JSON.stringify({ error: 'Erro ao criar pedido' }),
         { status: 500, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
       )
     }
+
+    log('order_created', { order_id: order.id, user_id: user.id, subtotal, shipping, discount: couponDiscount, total, items: orderItems.length, coupon_id: couponId, seller_id: resolvedSellerId, delivery_method: deliveryMethod })
 
     // 8. Create order items
     const itemsWithOrderId = orderItems.map(item => ({
@@ -445,7 +461,7 @@ serve(async (req: Request) => {
       .insert(itemsWithOrderId)
 
     if (itemsError) {
-      console.error('Order items error:', itemsError)
+      logError('order_items_failed', itemsError, { order_id: order.id, user_id: user.id })
       // Cleanup: delete the order if items fail
       await serviceClient.from('orders').delete().eq('id', order.id)
       return new Response(
@@ -471,7 +487,7 @@ serve(async (req: Request) => {
 
     if (stockErrors.length > 0) {
       // Rollback: delete order items and order
-      console.error('Stock decrement failed, rolling back order:', stockErrors)
+      logError('stock_decrement_failed', new Error(stockErrors.join('; ')), { order_id: order.id, user_id: user.id })
       await serviceClient.from('order_items').delete().eq('order_id', order.id)
       await serviceClient.from('orders').delete().eq('id', order.id)
       return new Response(
@@ -571,17 +587,18 @@ serve(async (req: Request) => {
         if (mpRes.ok && mpData?.init_point) {
           paymentUrl = mpData.init_point
           preferenceId = mpData.id
+          log('payment_preference_created', { order_id: order.id, preference_id: preferenceId })
 
           await serviceClient
             .from('orders')
             .update({ payment_id: preferenceId, status: 'aguardando_pagamento' })
             .eq('id', order.id)
         } else {
-          console.error('MercadoPago preference error:', JSON.stringify(mpData))
+          logError('mercadopago_preference_failed', new Error(mpData?.message || 'unknown'), { order_id: order.id, status: mpRes.status })
         }
       }
     } catch (err) {
-      console.error('MercadoPago error:', err)
+      logError('mercadopago_error', err, { order_id: order.id })
     }
 
     // 11. Fire-and-forget WhatsApp notification
@@ -624,12 +641,13 @@ serve(async (req: Request) => {
     }
 
     // 12. Return success with payment URL
+    log('request_completed', { order_id: order.id, total, has_payment_url: !!paymentUrl })
     return new Response(
       JSON.stringify({ order_id: order.id, total, payment_url: paymentUrl }),
       { status: 201, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
     )
   } catch (err) {
-    console.error('Unexpected error:', err)
+    logError('unexpected_error', err)
     return new Response(
       JSON.stringify({ error: 'Erro interno do servidor' }),
       { status: 500, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }

@@ -54,6 +54,20 @@ Consultar obrigatoriamente:
 - **Respostas**: português, objetivas, sem excesso de feedback positivo
 - **Breakpoints**: mobile-first — `sm:` 640px / `md:` 768px / `lg:` 1024px / `xl:` 1280px
 
+## Áreas em Feature Freeze
+
+As áreas abaixo estão em **feature freeze permanente**. Nenhuma alteração sem aprovação explícita do humano e cumprimento integral do checklist documentado.
+
+| Arquivo | Motivo | Checklist |
+|---|---|---|
+| `supabase/functions/create-order/index.ts` | Checkout crítico — impacto direto em receita e estoque | `docs/create-order-contract.md` |
+
+**Regra operacional:** Ao receber qualquer tarefa que envolva um arquivo em feature freeze:
+1. Alertar imediatamente que a área está em freeze
+2. Exigir confirmação explícita do humano antes de prosseguir
+3. Cumprir o checklist completo antes de qualquer deploy
+4. Nunca alterar como efeito colateral de outra tarefa
+
 ## Regras de segurança
 
 - Nunca expor tokens, secrets, API keys ou credenciais reais em respostas ou handoffs
@@ -83,3 +97,4 @@ Consultar obrigatoriamente:
 | Template de handoff | `docs/handoff_template.md` |
 | Edge functions | `supabase/functions/` |
 | Migrations | `supabase/migrations/` |
+| Contrato create-order | `docs/create-order-contract.md` |
