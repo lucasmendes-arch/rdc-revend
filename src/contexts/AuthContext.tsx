@@ -18,7 +18,7 @@ async function fetchAccountMetadata(userId: string): Promise<{role: UserRole, is
   try {
     const { data, error } = await supabase
       .from('profiles')
-      .select('role, is_partner')
+      .select('role, is_partner, customer_segment')
       .eq('id', userId)
       .maybeSingle()
 
@@ -27,7 +27,9 @@ async function fetchAccountMetadata(userId: string): Promise<{role: UserRole, is
       return { role: 'user', is_partner: false }
     }
     if (!data) return { role: 'user', is_partner: false }
-    return { role: data.role as UserRole, is_partner: !!data.is_partner }
+    // isPartner = true if legacy boolean OR new segment field
+    const is_partner = !!data.is_partner || data.customer_segment === 'network_partner'
+    return { role: data.role as UserRole, is_partner }
   } catch (e) {
     console.warn('[AUTH] fetchRole exception:', e)
     return { role: 'user', is_partner: false }

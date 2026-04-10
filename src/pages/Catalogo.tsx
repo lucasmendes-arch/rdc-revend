@@ -212,7 +212,7 @@ const Catalogo = () => {
     return () => {
       if (timer) clearTimeout(timer)
     }
-  }, [user?.id, role])
+  }, [user?.id, role, isPartner])
 
   // ========================================================================
   // EFFECTS
