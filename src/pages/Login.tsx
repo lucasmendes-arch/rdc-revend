@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowRight, Crown, Eye, EyeOff, Lock, Mail, ArrowLeft } from "lucide-react";
+import { ArrowRight, Crown, Eye, EyeOff, Lock, Mail } from "lucide-react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import logo from "@/assets/logo-rei-dos-cachos.png";
 import { supabase } from "@/lib/supabase";
@@ -8,15 +8,39 @@ interface LocationState {
   returnTo?: string;
 }
 
+// ── Phone detection helpers ──────────────────────────────────────────────────
+
+/** Returns true if value looks like a Brazilian phone number. */
+function looksLikePhone(value: string): boolean {
+  const clean = value.replace(/[\s\-\(\)\+\.]/g, "");
+  return /^\d{10,13}$/.test(clean);
+}
+
+/** Normalize to E.164 (+55XXXXXXXXXXX). Returns null if unrecognized format. */
+function normalizePhone(raw: string): string | null {
+  const digits = raw.replace(/\D/g, "");
+  if (digits.startsWith("55") && (digits.length === 12 || digits.length === 13)) {
+    return "+" + digits;
+  }
+  if (digits.length === 10 || digits.length === 11) {
+    return "+55" + digits;
+  }
+  return null;
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+
 const Login = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const [form, setForm] = useState({ email: "", password: "" });
+  const [form, setForm] = useState({ identifier: "", password: "" });
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [resetSent, setResetSent] = useState(false);
   const [resetLoading, setResetLoading] = useState(false);
+
+  const identifierIsPhone = looksLikePhone(form.identifier.trim());
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -25,13 +49,13 @@ const Login = () => {
   };
 
   const handleResetPassword = async () => {
-    if (!form.email.trim()) {
+    if (!form.identifier.trim()) {
       setError("Digite seu e-mail acima para recuperar a senha.");
       return;
     }
     setResetLoading(true);
     setError("");
-    const { error: resetError } = await supabase.auth.resetPasswordForEmail(form.email, {
+    const { error: resetError } = await supabase.auth.resetPasswordForEmail(form.identifier.trim(), {
       redirectTo: `${window.location.origin}/redefinir-senha`,
     });
     setResetLoading(false);
@@ -47,10 +71,54 @@ const Login = () => {
     setLoading(true);
     setError("");
 
+    const identifier = form.identifier.trim();
+
     try {
-      // Fetch role BEFORE signIn to avoid race with onAuthStateChange
+      // ── Phone login path ───────────────────────────────────────────────────
+      if (looksLikePhone(identifier)) {
+        const normalizedPhone = normalizePhone(identifier);
+        if (!normalizedPhone) {
+          setError("E-mail ou senha incorretos.");
+          setLoading(false);
+          return;
+        }
+
+        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+          phone: normalizedPhone,
+          password: form.password,
+        });
+
+        if (signInError) {
+          setError("E-mail ou senha incorretos.");
+          setLoading(false);
+          return;
+        }
+
+        // Post-auth segment check: phone login is exclusive to network_partner.
+        // Even if auth succeeds, a non-partner user is rejected immediately.
+        const userId = signInData.user?.id;
+        if (userId) {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("customer_segment")
+            .eq("id", userId)
+            .maybeSingle();
+
+          if (profile?.customer_segment !== "network_partner") {
+            await supabase.auth.signOut();
+            setError("E-mail ou senha incorretos.");
+            setLoading(false);
+            return;
+          }
+        }
+
+        navigate("/catalogo", { replace: true });
+        return;
+      }
+
+      // ── Email login path (default) ─────────────────────────────────────────
       const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-        email: form.email,
+        email: identifier,
         password: form.password,
       });
 
@@ -60,7 +128,6 @@ const Login = () => {
         return;
       }
 
-      // Determine where to redirect based on role
       const state = location.state as LocationState | null;
       if (state?.returnTo) {
         navigate(state.returnTo, { replace: true });
@@ -68,20 +135,20 @@ const Login = () => {
         const userId = signInData.user?.id;
         if (userId) {
           const { data: profile } = await supabase
-            .from('profiles')
-            .select('role')
-            .eq('id', userId)
+            .from("profiles")
+            .select("role")
+            .eq("id", userId)
             .maybeSingle();
-          if (profile?.role === 'admin') {
-            navigate('/admin/financeiro', { replace: true });
+          if (profile?.role === "admin") {
+            navigate("/admin/financeiro", { replace: true });
             return;
           }
-          if (profile?.role === 'salao') {
-            navigate('/salao/pedido', { replace: true });
+          if (profile?.role === "salao") {
+            navigate("/salao/pedido", { replace: true });
             return;
           }
         }
-        navigate('/catalogo', { replace: true });
+        navigate("/catalogo", { replace: true });
       }
     } catch (err) {
       setLoading(false);
@@ -131,7 +198,7 @@ const Login = () => {
             )}
 
             <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-              {/* Email */}
+              {/* Identifier (email or phone) */}
               <div>
                 <label className="block text-sm font-medium text-foreground mb-1.5">
                   E-mail
@@ -139,10 +206,11 @@ const Login = () => {
                 <div className="relative">
                   <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <input
-                    type="email"
-                    name="email"
+                    type="text"
+                    name="identifier"
                     required
-                    value={form.email}
+                    autoComplete="username"
+                    value={form.identifier}
                     onChange={handleChange}
                     placeholder="seu@email.com"
                     className="w-full pl-10 pr-4 py-3 rounded-lg border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-gold focus:border-gold-border transition-all"
@@ -161,6 +229,7 @@ const Login = () => {
                     type={showPassword ? "text" : "password"}
                     name="password"
                     required
+                    autoComplete="current-password"
                     value={form.password}
                     onChange={handleChange}
                     placeholder="••••••••"
@@ -176,16 +245,19 @@ const Login = () => {
                 </div>
               </div>
 
-              <div className="flex justify-end -mt-1">
-                <button
-                  type="button"
-                  onClick={handleResetPassword}
-                  disabled={resetLoading}
-                  className="text-xs text-gold-text hover:underline disabled:opacity-50"
-                >
-                  {resetLoading ? "Enviando..." : "Esqueci minha senha"}
-                </button>
-              </div>
+              {/* Forgot password — only shown for email input */}
+              {!identifierIsPhone && (
+                <div className="flex justify-end -mt-1">
+                  <button
+                    type="button"
+                    onClick={handleResetPassword}
+                    disabled={resetLoading}
+                    className="text-xs text-gold-text hover:underline disabled:opacity-50"
+                  >
+                    {resetLoading ? "Enviando..." : "Esqueci minha senha"}
+                  </button>
+                </div>
+              )}
 
               {/* Submit */}
               <button
