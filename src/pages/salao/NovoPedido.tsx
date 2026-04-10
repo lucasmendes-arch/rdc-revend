@@ -308,6 +308,10 @@ export default function SalaoNovoPedido() {
 
     setIsSaving(true);
     try {
+      await supabase.auth.refreshSession()
+      const { data: sessionData } = await supabase.auth.getSession()
+      const token = sessionData.session?.access_token
+
       const { data, error } = await supabase.functions.invoke('create-user', {
         body: {
           email: safeEmail,
@@ -315,7 +319,8 @@ export default function SalaoNovoPedido() {
           role: 'user',
           full_name: newClientName,
           phone: newClientPhone
-        }
+        },
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
 
       if (error) {
