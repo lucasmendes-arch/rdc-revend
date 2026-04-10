@@ -4,7 +4,7 @@ import { supabase, callEdgeFunction } from '@/lib/supabase'
 import { toast } from 'sonner'
 import {
   Loader, Eye, MousePointerClick, ShoppingCart, CreditCard,
-  CheckCircle, XCircle, X, User, Phone, Mail, Tag,
+  CheckCircle, XCircle, X, User, Phone, Mail, Tag, Edit2, Check,
   Building2, FileText, Package, Clock, Calendar, Users, DollarSign, Sparkles, AlertTriangle, Trash2, TrendingUp, UserX,
   KeyRound, Copy, Lock, Unlock, MessageCircle, RefreshCw
 } from 'lucide-react'
@@ -276,6 +276,47 @@ function ClientDetailPanel({ session, onClose, onDeleteClick }: { session: Clien
     },
   })
 
+  const [editingProfile, setEditingProfile] = useState(false)
+  const [profileForm, setProfileForm] = useState({
+    full_name: '', phone: '', document_type: '', document: '',
+    business_type: '', employees: '', revenue: '',
+  })
+
+  function startEditProfile() {
+    setProfileForm({
+      full_name: profile?.full_name ?? '',
+      phone: profile?.phone ?? '',
+      document_type: profile?.document_type ?? '',
+      document: profile?.document ?? '',
+      business_type: profile?.business_type ?? '',
+      employees: profile?.employees ?? '',
+      revenue: profile?.revenue ?? '',
+    })
+    setEditingProfile(true)
+  }
+
+  const updateProfileMutation = useMutation({
+    mutationFn: async (form: typeof profileForm) => {
+      const { error } = await supabase.rpc('admin_update_profile', {
+        p_user_id: session.user_id!,
+        p_full_name: form.full_name || null,
+        p_phone: form.phone || null,
+        p_document_type: form.document_type || null,
+        p_document: form.document || null,
+        p_business_type: form.business_type || null,
+        p_employees: form.employees || null,
+        p_revenue: form.revenue || null,
+      })
+      if (error) throw error
+    },
+    onSuccess: () => {
+      toast.success('Dados atualizados')
+      setEditingProfile(false)
+      queryClient.invalidateQueries({ queryKey: ['client-sessions'] })
+    },
+    onError: (err: any) => toast.error('Erro ao salvar: ' + (err?.message || 'erro desconhecido')),
+  })
+
   const clientName = getClientName(session)
   const initials = clientName.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
 
@@ -323,45 +364,164 @@ function ClientDetailPanel({ session, onClose, onDeleteClick }: { session: Clien
         <div className="flex-1 overflow-y-auto">
           {/* Client Profile */}
           <div className="px-5 py-4 border-b border-zinc-200">
-            <h3 className="text-[11px] font-bold text-zinc-400 uppercase tracking-widest mb-3.5">Dados do Cadastro</h3>
-            <div className="space-y-3">
-              {profile?.full_name && (
-                <InfoRow icon={User} label="Nome Completo" value={profile.full_name} />
+            <div className="flex items-center justify-between mb-3.5">
+              <h3 className="text-[11px] font-bold text-zinc-400 uppercase tracking-widest">Dados do Cadastro</h3>
+              {session.user_id && profile && !editingProfile && (
+                <button
+                  onClick={startEditProfile}
+                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium text-zinc-600 hover:bg-zinc-100 border border-zinc-200 transition-colors"
+                >
+                  <Edit2 className="w-3.5 h-3.5" />
+                  Editar
+                </button>
               )}
-              {session.email && (
-                <InfoRow icon={Mail} label="E-mail" value={session.email} />
-              )}
-              {profile?.phone && (
-                <InfoRow icon={Phone} label="WhatsApp / Telefone" value={profile.phone} />
-              )}
-              {profile?.document && (
-                <InfoRow icon={FileText} label={profile.document_type || 'Documento'} value={profile.document} />
-              )}
-              {profile?.business_type && (
-                <InfoRow icon={Building2} label="Tipo de Atuação" value={businessTypeLabels[profile.business_type] || profile.business_type} />
-              )}
-              {profile?.employees && (
-                <InfoRow icon={Users} label="Funcionários" value={employeesLabels[profile.employees] || profile.employees} />
-              )}
-              {profile?.revenue && (
-                <InfoRow icon={DollarSign} label="Faturamento Estimado" value={revenueLabels[profile.revenue] || profile.revenue} />
-              )}
-              {profile && !profile.full_name && !profile.phone && !profile.document && (
-                <div className="bg-amber-50 ring-1 ring-inset ring-amber-200 text-amber-700 p-3 rounded-lg text-xs flex items-center gap-2">
-                  <AlertTriangle className="w-4 h-4 flex-shrink-0" />
-                  <p>Perfil incompleto ou pendente de atualização.</p>
-                </div>
-              )}
-              {!profile && session.user_id && (
-                <div className="bg-zinc-50 ring-1 ring-inset ring-zinc-200 text-zinc-600 p-3 rounded-lg text-xs flex items-center gap-2">
-                  <Loader className="w-4 h-4 animate-spin flex-shrink-0 text-zinc-400" />
-                  <p>Aguardando sincronização de perfil.</p>
-                </div>
-              )}
-              {!profile && !session.user_id && !session.email && (
-                <p className="text-sm text-zinc-400 italic">Visitante anônimo — sem dados de perfil</p>
+              {editingProfile && (
+                <button
+                  onClick={() => setEditingProfile(false)}
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium text-zinc-400 hover:bg-zinc-50 transition-colors"
+                >
+                  <X className="w-3.5 h-3.5" />
+                  Cancelar
+                </button>
               )}
             </div>
+
+            {editingProfile ? (
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-[11px] text-zinc-500 mb-1">Nome completo</label>
+                  <input
+                    type="text"
+                    value={profileForm.full_name}
+                    onChange={e => setProfileForm(p => ({ ...p, full_name: e.target.value }))}
+                    className="w-full px-3 py-2 text-sm rounded-lg border border-zinc-200 bg-white focus:outline-none focus:ring-2 focus:ring-zinc-400"
+                    autoFocus
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] text-zinc-500 mb-1">WhatsApp / Telefone</label>
+                  <input
+                    type="text"
+                    value={profileForm.phone}
+                    onChange={e => setProfileForm(p => ({ ...p, phone: e.target.value }))}
+                    className="w-full px-3 py-2 text-sm rounded-lg border border-zinc-200 bg-white focus:outline-none focus:ring-2 focus:ring-zinc-400"
+                    placeholder="Ex: 5527999990000"
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <div className="w-24">
+                    <label className="block text-[11px] text-zinc-500 mb-1">Tipo doc.</label>
+                    <select
+                      value={profileForm.document_type}
+                      onChange={e => setProfileForm(p => ({ ...p, document_type: e.target.value }))}
+                      className="w-full px-2 py-2 text-sm rounded-lg border border-zinc-200 bg-white focus:outline-none focus:ring-2 focus:ring-zinc-400"
+                    >
+                      <option value="">—</option>
+                      <option value="CPF">CPF</option>
+                      <option value="CNPJ">CNPJ</option>
+                    </select>
+                  </div>
+                  <div className="flex-1">
+                    <label className="block text-[11px] text-zinc-500 mb-1">Número</label>
+                    <input
+                      type="text"
+                      value={profileForm.document}
+                      onChange={e => setProfileForm(p => ({ ...p, document: e.target.value }))}
+                      className="w-full px-3 py-2 text-sm rounded-lg border border-zinc-200 bg-white focus:outline-none focus:ring-2 focus:ring-zinc-400"
+                      placeholder="000.000.000-00"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-[11px] text-zinc-500 mb-1">Tipo de atuação</label>
+                  <select
+                    value={profileForm.business_type}
+                    onChange={e => setProfileForm(p => ({ ...p, business_type: e.target.value }))}
+                    className="w-full px-3 py-2 text-sm rounded-lg border border-zinc-200 bg-white focus:outline-none focus:ring-2 focus:ring-zinc-400"
+                  >
+                    <option value="">Não informado</option>
+                    {Object.entries(businessTypeLabels).map(([v, l]) => (
+                      <option key={v} value={v}>{l}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[11px] text-zinc-500 mb-1">Funcionários</label>
+                  <select
+                    value={profileForm.employees}
+                    onChange={e => setProfileForm(p => ({ ...p, employees: e.target.value }))}
+                    className="w-full px-3 py-2 text-sm rounded-lg border border-zinc-200 bg-white focus:outline-none focus:ring-2 focus:ring-zinc-400"
+                  >
+                    <option value="">Não informado</option>
+                    {Object.entries(employeesLabels).map(([v, l]) => (
+                      <option key={v} value={v}>{l}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[11px] text-zinc-500 mb-1">Faturamento estimado</label>
+                  <select
+                    value={profileForm.revenue}
+                    onChange={e => setProfileForm(p => ({ ...p, revenue: e.target.value }))}
+                    className="w-full px-3 py-2 text-sm rounded-lg border border-zinc-200 bg-white focus:outline-none focus:ring-2 focus:ring-zinc-400"
+                  >
+                    <option value="">Não informado</option>
+                    {Object.entries(revenueLabels).map(([v, l]) => (
+                      <option key={v} value={v}>{l}</option>
+                    ))}
+                  </select>
+                </div>
+                <button
+                  onClick={() => updateProfileMutation.mutate(profileForm)}
+                  disabled={updateProfileMutation.isPending}
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-zinc-900 text-white text-sm font-medium disabled:opacity-50 hover:bg-zinc-700 transition-colors"
+                >
+                  {updateProfileMutation.isPending
+                    ? <Loader className="w-4 h-4 animate-spin" />
+                    : <Check className="w-4 h-4" />}
+                  Salvar alterações
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {profile?.full_name && (
+                  <InfoRow icon={User} label="Nome Completo" value={profile.full_name} />
+                )}
+                {session.email && (
+                  <InfoRow icon={Mail} label="E-mail" value={session.email} />
+                )}
+                {profile?.phone && (
+                  <InfoRow icon={Phone} label="WhatsApp / Telefone" value={profile.phone} />
+                )}
+                {profile?.document && (
+                  <InfoRow icon={FileText} label={profile.document_type || 'Documento'} value={profile.document} />
+                )}
+                {profile?.business_type && (
+                  <InfoRow icon={Building2} label="Tipo de Atuação" value={businessTypeLabels[profile.business_type] || profile.business_type} />
+                )}
+                {profile?.employees && (
+                  <InfoRow icon={Users} label="Funcionários" value={employeesLabels[profile.employees] || profile.employees} />
+                )}
+                {profile?.revenue && (
+                  <InfoRow icon={DollarSign} label="Faturamento Estimado" value={revenueLabels[profile.revenue] || profile.revenue} />
+                )}
+                {profile && !profile.full_name && !profile.phone && !profile.document && (
+                  <div className="bg-amber-50 ring-1 ring-inset ring-amber-200 text-amber-700 p-3 rounded-lg text-xs flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+                    <p>Perfil incompleto — clique em Editar para preencher.</p>
+                  </div>
+                )}
+                {!profile && session.user_id && (
+                  <div className="bg-zinc-50 ring-1 ring-inset ring-zinc-200 text-zinc-600 p-3 rounded-lg text-xs flex items-center gap-2">
+                    <Loader className="w-4 h-4 animate-spin flex-shrink-0 text-zinc-400" />
+                    <p>Aguardando sincronização de perfil.</p>
+                  </div>
+                )}
+                {!profile && !session.user_id && !session.email && (
+                  <p className="text-sm text-zinc-400 italic">Visitante anônimo — sem dados de perfil</p>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Commercial Segment */}
