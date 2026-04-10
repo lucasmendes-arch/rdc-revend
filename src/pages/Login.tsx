@@ -75,6 +75,9 @@ const Login = () => {
 
     try {
       // ── Phone login path ───────────────────────────────────────────────────
+      // Uses resolve_partner_login_email RPC to translate phone → email
+      // server-side (checks customer_segment + access_status). Then signs in
+      // with email+password — no dependency on Supabase Phone provider.
       if (looksLikePhone(identifier)) {
         const normalizedPhone = normalizePhone(identifier);
         if (!normalizedPhone) {
@@ -83,8 +86,19 @@ const Login = () => {
           return;
         }
 
-        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-          phone: normalizedPhone,
+        const { data: partnerEmail, error: rpcError } = await supabase.rpc(
+          "resolve_partner_login_email",
+          { p_phone: normalizedPhone }
+        );
+
+        if (rpcError || !partnerEmail) {
+          setError("E-mail ou senha incorretos.");
+          setLoading(false);
+          return;
+        }
+
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email: partnerEmail,
           password: form.password,
         });
 
@@ -92,24 +106,6 @@ const Login = () => {
           setError("E-mail ou senha incorretos.");
           setLoading(false);
           return;
-        }
-
-        // Post-auth segment check: phone login is exclusive to network_partner.
-        // Even if auth succeeds, a non-partner user is rejected immediately.
-        const userId = signInData.user?.id;
-        if (userId) {
-          const { data: profile } = await supabase
-            .from("profiles")
-            .select("customer_segment")
-            .eq("id", userId)
-            .maybeSingle();
-
-          if (profile?.customer_segment !== "network_partner") {
-            await supabase.auth.signOut();
-            setError("E-mail ou senha incorretos.");
-            setLoading(false);
-            return;
-          }
         }
 
         navigate("/catalogo", { replace: true });
