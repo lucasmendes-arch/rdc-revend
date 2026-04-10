@@ -32,7 +32,14 @@ interface Order {
   customer_whatsapp: string
   user_id: string
   seller_id?: string | null
-  sellers?: { name: string; code: string | null; commission_pct: number; monthly_goal: number }[] | null
+  sellers?: { name: string; code: string | null; commission_pct: number; monthly_goal: number } | { name: string; code: string | null; commission_pct: number; monthly_goal: number }[] | null
+}
+
+// PostgREST returns FK joins as object (many-to-one) or array (one-to-many)
+type SellerRow = { name: string; code: string | null; commission_pct: number; monthly_goal: number }
+function getSeller(order: Order): SellerRow | null {
+  if (!order.sellers) return null
+  return Array.isArray(order.sellers) ? (order.sellers[0] ?? null) : order.sellers
 }
 
 interface OrderItem {
@@ -345,7 +352,7 @@ export default function AdminFinanceiro() {
 
     // Commission total
     const periodCommission = periodOrders.reduce((s, o) => {
-      const seller = o.sellers?.[0]
+      const seller = getSeller(o)
       if (!seller) return s
       return s + Number(o.total) * (seller.commission_pct / 100)
     }, 0)
@@ -399,7 +406,7 @@ export default function AdminFinanceiro() {
     // First pass: month revenue per seller (for goal tracking)
     const monthStartSeller = new Date(now.getFullYear(), now.getMonth(), 1)
     for (const order of paidOrders) {
-      const seller = order.sellers?.[0]
+      const seller = getSeller(order)
       if (!seller) continue
       const orderDate = new Date(order.created_at)
       if (orderDate < monthStartSeller) continue
@@ -414,7 +421,7 @@ export default function AdminFinanceiro() {
     }
     // Second pass: period revenue per seller
     for (const order of periodOrders) {
-      const seller = order.sellers?.[0]
+      const seller = getSeller(order)
       if (!seller) continue
       const key = order.seller_id!
       const e = sellerMap.get(key) || {
