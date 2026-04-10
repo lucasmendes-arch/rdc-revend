@@ -6,7 +6,7 @@ import {
   Loader, Eye, MousePointerClick, ShoppingCart, CreditCard,
   CheckCircle, XCircle, X, User, Phone, Mail, Tag,
   Building2, FileText, Package, Clock, Calendar, Users, DollarSign, Sparkles, AlertTriangle, Trash2, TrendingUp, UserX,
-  KeyRound, Copy, Lock, Unlock, MessageCircle, RefreshCw
+  KeyRound, Copy, Lock, Unlock, MessageCircle, RefreshCw, BadgeDollarSign
 } from 'lucide-react'
 import { CustomerTimeline } from '@/components/admin/CustomerTimeline'
 import AdminLayout from '@/components/admin/AdminLayout'
@@ -44,6 +44,8 @@ interface ClientProfile {
   auth_phone: string | null
   credentials_created_at: string | null
   last_password_reset_at: string | null
+  price_list_id: string | null
+  price_list_name: string | null
 }
 
 interface ClientSession {
@@ -227,6 +229,53 @@ function ClientDetailPanel({ session, onClose, onDeleteClick }: { session: Clien
     },
   })
 
+  const { data: availablePriceLists = [] } = useQuery({
+    queryKey: ['admin-price-lists'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('price_lists')
+        .select('id, name')
+        .eq('is_active', true)
+        .order('name')
+      if (error) throw error
+      return data as { id: string; name: string }[]
+    },
+    staleTime: 60 * 1000,
+    enabled: profile?.customer_segment === 'network_partner',
+  })
+
+  const priceListMutation = useMutation({
+    mutationFn: async (priceListId: string | null) => {
+      const { error } = await supabase.rpc('admin_set_profile_price_list', {
+        p_user_id: session.user_id!,
+        p_price_list_id: priceListId,
+      })
+      if (error) throw error
+    },
+    onMutate: async (newPriceListId) => {
+      await queryClient.cancelQueries({ queryKey: ['client-sessions'] })
+      const prev = queryClient.getQueryData(['client-sessions'])
+      const newName = availablePriceLists.find(l => l.id === newPriceListId)?.name ?? null
+      queryClient.setQueryData(['client-sessions'], (old: any) => {
+        if (!old) return old
+        return old.map((s: any) =>
+          s.user_id === session.user_id
+            ? { ...s, profile: { ...s.profile, price_list_id: newPriceListId, price_list_name: newName } }
+            : s,
+        )
+      })
+      return { prev }
+    },
+    onSuccess: () => {
+      toast.success('Tabela de preço atualizada')
+      queryClient.invalidateQueries({ queryKey: ['client-sessions'] })
+    },
+    onError: (err: any, _v, context) => {
+      if (context?.prev) queryClient.setQueryData(['client-sessions'], context.prev)
+      toast.error('Erro ao atualizar: ' + (err?.message || 'erro desconhecido'))
+    },
+  })
+
   const clientName = getClientName(session)
   const initials = clientName.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
 
@@ -343,6 +392,35 @@ function ClientDetailPanel({ session, onClose, onDeleteClick }: { session: Clien
           {/* Partner Access */}
           {session.user_id && profile?.customer_segment === 'network_partner' && (
             <PartnerAccessSection session={session} />
+          )}
+
+          {/* Price List */}
+          {session.user_id && profile?.customer_segment === 'network_partner' && (
+            <div className="px-5 py-4 border-b border-zinc-200">
+              <h3 className="text-[11px] font-bold text-zinc-400 uppercase tracking-widest mb-3">
+                Tabela de Preço
+              </h3>
+              <div className="flex items-center gap-3">
+                <BadgeDollarSign className="w-4 h-4 text-zinc-400 flex-shrink-0" />
+                <select
+                  value={profile?.price_list_id || ''}
+                  onChange={e => priceListMutation.mutate(e.target.value || null)}
+                  disabled={priceListMutation.isPending}
+                  className="flex-1 appearance-none px-3 py-1.5 text-sm font-medium border border-zinc-200 rounded-lg bg-white focus:ring-2 focus:ring-zinc-400 focus:outline-none transition-all"
+                >
+                  <option value="">Preço padrão do catálogo</option>
+                  {availablePriceLists.map(l => (
+                    <option key={l.id} value={l.id}>{l.name}</option>
+                  ))}
+                </select>
+                {priceListMutation.isPending && <Loader className="w-4 h-4 animate-spin text-zinc-400 flex-shrink-0" />}
+              </div>
+              {profile?.price_list_name && (
+                <p className="text-[11px] text-zinc-400 mt-2 pl-7">
+                  Tabela ativa: <span className="font-medium text-zinc-600">{profile.price_list_name}</span>
+                </p>
+              )}
+            </div>
           )}
 
           {/* Cart info */}
@@ -796,6 +874,8 @@ export default function AdminClientes() {
             auth_phone: p.auth_phone ?? null,
             credentials_created_at: p.credentials_created_at ?? null,
             last_password_reset_at: p.last_password_reset_at ?? null,
+            price_list_id: p.price_list_id ?? null,
+            price_list_name: p.price_list_name ?? null,
           }]))
         }
 
