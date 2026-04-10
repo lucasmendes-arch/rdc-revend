@@ -1,12 +1,61 @@
 import { useState, useRef } from 'react'
-import { Edit2, Trash2, RefreshCw, ChevronLeft, ChevronRight, X, Plus, Filter, Upload, ImageIcon, AlertTriangle } from 'lucide-react'
-import { useAdminProducts, useUpdateProduct, useDeleteProduct, useCreateProduct, useNuvemshopSync, useNuvemshopDryRun, CatalogProduct, SyncResult, DryRunPreview } from '@/hooks/useAdminProducts'
+import { Edit2, Trash2, RefreshCw, ChevronLeft, ChevronRight, X, Plus, Filter, Upload, ImageIcon, AlertTriangle, GripVertical, ListOrdered } from 'lucide-react'
+import { useAdminProducts, useUpdateProduct, useDeleteProduct, useCreateProduct, useNuvemshopSync, useNuvemshopDryRun, useBulkUpdateSortOrder, CatalogProduct, SyncResult, DryRunPreview } from '@/hooks/useAdminProducts'
 import { useCategories } from '@/hooks/useCategories'
 import { useImageUpload } from '@/hooks/useImageUpload'
 import AdminLayout from '@/components/admin/AdminLayout'
 import { isProduction } from '@/lib/environment'
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core'
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 
 
+
+function SortableProductRow({ product }: { product: CatalogProduct }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: product.id })
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  }
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="flex items-center gap-3 bg-white border border-border rounded-lg px-3 py-2.5 shadow-sm"
+    >
+      <button
+        {...attributes}
+        {...listeners}
+        className="text-muted-foreground hover:text-foreground cursor-grab active:cursor-grabbing touch-none flex-shrink-0"
+        aria-label="Arrastar"
+      >
+        <GripVertical className="w-4 h-4" />
+      </button>
+      {product.main_image ? (
+        <img src={product.main_image} alt={product.name} className="w-8 h-8 rounded object-cover border border-border flex-shrink-0" />
+      ) : (
+        <div className="w-8 h-8 rounded bg-surface-alt border border-border flex-shrink-0" />
+      )}
+      <span className="text-sm font-medium text-foreground truncate flex-1">{product.name}</span>
+      <span className="text-xs text-muted-foreground flex-shrink-0">R$ {product.price.toFixed(2)}</span>
+    </div>
+  )
+}
 
 export default function AdminCatalogo() {
   const { data: products = [], isLoading, error } = useAdminProducts()
@@ -45,6 +94,51 @@ export default function AdminCatalogo() {
   const { upload, uploading } = useImageUpload()
   const createFileRef = useRef<HTMLInputElement>(null)
   const editFileRef = useRef<HTMLInputElement>(null)
+
+  // Reorder state
+  const [showReorderPicker, setShowReorderPicker] = useState(false)
+  const [showReorder, setShowReorder] = useState(false)
+  const [reorderCategoryId, setReorderCategoryId] = useState('')
+  const [reorderItems, setReorderItems] = useState<CatalogProduct[]>([])
+  const [reorderSaved, setReorderSaved] = useState(false)
+  const bulkUpdateSortOrder = useBulkUpdateSortOrder()
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  )
+
+  const openReorder = (categoryId: string) => {
+    const items = products
+      .filter(p => p.category_id === categoryId && p.is_active)
+      .slice()
+      .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+    setReorderItems(items)
+    setReorderCategoryId(categoryId)
+    setReorderSaved(false)
+    setShowReorder(true)
+  }
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+    setReorderItems(prev => {
+      const oldIndex = prev.findIndex(p => p.id === active.id)
+      const newIndex = prev.findIndex(p => p.id === over.id)
+      return arrayMove(prev, oldIndex, newIndex)
+    })
+    setReorderSaved(false)
+  }
+
+  const handleSaveOrder = async () => {
+    const updates = reorderItems.map((p, i) => ({ id: p.id, sort_order: i }))
+    try {
+      await bulkUpdateSortOrder.mutateAsync(updates)
+      setReorderSaved(true)
+    } catch (err) {
+      alert(`Erro ao salvar ordem: ${err instanceof Error ? err.message : 'Desconhecido'}`)
+    }
+  }
 
   const itemsPerPage = 20
   const filteredProducts = products
@@ -288,6 +382,33 @@ export default function AdminCatalogo() {
               <Plus className="w-4 h-4" />
               <span className="hidden sm:inline">Novo Produto</span>
             </button>
+            {/* Reorder trigger — opens category picker */}
+            <div className="relative">
+              <button
+                onClick={() => setShowReorderPicker(v => !v)}
+                className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg border border-border bg-white hover:bg-surface-alt text-sm font-medium text-foreground transition-colors"
+              >
+                <ListOrdered className="w-4 h-4" />
+                <span className="hidden sm:inline">Reordenar</span>
+              </button>
+              {showReorderPicker && (
+                <>
+                  <div className="fixed inset-0 z-30" onClick={() => setShowReorderPicker(false)} />
+                  <div className="absolute right-0 top-full mt-1 bg-white border border-border rounded-xl shadow-lg py-1 min-w-[200px] z-40">
+                    <p className="px-3 py-1.5 text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Escolha a categoria</p>
+                    {categories.map(c => (
+                      <button
+                        key={c.id}
+                        onClick={() => { openReorder(c.id); setShowReorderPicker(false) }}
+                        className="w-full text-left px-3 py-2 text-sm text-foreground hover:bg-surface-alt transition-colors"
+                      >
+                        {c.name}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
             <button
               onClick={handleSyncClick}
               disabled={syncMutation.isPending}
@@ -540,6 +661,66 @@ export default function AdminCatalogo() {
           </>
         )}
       </div>
+
+      {/* Reorder Modal */}
+      {showReorder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-foreground/40 backdrop-blur-sm" onClick={() => setShowReorder(false)} />
+          <div className="relative bg-white rounded-2xl shadow-lg w-full max-w-md max-h-[85vh] flex flex-col">
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-border flex-shrink-0">
+              <div>
+                <h2 className="text-base font-bold text-foreground">Reordenar Produtos</h2>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {categories.find(c => c.id === reorderCategoryId)?.name} · Arraste para reorganizar
+                </p>
+              </div>
+              <button onClick={() => setShowReorder(false)} className="text-muted-foreground hover:text-foreground transition-colors">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Sortable list */}
+            <div className="flex-1 overflow-y-auto px-4 py-3">
+              {reorderItems.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-8">Nenhum produto ativo nesta categoria.</p>
+              ) : (
+                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                  <SortableContext items={reorderItems.map(p => p.id)} strategy={verticalListSortingStrategy}>
+                    <div className="flex flex-col gap-2">
+                      {reorderItems.map(product => (
+                        <SortableProductRow key={product.id} product={product} />
+                      ))}
+                    </div>
+                  </SortableContext>
+                </DndContext>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="px-4 py-3 border-t border-border flex items-center justify-between gap-3 flex-shrink-0">
+              {reorderSaved && (
+                <span className="text-xs text-green-700 font-medium">Ordem salva!</span>
+              )}
+              <div className="flex gap-2 ml-auto">
+                <button
+                  onClick={() => setShowReorder(false)}
+                  className="px-4 py-2 rounded-lg border border-border text-sm hover:bg-gray-50 transition-colors"
+                >
+                  Fechar
+                </button>
+                <button
+                  onClick={handleSaveOrder}
+                  disabled={bulkUpdateSortOrder.isPending || reorderItems.length === 0}
+                  className="px-4 py-2 rounded-lg btn-gold text-white text-sm font-medium disabled:opacity-50 transition-colors"
+                >
+                  {bulkUpdateSortOrder.isPending ? 'Salvando...' : 'Salvar ordem'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Create Product Dialog */}
       {creating && (

@@ -21,6 +21,7 @@ export interface CatalogProduct {
   is_highlight?: boolean
   category_id?: string | null
   category?: { id: string; name: string } | null
+  sort_order?: number
 }
 
 export function useAdminProducts() {
@@ -29,7 +30,8 @@ export function useAdminProducts() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('catalog_products')
-        .select('id, nuvemshop_product_id, name, description_html, price, partner_price, compare_at_price, main_image, is_active, source, created_at, updated_at, category_type, is_professional, is_highlight, category_id, categories(id, name)')
+        .select('id, nuvemshop_product_id, name, description_html, price, partner_price, compare_at_price, main_image, is_active, source, created_at, updated_at, category_type, is_professional, is_highlight, category_id, sort_order, categories(id, name)')
+        .order('sort_order', { ascending: true })
         .order('updated_at', { ascending: false })
 
       if (error) throw error
@@ -173,5 +175,22 @@ export function useNuvemshopSync() {
 export function useNuvemshopDryRun() {
   return useMutation({
     mutationFn: async (): Promise<SyncResult> => callSyncNuvemshop({ dryRun: true }),
+  })
+}
+
+export function useBulkUpdateSortOrder() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (updates: { id: string; sort_order: number }[]) => {
+      const { error } = await supabase.rpc('admin_update_product_sort_orders', {
+        updates: updates,
+      })
+      if (error) throw error
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-products'] })
+      queryClient.invalidateQueries({ queryKey: ['catalog-products'] })
+    },
   })
 }

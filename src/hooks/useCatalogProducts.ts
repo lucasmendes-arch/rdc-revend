@@ -44,6 +44,7 @@ export function useCatalogProducts(opts?: {
         .from('catalog_products')
         .select(selectCols)
         .eq('is_active', true)
+        .order('sort_order', { ascending: true })
         .order('updated_at', { ascending: false })
 
       if (error) throw error

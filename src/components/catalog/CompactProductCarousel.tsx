@@ -1,4 +1,4 @@
-import { Check, Lock, ShoppingCart, Leaf, Sparkles } from 'lucide-react'
+import { Check, Lock, ShoppingCart, Leaf, Sparkles, Briefcase } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import type { PublicProduct } from '@/hooks/useCatalogProducts'
 
@@ -161,17 +161,23 @@ export default function CompactProductCarousel({
                                     {product.name}
                                 </h3>
 
-                                {/* Badges - Hidden for Professional products */}
-                                {!(product.is_professional || title.toLowerCase().includes('profissional')) && (
-                                    <div className="flex flex-wrap gap-1 mb-2.5">
-                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border bg-green-50 text-green-700 border-green-200">
-                                            <Leaf className="w-2.5 h-2.5" /> Vegano
+                                {/* Badges */}
+                                <div className="flex flex-wrap gap-1 mb-2.5">
+                                    {product.is_professional ? (
+                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border bg-violet-50 text-violet-700 border-violet-200">
+                                            <Briefcase className="w-2.5 h-2.5" /> Uso Profissional
                                         </span>
-                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border bg-amber-50 text-amber-700 border-amber-200">
-                                            <Sparkles className="w-2.5 h-2.5" /> Liberado
-                                        </span>
-                                    </div>
-                                )}
+                                    ) : (
+                                        <>
+                                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border bg-green-50 text-green-700 border-green-200">
+                                                <Leaf className="w-2.5 h-2.5" /> Vegano
+                                            </span>
+                                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border bg-amber-50 text-amber-700 border-amber-200">
+                                                <Sparkles className="w-2.5 h-2.5" /> Liberado
+                                            </span>
+                                        </>
+                                    )}
+                                </div>
 
                                 <div className="mt-auto">
                                     {/* Resale price: hidden for guest */}

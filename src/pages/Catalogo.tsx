@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import DOMPurify from "dompurify";
-import { ArrowRight, Check, Crown, Filter, Lock, LogIn, LogOut, Search, ShoppingCart, Tag, Trash2, TrendingUp, X, PackageSearch, ShieldCheck, ChevronDown, ChevronUp, Truck, Leaf } from "lucide-react";
+import { ArrowRight, Check, Crown, Filter, Lock, LogIn, LogOut, Search, ShoppingCart, Tag, Trash2, TrendingUp, X, PackageSearch, ShieldCheck, ChevronDown, ChevronUp, Truck, Leaf, Sparkles, Briefcase } from "lucide-react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import PackageCards from "@/components/catalog/PackageCards";
 import CategoryBubbles from "@/components/catalog/CategoryBubbles";
@@ -20,7 +20,7 @@ import { isProfileIncomplete } from "@/utils/profile";
 // TYPES & CONSTANTS
 // ============================================================================
 
-type SortOption = 'name_asc' | 'name_desc' | 'price_asc' | 'price_desc' | 'profit_desc';
+type SortOption = 'default' | 'name_asc' | 'name_desc' | 'price_asc' | 'price_desc' | 'profit_desc';
 
 // ============================================================================
 // HELPERS
@@ -145,7 +145,7 @@ const Catalogo = () => {
   // Search and filters state
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [sortBy, setSortBy] = useState<SortOption>('name_asc');
+  const [sortBy, setSortBy] = useState<SortOption>('default');
   const [filterMinPrice, setFilterMinPrice] = useState<number | ''>('');
   const [filterMaxPrice, setFilterMaxPrice] = useState<number | ''>('');
   const [filterOnlySuggested, setFilterOnlySuggested] = useState(false);
@@ -250,7 +250,7 @@ const Catalogo = () => {
     filterOnlySuggested,
     filterCategories.length > 0,
     filterProfessional,
-    sortBy !== 'name_asc',
+    sortBy !== 'default',
   ].filter(Boolean).length;
 
   const filtered = useMemo(() => {
@@ -267,6 +267,8 @@ const Catalogo = () => {
     });
 
     switch (sortBy) {
+      case 'default':
+        return result; // preserves sort_order from DB
       case 'name_asc':
         return [...result].sort((a, b) => a.name.localeCompare(b.name));
       case 'name_desc':
@@ -649,6 +651,7 @@ const Catalogo = () => {
                     onChange={(e) => setSortBy(e.target.value as SortOption)}
                     className="w-full px-3 py-2 rounded-lg border border-border bg-white text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-gold"
                   >
+                    <option value="default">Padrão</option>
                     <option value="name_asc">Nome (A-Z)</option>
                     <option value="name_desc">Nome (Z-A)</option>
                     <option value="price_asc">Menor custo</option>
@@ -950,6 +953,23 @@ const Catalogo = () => {
                               >
                                 {product.name}
                               </h3>
+                              {/* Badges */}
+                              <div className="flex flex-wrap gap-1 mb-2">
+                                {product.is_professional ? (
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border bg-violet-50 text-violet-700 border-violet-200">
+                                    <Briefcase className="w-2.5 h-2.5" /> Uso Profissional
+                                  </span>
+                                ) : (
+                                  <>
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border bg-green-50 text-green-700 border-green-200">
+                                      <Leaf className="w-2.5 h-2.5" /> Vegano
+                                    </span>
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border bg-amber-50 text-amber-700 border-amber-200">
+                                      <Sparkles className="w-2.5 h-2.5" /> Liberado
+                                    </span>
+                                  </>
+                                )}
+                              </div>
                               <div className="mt-auto">
                                 {/* Resale price: hidden for guest */}
                                 {!isGuest && !product.is_professional && (
@@ -1094,6 +1114,7 @@ const Catalogo = () => {
                     onChange={(e) => setSortBy(e.target.value as SortOption)}
                     className="w-full px-3 py-2 rounded-lg border border-border bg-white text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-gold"
                   >
+                    <option value="default">Padrão</option>
                     <option value="name_asc">Nome (A-Z)</option>
                     <option value="name_desc">Nome (Z-A)</option>
                     <option value="price_asc">Menor custo</option>
