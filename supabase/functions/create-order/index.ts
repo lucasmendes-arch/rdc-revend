@@ -111,15 +111,17 @@ serve(async (req: Request) => {
       )
     }
 
-    // 1.6. Fetch customer segment from profile for order snapshot
+    // 1.6. Fetch customer segment + price list assignment from profile
     let customerSegment: string | null = null
+    let profilePriceListId: string | null = null
     {
       const { data: profile } = await serviceClient
         .from('profiles')
-        .select('customer_segment')
+        .select('customer_segment, price_list_id')
         .eq('id', user.id)
         .single()
       customerSegment = profile?.customer_segment ?? null
+      profilePriceListId = profile?.price_list_id ?? null
     }
 
     // 2. Parse and validate request body
@@ -183,16 +185,45 @@ serve(async (req: Request) => {
       }
     }
 
-    // 4. Calculate total using REAL prices
+    // 3b. Resolve partner prices from price_list_items (if user has an active price list)
+    // Rule: price_list_items.price overrides catalog_products.price when list is active and item is present.
+    const resolvedPrices = new Map<string, number>() // product_id → resolved price
+    if (profilePriceListId) {
+      const { data: priceList } = await serviceClient
+        .from('price_lists')
+        .select('is_active')
+        .eq('id', profilePriceListId)
+        .single()
+
+      if (priceList?.is_active) {
+        const { data: priceListItems } = await serviceClient
+          .from('price_list_items')
+          .select('product_id, price')
+          .eq('price_list_id', profilePriceListId)
+          .in('product_id', productIds)
+
+        for (const pli of priceListItems || []) {
+          resolvedPrices.set(pli.product_id, pli.price)
+        }
+        log('price_list_resolved', {
+          user_id: user.id,
+          price_list_id: profilePriceListId,
+          overrides: resolvedPrices.size,
+        })
+      }
+    }
+
+    // 4. Calculate total using REAL prices (resolved via price list or catalog default)
     let subtotal = 0
     const orderItems = body.items.map(item => {
       const product = priceMap.get(item.product_id)!
-      const lineTotal = product.price * item.qty
+      const unitPrice = resolvedPrices.get(item.product_id) ?? product.price
+      const lineTotal = unitPrice * item.qty
       subtotal += lineTotal
       return {
         product_id: product.id,
         product_name_snapshot: product.name,
-        unit_price_snapshot: product.price,
+        unit_price_snapshot: unitPrice,
         qty: item.qty,
         line_total: Math.round(lineTotal * 100) / 100,
       }
@@ -448,7 +479,7 @@ serve(async (req: Request) => {
       )
     }
 
-    log('order_created', { order_id: order.id, user_id: user.id, subtotal, shipping, discount: couponDiscount, total, items: orderItems.length, coupon_id: couponId, seller_id: resolvedSellerId, delivery_method: deliveryMethod })
+    log('order_created', { order_id: order.id, user_id: user.id, subtotal, shipping, discount: couponDiscount, total, items: orderItems.length, coupon_id: couponId, seller_id: resolvedSellerId, delivery_method: deliveryMethod, price_list_id: profilePriceListId })
 
     // 8. Create order items
     const itemsWithOrderId = orderItems.map(item => ({

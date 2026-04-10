@@ -3,7 +3,7 @@
 > **STATUS: FEATURE FREEZE PERMANENTE**
 > Esta função é área crítica de checkout. Nenhuma alteração sem aprovação explícita do humano e cumprimento integral do checklist abaixo.
 
-_Última revisão: 2026-04-09_
+_Última revisão: 2026-04-10_
 
 ---
 
@@ -71,9 +71,10 @@ _Última revisão: 2026-04-09_
 
 1. **Auth** — `userClient.auth.getUser()` — rejeita sem JWT válido
 2. **Rate limit** — `check_rate_limit(order:{user_id}, 5, 60)` — rejeita se exceder
-3. **Segment snapshot** — lê `profiles.customer_segment` para snapshot no pedido
+3. **Segment snapshot + price list** — lê `profiles.customer_segment` e `profiles.price_list_id` para snapshot e resolução de preços
 4. **Validação do body** — items, campos obrigatórios, qty inteira positiva
 5. **Preços do servidor** — busca `catalog_products` via `serviceClient` — **nunca usa preços do cliente**
+5b. **Resolução de price list** — se `price_list_id` não nulo e lista ativa, sobrepõe preços com `price_list_items` (server-side, nunca aceito do cliente)
 6. **Validação de produtos** — todos devem existir e ter `is_active = true`
 7. **Cálculo de subtotal** — soma `price * qty` de cada item (arredondado a 2 casas)
 8. **Resolução de kits** — `kit_components` → decrementos são nos componentes, não no kit
@@ -111,7 +112,8 @@ _Última revisão: 2026-04-09_
 | `request_start` | Após auth OK — contém `user_id` |
 | `rate_limit_hit` | Rate limit atingido |
 | `stock_insufficient` | Estoque insuficiente — lista itens problemáticos |
-| `order_created` | Pedido inserido — contém totais, itens, seller, delivery |
+| `price_list_resolved` | Price list ativa aplicada — contém `price_list_id` e `overrides` (qtd de produtos com preço especial) |
+| `order_created` | Pedido inserido — contém totais, itens, seller, delivery, `price_list_id` |
 | `order_insert_failed` | Falha no insert de orders |
 | `order_items_failed` | Falha nos itens — rollback acionado |
 | `stock_decrement_failed` | Falha no estoque — rollback completo acionado |

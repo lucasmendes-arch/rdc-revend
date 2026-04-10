@@ -1,6 +1,6 @@
 # SCHEMA.md — Single Source of Truth · RDC Revend
-> Atualizado em: 2026-04-09
-> Gerado a partir das migrations `20250221000001` → `20260409000001`
+> Atualizado em: 2026-04-10
+> Gerado a partir das migrations `20250221000001` → `20260409000004`
 > **LEIA ESTE ARQUIVO antes de escrever qualquer query, RPC call ou type definition no frontend.**
 
 ---
@@ -52,8 +52,11 @@ Perfil do usuário. Criado automaticamente por trigger ao registrar em `auth.use
 | auth_phone | text | YES | NULL | — |
 | credentials_created_at | timestamptz | YES | NULL | — |
 | last_password_reset_at | timestamptz | YES | NULL | — |
+| price_list_id | uuid | YES | NULL | price_lists.id |
 
 > `customer_segment` válidos: `'network_partner'`, `'wholesale_buyer'`. NULL = não classificado (legado pendente de revisão). Source of truth da segmentação comercial do cliente.
+> `price_list_id` FK para `price_lists`. NULL = sem tabela especial, usa `catalog_products.price`. Quando preenchida e lista ativa, o sistema usa preços de `price_list_items` no catálogo e no checkout.
+> `price_category` (text, DEFAULT 'retail'): campo legado — não tem efeito operacional na resolução de preços. Mantido por retrocompatibilidade.
 > `access_status` válidos: `'not_created'`, `'active'`, `'blocked'`. Gerenciado pela edge function `admin-partner-credentials`. `auth_phone` armazena o telefone normalizado E.164 usado como login.
 > Colunas de integração (Etapa 9): `clickup_task_id`, `lead_source`, `lead_status`, `assigned_seller`, `integration_notes`, `last_synced_at`, `updated_by` — todas nullable, usadas pelo fluxo n8n/ClickUp.
 
@@ -470,6 +473,48 @@ Log de auditoria para operações destrutivas do admin.
 
 ---
 
+### `price_lists`
+Tabelas de preço B2B — uma por nível comercial ou parceiro.
+
+| Coluna | Tipo | Nullable | Default | FK |
+|--------|------|----------|---------|-----|
+| id | uuid | NO | `gen_random_uuid()` | — |
+| name | text | NO | — | — |
+| description | text | YES | NULL | — |
+| priority | int | NO | `0` | — |
+| is_active | boolean | NO | `true` | — |
+| created_at | timestamptz | NO | `now()` | — |
+| updated_at | timestamptz | NO | `now()` | — |
+
+> RLS: admin tem acesso total. Usuários autenticados acessam via RPC `get_my_price_list_items()`. Anon sem acesso.
+> `priority` reservado para resolução futura multi-lista; sem efeito na v1.
+
+---
+
+### `price_list_items`
+Preços específicos por produto dentro de uma tabela de preço.
+
+| Coluna | Tipo | Nullable | Default | FK |
+|--------|------|----------|---------|-----|
+| id | uuid | NO | `gen_random_uuid()` | — |
+| price_list_id | uuid | NO | — | price_lists.id |
+| product_id | uuid | NO | — | catalog_products.id |
+| price | numeric(10,2) | NO | — | — |
+| created_at | timestamptz | NO | `now()` | — |
+| updated_at | timestamptz | NO | `now()` | — |
+
+> UNIQUE `(price_list_id, product_id)` — um produto tem no máximo um preço por tabela.
+> CHECK `price >= 0`.
+> RLS: admin tem acesso total. Usuários acessam via RPC `get_my_price_list_items()`.
+
+**Regra de resolução de preço:**
+1. Se `profiles.price_list_id IS NOT NULL` E `price_lists.is_active = true` E existe `price_list_items` para o produto → usar `price_list_items.price`
+2. Caso contrário → usar `catalog_products.price`
+
+Esta regra é aplicada no catálogo (via `get_my_price_list_items`) e no checkout (`create-order`, step 3b).
+
+---
+
 ## Views
 
 ### `catalog_products_public`
@@ -644,10 +689,39 @@ get_all_profiles()
       business_type text, employees text, revenue text, email text,
       is_partner boolean, customer_segment text,
       access_status text, auth_phone text,
-      credentials_created_at timestamptz, last_password_reset_at timestamptz
+      credentials_created_at timestamptz, last_password_reset_at timestamptz,
+      price_list_id uuid, price_list_name text
     )
 ```
-Lista todos os perfis com `role = 'user'` para o admin. Usa LEFT JOIN em `auth.users` para garantir que perfis sem e-mail ainda apareçam.
+Lista todos os perfis com `role = 'user'` para o admin. Inclui `price_list_id` e `price_list_name` (LEFT JOIN em `price_lists`).
+Acessível por: `authenticated` (admin verificado internamente).
+
+---
+
+### `get_my_price_list_items`
+```
+get_my_price_list_items() → TABLE (product_id uuid, price numeric(10,2))
+```
+Retorna os itens de preço da tabela vinculada ao usuário autenticado. Retorna vazio se sem lista ou lista inativa. O frontend usa para sobrepor os preços do catálogo.
+Acessível por: `authenticated`.
+
+---
+
+### `resolve_product_prices`
+```
+resolve_product_prices(p_user_id uuid, p_product_ids uuid[])
+  → TABLE (product_id uuid, resolved_price numeric(10,2))
+```
+Resolve preços para um conjunto de produtos aplicando a regra de resolução (price_list_items → fallback catalog_products.price). Usada internamente pela edge function `create-order` via serviceClient.
+Acessível por: `authenticated`, `service_role`.
+
+---
+
+### `admin_set_profile_price_list`
+```
+admin_set_profile_price_list(p_user_id uuid, p_price_list_id uuid) → void
+```
+Vincula ou desvincula (`p_price_list_id = NULL`) um parceiro de uma tabela de preço. Valida que a tabela existe antes de vincular.
 Acessível por: `authenticated` (admin verificado internamente).
 
 ---
@@ -740,6 +814,7 @@ Retorno: contagem de pedidos liberados.
 | crm_automations | action_type | `'send_whatsapp'` |
 | crm_dispatch_queue | status | `'pending'`, `'processing'`, `'sent'`, `'failed'`, `'cancelled'` |
 | crm_automation_runs | status | `'pending'`, `'running'`, `'success'`, `'failed'`, `'skipped'` |
+| price_list_items | price | `>= 0` |
 
 ---
 
