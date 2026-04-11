@@ -29,7 +29,7 @@ _Última revisão: 2026-04-10_
   customer_email: string                          // obrigatório
   customer_document?: string                      // opcional — CPF/CNPJ para MP
   notes?: string
-  payment_method?: 'pix' | 'credit'
+  payment_method?: 'pix' | 'credit' | 'pay_on_delivery'  // pay_on_delivery: exclusivo network_partner
   installments?: number                           // só quando payment_method = 'credit'
   shipping?: number                               // valor sugerido pelo cliente (servidor valida)
   delivery_method?: 'shipping' | 'pickup'        // default: 'shipping'
@@ -52,7 +52,7 @@ _Última revisão: 2026-04-10_
 {
   "order_id": "uuid",
   "total": 1234.56,
-  "payment_url": "https://www.mercadopago.com.br/checkout/v1/..." // null se MP não configurado
+  "payment_url": "https://www.mercadopago.com.br/checkout/v1/..." // null se MP não configurado ou se payment_method = 'pay_on_delivery' (pedido manual criado sem preference externa, segue direto para confirmação)
 }
 ```
 
@@ -62,7 +62,7 @@ _Última revisão: 2026-04-10_
 |--------|----------|
 | 401 | Sem Authorization header / token inválido |
 | 429 | Rate limit: >5 pedidos em 60s por usuário |
-| 400 | Carrinho vazio / campos obrigatórios ausentes / qty inválida / produto não encontrado ou inativo / estoque insuficiente / subtotal < R$ 500 / unidade de retirada inválida |
+| 400 | Carrinho vazio / campos obrigatórios ausentes / qty inválida / produto não encontrado ou inativo / estoque insuficiente / subtotal < R$ 500 / unidade de retirada inválida / `pay_on_delivery` para segmento != `network_partner` |
 | 500 | Falha no insert de orders, order_items, ou decremento de estoque (com rollback) |
 
 ---
@@ -81,15 +81,16 @@ _Última revisão: 2026-04-10_
 9. **Verificação de estoque** — `inventory` table; produtos sem registro = estoque ilimitado
 10. **Pedido mínimo** — subtotal < R$ 500 → rejeita
 11. **Delivery method** — pickup valida unidade em `pickup_units`; zera frete
-12. **Cupom** — validado via `validate_coupon` RPC (preferencial) ou query direta; desconto recalculado no servidor
-13. **Frete** — pickup/free_shipping = 0; senão ≈ 20% do subtotal (tolerância R$ 0,10 vs cliente)
+11.5. **network_partner** — `pay_on_delivery` validado (400 para outros segmentos); shipping forçado a 0; cupons ignorados; MP preference não criada
+12. **Cupom** — validado via `validate_coupon` RPC (preferencial) ou query direta; desconto recalculado no servidor (ignorado para `network_partner`)
+13. **Frete** — `network_partner`/pickup/free_shipping = 0; senão ≈ 20% do subtotal (tolerância R$ 0,10 vs cliente)
 14. **Total** — `MAX(subtotal + shipping - coupon_discount, 0)`, arredondado a 2 casas
 15. **Seller** — usa `seller_id` do body ou busca `is_default=true AND active=true`
 16. **Insert `orders`** — via serviceClient; `status = 'recebido'`
 17. **Insert `order_items`** — rollback de `orders` se falhar
 18. **Decremento de estoque** — `decrement_stock` RPC por produto; rollback completo se falhar
 19. **Incremento de cupom** — `increment_coupon_usage` RPC (fire-and-forget, não bloqueia)
-20. **MercadoPago** — cria preference; atualiza `orders.payment_id` e `status = 'aguardando_pagamento'`; falhas não abortam o pedido
+20. **MercadoPago** — cria preference; atualiza `orders.payment_id` e `status = 'aguardando_pagamento'`; falhas não abortam o pedido; **pulado para `pay_on_delivery`**
 21. **WhatsApp** — notificação fire-and-forget; falhas não abortam o pedido
 
 ---

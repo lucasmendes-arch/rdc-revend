@@ -388,6 +388,14 @@ const NewOrder = () => {
     );
   }
 
+  function setQtyAbsolute(productId: string, value: string) {
+    const parsed = parseInt(value, 10);
+    if (isNaN(parsed) || parsed < 1) return;
+    setCartItems(prev =>
+      prev.map(i => i.product_id === productId ? { ...i, quantity: parsed } : i)
+    );
+  }
+
   function updatePrice(productId: string, value: string) {
     const parsed = parseFloat(value);
     if (isNaN(parsed) || parsed < 0) return;
@@ -803,7 +811,14 @@ const NewOrder = () => {
                     >
                       <Minus className="w-3 h-3" />
                     </button>
-                    <span className="w-7 text-center text-sm font-semibold">{item.quantity}</span>
+                    <input
+                      type="number"
+                      min={1}
+                      value={item.quantity}
+                      onChange={e => setQtyAbsolute(item.product_id, e.target.value)}
+                      onBlur={e => { if (!e.target.value || parseInt(e.target.value) < 1) setQtyAbsolute(item.product_id, '1'); }}
+                      className="w-10 text-center text-sm font-semibold border border-border rounded-lg px-1 py-0.5 focus:outline-none focus:ring-2 focus:ring-amber-400 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    />
                     <button
                       onClick={() => updateQty(item.product_id, 1)}
                       className="w-7 h-7 rounded-lg border border-border flex items-center justify-center hover:bg-surface-alt transition-colors"

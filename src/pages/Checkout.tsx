@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, Check, Loader, ShoppingCart, Sparkles, MapPin, Minus, Plus, Zap, Store } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, Loader, ShoppingCart, Sparkles, MapPin, Minus, Plus, Zap, Store, Truck } from 'lucide-react';
 import { useCart } from '@/contexts/CartContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useActiveUpsell } from '@/hooks/useUpsell';
@@ -47,7 +47,10 @@ const Checkout = () => {
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [initialProfile, setInitialProfile] = useState<Partial<ProfileData>>({});
 
-  const [paymentMethod, setPaymentMethod] = useState<'pix' | 'credit'>('pix');
+  const [customerSegment, setCustomerSegment] = useState<string | null>(null);
+  const isNetworkPartner = customerSegment === 'network_partner';
+
+  const [paymentMethod, setPaymentMethod] = useState<'pix' | 'credit' | 'pay_on_delivery'>('pix');
   const [installments, setInstallments] = useState<number>(1);
 
   const [deliveryMethod, setDeliveryMethod] = useState<'shipping' | 'pickup'>('shipping');
@@ -77,11 +80,16 @@ const Checkout = () => {
   // Pre-fill from profile
   useEffect(() => {
     if (!user?.id || profileLoaded) return;
-    supabase.from('profiles').select('full_name, phone, document, document_type, address_cep, address_street, address_number, address_complement, address_neighborhood, address_city, address_state')
+    supabase.from('profiles').select('full_name, phone, document, document_type, address_cep, address_street, address_number, address_complement, address_neighborhood, address_city, address_state, customer_segment')
       .eq('id', user.id).single()
       .then(({ data }) => {
         if (data) {
-          const p = data as ProfileData;
+          const p = data as ProfileData & { customer_segment?: string | null };
+          const segment = p.customer_segment ?? null;
+          setCustomerSegment(segment);
+          if (segment === 'network_partner') {
+            setPaymentMethod('pay_on_delivery');
+          }
           setInitialProfile(p);
           setFormData(prev => ({
             ...prev,
@@ -125,7 +133,8 @@ const Checkout = () => {
 
   // Shipping = 20% of subtotal (cartTotal already includes upsell if added via addItem)
   const shippingEstimate = Math.round(cartTotal * 0.20 * 100) / 100;
-  const shippingValue = deliveryMethod === 'pickup' ? 0 : (couponType === 'free_shipping' ? 0 : shippingEstimate);
+  // network_partner: frete sempre 0 (transporte próprio da rede)
+  const shippingValue = (deliveryMethod === 'pickup' || isNetworkPartner) ? 0 : (couponType === 'free_shipping' ? 0 : shippingEstimate);
   const shippingDiscountAmount = couponType === 'shipping_percent'
     ? Math.round(shippingEstimate * couponDiscount / 100 * 100) / 100
     : 0;
@@ -316,7 +325,11 @@ const Checkout = () => {
       supabase.from('profiles').update(profileUpdates).eq('id', user.id).then(() => { });
 
 
-      const paymentStr = paymentMethod === 'pix' ? 'PIX' : `Cartão de Crédito (${installments}x${installments > 3 ? ' com juros' : ' sem juros'})`;
+      const paymentStr = paymentMethod === 'pix'
+        ? 'PIX'
+        : paymentMethod === 'pay_on_delivery'
+          ? 'Pagar na Entrega'
+          : `Cartão de Crédito (${installments}x${installments > 3 ? ' com juros' : ' sem juros'})`;
       let addressString = '';
       if (deliveryMethod === 'shipping') {
         addressString = `Endereco de Entrega:\nCEP: ${formData.cep}\nLogradouro: ${formData.street}, ${formData.number} ${formData.complement ? `(${formData.complement})` : ''}\nBairro: ${formData.neighborhood}\nCidade/UF: ${formData.city}/${formData.state.toUpperCase()}\n\nForma de Pagamento Selecionada: ${paymentStr}`;
@@ -739,8 +752,10 @@ const Checkout = () => {
                     <MapPin className="w-5 h-5" />
                   </div>
                   <div className="flex-1 text-left">
-                    <span className="block font-bold text-sm text-foreground">Receber em casa</span>
-                    <span className="block text-xs text-muted-foreground mt-0.5">Entrega via transportadora</span>
+                    <span className="block font-bold text-sm text-foreground">Receber em Casa</span>
+                    <span className="block text-xs text-muted-foreground mt-0.5">
+                      {isNetworkPartner ? 'Entregue via Transporte Próprio da Rede' : 'Entrega via transportadora'}
+                    </span>
                   </div>
                   {deliveryMethod === 'shipping' && (
                     <div className="absolute top-4 right-4">
@@ -916,8 +931,8 @@ const Checkout = () => {
               />
             </div>
 
-            {/* Cupom de Desconto - Movido para o Passo 3 */}
-            <div className="bg-white rounded-2xl p-5 sm:p-6 shadow-card">
+            {/* Cupom de Desconto — oculto para parceiro da rede */}
+            {!isNetworkPartner && <div className="bg-white rounded-2xl p-5 sm:p-6 shadow-card">
               <label className="block text-xs font-bold text-muted-foreground uppercase mb-2">Cupom de Desconto</label>
               <div className="flex gap-2">
                 <input
@@ -950,7 +965,7 @@ const Checkout = () => {
                   <Check className="w-3 h-3" /> {couponType === 'free_shipping' ? 'Frete Grátis aplicado!' : couponType === 'shipping_percent' ? `${couponDiscount}% de desconto no frete aplicado!` : `Desconto de R$ ${couponDiscount.toFixed(2)} aplicado!`}
                 </p>
               )}
-            </div>
+            </div>}
 
             {/* Order Total Summary */}
             <div className="bg-white rounded-2xl p-5 sm:p-6 shadow-card space-y-3">
@@ -967,8 +982,12 @@ const Checkout = () => {
               )}
               <div className="flex flex-col text-slate-600 bg-slate-50 p-2 rounded">
                 <div className="flex items-center justify-between text-sm">
-                  <span>Frete estimado</span>
-                  {deliveryMethod === 'pickup' ? (
+                  <span>Frete</span>
+                  {isNetworkPartner ? (
+                    <div className="flex flex-col items-end">
+                      <span className="text-emerald-600 font-bold">Transporte Próprio da Rede</span>
+                    </div>
+                  ) : deliveryMethod === 'pickup' ? (
                     <div className="flex flex-col items-end">
                       <span className="text-emerald-600 font-bold">Retirada Grátis</span>
                     </div>
@@ -988,7 +1007,7 @@ const Checkout = () => {
                     <span>+ R$ {shippingEstimate.toFixed(2)}</span>
                   )}
                 </div>
-                {deliveryMethod === 'shipping' && isAddressValid && (
+                {deliveryMethod === 'shipping' && isAddressValid && !isNetworkPartner && (
                   <p className="text-[10px] text-muted-foreground mt-1 text-left">
                     O valor é uma média de cotação com tranportadoras parceiras.
                   </p>
@@ -1060,6 +1079,22 @@ const Checkout = () => {
                   </div>
                   <span className="font-bold text-sm">Cartão de Crédito</span>
                 </button>
+
+                {isNetworkPartner && (
+                  <button
+                    type="button"
+                    onClick={() => { setPaymentMethod('pay_on_delivery'); setInstallments(1); }}
+                    className={`sm:col-span-2 flex items-center justify-center gap-3 p-4 rounded-xl border-2 transition-all ${paymentMethod === 'pay_on_delivery' ? 'border-amber-500 bg-amber-50 text-amber-800' : 'border-border text-foreground hover:bg-surface-alt'}`}
+                  >
+                    <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
+                      <Truck className="w-4 h-4 text-amber-600" />
+                    </div>
+                    <div className="text-left">
+                      <span className="block font-bold text-sm">Pagar na Entrega</span>
+                      <span className="block text-xs text-muted-foreground">Pagamento acertado no ato da entrega</span>
+                    </div>
+                  </button>
+                )}
               </div>
 
               {/* Installment selection removed as per user request */}
@@ -1082,9 +1117,11 @@ const Checkout = () => {
                 </>
               )}
             </button>
-            <p className="text-xs text-center text-muted-foreground">
-              Você será redirecionado para concluir o pagamento em seguida.
-            </p>
+            {paymentMethod !== 'pay_on_delivery' && (
+              <p className="text-xs text-center text-muted-foreground">
+                Você será redirecionado para concluir o pagamento em seguida.
+              </p>
+            )}
           </div>
         )}
       </div>

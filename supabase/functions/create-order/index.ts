@@ -46,7 +46,7 @@ interface OrderRequest {
   customer_email: string
   customer_document?: string
   notes?: string
-  payment_method?: 'pix' | 'credit'
+  payment_method?: 'pix' | 'credit' | 'pay_on_delivery'
   installments?: number
   shipping?: number
   delivery_method?: 'shipping' | 'pickup'
@@ -124,12 +124,25 @@ serve(async (req: Request) => {
       profilePriceListId = profile?.price_list_id ?? null
     }
 
+    // 1.7. network_partner: validate pay_on_delivery is exclusive to this segment
+    // (parsed later from body, but we need to check after segment is known)
+    // Actual validation is done below after body is parsed.
+
     // 2. Parse and validate request body
     const body: OrderRequest = await req.json()
 
     if (!body.items || body.items.length === 0) {
       return new Response(
         JSON.stringify({ error: 'Carrinho vazio' }),
+        { status: 400, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // 2.5. network_partner rules: pay_on_delivery is exclusive to network_partner
+    if (body.payment_method === 'pay_on_delivery' && customerSegment !== 'network_partner') {
+      log('pay_on_delivery_blocked', { user_id: user.id, segment: customerSegment })
+      return new Response(
+        JSON.stringify({ error: 'Método de pagamento inválido para este perfil' }),
         { status: 400, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
       )
     }
@@ -364,7 +377,8 @@ serve(async (req: Request) => {
     let isFreeShipping = false
     let shippingDiscountPercent = 0
 
-    if (body.coupon_code || body.coupon_id) {
+    // network_partner: coupons do not apply (no coupon UI shown to them)
+    if ((body.coupon_code || body.coupon_id) && customerSegment !== 'network_partner') {
       // If coupon_code provided, validate via RPC (authoritative)
       // If only coupon_id provided, validate directly
       if (body.coupon_code) {
@@ -414,9 +428,9 @@ serve(async (req: Request) => {
       }
     }
 
-    // Calculate shipping: pickup = 0, free_shipping coupon = 0, else ~20% of subtotal
+    // Calculate shipping: network_partner = 0 (own transport), pickup = 0, free_shipping = 0, else ~20%
     let shipping: number
-    if (deliveryMethod === 'pickup' || isFreeShipping) {
+    if (customerSegment === 'network_partner' || deliveryMethod === 'pickup' || isFreeShipping) {
       shipping = 0
     } else {
       const shippingFromClient = body.shipping && body.shipping > 0 ? Math.round(body.shipping * 100) / 100 : 0
@@ -467,6 +481,8 @@ serve(async (req: Request) => {
         discount_amount: couponDiscount,
         seller_id: resolvedSellerId,
         customer_segment_snapshot: customerSegment,
+        // persist payment method at insert time only for pay_on_delivery (MP sets it for others via webhook)
+        payment_method: body.payment_method === 'pay_on_delivery' ? 'pay_on_delivery' : null,
       })
       .select('id')
       .single()
@@ -479,7 +495,7 @@ serve(async (req: Request) => {
       )
     }
 
-    log('order_created', { order_id: order.id, user_id: user.id, subtotal, shipping, discount: couponDiscount, total, items: orderItems.length, coupon_id: couponId, seller_id: resolvedSellerId, delivery_method: deliveryMethod, price_list_id: profilePriceListId })
+    log('order_created', { order_id: order.id, user_id: user.id, subtotal, shipping, discount: couponDiscount, total, items: orderItems.length, coupon_id: couponId, seller_id: resolvedSellerId, delivery_method: deliveryMethod, price_list_id: profilePriceListId, payment_method: body.payment_method ?? null })
 
     // 8. Create order items
     const itemsWithOrderId = orderItems.map(item => ({
@@ -533,14 +549,14 @@ serve(async (req: Request) => {
         .catch((err: Error) => console.warn('Coupon usage increment failed:', err))
     }
 
-    // 11. Create MercadoPago Checkout Pro preference
+    // 11. Create MercadoPago Checkout Pro preference (skip for pay_on_delivery)
     let paymentUrl: string | null = null
     let preferenceId: string | null = null
 
     try {
       const mpAccessToken = Deno.env.get('MERCADOPAGO_ACCESS_TOKEN')
 
-      if (mpAccessToken) {
+      if (mpAccessToken && body.payment_method !== 'pay_on_delivery') {
         const origin = req.headers.get('Origin') || 'https://rdc-revend.vercel.app'
         const webhookUrl = `${supabaseUrl}/functions/v1/webhook-mercadopago`
 
