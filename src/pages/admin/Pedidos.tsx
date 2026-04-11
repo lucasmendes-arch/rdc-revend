@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Loader, ChevronDown, Plus, Globe, Tag, Hand, MessageSquare, UserCheck, Trash2, AlertTriangle, Package, Calendar } from 'lucide-react';
+import { Loader, ChevronDown, Plus, Globe, Tag, Hand, MessageSquare, UserCheck, Trash2, AlertTriangle, Package, Calendar, Truck, CheckCircle2 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
@@ -22,6 +22,7 @@ interface Order {
   delivery_method?: string;
   pickup_unit_slug?: string;
   pickup_unit_address?: string;
+  payment_method?: string | null;
   subtotal?: number;
   shipping?: number;
   discount_amount?: number;
@@ -416,6 +417,12 @@ const AdminPedidos = () => {
                                 RETIRADA ({order.pickup_unit_slug?.substring(0, 4).toUpperCase()})
                               </span>
                             )}
+                            {order.payment_method === 'pay_on_delivery' && (
+                              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-bold ring-1 ring-inset ring-amber-600/20 bg-amber-50 text-amber-700">
+                                <Truck className="w-3 h-3" />
+                                PAGAR NA ENTREGA
+                              </span>
+                            )}
                             {itemsCount > 0 && (
                               <span className="inline-flex items-center px-1.5 py-0.5 bg-zinc-50 text-zinc-500 border border-zinc-200 rounded-md text-[10px] font-bold">
                                 {itemsCount} {itemsCount === 1 ? 'item' : 'itens'}
@@ -430,6 +437,17 @@ const AdminPedidos = () => {
                                 {order.notes}
                               </p>
                             </div>
+                          )}
+
+                          {order.payment_method === 'pay_on_delivery' && order.status === 'recebido' && (
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handleStatusChange(order.id, 'pago'); }}
+                              disabled={updateStatusMutation.isPending}
+                              className="w-full mb-3 flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[12px] font-bold transition-colors disabled:opacity-60"
+                            >
+                              <CheckCircle2 className="w-3.5 h-3.5" />
+                              Confirmar Pagamento Recebido
+                            </button>
                           )}
 
                           <div className="pt-3 border-t border-zinc-100 flex items-center justify-between gap-3">
