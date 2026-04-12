@@ -1,6 +1,6 @@
 # SCHEMA.md — Single Source of Truth · RDC Revend
-> Atualizado em: 2026-04-10
-> Gerado a partir das migrations `20250221000001` → `20260410000004`
+> Atualizado em: 2026-04-12
+> Gerado a partir das migrations `20250221000001` → `20260412000005`
 > **LEIA ESTE ARQUIVO antes de escrever qualquer query, RPC call ou type definition no frontend.**
 
 ---
@@ -53,12 +53,17 @@ Perfil do usuário. Criado automaticamente por trigger ao registrar em `auth.use
 | credentials_created_at | timestamptz | YES | NULL | — |
 | last_password_reset_at | timestamptz | YES | NULL | — |
 | price_list_id | uuid | YES | NULL | price_lists.id |
+| next_action | text | YES | NULL | — |
+| next_action_at | timestamptz | YES | NULL | — |
+| assigned_seller_id | uuid | YES | NULL | sellers.id |
 
 > `customer_segment` válidos: `'network_partner'`, `'wholesale_buyer'`. NULL = não classificado (legado pendente de revisão). Source of truth da segmentação comercial do cliente.
 > `price_list_id` FK para `price_lists`. NULL = sem tabela especial, usa `catalog_products.price`. Quando preenchida e lista ativa, o sistema usa preços de `price_list_items` no catálogo e no checkout.
 > `price_category` (text, DEFAULT 'retail'): campo legado — não tem efeito operacional na resolução de preços. Mantido por retrocompatibilidade.
 > `access_status` válidos: `'not_created'`, `'active'`, `'blocked'`. Gerenciado pela edge function `admin-partner-credentials`. `auth_phone` armazena o telefone normalizado E.164 usado como login.
 > Colunas de integração (Etapa 9): `clickup_task_id`, `lead_source`, `lead_status`, `assigned_seller`, `integration_notes`, `last_synced_at`, `updated_by` — todas nullable, usadas pelo fluxo n8n/ClickUp.
+> `assigned_seller_id` (CRM P1): FK para `sellers.id ON DELETE SET NULL`. Source of truth do owner comercial. A coluna legada `assigned_seller` (text) é mantida em paralelo e sincronizada pela RPC — usada pela integração n8n/ClickUp.
+> `next_action` (CRM P1): texto livre da próxima ação planejada pelo comercial. `next_action_at`: data/hora agendada (UTC). Ambos nullable. Editáveis via RPC `admin_set_profile_next_action`.
 
 ---
 
@@ -460,6 +465,24 @@ Vendedores vinculáveis a pedidos.
 
 ---
 
+### `customer_notes`
+Notas internas por cliente. Visíveis apenas por admins — nunca pelo cliente.
+
+| Coluna | Tipo | Nullable | Default | FK |
+|--------|------|----------|---------|-----|
+| id | uuid | NO | `gen_random_uuid()` | — |
+| customer_id | uuid | NO | — | profiles.id |
+| content | text | NO | — | — |
+| created_by | uuid | YES | NULL | auth.users.id |
+| created_at | timestamptz | NO | `now()` | — |
+| updated_at | timestamptz | NO | `now()` | — |
+
+> RLS: admin-only via `is_admin()` (D-01: sem subquery em profiles). `customer_id → profiles(id) ON DELETE CASCADE`. `created_by → auth.users(id) ON DELETE SET NULL` (preserva nota histórica se admin for removido).
+> CHECK `length(trim(content)) > 0` — conteúdo vazio não é aceito.
+> Trigger `trg_customer_notes_updated_at` mantém `updated_at`.
+
+---
+
 ### `admin_audit_logs`
 Log de auditoria para operações destrutivas do admin.
 
@@ -694,10 +717,75 @@ get_all_profiles()
       is_partner boolean, customer_segment text,
       access_status text, auth_phone text,
       credentials_created_at timestamptz, last_password_reset_at timestamptz,
-      price_list_id uuid, price_list_name text
+      price_list_id uuid, price_list_name text,
+      assigned_seller text,       -- código legado (n8n compat)
+      seller_id uuid,             -- sellers.id resolvido via assigned_seller_id (FK)
+      seller_name text,           -- sellers.name legível
+      next_action text,
+      next_action_at timestamptz,
+      total_orders bigint,        -- COUNT de todos os pedidos
+      total_spent numeric,        -- SUM de pedidos não cancelados/expirados
+      first_order_at timestamptz,
+      last_order_at timestamptz
     )
 ```
-Lista todos os perfis com `role = 'user'` para o admin. Inclui `price_list_id` e `price_list_name` (LEFT JOIN em `price_lists`).
+Lista todos os perfis com `role = 'user'` para o admin. Inclui dados de seller (resolvido via `assigned_seller_id` FK), próxima ação e agregados de pedidos via subquery lateral.
+`seller_id` é resolvido por `LEFT JOIN sellers ON sellers.id = profiles.assigned_seller_id` — join direto por FK, não por code.
+Acessível por: `authenticated` (admin verificado internamente).
+
+---
+
+### `admin_set_profile_seller`
+```
+admin_set_profile_seller(p_user_id uuid, p_seller_id uuid) → void
+```
+Atribui (ou desvincula com `NULL`) o owner comercial de um cliente. Grava em `profiles.assigned_seller_id` (FK, source of truth) e sincroniza `profiles.assigned_seller` (text, compat n8n). Valida que o seller existe e está ativo.
+Acessível por: `authenticated` (admin verificado internamente).
+
+---
+
+### `admin_set_profile_next_action`
+```
+admin_set_profile_next_action(p_user_id uuid, p_next_action text, p_next_action_at timestamptz) → void
+```
+Define ou limpa a próxima ação planejada para um cliente. Normaliza `p_next_action` via `NULLIF(TRIM(...), '')`. Aceita NULL em ambos os parâmetros para limpar.
+Acessível por: `authenticated` (admin verificado internamente).
+
+---
+
+### `admin_list_customer_notes`
+```
+admin_list_customer_notes(p_customer_id uuid)
+  → TABLE (id uuid, customer_id uuid, content text, created_by uuid, created_by_name text, created_at timestamptz, updated_at timestamptz)
+```
+Lista notas do cliente com nome do autor (LEFT JOIN profiles). Ordenado por `created_at DESC`.
+Acessível por: `authenticated` (admin verificado internamente).
+
+---
+
+### `admin_create_customer_note`
+```
+admin_create_customer_note(p_customer_id uuid, p_content text) → void
+```
+Insere nota interna. `created_by = auth.uid()`. Valida conteúdo não-vazio.
+Acessível por: `authenticated` (admin verificado internamente).
+
+---
+
+### `admin_update_customer_note`
+```
+admin_update_customer_note(p_note_id uuid, p_content text) → void
+```
+Atualiza conteúdo de uma nota. Valida conteúdo não-vazio. Erro se nota não encontrada.
+Acessível por: `authenticated` (admin verificado internamente).
+
+---
+
+### `admin_delete_customer_note`
+```
+admin_delete_customer_note(p_note_id uuid) → void
+```
+Remove uma nota pelo id. Erro se nota não encontrada.
 Acessível por: `authenticated` (admin verificado internamente).
 
 ---
