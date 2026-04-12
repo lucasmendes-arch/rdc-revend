@@ -1,5 +1,5 @@
 # current_status.md — Estado atual do projeto
-# Atualizado em: 2026-04-10
+# Atualizado em: 2026-04-12
 
 ## Status geral
 
@@ -129,17 +129,31 @@ Duplicidades das automações "Boas-vindas Novo Cliente" e "Fidelizacao Cliente 
 - Ordenação manual de produtos por categoria (drag-and-drop, `sort_order`)
 - Edição de dados cadastrais do cliente no painel de detalhes
 - Vinculação de tabela de preço ao parceiro (dropdown, fix do bug de estado stale)
-- Badge "Uso Profissional" nos cards de produtos profissionais
 - Aplicação de preço por categoria (bulk upsert em `price_list_items`)
+
+## Funcionalidades entregues — 2026-04-12
+
+### Catálogo — Refino Visual P3
+- Grid desktop: imagens com `aspect-square` + `object-contain` + `scale-[1.1]` — preenchimento uniforme mobile/desktop
+- PackageCards: card clicável abre modal de detalhes (botão "Ver + detalhes" removido)
+- PackageCards: miniaturas mobile `w-14 h-14` com overlap `-space-x-5`
+- PackageCards: textos aumentados proporcionalmente (nome 18px, desc 13px, contagem 14px, preço 22px, retorno 13px)
+- PackageCards: padding `p-4`, alinhamento lateral com `px-4` simples (sem margem negativa)
+- CategoryBubbles: gap `gap-4 → gap-2`, `scroll-pl-4` corrige snap ignorando padding
+- Títulos: "Seleção dos Mais Vendidos" alinhado ao estilo h2 dos carrosséis
+- Badges de produto removidas de todos os cards (grid + carousel)
+- Commit: `19b8d41` → merged em main `d8bfb77`, deploy Vercel automático
 
 ## Pendências conhecidas
 
 - Editor de mensagens das automações CRM
 - Painel da fila crm_dispatch_queue no admin
-- `partner_price` acessível a `authenticated` não-parceiros se solicitado explicitamente (proteção apenas via lógica frontend — não há GRANT column-level para authenticated)
+- `partner_price` acessível a `authenticated` não-parceiros se solicitado explicitamente (proteção apenas via lógica frontend)
+- **WhatsApp button bug**: `isModalOpen` lido pontualmente no render — não reativo. Botão fica oculto após fechar ProfileCompletionModal até refresh.
 
 ## Próximos candidatos
 
+- Fix WhatsApp button: estado reativo para `isModalOpen` via context ou event
 - Relatório de vendas por segmento (network_partner vs wholesale_buyer)
 - Histórico de pedidos no portal do parceiro
 - Notificações WhatsApp para parceiros
