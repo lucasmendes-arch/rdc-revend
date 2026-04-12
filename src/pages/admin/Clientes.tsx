@@ -5,8 +5,8 @@ import { toast } from 'sonner'
 import {
   Loader, Eye, MousePointerClick, ShoppingCart, CreditCard,
   CheckCircle, XCircle, X, User, Phone, Mail, Tag, Edit2, Check,
-  Building2, FileText, Package, Clock, Calendar, Users, DollarSign, Sparkles, AlertTriangle, Trash2, TrendingUp, UserX,
-  KeyRound, Copy, Lock, Unlock, MessageCircle, RefreshCw
+  Building2, FileText, Package, Clock, Calendar, Users, DollarSign, Sparkles, AlertTriangle, Trash2, TrendingUp,
+  KeyRound, Copy, Lock, Unlock, MessageCircle, RefreshCw, LayoutList, Columns3, ChevronRight,
 } from 'lucide-react'
 import { CustomerTimeline } from '@/components/admin/CustomerTimeline'
 import { NextActionEditor } from '@/components/admin/NextActionEditor'
@@ -15,8 +15,8 @@ import AdminLayout from '@/components/admin/AdminLayout'
 import { AdminHeader } from '@/components/admin/ui/AdminHeader'
 import { AdminSummaryCard } from '@/components/admin/ui/AdminSummaryCard'
 import { AdminSelect } from '@/components/admin/ui/AdminSelect'
-import { OPERATIONAL_FILTERS } from '@/lib/crmFilters'
-import type { CrmFilterSession } from '@/lib/crmFilters'
+import { OPERATIONAL_FILTERS, QUEUE_VIEWS, applyQueueView, getQueuePriority, sortWorkQueue } from '@/lib/crmFilters'
+import type { CrmFilterSession, QueuePriority } from '@/lib/crmFilters'
 
 interface OrderItem {
   id: string
@@ -187,6 +187,295 @@ function getClientName(session: ClientSession): string {
 }
 
 import { getTagColorClasses } from '@/utils/crm'
+
+// --------------------------------------------------------------------------
+// Fila Comercial — componentes de card e formulário inline
+// --------------------------------------------------------------------------
+
+const QUEUE_PRIORITY_CONFIG: Record<QueuePriority, {
+  label: string
+  badgeClasses: string
+  borderClasses: string
+  barClasses: string
+}> = {
+  vencido: {
+    label: 'Vencido',
+    badgeClasses: 'bg-red-100 text-red-700 ring-red-200',
+    borderClasses: 'border-red-200 hover:border-red-300',
+    barClasses: 'bg-red-400',
+  },
+  hoje: {
+    label: 'Hoje',
+    badgeClasses: 'bg-amber-100 text-amber-700 ring-amber-200',
+    borderClasses: 'border-amber-200 hover:border-amber-300',
+    barClasses: 'bg-amber-400',
+  },
+  sem_acao: {
+    label: 'Sem ação',
+    badgeClasses: 'bg-zinc-100 text-zinc-500 ring-zinc-200',
+    borderClasses: 'border-zinc-200 hover:border-zinc-300',
+    barClasses: 'bg-zinc-300',
+  },
+  futuro: {
+    label: '',
+    badgeClasses: '',
+    borderClasses: 'border-zinc-200 hover:border-zinc-300',
+    barClasses: 'bg-transparent',
+  },
+}
+
+interface InlineNextActionFormProps {
+  userId: string
+  nextAction: string | null
+  nextActionAt: string | null
+  onClose: () => void
+}
+
+function InlineNextActionForm({ userId, nextAction, nextActionAt, onClose }: InlineNextActionFormProps) {
+  const queryClient = useQueryClient()
+  const [actionText, setActionText] = useState(nextAction ?? '')
+  const [actionDate, setActionDate] = useState(() => {
+    if (!nextActionAt) return ''
+    const d = new Date(nextActionAt)
+    const pad = (n: number) => String(n).padStart(2, '0')
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+  })
+
+  const saveMutation = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.rpc('admin_set_profile_next_action', {
+        p_user_id: userId,
+        p_next_action: actionText.trim() || null,
+        p_next_action_at: actionDate ? new Date(actionDate).toISOString() : null,
+      })
+      if (error) throw error
+    },
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: ['client-sessions'] })
+      const prev = queryClient.getQueryData(['client-sessions'])
+      queryClient.setQueryData(['client-sessions'], (old: any) => {
+        if (!old) return old
+        return old.map((s: any) =>
+          s.user_id === userId
+            ? {
+                ...s,
+                profile: {
+                  ...s.profile,
+                  next_action: actionText.trim() || null,
+                  next_action_at: actionDate ? new Date(actionDate).toISOString() : null,
+                },
+              }
+            : s,
+        )
+      })
+      return { prev }
+    },
+    onSuccess: () => {
+      toast.success('Próxima ação atualizada')
+      onClose()
+      queryClient.invalidateQueries({ queryKey: ['client-sessions'] })
+    },
+    onError: (err: any, _v, context) => {
+      if (context?.prev) queryClient.setQueryData(['client-sessions'], context.prev)
+      toast.error('Erro ao salvar: ' + (err?.message || 'erro desconhecido'))
+    },
+  })
+
+  const clearMutation = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.rpc('admin_set_profile_next_action', {
+        p_user_id: userId,
+        p_next_action: null,
+        p_next_action_at: null,
+      })
+      if (error) throw error
+    },
+    onSuccess: () => {
+      toast.success('Próxima ação removida')
+      onClose()
+      queryClient.invalidateQueries({ queryKey: ['client-sessions'] })
+    },
+    onError: (err: any) => toast.error('Erro: ' + (err?.message || 'erro desconhecido')),
+  })
+
+  const isLoading = saveMutation.isPending || clearMutation.isPending
+
+  return (
+    <div className="mt-2 p-3 bg-zinc-50 rounded-lg border border-zinc-200 space-y-2">
+      <input
+        type="text"
+        value={actionText}
+        onChange={e => setActionText(e.target.value)}
+        placeholder="Ex: Ligar, Enviar proposta..."
+        className="w-full px-2.5 py-1.5 text-sm rounded-lg border border-zinc-200 bg-white focus:outline-none focus:ring-2 focus:ring-zinc-400"
+        autoFocus
+      />
+      <input
+        type="datetime-local"
+        value={actionDate}
+        onChange={e => setActionDate(e.target.value)}
+        className="w-full px-2.5 py-1.5 text-sm rounded-lg border border-zinc-200 bg-white focus:outline-none focus:ring-2 focus:ring-zinc-400"
+      />
+      <div className="flex gap-2">
+        <button
+          onClick={() => saveMutation.mutate()}
+          disabled={isLoading || !actionText.trim()}
+          className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs font-bold bg-zinc-900 text-white rounded-lg hover:bg-zinc-700 disabled:opacity-50 transition-colors"
+        >
+          {saveMutation.isPending ? <Loader className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
+          Salvar
+        </button>
+        {nextAction && (
+          <button
+            onClick={() => clearMutation.mutate()}
+            disabled={isLoading}
+            className="px-2 py-1.5 text-xs font-medium text-red-600 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 disabled:opacity-50 transition-colors"
+          >
+            Remover
+          </button>
+        )}
+        <button
+          onClick={onClose}
+          className="px-2 py-1.5 text-xs text-zinc-400 hover:text-zinc-600 border border-zinc-200 rounded-lg hover:bg-zinc-100 transition-colors"
+        >
+          Cancelar
+        </button>
+      </div>
+    </div>
+  )
+}
+
+interface WorkQueueCardProps {
+  session: ClientSession
+  priority: QueuePriority
+  onOpen: () => void
+}
+
+function WorkQueueCard({ session, priority, onOpen }: WorkQueueCardProps) {
+  const [inlineEditing, setInlineEditing] = useState(false)
+  const profile = session.profile
+  if (!profile) return null
+
+  const name = getClientName(session)
+  const pConf = QUEUE_PRIORITY_CONFIG[priority]
+
+  const nextActionDate = profile.next_action_at
+    ? new Date(profile.next_action_at).toLocaleString('pt-BR', {
+        day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
+      })
+    : null
+
+  const lastOrderDate = profile.last_order_at
+    ? new Date(profile.last_order_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })
+    : null
+
+  const totalSpentFormatted = profile.total_spent > 0
+    ? `R$ ${Number(profile.total_spent).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
+    : null
+
+  return (
+    <div className={`bg-white rounded-xl border ${pConf.borderClasses} flex overflow-hidden transition-all`}>
+      {/* Priority bar */}
+      <div className={`w-1 flex-shrink-0 ${pConf.barClasses}`} />
+
+      {/* Card content */}
+      <div className="flex-1 min-w-0 p-3.5">
+        {/* Row 1: name + priority badge + actions */}
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-center gap-2 min-w-0 flex-1">
+            <h4 className="text-[13px] font-bold text-zinc-900 truncate leading-snug">{name}</h4>
+            {priority !== 'futuro' && (
+              <span className={`flex-shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded-md ring-1 ring-inset ${pConf.badgeClasses}`}>
+                {pConf.label}
+              </span>
+            )}
+          </div>
+          <div className="flex-shrink-0 flex items-center gap-1">
+            <button
+              onClick={() => setInlineEditing(v => !v)}
+              title="Editar próxima ação"
+              className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-700 hover:bg-zinc-100 transition-colors"
+            >
+              <Edit2 className="w-3.5 h-3.5" />
+            </button>
+            <button
+              onClick={onOpen}
+              className="flex items-center gap-0.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-zinc-900 text-white hover:bg-zinc-700 transition-colors"
+            >
+              Abrir <ChevronRight className="w-3 h-3" />
+            </button>
+          </div>
+        </div>
+
+        {/* Row 2: owner + segment */}
+        {(profile.seller_name || profile.customer_segment) && (
+          <div className="flex items-center gap-2 mt-1">
+            {profile.seller_name && (
+              <span className="text-[11px] text-zinc-400">
+                <span className="text-zinc-400">Owner:</span>{' '}
+                <span className="text-zinc-600 font-medium">{profile.seller_name}</span>
+              </span>
+            )}
+            {profile.customer_segment && (
+              <span className={`inline-flex items-center text-[10px] font-bold px-1 py-0.5 rounded ring-1 ring-inset ${segmentBadgeColor(profile.customer_segment).replace('border-', 'ring-')}`}>
+                {segmentLabel(profile.customer_segment)}
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* Row 3: próxima ação */}
+        {profile.next_action && !inlineEditing && (
+          <div className="mt-2 flex items-start gap-1.5">
+            <Clock className="w-3.5 h-3.5 text-zinc-400 flex-shrink-0 mt-px" />
+            <div className="min-w-0">
+              <p className="text-xs text-zinc-700 line-clamp-1">{profile.next_action}</p>
+              {nextActionDate && (
+                <p className={`text-[10px] font-medium mt-0.5 ${
+                  priority === 'vencido' ? 'text-red-500' :
+                  priority === 'hoje' ? 'text-amber-600' :
+                  'text-zinc-400'
+                }`}>
+                  {priority === 'vencido' ? 'Venceu ' : 'Agendado '}{nextActionDate}
+                </p>
+              )}
+            </div>
+          </div>
+        )}
+        {!profile.next_action && !inlineEditing && (
+          <p className="mt-2 text-[11px] text-zinc-400 italic">Sem próxima ação definida</p>
+        )}
+
+        {/* Inline next action editor */}
+        {inlineEditing && (
+          <InlineNextActionForm
+            userId={session.user_id!}
+            nextAction={profile.next_action}
+            nextActionAt={profile.next_action_at}
+            onClose={() => setInlineEditing(false)}
+          />
+        )}
+
+        {/* Row 4: order stats */}
+        {!inlineEditing && (
+          <div className="mt-2 flex items-center gap-3 text-[11px] text-zinc-400 border-t border-zinc-100 pt-2">
+            {lastOrderDate ? (
+              <span>Último pedido: <span className="text-zinc-600 font-medium">{lastOrderDate}</span></span>
+            ) : (
+              <span className="italic">Sem pedidos</span>
+            )}
+            {profile.total_orders > 0 && (
+              <span>{profile.total_orders} {profile.total_orders === 1 ? 'pedido' : 'pedidos'}</span>
+            )}
+            {totalSpentFormatted && (
+              <span className="font-medium text-zinc-500">{totalSpentFormatted}</span>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
 
 // --- Detail Panel ---
 const SEGMENT_OPTIONS = [
@@ -1071,6 +1360,20 @@ export default function AdminClientes() {
   const [selectedOperationalFilter, setSelectedOperationalFilter] = useState<string>('')
   const [clientToDelete, setClientToDelete] = useState<ClientSession | null>(null)
 
+  // ── Fila Comercial ─────────────────────────────────────────────────────────
+  const [viewMode, setViewMode] = useState<'funnel' | 'queue'>('funnel')
+  const [activeQueueView, setActiveQueueView] = useState<string>('all')
+  // "Minhas contas": persiste o seller_id do usuário atual via localStorage
+  const [mySellerId, setMySellerId] = useState<string>(() =>
+    localStorage.getItem('rdc_my_seller_id') ?? '',
+  )
+
+  function persistMySellerId(id: string) {
+    setMySellerId(id)
+    if (id) localStorage.setItem('rdc_my_seller_id', id)
+    else localStorage.removeItem('rdc_my_seller_id')
+  }
+
   const deleteClientMutation = useMutation({
     mutationFn: async (clientId: string) => {
       const { error } = await supabase.rpc('admin_delete_test_client', { p_client_id: clientId })
@@ -1087,6 +1390,17 @@ export default function AdminClientes() {
       console.error("DEBUG DELETE CLIENT ERROR:", err)
       toast.error(`Falha: ${err.message || 'Verifique se ele possui pedidos.'}`)
     }
+  })
+
+  // Sellers para o selector "Identificar como" na fila comercial
+  const { data: sellers = [] } = useQuery({
+    queryKey: ['active-sellers'],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('get_active_sellers_for_dropdown')
+      if (error) throw error
+      return (data ?? []) as { id: string; name: string; code: string }[]
+    },
+    staleTime: 5 * 60 * 1000,
   })
 
   const { data: sessions = [], isLoading } = useQuery({
@@ -1214,6 +1528,25 @@ export default function AdminClientes() {
     return result
   }, [sessions, selectedTagFilter, selectedSegmentFilter, selectedOperationalFilter])
 
+  // ── Fila comercial: base de sessões com profile + ordenação por prioridade ──
+  const queueSessions = useMemo(() => {
+    // Somente clientes com perfil e user_id (exclui visitantes anônimos)
+    const base = sessions.filter(s => s.user_id && s.profile)
+    const viewed = applyQueueView(base as unknown as CrmFilterSession[], activeQueueView, mySellerId)
+    return sortWorkQueue(viewed) as unknown as ClientSession[]
+  }, [sessions, activeQueueView, mySellerId])
+
+  // Contagem por view para os pills
+  const queueCounts = useMemo(() => {
+    const base = sessions.filter(s => s.user_id && s.profile)
+    return Object.fromEntries(
+      QUEUE_VIEWS.map(v => [
+        v.key,
+        applyQueueView(base as unknown as CrmFilterSession[], v.key, mySellerId).length,
+      ]),
+    )
+  }, [sessions, mySellerId])
+
   const grouped = Object.fromEntries(
     funnelStages.map(s => [s.key, filteredSessions.filter(sess => sess.status === s.key)])
   )
@@ -1244,7 +1577,11 @@ export default function AdminClientes() {
       <div className="bg-white border-b border-border sticky top-0 z-30 shadow-sm flex flex-col w-full text-left">
         <AdminHeader
           title="Clientes"
-          subtitle={`${selectedSegmentFilter ? `${segmentLabel(selectedSegmentFilter)} · ` : ''}Funil de vendas em tempo real.${totalSessions > 0 ? ` ${conversionRate}% de conversão.` : ''}`}
+          subtitle={
+            viewMode === 'queue'
+              ? `Fila comercial · ${queueSessions.length} cliente${queueSessions.length !== 1 ? 's' : ''}`
+              : `${selectedSegmentFilter ? `${segmentLabel(selectedSegmentFilter)} · ` : ''}Funil de vendas em tempo real.${totalSessions > 0 ? ` ${conversionRate}% de conversão.` : ''}`
+          }
           badge={
             !isLoading && totalSessions > 0 ? (
               <span className="px-2.5 py-1 rounded-full bg-zinc-100 text-zinc-600 text-xs font-semibold border border-zinc-200 shadow-sm">
@@ -1254,41 +1591,126 @@ export default function AdminClientes() {
           }
           actionNode={
             <div className="flex flex-wrap items-center gap-2">
-              <AdminSelect
-                options={[
-                  { value: 'wholesale_buyer', label: 'Comprador Atacado' },
-                  { value: 'network_partner', label: 'Parceiro da Rede' },
-                ]}
-                value={selectedSegmentFilter}
-                onChange={setSelectedSegmentFilter}
-                placeholder="Tipo"
-                icon={Users}
-                allLabel="Todos os tipos"
-              />
-              {availableTags.length > 0 && (
-                <AdminSelect
-                  options={availableTags.map(t => ({ value: t.id, label: t.name }))}
-                  value={selectedTagFilter}
-                  onChange={setSelectedTagFilter}
-                  placeholder="Filtrar tag"
-                  icon={Tag}
-                  allLabel="Todas as tags"
-                />
+              {/* Mode toggle */}
+              <div className="flex items-center gap-0.5 bg-zinc-100 rounded-lg p-0.5">
+                <button
+                  onClick={() => setViewMode('funnel')}
+                  className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-semibold transition-all ${
+                    viewMode === 'funnel'
+                      ? 'bg-white text-zinc-800 shadow-sm'
+                      : 'text-zinc-500 hover:text-zinc-700'
+                  }`}
+                >
+                  <Columns3 className="w-3.5 h-3.5" />
+                  Funil
+                </button>
+                <button
+                  onClick={() => setViewMode('queue')}
+                  className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-semibold transition-all ${
+                    viewMode === 'queue'
+                      ? 'bg-white text-zinc-800 shadow-sm'
+                      : 'text-zinc-500 hover:text-zinc-700'
+                  }`}
+                >
+                  <LayoutList className="w-3.5 h-3.5" />
+                  Fila
+                </button>
+              </div>
+
+              {/* Funnel filters */}
+              {viewMode === 'funnel' && (
+                <>
+                  <AdminSelect
+                    options={[
+                      { value: 'wholesale_buyer', label: 'Comprador Atacado' },
+                      { value: 'network_partner', label: 'Parceiro da Rede' },
+                    ]}
+                    value={selectedSegmentFilter}
+                    onChange={setSelectedSegmentFilter}
+                    placeholder="Tipo"
+                    icon={Users}
+                    allLabel="Todos os tipos"
+                  />
+                  {availableTags.length > 0 && (
+                    <AdminSelect
+                      options={availableTags.map(t => ({ value: t.id, label: t.name }))}
+                      value={selectedTagFilter}
+                      onChange={setSelectedTagFilter}
+                      placeholder="Filtrar tag"
+                      icon={Tag}
+                      allLabel="Todas as tags"
+                    />
+                  )}
+                  <AdminSelect
+                    options={OPERATIONAL_FILTERS.map(f => ({ value: f.key, label: f.label }))}
+                    value={selectedOperationalFilter}
+                    onChange={setSelectedOperationalFilter}
+                    placeholder="Situação"
+                    icon={AlertTriangle}
+                    allLabel="Todas as situações"
+                  />
+                </>
               )}
-              <AdminSelect
-                options={OPERATIONAL_FILTERS.map(f => ({ value: f.key, label: f.label }))}
-                value={selectedOperationalFilter}
-                onChange={setSelectedOperationalFilter}
-                placeholder="Situação"
-                icon={AlertTriangle}
-                allLabel="Todas as situações"
-              />
+
+              {/* Queue: "Identificar como" seller selector */}
+              {viewMode === 'queue' && sellers.length > 0 && (
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[11px] text-zinc-400 font-medium whitespace-nowrap">Sou:</span>
+                  <select
+                    value={mySellerId}
+                    onChange={e => persistMySellerId(e.target.value)}
+                    className="text-xs border border-zinc-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-zinc-400 text-zinc-700 font-medium"
+                  >
+                    <option value="">Não definido</option>
+                    {sellers.map(s => (
+                      <option key={s.id} value={s.id}>{s.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </div>
           }
         />
 
+        {/* ── QUEUE VIEWS (quick tabs) ── */}
+        {viewMode === 'queue' && !isLoading && (
+          <div className="w-full border-t border-zinc-100 bg-zinc-50/50 px-4 sm:px-6 lg:px-8 overflow-x-auto flex flex-nowrap gap-1.5 items-center py-2" style={{ scrollbarWidth: 'thin' }}>
+            {QUEUE_VIEWS.map(view => {
+              const count = queueCounts[view.key] ?? 0
+              const isActive = activeQueueView === view.key
+              const isMyAccounts = view.key === 'my_accounts'
+              const noSeller = isMyAccounts && !mySellerId
+
+              return (
+                <button
+                  key={view.key}
+                  onClick={() => setActiveQueueView(view.key)}
+                  disabled={noSeller}
+                  title={noSeller ? 'Defina "Sou:" no header para usar esta view' : undefined}
+                  className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap ${
+                    isActive
+                      ? 'bg-zinc-900 text-white shadow-sm'
+                      : noSeller
+                      ? 'bg-zinc-100 text-zinc-300 cursor-not-allowed'
+                      : 'bg-white text-zinc-600 border border-zinc-200 hover:border-zinc-300 hover:bg-zinc-50'
+                  }`}
+                >
+                  {view.label}
+                  {count > 0 && (
+                    <span className={`inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold ${
+                      isActive ? 'bg-white/20 text-white' : 'bg-zinc-100 text-zinc-500'
+                    }`}>
+                      {count}
+                    </span>
+                  )}
+                </button>
+              )
+            })}
+          </div>
+        )}
+
         {/* ── SUMMARY CARDS ── */}
-        {!isLoading && sessions.length > 0 && (
+        {!isLoading && sessions.length > 0 && viewMode === 'funnel' && (
           <div className="w-full border-t border-zinc-100 bg-zinc-50/50 py-3 px-4 sm:px-6 lg:px-8 overflow-x-auto flex flex-nowrap gap-3 items-center" style={{ scrollbarWidth: 'thin' }}>
             <AdminSummaryCard
               icon={Users}
@@ -1341,150 +1763,208 @@ export default function AdminClientes() {
       </div>
 
       {/* ── FUNNEL BOARD ── */}
-      <div className="w-full flex-1 min-w-0 relative border-t border-zinc-100 shadow-inner bg-zinc-50/40 min-h-[calc(100vh-210px)]">
-        <style dangerouslySetInnerHTML={{__html: `
-          .funnel-scroll::-webkit-scrollbar { height: 16px; }
-          .funnel-scroll::-webkit-scrollbar-track { background: transparent; border-top: 1px solid #e2e8f0; border-bottom: 1px solid #e2e8f0; }
-          .funnel-scroll::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 8px; border: 3px solid #f8fafc; }
-          .funnel-scroll::-webkit-scrollbar-thumb:hover { background-color: #94a3b8; }
-        `}} />
-        <div className="absolute inset-0 overflow-x-auto overflow-y-hidden funnel-scroll px-3 sm:px-6 lg:px-8 pt-3 sm:pt-5 pb-4 sm:pb-6">
-          {isLoading ? (
-            <div className="flex flex-col items-center justify-center py-24 w-full">
-              <Loader className="w-8 h-8 animate-spin text-zinc-400 mb-4" />
-              <p className="text-sm font-medium text-zinc-500">Sincronizando clientes...</p>
-            </div>
-          ) : sessions.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-32 bg-white rounded-2xl border border-zinc-200 border-dashed max-w-4xl mx-auto shadow-sm w-full">
-              <Users className="w-12 h-12 text-zinc-300 mb-4" />
-              <h3 className="text-lg font-bold text-zinc-700">Nenhum cliente ainda</h3>
-              <p className="text-zinc-500 text-sm mt-1 mb-6 text-center max-w-xs">Os clientes aparecerão aqui quando visitantes acessarem o catálogo.</p>
-            </div>
-          ) : (
-            <div className="flex gap-4 min-w-max h-full items-start">
-              {funnelStages.map((stage) => {
-                const StageIcon = stage.icon
-                const items = grouped[stage.key] || []
-                const colors = stageColorConfig[stage.key]
+      {viewMode === 'funnel' && (
+        <div className="w-full flex-1 min-w-0 relative border-t border-zinc-100 shadow-inner bg-zinc-50/40 min-h-[calc(100vh-210px)]">
+          <style dangerouslySetInnerHTML={{__html: `
+            .funnel-scroll::-webkit-scrollbar { height: 16px; }
+            .funnel-scroll::-webkit-scrollbar-track { background: transparent; border-top: 1px solid #e2e8f0; border-bottom: 1px solid #e2e8f0; }
+            .funnel-scroll::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 8px; border: 3px solid #f8fafc; }
+            .funnel-scroll::-webkit-scrollbar-thumb:hover { background-color: #94a3b8; }
+          `}} />
+          <div className="absolute inset-0 overflow-x-auto overflow-y-hidden funnel-scroll px-3 sm:px-6 lg:px-8 pt-3 sm:pt-5 pb-4 sm:pb-6">
+            {isLoading ? (
+              <div className="flex flex-col items-center justify-center py-24 w-full">
+                <Loader className="w-8 h-8 animate-spin text-zinc-400 mb-4" />
+                <p className="text-sm font-medium text-zinc-500">Sincronizando clientes...</p>
+              </div>
+            ) : sessions.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-32 bg-white rounded-2xl border border-zinc-200 border-dashed max-w-4xl mx-auto shadow-sm w-full">
+                <Users className="w-12 h-12 text-zinc-300 mb-4" />
+                <h3 className="text-lg font-bold text-zinc-700">Nenhum cliente ainda</h3>
+                <p className="text-zinc-500 text-sm mt-1 mb-6 text-center max-w-xs">Os clientes aparecerão aqui quando visitantes acessarem o catálogo.</p>
+              </div>
+            ) : (
+              <div className="flex gap-4 min-w-max h-full items-start">
+                {funnelStages.map((stage) => {
+                  const StageIcon = stage.icon
+                  const items = grouped[stage.key] || []
+                  const colors = stageColorConfig[stage.key]
 
-                return (
-                  <div key={stage.key} className="flex flex-col w-[260px] sm:w-[300px] lg:w-[320px] bg-zinc-100/60 rounded-xl border border-zinc-200/80 shrink-0 self-stretch max-h-[75vh] flex-nowrap shadow-sm">
-                    {/* Column Header */}
-                    <div className="p-3 border-b border-zinc-200/60 sticky top-0 bg-white/60 backdrop-blur-md rounded-t-xl z-20 flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <div className={`w-2 h-2 rounded-full ring-2 ${stage.indicatorColor} ${colors.ring}`} />
-                        <h3 className="font-bold text-[13px] text-zinc-800 tracking-tight">{stage.label}</h3>
-                      </div>
-                      <span className="text-[10px] font-bold text-zinc-500 bg-white border border-zinc-200 shadow-sm px-2 py-0.5 rounded-full">
-                        {items.length}
-                      </span>
-                    </div>
-
-                    {/* Column Body */}
-                    <div className="flex-1 overflow-y-auto p-2.5 space-y-2.5 scrollbar-thin">
-                      {items.length === 0 ? (
-                        <div className="h-16 flex items-center justify-center rounded-xl border border-zinc-200 border-dashed bg-white/50">
-                          <span className="text-[11px] font-semibold text-zinc-400">Nenhum cliente</span>
+                  return (
+                    <div key={stage.key} className="flex flex-col w-[260px] sm:w-[300px] lg:w-[320px] bg-zinc-100/60 rounded-xl border border-zinc-200/80 shrink-0 self-stretch max-h-[75vh] flex-nowrap shadow-sm">
+                      {/* Column Header */}
+                      <div className="p-3 border-b border-zinc-200/60 sticky top-0 bg-white/60 backdrop-blur-md rounded-t-xl z-20 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className={`w-2 h-2 rounded-full ring-2 ${stage.indicatorColor} ${colors.ring}`} />
+                          <h3 className="font-bold text-[13px] text-zinc-800 tracking-tight">{stage.label}</h3>
                         </div>
-                      ) : (
-                        items.slice(0, 30).map((session) => {
-                          const clientName = getClientName(session)
-                          const labels = getClientLabels(session)
-                          const followUpVencido = !!(
-                            session.profile?.next_action_at &&
-                            new Date(session.profile.next_action_at).getTime() < Date.now()
-                          )
-                          const temProximaAcao = !!(session.profile?.next_action)
+                        <span className="text-[10px] font-bold text-zinc-500 bg-white border border-zinc-200 shadow-sm px-2 py-0.5 rounded-full">
+                          {items.length}
+                        </span>
+                      </div>
 
-                          return (
-                            <button
-                              key={session.id}
-                              onClick={() => setSelectedSessionId(session.id)}
-                              className={`w-full text-left bg-white p-2.5 sm:p-3 md:p-3.5 rounded-xl shadow-[0_2px_8px_-4px_rgba(0,0,0,0.05)] hover:shadow-md border transition-all duration-200 cursor-pointer group flex flex-col gap-2 sm:gap-2.5 relative ${followUpVencido ? 'border-red-200 hover:border-red-300' : 'border-zinc-200/80 hover:border-zinc-300'}`}
-                            >
-                              {/* Identity */}
-                              <div className="flex items-start justify-between gap-3 w-full">
-                                <div className="flex flex-col gap-0.5 min-w-0">
-                                  <h4 className="text-[13px] md:text-[14px] font-bold text-zinc-800 group-hover:text-zinc-600 leading-snug line-clamp-2 transition-colors" title={clientName}>
-                                    {clientName}
-                                  </h4>
-                                  <span className="text-[11px] font-medium text-zinc-400 leading-none">
-                                    {new Date(session.updated_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
-                                  </span>
-                                </div>
-                                {followUpVencido && (
-                                  <span className="flex-shrink-0 flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-red-100 text-red-600 ring-1 ring-inset ring-red-200" title="Follow-up vencido">
-                                    <Clock className="w-3 h-3" />
-                                    Vencido
-                                  </span>
-                                )}
-                                {!followUpVencido && temProximaAcao && (
-                                  <span className="flex-shrink-0 flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-emerald-50 text-emerald-600 ring-1 ring-inset ring-emerald-200" title={session.profile?.next_action ?? ''}>
-                                    <Clock className="w-3 h-3" />
-                                  </span>
-                                )}
-                              </div>
+                      {/* Column Body */}
+                      <div className="flex-1 overflow-y-auto p-2.5 space-y-2.5 scrollbar-thin">
+                        {items.length === 0 ? (
+                          <div className="h-16 flex items-center justify-center rounded-xl border border-zinc-200 border-dashed bg-white/50">
+                            <span className="text-[11px] font-semibold text-zinc-400">Nenhum cliente</span>
+                          </div>
+                        ) : (
+                          items.slice(0, 30).map((session) => {
+                            const clientName = getClientName(session)
+                            const labels = getClientLabels(session)
+                            const followUpVencido = !!(
+                              session.profile?.next_action_at &&
+                              new Date(session.profile.next_action_at).getTime() < Date.now()
+                            )
+                            const temProximaAcao = !!(session.profile?.next_action)
 
-                              {/* Contact */}
-                              <div className="flex items-center gap-2 mt-0.5">
-                                {session.profile?.phone ? (
-                                  <span className="text-[11px] md:text-[12px] text-zinc-500 font-medium truncate">{session.profile.phone}</span>
-                                ) : session.user_id ? (
-                                  <span className="text-[11px] text-zinc-400 italic">Ficha incompleta</span>
-                                ) : (
-                                  <span className="text-[11px] text-zinc-400 italic">Visitante anônimo</span>
-                                )}
-                              </div>
-
-                              {/* Segment + Tags */}
-                              {(session.profile?.customer_segment || (session.tags && session.tags.length > 0)) && (
-                                <div className="flex flex-wrap items-center gap-1.5 mb-0.5">
-                                  {session.profile?.customer_segment && (
-                                    <span className={`inline-flex items-center text-[10px] font-bold px-1.5 py-0.5 rounded-md ring-1 ring-inset ${segmentBadgeColor(session.profile.customer_segment).replace('border-', 'ring-')}`}>
-                                      {segmentLabel(session.profile.customer_segment)}
+                            return (
+                              <button
+                                key={session.id}
+                                onClick={() => setSelectedSessionId(session.id)}
+                                className={`w-full text-left bg-white p-2.5 sm:p-3 md:p-3.5 rounded-xl shadow-[0_2px_8px_-4px_rgba(0,0,0,0.05)] hover:shadow-md border transition-all duration-200 cursor-pointer group flex flex-col gap-2 sm:gap-2.5 relative ${followUpVencido ? 'border-red-200 hover:border-red-300' : 'border-zinc-200/80 hover:border-zinc-300'}`}
+                              >
+                                {/* Identity */}
+                                <div className="flex items-start justify-between gap-3 w-full">
+                                  <div className="flex flex-col gap-0.5 min-w-0">
+                                    <h4 className="text-[13px] md:text-[14px] font-bold text-zinc-800 group-hover:text-zinc-600 leading-snug line-clamp-2 transition-colors" title={clientName}>
+                                      {clientName}
+                                    </h4>
+                                    <span className="text-[11px] font-medium text-zinc-400 leading-none">
+                                      {new Date(session.updated_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
+                                    </span>
+                                  </div>
+                                  {followUpVencido && (
+                                    <span className="flex-shrink-0 flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-red-100 text-red-600 ring-1 ring-inset ring-red-200" title="Follow-up vencido">
+                                      <Clock className="w-3 h-3" />
+                                      Vencido
                                     </span>
                                   )}
-                                  {session.tags?.slice(0, 3).map(t => (
-                                    <span key={t.id} className="inline-flex items-center text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-zinc-50 text-zinc-500 border border-zinc-200 max-w-full" title={t.name}>
-                                      <span className="truncate">{t.name}</span>
+                                  {!followUpVencido && temProximaAcao && (
+                                    <span className="flex-shrink-0 flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-emerald-50 text-emerald-600 ring-1 ring-inset ring-emerald-200" title={session.profile?.next_action ?? ''}>
+                                      <Clock className="w-3 h-3" />
                                     </span>
-                                  ))}
-                                  {session.tags.length > 3 && (
-                                    <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-md bg-zinc-50 text-zinc-500 border border-zinc-200">+{session.tags.length - 3}</span>
                                   )}
                                 </div>
-                              )}
 
-                              {/* Cart + Labels footer */}
-                              {(labels.length > 0 || session.cart_items_count > 0) && (
-                                <div className="pt-2.5 border-t border-zinc-100 flex items-center justify-between gap-2 mt-auto">
-                                  <div className="flex items-center flex-wrap gap-2 text-zinc-500 truncate">
-                                    {labels.map(l => (
-                                      <span key={l.text} className="inline-flex items-center gap-1 text-[10px] font-medium">
-                                        <l.icon className="w-3 h-3 text-zinc-400" />
-                                        <span className="truncate hidden sm:inline">{l.text}</span>
+                                {/* Contact */}
+                                <div className="flex items-center gap-2 mt-0.5">
+                                  {session.profile?.phone ? (
+                                    <span className="text-[11px] md:text-[12px] text-zinc-500 font-medium truncate">{session.profile.phone}</span>
+                                  ) : session.user_id ? (
+                                    <span className="text-[11px] text-zinc-400 italic">Ficha incompleta</span>
+                                  ) : (
+                                    <span className="text-[11px] text-zinc-400 italic">Visitante anônimo</span>
+                                  )}
+                                </div>
+
+                                {/* Segment + Tags */}
+                                {(session.profile?.customer_segment || (session.tags && session.tags.length > 0)) && (
+                                  <div className="flex flex-wrap items-center gap-1.5 mb-0.5">
+                                    {session.profile?.customer_segment && (
+                                      <span className={`inline-flex items-center text-[10px] font-bold px-1.5 py-0.5 rounded-md ring-1 ring-inset ${segmentBadgeColor(session.profile.customer_segment).replace('border-', 'ring-')}`}>
+                                        {segmentLabel(session.profile.customer_segment)}
+                                      </span>
+                                    )}
+                                    {session.tags?.slice(0, 3).map(t => (
+                                      <span key={t.id} className="inline-flex items-center text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-zinc-50 text-zinc-500 border border-zinc-200 max-w-full" title={t.name}>
+                                        <span className="truncate">{t.name}</span>
                                       </span>
                                     ))}
+                                    {session.tags.length > 3 && (
+                                      <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-md bg-zinc-50 text-zinc-500 border border-zinc-200">+{session.tags.length - 3}</span>
+                                    )}
                                   </div>
-                                  {session.cart_items_count > 0 && (
-                                    <span className="inline-flex items-center px-1.5 py-0.5 bg-zinc-50 text-zinc-500 border border-zinc-200 rounded-md text-[10px] font-bold">
-                                      {session.cart_items_count} {session.cart_items_count === 1 ? 'item' : 'itens'}
-                                    </span>
-                                  )}
-                                </div>
-                              )}
-                            </button>
-                          )
-                        })
-                      )}
+                                )}
+
+                                {/* Cart + Labels footer */}
+                                {(labels.length > 0 || session.cart_items_count > 0) && (
+                                  <div className="pt-2.5 border-t border-zinc-100 flex items-center justify-between gap-2 mt-auto">
+                                    <div className="flex items-center flex-wrap gap-2 text-zinc-500 truncate">
+                                      {labels.map(l => (
+                                        <span key={l.text} className="inline-flex items-center gap-1 text-[10px] font-medium">
+                                          <l.icon className="w-3 h-3 text-zinc-400" />
+                                          <span className="truncate hidden sm:inline">{l.text}</span>
+                                        </span>
+                                      ))}
+                                    </div>
+                                    {session.cart_items_count > 0 && (
+                                      <span className="inline-flex items-center px-1.5 py-0.5 bg-zinc-50 text-zinc-500 border border-zinc-200 rounded-md text-[10px] font-bold">
+                                        {session.cart_items_count} {session.cart_items_count === 1 ? 'item' : 'itens'}
+                                      </span>
+                                    )}
+                                  </div>
+                                )}
+                              </button>
+                            )
+                          })
+                        )}
+                      </div>
                     </div>
-                  </div>
-                )
-              })}
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── FILA COMERCIAL ── */}
+      {viewMode === 'queue' && (
+        <div className="w-full flex-1 min-h-[calc(100vh-210px)] bg-zinc-50/40 border-t border-zinc-100">
+          {isLoading ? (
+            <div className="flex flex-col items-center justify-center py-24">
+              <Loader className="w-8 h-8 animate-spin text-zinc-400 mb-4" />
+              <p className="text-sm font-medium text-zinc-500">Carregando fila...</p>
+            </div>
+          ) : queueSessions.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-32 max-w-md mx-auto text-center px-4">
+              <div className="w-14 h-14 bg-zinc-100 rounded-2xl flex items-center justify-center mb-4">
+                <LayoutList className="w-6 h-6 text-zinc-400" />
+              </div>
+              <h3 className="text-base font-bold text-zinc-700 mb-1">Fila vazia</h3>
+              <p className="text-sm text-zinc-400">
+                {activeQueueView === 'my_accounts' && !mySellerId
+                  ? 'Defina "Sou:" no header para ver suas contas.'
+                  : 'Nenhum cliente nesta view no momento.'}
+              </p>
+            </div>
+          ) : (
+            <div className="max-w-3xl mx-auto px-4 sm:px-6 py-5 space-y-2.5">
+              {/* Contagem + legenda de ordenação */}
+              <div className="flex items-center justify-between mb-1">
+                <p className="text-[11px] text-zinc-400 font-medium">
+                  {queueSessions.length} cliente{queueSessions.length !== 1 ? 's' : ''} · ordenado por prioridade
+                </p>
+                <div className="flex items-center gap-2">
+                  {(['vencido', 'hoje', 'sem_acao'] as const).map(p => {
+                    const conf = QUEUE_PRIORITY_CONFIG[p]
+                    const count = queueSessions.filter(
+                      s => getQueuePriority(s as unknown as CrmFilterSession) === p
+                    ).length
+                    if (count === 0) return null
+                    return (
+                      <span key={p} className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md ring-1 ring-inset ${conf.badgeClasses}`}>
+                        {conf.label} {count}
+                      </span>
+                    )
+                  })}
+                </div>
+              </div>
+
+              {queueSessions.map(session => (
+                <WorkQueueCard
+                  key={session.id}
+                  session={session}
+                  priority={getQueuePriority(session as unknown as CrmFilterSession)}
+                  onOpen={() => setSelectedSessionId(session.id)}
+                />
+              ))}
             </div>
           )}
         </div>
-      </div>
+      )}
 
       {selectedSession && (
         <ClientDetailPanel

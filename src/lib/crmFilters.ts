@@ -13,6 +13,7 @@ export interface CrmFilterSession {
     total_orders: number | bigint
     last_order_at: string | null
     first_order_at: string | null
+    seller_id: string | null
   } | null
 }
 
@@ -81,6 +82,19 @@ export function isFollowUpVencido(session: CrmFilterSession): boolean {
   return new Date(session.profile.next_action_at).getTime() < now()
 }
 
+/** Follow-up agendado para hoje (independente de já ter vencido no dia) */
+export function isFollowUpHoje(session: CrmFilterSession): boolean {
+  if (!session.user_id || !session.profile) return false
+  if (!session.profile.next_action_at) return false
+  const d = new Date(session.profile.next_action_at)
+  const today = new Date()
+  return (
+    d.getFullYear() === today.getFullYear() &&
+    d.getMonth() === today.getMonth() &&
+    d.getDate() === today.getDate()
+  )
+}
+
 // --------------------------------------------------------------------------
 // Catálogo de filtros para o dropdown do admin
 // --------------------------------------------------------------------------
@@ -122,4 +136,104 @@ export const OPERATIONAL_FILTERS: OperationalFilter[] = [
     label: 'Follow-up vencido',
     predicate: isFollowUpVencido,
   },
+  {
+    key: 'followup_hoje',
+    label: 'Follow-up hoje',
+    predicate: isFollowUpHoje,
+  },
 ]
+
+// --------------------------------------------------------------------------
+// Fila comercial — priorização e ordenação
+// --------------------------------------------------------------------------
+
+/**
+ * Prioridade de exibição na fila comercial.
+ * Ordem de urgência: vencido > hoje > sem_acao > futuro
+ */
+export type QueuePriority = 'vencido' | 'hoje' | 'sem_acao' | 'futuro'
+
+const PRIORITY_ORDER: Record<QueuePriority, number> = {
+  vencido: 0,
+  hoje: 1,
+  sem_acao: 2,
+  futuro: 3,
+}
+
+export function getQueuePriority(session: CrmFilterSession): QueuePriority {
+  if (isFollowUpVencido(session)) return 'vencido'
+  if (isFollowUpHoje(session)) return 'hoje'
+  if (isSemProximaAcao(session)) return 'sem_acao'
+  return 'futuro'
+}
+
+/**
+ * Ordena sessões para a fila comercial.
+ * Critério primário: prioridade (vencido → hoje → sem_acao → futuro)
+ * Critério secundário: data mais crítica primeiro (mais antiga primeiro para vencidos,
+ * mais cedo primeiro para futuros, data de criação para sem_acao)
+ */
+export function sortWorkQueue<T extends CrmFilterSession>(sessions: T[]): T[] {
+  return [...sessions].sort((a, b) => {
+    const pa = PRIORITY_ORDER[getQueuePriority(a)]
+    const pb = PRIORITY_ORDER[getQueuePriority(b)]
+    if (pa !== pb) return pa - pb
+
+    // Dentro do mesmo nível: data mais crítica primeiro
+    const da = a.profile?.next_action_at
+      ? new Date(a.profile.next_action_at).getTime()
+      : null
+    const db = b.profile?.next_action_at
+      ? new Date(b.profile.next_action_at).getTime()
+      : null
+
+    if (da !== null && db !== null) return da - db
+    if (da !== null) return -1
+    if (db !== null) return 1
+    // sem data: mais antigo primeiro (mais tempo sem ação)
+    return new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+  })
+}
+
+// --------------------------------------------------------------------------
+// Views prontas da fila comercial
+// --------------------------------------------------------------------------
+
+export interface QueueView {
+  key: string
+  label: string
+  predicate?: (session: CrmFilterSession, mySellerId?: string) => boolean
+}
+
+export const QUEUE_VIEWS: QueueView[] = [
+  { key: 'all', label: 'Todos' },
+  { key: 'my_accounts', label: 'Minhas contas' },
+  { key: 'followup_vencido', label: 'Follow-ups vencidos' },
+  { key: 'followup_hoje', label: 'Hoje' },
+  { key: 'sem_proxima_acao', label: 'Sem próxima ação' },
+  { key: 'novo_sem_primeiro_pedido', label: 'Novos sem 1º pedido' },
+  { key: 'parceiro_inativo', label: 'Parceiros inativos' },
+]
+
+export function applyQueueView(
+  sessions: CrmFilterSession[],
+  viewKey: string,
+  mySellerId: string,
+): CrmFilterSession[] {
+  switch (viewKey) {
+    case 'my_accounts':
+      return sessions.filter(s => mySellerId && s.profile?.seller_id === mySellerId)
+    case 'followup_vencido':
+      return sessions.filter(isFollowUpVencido)
+    case 'followup_hoje':
+      return sessions.filter(isFollowUpHoje)
+    case 'sem_proxima_acao':
+      return sessions.filter(isSemProximaAcao)
+    case 'novo_sem_primeiro_pedido':
+      return sessions.filter(isNovoSemPrimeiroPedido)
+    case 'parceiro_inativo':
+      return sessions.filter(isParceiroInativo)
+    default:
+      return sessions
+  }
+}
