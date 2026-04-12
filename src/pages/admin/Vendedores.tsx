@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
-import { Loader, Plus, UserCheck, Pencil, Trash2, Star } from 'lucide-react'
+import { Loader, Plus, UserCheck, Pencil, Trash2, Star, Link2 } from 'lucide-react'
 import AdminLayout from '@/components/admin/AdminLayout'
 
 interface Seller {
@@ -15,6 +15,14 @@ interface Seller {
   is_default: boolean
   active: boolean
   created_at: string
+  user_id: string | null
+}
+
+interface SystemUser {
+  id: string
+  role: string
+  full_name: string | null
+  email: string
 }
 
 const EMPTY_FORM = {
@@ -26,6 +34,7 @@ const EMPTY_FORM = {
   monthly_goal: 0,
   is_default: false,
   active: true,
+  linked_user_id: '',  // UUID do usuário Supabase vinculado ('' = sem vínculo)
 }
 
 type SellerForm = typeof EMPTY_FORM
@@ -50,6 +59,17 @@ export default function AdminVendedores() {
     staleTime: 30 * 1000,
   })
 
+  // Usuários de sistema (admin/salao) para o vínculo CRM
+  const { data: systemUsers = [] } = useQuery({
+    queryKey: ['system-users'],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('get_system_users')
+      if (error) throw error
+      return (data || []) as SystemUser[]
+    },
+    staleTime: 5 * 60 * 1000,
+  })
+
   const saveMutation = useMutation({
     mutationFn: async ({ id, payload }: { id: string | null; payload: SellerForm }) => {
       const data = {
@@ -61,6 +81,7 @@ export default function AdminVendedores() {
         monthly_goal: payload.monthly_goal,
         is_default: payload.is_default,
         active: payload.active,
+        user_id: payload.linked_user_id || null,
       }
       if (id) {
         const { error } = await supabase.from('sellers').update(data).eq('id', id)
@@ -139,6 +160,7 @@ export default function AdminVendedores() {
       monthly_goal: seller.monthly_goal,
       is_default: seller.is_default,
       active: seller.active,
+      linked_user_id: seller.user_id ?? '',
     })
     setModalOpen(true)
   }
@@ -212,6 +234,7 @@ export default function AdminVendedores() {
                     <th className="px-4 py-3 text-center text-sm font-semibold text-foreground hidden sm:table-cell">Meta mensal</th>
                     <th className="px-4 py-3 text-center text-sm font-semibold text-foreground">Ativo</th>
                     <th className="px-4 py-3 text-center text-sm font-semibold text-foreground">Padrão</th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-foreground hidden lg:table-cell">Usuário CRM</th>
                     <th className="px-4 py-3 text-right text-sm font-semibold text-foreground">Ações</th>
                   </tr>
                 </thead>
@@ -270,6 +293,18 @@ export default function AdminVendedores() {
                           >
                             Tornar padrão
                           </button>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 hidden lg:table-cell">
+                        {seller.user_id ? (
+                          <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+                            <Link2 className="w-3 h-3" />
+                            {systemUsers.find(u => u.id === seller.user_id)?.full_name ||
+                             systemUsers.find(u => u.id === seller.user_id)?.email ||
+                             'Vinculado'}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-muted-foreground/40">—</span>
                         )}
                       </td>
                       <td className="px-4 py-3 text-right">
@@ -386,6 +421,30 @@ export default function AdminVendedores() {
                   className="w-full px-3 py-2 rounded-lg border border-border bg-white focus:outline-none focus:ring-2 focus:ring-gold"
                   placeholder="vendedor@email.com"
                 />
+              </div>
+
+              {/* Vínculo com usuário admin — permite resolução automática de "Minhas contas" no CRM */}
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1">
+                  Usuário CRM vinculado
+                  <span className="text-muted-foreground font-normal ml-1">(opcional)</span>
+                </label>
+                <select
+                  value={form.linked_user_id}
+                  onChange={e => setForm({ ...form, linked_user_id: e.target.value })}
+                  className="w-full px-3 py-2 rounded-lg border border-border bg-white focus:outline-none focus:ring-2 focus:ring-gold text-sm"
+                >
+                  <option value="">— Sem usuário vinculado —</option>
+                  {systemUsers.map(u => (
+                    <option key={u.id} value={u.id}>
+                      {u.full_name ? `${u.full_name} (${u.email})` : u.email}
+                      {u.role === 'admin' ? ' · admin' : ' · salao'}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  Permite que a view "Minhas contas" no CRM seja resolvida automaticamente para este usuário.
+                </p>
               </div>
 
               <div className="flex items-center justify-between pt-1">

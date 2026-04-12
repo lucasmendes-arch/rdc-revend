@@ -15,8 +15,8 @@ import AdminLayout from '@/components/admin/AdminLayout'
 import { AdminHeader } from '@/components/admin/ui/AdminHeader'
 import { AdminSummaryCard } from '@/components/admin/ui/AdminSummaryCard'
 import { AdminSelect } from '@/components/admin/ui/AdminSelect'
-import { OPERATIONAL_FILTERS, QUEUE_VIEWS, applyQueueView, getQueuePriority, sortWorkQueue } from '@/lib/crmFilters'
-import type { CrmFilterSession, QueuePriority } from '@/lib/crmFilters'
+import { OPERATIONAL_FILTERS, QUEUE_VIEWS, applyQueueView, applySegmentFilter, getQueuePriority, getViewsForSegment, sortWorkQueue } from '@/lib/crmFilters'
+import type { CrmFilterSession, QueuePriority, SegmentTab } from '@/lib/crmFilters'
 
 interface OrderItem {
   id: string
@@ -1363,15 +1363,27 @@ export default function AdminClientes() {
   // ── Fila Comercial ─────────────────────────────────────────────────────────
   const [viewMode, setViewMode] = useState<'funnel' | 'queue'>('funnel')
   const [activeQueueView, setActiveQueueView] = useState<string>('all')
-  // "Minhas contas": persiste o seller_id do usuário atual via localStorage
-  const [mySellerId, setMySellerId] = useState<string>(() =>
-    localStorage.getItem('rdc_my_seller_id') ?? '',
-  )
+  // Segmento ativo: foco principal é wholesale_buyer (atacado)
+  const [activeSegmentTab, setActiveSegmentTab] = useState<SegmentTab>('wholesale_buyer')
 
-  function persistMySellerId(id: string) {
-    setMySellerId(id)
-    if (id) localStorage.setItem('rdc_my_seller_id', id)
-    else localStorage.removeItem('rdc_my_seller_id')
+  // "Minhas contas" — resolvido automaticamente via RPC
+  const { data: mySellerId = null } = useQuery({
+    queryKey: ['my-seller-id'],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('admin_get_my_seller_id')
+      if (error) throw error
+      return (data as string | null) ?? null
+    },
+    staleTime: 5 * 60 * 1000,
+  })
+
+  // Ao trocar segmento: se a view ativa não existe no novo segmento, volta para 'all'
+  function handleSegmentChange(seg: SegmentTab) {
+    setActiveSegmentTab(seg)
+    const availableViews = getViewsForSegment(seg)
+    if (!availableViews.find(v => v.key === activeQueueView)) {
+      setActiveQueueView('all')
+    }
   }
 
   const deleteClientMutation = useMutation({
@@ -1528,24 +1540,35 @@ export default function AdminClientes() {
     return result
   }, [sessions, selectedTagFilter, selectedSegmentFilter, selectedOperationalFilter])
 
-  // ── Fila comercial: base de sessões com profile + ordenação por prioridade ──
+  // ── Fila comercial: base segmentada + view + ordenação por prioridade ──────
   const queueSessions = useMemo(() => {
-    // Somente clientes com perfil e user_id (exclui visitantes anônimos)
-    const base = sessions.filter(s => s.user_id && s.profile)
-    const viewed = applyQueueView(base as unknown as CrmFilterSession[], activeQueueView, mySellerId)
+    // 1. Apenas clientes com perfil (sem visitantes anônimos)
+    const withProfile = sessions.filter(s => s.user_id && s.profile)
+    // 2. Filtro de segmento (atacado / parceiros / todos)
+    const segmented = applySegmentFilter(withProfile as unknown as CrmFilterSession[], activeSegmentTab)
+    // 3. Filtro de view (minhas contas, vencidos, hoje, etc.)
+    const viewed = applyQueueView(segmented, activeQueueView, mySellerId ?? '')
+    // 4. Ordenação por prioridade
     return sortWorkQueue(viewed) as unknown as ClientSession[]
-  }, [sessions, activeQueueView, mySellerId])
+  }, [sessions, activeSegmentTab, activeQueueView, mySellerId])
 
-  // Contagem por view para os pills
+  // Contagem por view para os pills (respeitando o segmento ativo)
   const queueCounts = useMemo(() => {
-    const base = sessions.filter(s => s.user_id && s.profile)
+    const withProfile = sessions.filter(s => s.user_id && s.profile)
+    const segmented = applySegmentFilter(withProfile as unknown as CrmFilterSession[], activeSegmentTab)
     return Object.fromEntries(
       QUEUE_VIEWS.map(v => [
         v.key,
-        applyQueueView(base as unknown as CrmFilterSession[], v.key, mySellerId).length,
+        applyQueueView(segmented, v.key, mySellerId ?? '').length,
       ]),
     )
-  }, [sessions, mySellerId])
+  }, [sessions, activeSegmentTab, mySellerId])
+
+  // Views disponíveis para o segmento ativo
+  const availableQueueViews = useMemo(
+    () => getViewsForSegment(activeSegmentTab),
+    [activeSegmentTab],
+  )
 
   const grouped = Object.fromEntries(
     funnelStages.map(s => [s.key, filteredSessions.filter(sess => sess.status === s.key)])
@@ -1652,61 +1675,92 @@ export default function AdminClientes() {
                 </>
               )}
 
-              {/* Queue: "Identificar como" seller selector */}
-              {viewMode === 'queue' && sellers.length > 0 && (
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[11px] text-zinc-400 font-medium whitespace-nowrap">Sou:</span>
-                  <select
-                    value={mySellerId}
-                    onChange={e => persistMySellerId(e.target.value)}
-                    className="text-xs border border-zinc-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-zinc-400 text-zinc-700 font-medium"
-                  >
-                    <option value="">Não definido</option>
-                    {sellers.map(s => (
-                      <option key={s.id} value={s.id}>{s.name}</option>
-                    ))}
-                  </select>
-                </div>
+              {/* Queue: indicador do seller vinculado (auto-resolvido) */}
+              {viewMode === 'queue' && mySellerId && (
+                <span className="text-[11px] text-zinc-400 font-medium whitespace-nowrap">
+                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400 mr-1 align-middle" />
+                  {sellers.find(s => s.id === mySellerId)?.name ?? 'Vendedor vinculado'}
+                </span>
               )}
             </div>
           }
         />
 
-        {/* ── QUEUE VIEWS (quick tabs) ── */}
+        {/* ── QUEUE: tabs de segmento + views ── */}
         {viewMode === 'queue' && !isLoading && (
-          <div className="w-full border-t border-zinc-100 bg-zinc-50/50 px-4 sm:px-6 lg:px-8 overflow-x-auto flex flex-nowrap gap-1.5 items-center py-2" style={{ scrollbarWidth: 'thin' }}>
-            {QUEUE_VIEWS.map(view => {
-              const count = queueCounts[view.key] ?? 0
-              const isActive = activeQueueView === view.key
-              const isMyAccounts = view.key === 'my_accounts'
-              const noSeller = isMyAccounts && !mySellerId
-
-              return (
-                <button
-                  key={view.key}
-                  onClick={() => setActiveQueueView(view.key)}
-                  disabled={noSeller}
-                  title={noSeller ? 'Defina "Sou:" no header para usar esta view' : undefined}
-                  className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap ${
-                    isActive
-                      ? 'bg-zinc-900 text-white shadow-sm'
-                      : noSeller
-                      ? 'bg-zinc-100 text-zinc-300 cursor-not-allowed'
-                      : 'bg-white text-zinc-600 border border-zinc-200 hover:border-zinc-300 hover:bg-zinc-50'
-                  }`}
-                >
-                  {view.label}
-                  {count > 0 && (
-                    <span className={`inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold ${
-                      isActive ? 'bg-white/20 text-white' : 'bg-zinc-100 text-zinc-500'
-                    }`}>
-                      {count}
+          <>
+            {/* Row 1: Segmento (foco principal do comercial) */}
+            <div className="w-full border-t border-zinc-200 bg-white px-4 sm:px-6 lg:px-8 flex flex-nowrap gap-0 items-stretch">
+              {(
+                [
+                  { key: 'wholesale_buyer' as SegmentTab, label: 'Compradores Atacado', star: true },
+                  { key: 'network_partner' as SegmentTab, label: 'Parceiros da Rede', star: false },
+                  { key: 'all' as SegmentTab, label: 'Todos', star: false },
+                ] as const
+              ).map(seg => {
+                const isActive = activeSegmentTab === seg.key
+                const totalInSeg = (() => {
+                  const base = sessions.filter(s => s.user_id && s.profile)
+                  return applySegmentFilter(base as unknown as CrmFilterSession[], seg.key).length
+                })()
+                return (
+                  <button
+                    key={seg.key}
+                    onClick={() => handleSegmentChange(seg.key)}
+                    className={`flex items-center gap-1.5 px-4 py-2.5 text-xs font-semibold border-b-2 transition-all whitespace-nowrap ${
+                      isActive
+                        ? 'border-zinc-900 text-zinc-900'
+                        : 'border-transparent text-zinc-400 hover:text-zinc-600 hover:border-zinc-300'
+                    }`}
+                  >
+                    {seg.label}
+                    {seg.star && (
+                      <span className="text-[9px] font-bold px-1 py-0.5 rounded bg-zinc-900 text-white leading-none">
+                        PRINCIPAL
+                      </span>
+                    )}
+                    <span className={`text-[10px] font-bold ${isActive ? 'text-zinc-500' : 'text-zinc-300'}`}>
+                      {totalInSeg}
                     </span>
-                  )}
-                </button>
-              )
-            })}
-          </div>
+                  </button>
+                )
+              })}
+            </div>
+
+            {/* Row 2: Views prontas (filtradas por segmento) */}
+            <div className="w-full border-t border-zinc-100 bg-zinc-50/50 px-4 sm:px-6 lg:px-8 overflow-x-auto flex flex-nowrap gap-1.5 items-center py-2" style={{ scrollbarWidth: 'thin' }}>
+              {availableQueueViews.map(view => {
+                const count = queueCounts[view.key] ?? 0
+                const isActive = activeQueueView === view.key
+                const noSeller = view.key === 'my_accounts' && !mySellerId
+
+                return (
+                  <button
+                    key={view.key}
+                    onClick={() => !noSeller && setActiveQueueView(view.key)}
+                    disabled={noSeller}
+                    title={noSeller ? 'Nenhum vendedor vinculado ao seu usuário. Configure em Vendedores.' : undefined}
+                    className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap ${
+                      isActive
+                        ? 'bg-zinc-900 text-white shadow-sm'
+                        : noSeller
+                        ? 'bg-zinc-100 text-zinc-300 cursor-not-allowed'
+                        : 'bg-white text-zinc-600 border border-zinc-200 hover:border-zinc-300 hover:bg-zinc-50'
+                    }`}
+                  >
+                    {view.label}
+                    {count > 0 && (
+                      <span className={`inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold ${
+                        isActive ? 'bg-white/20 text-white' : 'bg-zinc-100 text-zinc-500'
+                      }`}>
+                        {count}
+                      </span>
+                    )}
+                  </button>
+                )
+              })}
+            </div>
+          </>
         )}
 
         {/* ── SUMMARY CARDS ── */}
@@ -1924,9 +1978,9 @@ export default function AdminClientes() {
                 <LayoutList className="w-6 h-6 text-zinc-400" />
               </div>
               <h3 className="text-base font-bold text-zinc-700 mb-1">Fila vazia</h3>
-              <p className="text-sm text-zinc-400">
+              <p className="text-sm text-zinc-400 max-w-xs">
                 {activeQueueView === 'my_accounts' && !mySellerId
-                  ? 'Defina "Sou:" no header para ver suas contas.'
+                  ? 'Seu usuário não está vinculado a nenhum vendedor. Um admin pode configurar isso em Vendedores.'
                   : 'Nenhum cliente nesta view no momento.'}
               </p>
             </div>

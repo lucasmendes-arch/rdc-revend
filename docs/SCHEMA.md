@@ -460,8 +460,10 @@ Vendedores vinculáveis a pedidos.
 | commission_pct | numeric(5,2) | NO | `0` | — |
 | monthly_goal | numeric(10,2) | NO | `0` | — |
 | created_at | timestamptz | NO | `now()` | — |
+| user_id | uuid | YES | NULL | auth.users.id |
 
 > RLS: admin-only para escrita. Leitura via RPC `get_active_sellers_for_dropdown` (admin + salao).
+> `user_id` (CRM P3): FK para `auth.users(id) ON DELETE SET NULL`. Nullable. UNIQUE WHERE NOT NULL — um usuário Supabase pode estar vinculado a no máximo um seller. Usado para resolução automática de "Minhas contas" no CRM via `admin_get_my_seller_id()`. Gerenciado na página admin/Vendedores.
 
 ---
 
@@ -749,6 +751,26 @@ Acessível por: `authenticated` (admin verificado internamente).
 admin_set_profile_next_action(p_user_id uuid, p_next_action text, p_next_action_at timestamptz) → void
 ```
 Define ou limpa a próxima ação planejada para um cliente. Normaliza `p_next_action` via `NULLIF(TRIM(...), '')`. Aceita NULL em ambos os parâmetros para limpar.
+Acessível por: `authenticated` (admin verificado internamente).
+
+---
+
+### `admin_get_my_seller_id`
+```
+admin_get_my_seller_id() → uuid
+```
+Retorna o `sellers.id` vinculado ao usuário autenticado via `sellers.user_id = auth.uid()`. Retorna `NULL` se o usuário não tiver seller vinculado ou se o seller estiver inativo.
+Acessível por: `authenticated`.
+Usado pela fila comercial para resolver "Minhas contas" automaticamente.
+
+---
+
+### `admin_set_seller_user_id`
+```
+admin_set_seller_user_id(p_seller_id uuid, p_user_id uuid) → void
+```
+Vincula (ou desvincula com `NULL`) um usuário Supabase a um seller. Valida que o chamador é admin.
+Constraint: `sellers.user_id` é UNIQUE WHERE NOT NULL — um usuário só pode estar vinculado a um seller.
 Acessível por: `authenticated` (admin verificado internamente).
 
 ---

@@ -196,24 +196,63 @@ export function sortWorkQueue<T extends CrmFilterSession>(sessions: T[]): T[] {
 }
 
 // --------------------------------------------------------------------------
+// Segmentação por tipo de cliente
+// --------------------------------------------------------------------------
+
+/**
+ * Aba de segmento da fila comercial.
+ * 'wholesale_buyer' é o foco principal da operação comercial.
+ * 'network_partner' é acessível mas secundário (relacionamento mais fixo).
+ */
+export type SegmentTab = 'wholesale_buyer' | 'network_partner' | 'all'
+
+/**
+ * Filtra sessões pelo segmento ativo.
+ * 'all' retorna tudo sem filtrar.
+ */
+export function applySegmentFilter(
+  sessions: CrmFilterSession[],
+  segment: SegmentTab,
+): CrmFilterSession[] {
+  if (segment === 'all') return sessions
+  return sessions.filter(s => s.profile?.customer_segment === segment)
+}
+
+// --------------------------------------------------------------------------
 // Views prontas da fila comercial
 // --------------------------------------------------------------------------
 
+/**
+ * View pronta da fila.
+ * `segments`: segmentos nos quais esta view faz sentido exibir.
+ *   - undefined = aparece em todos os segmentos
+ *   - lista explícita = aparece apenas nesses segmentos
+ */
 export interface QueueView {
   key: string
   label: string
-  predicate?: (session: CrmFilterSession, mySellerId?: string) => boolean
+  segments?: SegmentTab[]
 }
 
 export const QUEUE_VIEWS: QueueView[] = [
   { key: 'all', label: 'Todos' },
   { key: 'my_accounts', label: 'Minhas contas' },
-  { key: 'followup_vencido', label: 'Follow-ups vencidos' },
+  { key: 'followup_vencido', label: 'Vencidos' },
   { key: 'followup_hoje', label: 'Hoje' },
   { key: 'sem_proxima_acao', label: 'Sem próxima ação' },
-  { key: 'novo_sem_primeiro_pedido', label: 'Novos sem 1º pedido' },
-  { key: 'parceiro_inativo', label: 'Parceiros inativos' },
+  // "Novos sem 1º pedido" — relevante principalmente para atacado (conversão inicial)
+  { key: 'novo_sem_primeiro_pedido', label: 'Novos s/ pedido', segments: ['wholesale_buyer', 'all'] },
+  // "Parceiros inativos" — exclusivo do segmento de rede
+  { key: 'parceiro_inativo', label: 'Inativos', segments: ['network_partner', 'all'] },
 ]
+
+/**
+ * Filtra as views disponíveis para o segmento ativo.
+ * Se a view ativa não está disponível no novo segmento, retorna 'all'.
+ */
+export function getViewsForSegment(segment: SegmentTab): QueueView[] {
+  return QUEUE_VIEWS.filter(v => !v.segments || v.segments.includes(segment))
+}
 
 export function applyQueueView(
   sessions: CrmFilterSession[],
