@@ -622,14 +622,14 @@ const Catalogo = () => {
       </header>
 
       {/* Rotating Trust Banner Layer (Lower part of sticky header) */}
-      <div className="bg-white/95 backdrop-blur-md pt-2.5 pb-1 border-b border-border/10 shadow-sm mb-2 sm:-mb-6 relative z-[39]">
+      <div className="bg-white/95 backdrop-blur-md pt-2.5 pb-1 border-b border-border/10 shadow-sm sm:-mb-6 relative z-[39]">
         <RotatingTrustBanner />
       </div>
     </div>
 
       {/* Mobile sticky category chips — below header, above content */}
       {!debouncedSearch && !viewAll && categoriesToDisplay.length > 0 && (
-        <div className="sm:hidden sticky top-40 z-20 bg-surface-alt border-b border-border/30 shadow-sm">
+        <div className="sm:hidden sticky top-36 z-20 bg-surface-alt border-b border-border/30 shadow-sm py-2">
           <CategoryBubbles
             categories={categoriesToDisplay}
             activeCategories={filterCategories}
@@ -1020,12 +1020,12 @@ const Catalogo = () => {
                                     </button>
                                   </div>
                                 )}
-                                {/* Badges — secondary, below CTA */}
+                                {/* Badges */}
                                 <div className="mt-1.5">
                                   {product.is_professional ? (
-                                    <span className="text-[9px] text-muted-foreground/60 font-medium">Uso Profissional</span>
+                                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-medium border border-border/50 text-muted-foreground bg-surface-alt">Uso Profissional</span>
                                   ) : (
-                                    <span className="text-[9px] text-muted-foreground/60 font-medium">Vegano · Liberado</span>
+                                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-medium border border-border/50 text-muted-foreground bg-surface-alt">Vegano · Liberado</span>
                                   )}
                                 </div>
                               </div>
@@ -1214,62 +1214,64 @@ const Catalogo = () => {
               className="absolute inset-0 bg-foreground/40 backdrop-blur-sm"
               onClick={() => setSelectedProduct(null)}
             />
-            <div className="relative bg-white rounded-lg sm:rounded-2xl shadow-lg w-full sm:max-w-md max-h-[90vh] overflow-y-auto">
+            <div className="relative bg-white rounded-xl sm:rounded-2xl shadow-lg w-full sm:max-w-xl max-h-[92vh] overflow-y-auto">
               {/* Close button */}
               <button
                 onClick={() => setSelectedProduct(null)}
-                className="absolute top-3 sm:top-4 right-3 sm:right-4 z-10 text-muted-foreground hover:text-foreground transition-colors"
+                className="absolute top-3 right-3 z-10 w-7 h-7 flex items-center justify-center rounded-full bg-white/80 backdrop-blur-sm text-muted-foreground hover:text-foreground hover:bg-white transition-all shadow-sm"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4" />
               </button>
 
               {/* Image */}
               {selectedProduct.main_image && (
-                <div className="w-full h-40 sm:h-48 bg-surface-alt overflow-hidden">
+                <div className="w-full h-52 sm:h-64 bg-surface-alt overflow-hidden flex items-center justify-center">
                   <img
                     src={selectedProduct.main_image}
                     alt={selectedProduct.name}
                     loading="lazy"
-                    className="w-full h-full object-contain"
+                    className="w-full h-full object-contain mix-blend-multiply"
                   />
                 </div>
               )}
 
               {/* Content */}
-              <div className="p-3 sm:p-6">
-                <h2 className="text-base sm:text-xl font-bold text-foreground mb-2 sm:mb-3">
+              <div className="p-4 sm:p-6">
+                <h2 className="text-base sm:text-xl font-bold text-foreground mb-3">
                   {selectedProduct.name}
                 </h2>
 
                 {/* Pricing */}
-                {selectedProduct.description_html && (
-                  <div className="bg-surface-alt rounded-lg sm:rounded-xl p-3 sm:p-4 mb-3 sm:mb-4 text-xs sm:text-sm">
-                    {isGuest ? (
-                      <div className="flex items-center gap-2 py-1">
-                        <Lock className="w-4 h-4 text-amber-500 flex-shrink-0" />
-                        <span className="text-sm font-medium text-muted-foreground">
-                          Preços visíveis após cadastro gratuito
-                        </span>
-                      </div>
-                    ) : (
-                      <>
-                        <div className="text-muted-foreground mb-0.5">Custo</div>
-                        <div className="text-base sm:text-lg font-bold text-foreground mb-2">
+                <div className="bg-surface-alt rounded-xl p-3 sm:p-4 mb-4">
+                  {isGuest ? (
+                    <div className="flex items-center gap-2 py-1">
+                      <Lock className="w-4 h-4 text-amber-500 flex-shrink-0" />
+                      <span className="text-sm font-medium text-muted-foreground">
+                        Preços visíveis após cadastro gratuito
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-4">
+                      <div className="flex-1">
+                        <div className="text-[11px] text-muted-foreground mb-0.5 uppercase tracking-wide font-medium">Custo</div>
+                        <div className="text-lg sm:text-xl font-bold text-foreground">
                           {isPartner && selectedProduct.partner_price
                             ? <>R$ {selectedProduct.partner_price.toFixed(2)}</>
                             : <>R$ {selectedProduct.price.toFixed(2)}</>
                           }
                         </div>
-                        <div className="border-t border-border pt-2">
-                          <div className="text-muted-foreground mb-0.5">Preço de Venda (Sugerido)</div>
-                          <div className="text-base sm:text-lg font-bold gradient-gold-text">
+                      </div>
+                      {!selectedProduct.is_professional && (
+                        <div className="flex-1 border-l border-border pl-4">
+                          <div className="text-[11px] text-muted-foreground mb-0.5 uppercase tracking-wide font-medium">Revenda sugerida</div>
+                          <div className="text-lg sm:text-xl font-bold gradient-gold-text">
                             R$ {getSuggestedPrice(isPartner && selectedProduct.partner_price ? selectedProduct.partner_price : selectedProduct.price, selectedProduct.compare_at_price).toFixed(2)}
                           </div>
                         </div>
-                      </>
-                    )}
-                  </div>
-                )}
+                      )}
+                    </div>
+                  )}
+                </div>
 
                 {/* Description */}
                 {selectedProduct.description_html && (

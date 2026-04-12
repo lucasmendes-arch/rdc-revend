@@ -138,7 +138,7 @@ export default function CompactProductCarousel({
                             )}
 
                             <div
-                                className={`w-full h-[140px] sm:h-[160px] md:h-[170px] lg:h-[170px] xl:h-[180px] bg-surface-alt flex items-center justify-center p-1 sm:p-2 cursor-pointer relative`}
+                                className={`w-full h-[140px] sm:h-[160px] md:h-[170px] lg:h-[170px] xl:h-[180px] bg-surface-alt flex items-center justify-center p-0 cursor-pointer relative`}
                                 onClick={() => !isBlocked && onSelect(product)}
                             >
                                 {product.main_image ? (
@@ -250,12 +250,12 @@ export default function CompactProductCarousel({
                                         </div>
                                     )}
 
-                                    {/* Badges — below CTA, muted secondary info */}
+                                    {/* Badges */}
                                     <div className="mt-2">
                                         {product.is_professional ? (
-                                            <span className="text-[9px] text-muted-foreground/60 font-medium">Uso Profissional</span>
+                                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-medium border border-border/50 text-muted-foreground bg-surface-alt">Uso Profissional</span>
                                         ) : (
-                                            <span className="text-[9px] text-muted-foreground/60 font-medium">Vegano · Liberado</span>
+                                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-medium border border-border/50 text-muted-foreground bg-surface-alt">Vegano · Liberado</span>
                                         )}
                                     </div>
                                 </div>
