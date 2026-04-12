@@ -89,7 +89,7 @@ const RotatingTrustBanner = () => {
   }, [items.length]);
 
   return (
-    <div className="w-full mb-6 sm:mb-10 px-3 flex justify-center">
+    <div className="w-full mb-3 sm:mb-8 px-3 flex justify-center">
       <div className="w-full max-w-4xl bg-white/95 backdrop-blur-md border border-amber-100/40 rounded-2xl sm:rounded-full px-4 sm:px-8 py-3 sm:py-4 shadow-lg shadow-amber-900/10 flex items-center justify-between gap-4 h-16 sm:h-20 overflow-hidden transition-all duration-300 hover:scale-[1.01] active:scale-[0.99] ring-1 ring-amber-900/5">
         <div key={index} className="flex items-center gap-3 sm:gap-5 animate-in fade-in slide-in-from-bottom-3 duration-500 flex-1">
           <div className="flex-shrink-0 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-amber-50/50 flex items-center justify-center border border-amber-100/30">
@@ -627,6 +627,17 @@ const Catalogo = () => {
       </div>
     </div>
 
+      {/* Mobile sticky category chips — below header, above content */}
+      {!debouncedSearch && !viewAll && categoriesToDisplay.length > 0 && (
+        <div className="sm:hidden sticky top-40 z-20 bg-surface-alt border-b border-border/30 shadow-sm">
+          <CategoryBubbles
+            categories={categoriesToDisplay}
+            activeCategories={filterCategories}
+            onToggleCategory={toggleCategory}
+          />
+        </div>
+      )}
+
       <div className="flex flex-col lg:flex-row lg:gap-6 w-full max-w-full">
         {/* Sidebar Filters (Desktop) */}
         <aside className="hidden lg:block w-64 px-3 pt-4 pb-6">
@@ -836,16 +847,7 @@ const Catalogo = () => {
               </div>
             )}
 
-            {/* Category Bubbles — ocultar durante busca ou viewAll */}
-            {!debouncedSearch && !viewAll && (
-              <div className="sm:hidden mb-2 mt-4 -mx-3">
-                <CategoryBubbles
-                  categories={categoriesToDisplay}
-                  activeCategories={filterCategories}
-                  onToggleCategory={toggleCategory}
-                />
-              </div>
-            )}
+            {/* Category Bubbles: moved to sticky bar above content */}
 
             {/* Banner de saída do modo Ver todos */}
             {viewAll && !debouncedSearch && (
@@ -954,28 +956,11 @@ const Catalogo = () => {
                             </div>
                             <div className="p-2.5 sm:p-3 flex flex-col flex-1">
                               <h3
-                                className="font-medium text-foreground text-[11px] sm:text-[13px] leading-snug line-clamp-2 mb-1.5 cursor-pointer group-hover:text-amber-600 transition-colors"
+                                className="font-semibold text-foreground text-[11px] sm:text-[13px] leading-snug line-clamp-2 mb-1.5 cursor-pointer group-hover:text-amber-600 transition-colors"
                                 onClick={() => handleSelectProduct(product)}
                               >
                                 {product.name}
                               </h3>
-                              {/* Badges */}
-                              <div className="flex flex-wrap gap-1 mb-2">
-                                {product.is_professional ? (
-                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border bg-violet-50 text-violet-700 border-violet-200">
-                                    <Briefcase className="w-2.5 h-2.5" /> Uso Profissional
-                                  </span>
-                                ) : (
-                                  <>
-                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border bg-green-50 text-green-700 border-green-200">
-                                      <Leaf className="w-2.5 h-2.5" /> Vegano
-                                    </span>
-                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border bg-amber-50 text-amber-700 border-amber-200">
-                                      <Sparkles className="w-2.5 h-2.5" /> Liberado
-                                    </span>
-                                  </>
-                                )}
-                              </div>
                               <div className="mt-auto">
                                 {/* Resale price: hidden for guest */}
                                 {!isGuest && !product.is_professional && (
@@ -1035,6 +1020,14 @@ const Catalogo = () => {
                                     </button>
                                   </div>
                                 )}
+                                {/* Badges — secondary, below CTA */}
+                                <div className="mt-1.5">
+                                  {product.is_professional ? (
+                                    <span className="text-[9px] text-muted-foreground/60 font-medium">Uso Profissional</span>
+                                  ) : (
+                                    <span className="text-[9px] text-muted-foreground/60 font-medium">Vegano · Liberado</span>
+                                  )}
+                                </div>
                               </div>
                             </div>
                           </div>
@@ -1051,7 +1044,7 @@ const Catalogo = () => {
                 ) : (
                   /* MODO NAVEGAÇÃO: carrosséis por categoria */
                   <>
-                    <div className="flex flex-col gap-6 sm:gap-8 mb-8">
+                    <div className="flex flex-col gap-4 sm:gap-8 mb-8">
                       {categoriesToDisplay.map(category => {
                         const categoryProducts = filtered.filter(p => p.category_id === category.id);
                         if (categoryProducts.length === 0) return null;

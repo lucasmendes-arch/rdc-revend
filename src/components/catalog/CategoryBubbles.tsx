@@ -49,7 +49,7 @@ export default function CategoryBubbles({ categories, activeCategories, onToggle
     if (categories.length === 0) return null
 
     return (
-        <div className="w-full sm:hidden mb-6">
+        <div className="w-full sm:hidden">
             <div
                 ref={scrollRef}
                 onScroll={handleScroll}
