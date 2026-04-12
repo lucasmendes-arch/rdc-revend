@@ -940,7 +940,7 @@ const Catalogo = () => {
                             className="bg-white rounded-xl border border-border shadow-sm hover:shadow-md transition-shadow flex flex-col overflow-hidden group"
                           >
                             <div
-                              className="w-full h-[140px] sm:h-[160px] bg-surface-alt flex items-center justify-center p-2 cursor-pointer"
+                              className="w-full h-[140px] sm:h-[170px] md:h-[185px] bg-surface-alt flex items-center justify-center p-0 cursor-pointer"
                               onClick={() => handleSelectProduct(product)}
                             >
                               {product.main_image ? (
