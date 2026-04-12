@@ -9,10 +9,14 @@ import {
   KeyRound, Copy, Lock, Unlock, MessageCircle, RefreshCw
 } from 'lucide-react'
 import { CustomerTimeline } from '@/components/admin/CustomerTimeline'
+import { NextActionEditor } from '@/components/admin/NextActionEditor'
+import { CustomerNotes } from '@/components/admin/CustomerNotes'
 import AdminLayout from '@/components/admin/AdminLayout'
 import { AdminHeader } from '@/components/admin/ui/AdminHeader'
 import { AdminSummaryCard } from '@/components/admin/ui/AdminSummaryCard'
 import { AdminSelect } from '@/components/admin/ui/AdminSelect'
+import { OPERATIONAL_FILTERS } from '@/lib/crmFilters'
+import type { CrmFilterSession } from '@/lib/crmFilters'
 
 interface OrderItem {
   id: string
@@ -46,6 +50,16 @@ interface ClientProfile {
   last_password_reset_at: string | null
   price_list_id: string | null
   price_list_name: string | null
+  // CRM operacional (adicionados em 20260412)
+  assigned_seller: string | null
+  seller_id: string | null
+  seller_name: string | null
+  next_action: string | null
+  next_action_at: string | null
+  total_orders: number
+  total_spent: number
+  first_order_at: string | null
+  last_order_at: string | null
 }
 
 interface ClientSession {
@@ -268,6 +282,58 @@ function ClientDetailPanel({ session, onClose, onDeleteClick }: { session: Clien
     },
     onSuccess: () => {
       toast.success('Tabela de preço atualizada')
+      queryClient.invalidateQueries({ queryKey: ['client-sessions'] })
+    },
+    onError: (err: any, _v, context) => {
+      if (context?.prev) queryClient.setQueryData(['client-sessions'], context.prev)
+      toast.error('Erro ao atualizar: ' + (err?.message || 'erro desconhecido'))
+    },
+  })
+
+  // ── Owner comercial (assigned_seller) ──────────────────────────────────
+  const { data: activeSellers = [] } = useQuery({
+    queryKey: ['active-sellers'],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('get_active_sellers_for_dropdown')
+      if (error) throw error
+      return (data ?? []) as { id: string; name: string; code: string }[]
+    },
+    staleTime: 5 * 60 * 1000,
+    enabled: !!session.user_id,
+  })
+
+  const sellerMutation = useMutation({
+    mutationFn: async (sellerId: string | null) => {
+      const { error } = await supabase.rpc('admin_set_profile_seller', {
+        p_user_id: session.user_id!,
+        p_seller_id: sellerId,
+      })
+      if (error) throw error
+    },
+    onMutate: async (newSellerId) => {
+      await queryClient.cancelQueries({ queryKey: ['client-sessions'] })
+      const prev = queryClient.getQueryData(['client-sessions'])
+      const seller = activeSellers.find(s => s.id === newSellerId) ?? null
+      queryClient.setQueryData(['client-sessions'], (old: any) => {
+        if (!old) return old
+        return old.map((s: any) =>
+          s.user_id === session.user_id
+            ? {
+                ...s,
+                profile: {
+                  ...s.profile,
+                  assigned_seller: seller?.code ?? null,
+                  seller_id: newSellerId,
+                  seller_name: seller?.name ?? null,
+                },
+              }
+            : s,
+        )
+      })
+      return { prev }
+    },
+    onSuccess: () => {
+      toast.success('Responsável comercial atualizado')
       queryClient.invalidateQueries({ queryKey: ['client-sessions'] })
     },
     onError: (err: any, _v, context) => {
@@ -549,6 +615,38 @@ function ClientDetailPanel({ session, onClose, onDeleteClick }: { session: Clien
             </div>
           )}
 
+          {/* Responsável Comercial */}
+          {session.user_id && (
+            <div className="px-5 py-4 border-b border-zinc-200">
+              <h3 className="text-[11px] font-bold text-zinc-400 uppercase tracking-widest mb-3">Responsável Comercial</h3>
+              <div className="flex items-center gap-3">
+                <AdminSelect
+                  options={activeSellers.map(s => ({ value: s.id, label: s.name }))}
+                  value={profile?.seller_id || ''}
+                  onChange={v => sellerMutation.mutate(v || null)}
+                  placeholder="Sem responsável"
+                  allLabel="Sem responsável"
+                  icon={Users}
+                />
+                {sellerMutation.isPending && <Loader className="w-4 h-4 animate-spin text-zinc-400" />}
+                {profile?.seller_name && !sellerMutation.isPending && (
+                  <span className="text-xs font-medium text-zinc-600 bg-zinc-100 px-2 py-1 rounded-md">
+                    {profile.seller_name}
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Próxima Ação */}
+          {session.user_id && (
+            <NextActionEditor
+              userId={session.user_id}
+              nextAction={profile?.next_action ?? null}
+              nextActionAt={profile?.next_action_at ?? null}
+            />
+          )}
+
           {/* Partner Access */}
           {session.user_id && profile?.customer_segment === 'network_partner' && (
             <PartnerAccessSection session={session} />
@@ -656,6 +754,11 @@ function ClientDetailPanel({ session, onClose, onDeleteClick }: { session: Clien
               )}
             </div>
           </div>
+
+          {/* Notas Internas */}
+          {session.user_id && (
+            <CustomerNotes userId={session.user_id} />
+          )}
 
           {/* Timeline Completa */}
           {session.user_id && (
@@ -965,6 +1068,7 @@ export default function AdminClientes() {
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null)
   const [selectedTagFilter, setSelectedTagFilter] = useState<string>('')
   const [selectedSegmentFilter, setSelectedSegmentFilter] = useState<string>('wholesale_buyer')
+  const [selectedOperationalFilter, setSelectedOperationalFilter] = useState<string>('')
   const [clientToDelete, setClientToDelete] = useState<ClientSession | null>(null)
 
   const deleteClientMutation = useMutation({
@@ -1024,6 +1128,15 @@ export default function AdminClientes() {
             last_password_reset_at: p.last_password_reset_at ?? null,
             price_list_id: p.price_list_id ?? null,
             price_list_name: p.price_list_name ?? null,
+            assigned_seller: p.assigned_seller ?? null,
+            seller_id: p.seller_id ?? null,
+            seller_name: p.seller_name ?? null,
+            next_action: p.next_action ?? null,
+            next_action_at: p.next_action_at ?? null,
+            total_orders: Number(p.total_orders ?? 0),
+            total_spent: Number(p.total_spent ?? 0),
+            first_order_at: p.first_order_at ?? null,
+            last_order_at: p.last_order_at ?? null,
           }]))
         }
 
@@ -1092,8 +1205,14 @@ export default function AdminClientes() {
     if (selectedTagFilter) {
       result = result.filter(s => s.tags?.some(t => t.id === selectedTagFilter))
     }
+    if (selectedOperationalFilter) {
+      const filter = OPERATIONAL_FILTERS.find(f => f.key === selectedOperationalFilter)
+      if (filter) {
+        result = result.filter(s => filter.predicate(s as unknown as CrmFilterSession))
+      }
+    }
     return result
-  }, [sessions, selectedTagFilter, selectedSegmentFilter])
+  }, [sessions, selectedTagFilter, selectedSegmentFilter, selectedOperationalFilter])
 
   const grouped = Object.fromEntries(
     funnelStages.map(s => [s.key, filteredSessions.filter(sess => sess.status === s.key)])
@@ -1156,6 +1275,14 @@ export default function AdminClientes() {
                   allLabel="Todas as tags"
                 />
               )}
+              <AdminSelect
+                options={OPERATIONAL_FILTERS.map(f => ({ value: f.key, label: f.label }))}
+                value={selectedOperationalFilter}
+                onChange={setSelectedOperationalFilter}
+                placeholder="Situação"
+                icon={AlertTriangle}
+                allLabel="Todas as situações"
+              />
             </div>
           }
         />
@@ -1263,12 +1390,17 @@ export default function AdminClientes() {
                         items.slice(0, 30).map((session) => {
                           const clientName = getClientName(session)
                           const labels = getClientLabels(session)
+                          const followUpVencido = !!(
+                            session.profile?.next_action_at &&
+                            new Date(session.profile.next_action_at).getTime() < Date.now()
+                          )
+                          const temProximaAcao = !!(session.profile?.next_action)
 
                           return (
                             <button
                               key={session.id}
                               onClick={() => setSelectedSessionId(session.id)}
-                              className="w-full text-left bg-white p-2.5 sm:p-3 md:p-3.5 rounded-xl shadow-[0_2px_8px_-4px_rgba(0,0,0,0.05)] hover:shadow-md border border-zinc-200/80 hover:border-zinc-300 transition-all duration-200 cursor-pointer group flex flex-col gap-2 sm:gap-2.5 relative"
+                              className={`w-full text-left bg-white p-2.5 sm:p-3 md:p-3.5 rounded-xl shadow-[0_2px_8px_-4px_rgba(0,0,0,0.05)] hover:shadow-md border transition-all duration-200 cursor-pointer group flex flex-col gap-2 sm:gap-2.5 relative ${followUpVencido ? 'border-red-200 hover:border-red-300' : 'border-zinc-200/80 hover:border-zinc-300'}`}
                             >
                               {/* Identity */}
                               <div className="flex items-start justify-between gap-3 w-full">
@@ -1280,6 +1412,17 @@ export default function AdminClientes() {
                                     {new Date(session.updated_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
                                   </span>
                                 </div>
+                                {followUpVencido && (
+                                  <span className="flex-shrink-0 flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-red-100 text-red-600 ring-1 ring-inset ring-red-200" title="Follow-up vencido">
+                                    <Clock className="w-3 h-3" />
+                                    Vencido
+                                  </span>
+                                )}
+                                {!followUpVencido && temProximaAcao && (
+                                  <span className="flex-shrink-0 flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-emerald-50 text-emerald-600 ring-1 ring-inset ring-emerald-200" title={session.profile?.next_action ?? ''}>
+                                    <Clock className="w-3 h-3" />
+                                  </span>
+                                )}
                               </div>
 
                               {/* Contact */}
