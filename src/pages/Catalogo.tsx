@@ -793,7 +793,7 @@ const Catalogo = () => {
                   <div className="bg-amber-100 p-1 rounded">
                     <PackageSearch className="w-4 h-4 text-amber-600" />
                   </div>
-                  <h2 className="text-[14px] font-bold text-foreground">Seleção dos Mais Vendidos</h2>
+                  <h2 className="text-[15px] sm:text-lg font-black text-foreground">Seleção dos Mais Vendidos</h2>
                 </div>
               </div>
 
@@ -940,7 +940,7 @@ const Catalogo = () => {
                             className="bg-white rounded-xl border border-border shadow-sm hover:shadow-md transition-shadow flex flex-col overflow-hidden group"
                           >
                             <div
-                              className="w-full h-[140px] sm:h-[170px] md:h-[185px] bg-surface-alt flex items-center justify-center p-0 cursor-pointer"
+                              className="w-full aspect-square bg-surface-alt flex items-center justify-center overflow-hidden cursor-pointer relative"
                               onClick={() => handleSelectProduct(product)}
                             >
                               {product.main_image ? (
@@ -948,7 +948,7 @@ const Catalogo = () => {
                                   src={product.main_image}
                                   alt={product.name}
                                   loading="lazy"
-                                  className="w-full h-full object-cover mix-blend-multiply transition-transform duration-500 group-hover:scale-105"
+                                  className="w-full h-full object-contain mix-blend-multiply transition-transform duration-500 scale-[1.1] group-hover:scale-[1.2]"
                                 />
                               ) : (
                                 <ShoppingCart className="w-10 h-10 text-muted-foreground/25" />
@@ -1020,14 +1020,6 @@ const Catalogo = () => {
                                     </button>
                                   </div>
                                 )}
-                                {/* Badges */}
-                                <div className="mt-1.5">
-                                  {product.is_professional ? (
-                                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-medium border border-border/50 text-muted-foreground bg-surface-alt">Uso Profissional</span>
-                                  ) : (
-                                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-medium border border-border/50 text-muted-foreground bg-surface-alt">Vegano · Liberado</span>
-                                  )}
-                                </div>
                               </div>
                             </div>
                           </div>

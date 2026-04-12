@@ -250,14 +250,6 @@ export default function CompactProductCarousel({
                                         </div>
                                     )}
 
-                                    {/* Badges */}
-                                    <div className="mt-2">
-                                        {product.is_professional ? (
-                                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-medium border border-border/50 text-muted-foreground bg-surface-alt">Uso Profissional</span>
-                                        ) : (
-                                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-medium border border-border/50 text-muted-foreground bg-surface-alt">Vegano · Liberado</span>
-                                        )}
-                                    </div>
                                 </div>
                             </div>
                         </div>
