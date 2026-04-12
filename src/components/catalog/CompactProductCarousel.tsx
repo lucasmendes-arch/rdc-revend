@@ -151,6 +151,20 @@ export default function CompactProductCarousel({
                                 ) : (
                                     <ShoppingCart className="w-8 h-8 sm:w-12 sm:h-12 text-muted-foreground/25" />
                                 )}
+                                {/* Badge overlay */}
+                                {!isBlocked && (
+                                    <div className="absolute bottom-1.5 left-1.5 z-[1]">
+                                        {product.is_professional ? (
+                                            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[8px] font-semibold bg-amber-500/90 text-white backdrop-blur-sm">
+                                                <Briefcase className="w-2.5 h-2.5" />Profissional
+                                            </span>
+                                        ) : (
+                                            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[8px] font-semibold bg-emerald-500/90 text-white backdrop-blur-sm">
+                                                <Leaf className="w-2.5 h-2.5" />Vegano
+                                            </span>
+                                        )}
+                                    </div>
+                                )}
                             </div>
 
                             <div className="p-2.5 sm:p-4 flex flex-col flex-1">
@@ -250,14 +264,6 @@ export default function CompactProductCarousel({
                                         </div>
                                     )}
 
-                                    {/* Badges */}
-                                    <div className="mt-2">
-                                        {product.is_professional ? (
-                                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-medium border border-border/50 text-muted-foreground bg-surface-alt">Uso Profissional</span>
-                                        ) : (
-                                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-medium border border-border/50 text-muted-foreground bg-surface-alt">Vegano · Liberado</span>
-                                        )}
-                                    </div>
                                 </div>
                             </div>
                         </div>

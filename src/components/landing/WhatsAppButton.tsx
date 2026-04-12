@@ -14,10 +14,8 @@ const WhatsAppButton = () => {
     return () => clearTimeout(timer);
   }, []);
 
-  // Hide WhatsApp button entirely on Checkout or when a modal/cart is open
-  const isModalOpen = document.body.getAttribute('data-modal-open') === 'true';
-
-  if (location.pathname.startsWith('/checkout') || cartOpen || isModalOpen) {
+  // Hide on checkout or when cart drawer is open
+  if (location.pathname.startsWith('/checkout') || cartOpen) {
     return null;
   }
 
