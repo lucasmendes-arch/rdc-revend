@@ -948,7 +948,7 @@ const Catalogo = () => {
                                   src={product.main_image}
                                   alt={product.name}
                                   loading="lazy"
-                                  className="w-full h-full object-contain mix-blend-multiply transition-transform duration-500 group-hover:scale-105"
+                                  className="w-full h-full object-cover mix-blend-multiply transition-transform duration-500 group-hover:scale-105"
                                 />
                               ) : (
                                 <ShoppingCart className="w-10 h-10 text-muted-foreground/25" />
