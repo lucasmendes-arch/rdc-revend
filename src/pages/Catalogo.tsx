@@ -940,7 +940,7 @@ const Catalogo = () => {
                             className="bg-white rounded-xl border border-border shadow-sm hover:shadow-md transition-shadow flex flex-col overflow-hidden group"
                           >
                             <div
-                              className="w-full h-[140px] sm:h-[170px] md:h-[180px] bg-surface-alt flex items-center justify-center p-0 cursor-pointer relative"
+                              className="w-full h-[140px] sm:h-[160px] bg-surface-alt flex items-center justify-center p-2 cursor-pointer"
                               onClick={() => handleSelectProduct(product)}
                             >
                               {product.main_image ? (
@@ -953,18 +953,6 @@ const Catalogo = () => {
                               ) : (
                                 <ShoppingCart className="w-10 h-10 text-muted-foreground/25" />
                               )}
-                              {/* Badge overlay */}
-                              <div className="absolute bottom-1.5 left-1.5 z-[1]">
-                                {product.is_professional ? (
-                                  <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[8px] sm:text-[9px] font-semibold bg-amber-500/90 text-white backdrop-blur-sm">
-                                    <Briefcase className="w-2.5 h-2.5" />Profissional
-                                  </span>
-                                ) : (
-                                  <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[8px] sm:text-[9px] font-semibold bg-emerald-500/90 text-white backdrop-blur-sm">
-                                    <Leaf className="w-2.5 h-2.5" />Vegano
-                                  </span>
-                                )}
-                              </div>
                             </div>
                             <div className="p-2.5 sm:p-3 flex flex-col flex-1">
                               <h3
@@ -1032,6 +1020,14 @@ const Catalogo = () => {
                                     </button>
                                   </div>
                                 )}
+                                {/* Badges */}
+                                <div className="mt-1.5">
+                                  {product.is_professional ? (
+                                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-medium border border-border/50 text-muted-foreground bg-surface-alt">Uso Profissional</span>
+                                  ) : (
+                                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-medium border border-border/50 text-muted-foreground bg-surface-alt">Vegano · Liberado</span>
+                                  )}
+                                </div>
                               </div>
                             </div>
                           </div>
