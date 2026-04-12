@@ -89,7 +89,7 @@ const RotatingTrustBanner = () => {
   }, [items.length]);
 
   return (
-    <div className="w-full mb-6 sm:mb-10 px-3 flex justify-center">
+    <div className="w-full mb-3 sm:mb-8 px-3 flex justify-center">
       <div className="w-full max-w-4xl bg-white/95 backdrop-blur-md border border-amber-100/40 rounded-2xl sm:rounded-full px-4 sm:px-8 py-3 sm:py-4 shadow-lg shadow-amber-900/10 flex items-center justify-between gap-4 h-16 sm:h-20 overflow-hidden transition-all duration-300 hover:scale-[1.01] active:scale-[0.99] ring-1 ring-amber-900/5">
         <div key={index} className="flex items-center gap-3 sm:gap-5 animate-in fade-in slide-in-from-bottom-3 duration-500 flex-1">
           <div className="flex-shrink-0 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-amber-50/50 flex items-center justify-center border border-amber-100/30">
@@ -622,10 +622,21 @@ const Catalogo = () => {
       </header>
 
       {/* Rotating Trust Banner Layer (Lower part of sticky header) */}
-      <div className="bg-white/95 backdrop-blur-md pt-2.5 pb-1 border-b border-border/10 shadow-sm mb-2 sm:-mb-6 relative z-[39]">
+      <div className="bg-white/95 backdrop-blur-md pt-2.5 pb-1 border-b border-border/10 shadow-sm sm:-mb-6 relative z-[39]">
         <RotatingTrustBanner />
       </div>
     </div>
+
+      {/* Mobile sticky category chips — below header, above content */}
+      {!debouncedSearch && !viewAll && categoriesToDisplay.length > 0 && (
+        <div className="sm:hidden sticky top-36 z-20 bg-surface-alt border-b border-border/30 shadow-sm py-2">
+          <CategoryBubbles
+            categories={categoriesToDisplay}
+            activeCategories={filterCategories}
+            onToggleCategory={toggleCategory}
+          />
+        </div>
+      )}
 
       <div className="flex flex-col lg:flex-row lg:gap-6 w-full max-w-full">
         {/* Sidebar Filters (Desktop) */}
@@ -782,7 +793,7 @@ const Catalogo = () => {
                   <div className="bg-amber-100 p-1 rounded">
                     <PackageSearch className="w-4 h-4 text-amber-600" />
                   </div>
-                  <h2 className="text-[14px] font-bold text-foreground">Seleção dos Mais Vendidos</h2>
+                  <h2 className="text-[15px] sm:text-lg font-black text-foreground">Seleção dos Mais Vendidos</h2>
                 </div>
               </div>
 
@@ -836,16 +847,7 @@ const Catalogo = () => {
               </div>
             )}
 
-            {/* Category Bubbles — ocultar durante busca ou viewAll */}
-            {!debouncedSearch && !viewAll && (
-              <div className="sm:hidden mb-2 mt-4 -mx-3">
-                <CategoryBubbles
-                  categories={categoriesToDisplay}
-                  activeCategories={filterCategories}
-                  onToggleCategory={toggleCategory}
-                />
-              </div>
-            )}
+            {/* Category Bubbles: moved to sticky bar above content */}
 
             {/* Banner de saída do modo Ver todos */}
             {viewAll && !debouncedSearch && (
@@ -938,7 +940,7 @@ const Catalogo = () => {
                             className="bg-white rounded-xl border border-border shadow-sm hover:shadow-md transition-shadow flex flex-col overflow-hidden group"
                           >
                             <div
-                              className="w-full h-[140px] sm:h-[160px] bg-surface-alt flex items-center justify-center p-2 cursor-pointer"
+                              className="w-full aspect-square bg-surface-alt flex items-center justify-center overflow-hidden cursor-pointer relative"
                               onClick={() => handleSelectProduct(product)}
                             >
                               {product.main_image ? (
@@ -946,7 +948,7 @@ const Catalogo = () => {
                                   src={product.main_image}
                                   alt={product.name}
                                   loading="lazy"
-                                  className="w-full h-full object-contain mix-blend-multiply transition-transform duration-500 group-hover:scale-105"
+                                  className="w-full h-full object-contain mix-blend-multiply transition-transform duration-500 scale-[1.1] group-hover:scale-[1.2]"
                                 />
                               ) : (
                                 <ShoppingCart className="w-10 h-10 text-muted-foreground/25" />
@@ -954,28 +956,11 @@ const Catalogo = () => {
                             </div>
                             <div className="p-2.5 sm:p-3 flex flex-col flex-1">
                               <h3
-                                className="font-medium text-foreground text-[11px] sm:text-[13px] leading-snug line-clamp-2 mb-1.5 cursor-pointer group-hover:text-amber-600 transition-colors"
+                                className="font-semibold text-foreground text-[11px] sm:text-[13px] leading-snug line-clamp-2 mb-1.5 cursor-pointer group-hover:text-amber-600 transition-colors"
                                 onClick={() => handleSelectProduct(product)}
                               >
                                 {product.name}
                               </h3>
-                              {/* Badges */}
-                              <div className="flex flex-wrap gap-1 mb-2">
-                                {product.is_professional ? (
-                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border bg-violet-50 text-violet-700 border-violet-200">
-                                    <Briefcase className="w-2.5 h-2.5" /> Uso Profissional
-                                  </span>
-                                ) : (
-                                  <>
-                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border bg-green-50 text-green-700 border-green-200">
-                                      <Leaf className="w-2.5 h-2.5" /> Vegano
-                                    </span>
-                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border bg-amber-50 text-amber-700 border-amber-200">
-                                      <Sparkles className="w-2.5 h-2.5" /> Liberado
-                                    </span>
-                                  </>
-                                )}
-                              </div>
                               <div className="mt-auto">
                                 {/* Resale price: hidden for guest */}
                                 {!isGuest && !product.is_professional && (
@@ -1051,7 +1036,7 @@ const Catalogo = () => {
                 ) : (
                   /* MODO NAVEGAÇÃO: carrosséis por categoria */
                   <>
-                    <div className="flex flex-col gap-6 sm:gap-8 mb-8">
+                    <div className="flex flex-col gap-4 sm:gap-8 mb-8">
                       {categoriesToDisplay.map(category => {
                         const categoryProducts = filtered.filter(p => p.category_id === category.id);
                         if (categoryProducts.length === 0) return null;
@@ -1221,62 +1206,64 @@ const Catalogo = () => {
               className="absolute inset-0 bg-foreground/40 backdrop-blur-sm"
               onClick={() => setSelectedProduct(null)}
             />
-            <div className="relative bg-white rounded-lg sm:rounded-2xl shadow-lg w-full sm:max-w-md max-h-[90vh] overflow-y-auto">
+            <div className="relative bg-white rounded-xl sm:rounded-2xl shadow-lg w-full sm:max-w-xl max-h-[92vh] overflow-y-auto">
               {/* Close button */}
               <button
                 onClick={() => setSelectedProduct(null)}
-                className="absolute top-3 sm:top-4 right-3 sm:right-4 z-10 text-muted-foreground hover:text-foreground transition-colors"
+                className="absolute top-3 right-3 z-10 w-7 h-7 flex items-center justify-center rounded-full bg-white/80 backdrop-blur-sm text-muted-foreground hover:text-foreground hover:bg-white transition-all shadow-sm"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4" />
               </button>
 
               {/* Image */}
               {selectedProduct.main_image && (
-                <div className="w-full h-40 sm:h-48 bg-surface-alt overflow-hidden">
+                <div className="w-full h-52 sm:h-64 bg-surface-alt overflow-hidden flex items-center justify-center">
                   <img
                     src={selectedProduct.main_image}
                     alt={selectedProduct.name}
                     loading="lazy"
-                    className="w-full h-full object-contain"
+                    className="w-full h-full object-contain mix-blend-multiply"
                   />
                 </div>
               )}
 
               {/* Content */}
-              <div className="p-3 sm:p-6">
-                <h2 className="text-base sm:text-xl font-bold text-foreground mb-2 sm:mb-3">
+              <div className="p-4 sm:p-6">
+                <h2 className="text-base sm:text-xl font-bold text-foreground mb-3">
                   {selectedProduct.name}
                 </h2>
 
                 {/* Pricing */}
-                {selectedProduct.description_html && (
-                  <div className="bg-surface-alt rounded-lg sm:rounded-xl p-3 sm:p-4 mb-3 sm:mb-4 text-xs sm:text-sm">
-                    {isGuest ? (
-                      <div className="flex items-center gap-2 py-1">
-                        <Lock className="w-4 h-4 text-amber-500 flex-shrink-0" />
-                        <span className="text-sm font-medium text-muted-foreground">
-                          Preços visíveis após cadastro gratuito
-                        </span>
-                      </div>
-                    ) : (
-                      <>
-                        <div className="text-muted-foreground mb-0.5">Custo</div>
-                        <div className="text-base sm:text-lg font-bold text-foreground mb-2">
+                <div className="bg-surface-alt rounded-xl p-3 sm:p-4 mb-4">
+                  {isGuest ? (
+                    <div className="flex items-center gap-2 py-1">
+                      <Lock className="w-4 h-4 text-amber-500 flex-shrink-0" />
+                      <span className="text-sm font-medium text-muted-foreground">
+                        Preços visíveis após cadastro gratuito
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-4">
+                      <div className="flex-1">
+                        <div className="text-[11px] text-muted-foreground mb-0.5 uppercase tracking-wide font-medium">Custo</div>
+                        <div className="text-lg sm:text-xl font-bold text-foreground">
                           {isPartner && selectedProduct.partner_price
                             ? <>R$ {selectedProduct.partner_price.toFixed(2)}</>
                             : <>R$ {selectedProduct.price.toFixed(2)}</>
                           }
                         </div>
-                        <div className="border-t border-border pt-2">
-                          <div className="text-muted-foreground mb-0.5">Preço de Venda (Sugerido)</div>
-                          <div className="text-base sm:text-lg font-bold gradient-gold-text">
+                      </div>
+                      {!selectedProduct.is_professional && (
+                        <div className="flex-1 border-l border-border pl-4">
+                          <div className="text-[11px] text-muted-foreground mb-0.5 uppercase tracking-wide font-medium">Revenda sugerida</div>
+                          <div className="text-lg sm:text-xl font-bold gradient-gold-text">
                             R$ {getSuggestedPrice(isPartner && selectedProduct.partner_price ? selectedProduct.partner_price : selectedProduct.price, selectedProduct.compare_at_price).toFixed(2)}
                           </div>
                         </div>
-                      </>
-                    )}
-                  </div>
-                )}
+                      )}
+                    </div>
+                  )}
+                </div>
 
                 {/* Description */}
                 {selectedProduct.description_html && (

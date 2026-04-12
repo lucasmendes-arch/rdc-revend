@@ -138,7 +138,7 @@ export default function CompactProductCarousel({
                             )}
 
                             <div
-                                className={`w-full h-[140px] sm:h-[160px] md:h-[170px] lg:h-[170px] xl:h-[180px] bg-surface-alt flex items-center justify-center p-1 sm:p-2 cursor-pointer relative`}
+                                className={`w-full h-[140px] sm:h-[160px] md:h-[170px] lg:h-[170px] xl:h-[180px] bg-surface-alt flex items-center justify-center p-0 cursor-pointer relative`}
                                 onClick={() => !isBlocked && onSelect(product)}
                             >
                                 {product.main_image ? (
@@ -155,29 +155,11 @@ export default function CompactProductCarousel({
 
                             <div className="p-2.5 sm:p-4 flex flex-col flex-1">
                                 <h3
-                                    className="font-medium text-foreground text-[11px] sm:text-[13px] md:text-[13px] lg:text-[14px] leading-snug line-clamp-2 mb-1.5 sm:mb-2 cursor-pointer group-hover:text-amber-600 transition-colors"
+                                    className="font-semibold text-foreground text-[11px] sm:text-[13px] md:text-[13px] lg:text-[14px] leading-snug line-clamp-2 mb-1.5 sm:mb-2 cursor-pointer group-hover:text-amber-600 transition-colors"
                                     onClick={() => !isBlocked && onSelect(product)}
                                 >
                                     {product.name}
                                 </h3>
-
-                                {/* Badges */}
-                                <div className="flex flex-wrap gap-1 mb-2.5">
-                                    {product.is_professional ? (
-                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border bg-violet-50 text-violet-700 border-violet-200">
-                                            <Briefcase className="w-2.5 h-2.5" /> Uso Profissional
-                                        </span>
-                                    ) : (
-                                        <>
-                                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border bg-green-50 text-green-700 border-green-200">
-                                                <Leaf className="w-2.5 h-2.5" /> Vegano
-                                            </span>
-                                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border bg-amber-50 text-amber-700 border-amber-200">
-                                                <Sparkles className="w-2.5 h-2.5" /> Liberado
-                                            </span>
-                                        </>
-                                    )}
-                                </div>
 
                                 <div className="mt-auto">
                                     {/* Resale price: hidden for guest */}
@@ -267,6 +249,7 @@ export default function CompactProductCarousel({
                                             </button>
                                         </div>
                                     )}
+
                                 </div>
                             </div>
                         </div>

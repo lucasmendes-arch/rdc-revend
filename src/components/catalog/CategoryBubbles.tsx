@@ -49,11 +49,11 @@ export default function CategoryBubbles({ categories, activeCategories, onToggle
     if (categories.length === 0) return null
 
     return (
-        <div className="w-full sm:hidden mb-6">
+        <div className="w-full sm:hidden">
             <div
                 ref={scrollRef}
                 onScroll={handleScroll}
-                className="flex gap-4 overflow-x-auto snap-x snap-mandatory scroll-smooth px-4 pb-2 scrollbar-none"
+                className="flex gap-2 overflow-x-auto snap-x snap-mandatory scroll-smooth px-4 scroll-pl-4 pb-2 scrollbar-none"
             >
                 {categories.map((cat) => {
                     const isActive = activeCategories.includes(cat.id)

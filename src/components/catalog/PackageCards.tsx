@@ -79,12 +79,11 @@ export default function PackageCards({ products, isGuest = false, isPartner = fa
   }
 
   return (
-    <div className="mb-4 -mx-3 sm:-mx-4 lg:-mx-6 w-[calc(100%+1.5rem)] sm:w-[calc(100%+2rem)] lg:w-[calc(100%+3rem)]">
-      {/* Container extends to the edges of the screen, scroll starts exactly at text alignment */}
+    <div className="mb-4">
       <div
         ref={scrollRef}
         onScroll={handleScroll}
-        className="flex gap-4 sm:gap-6 overflow-x-auto snap-x snap-mandatory scroll-smooth px-3 sm:px-4 pl-4 lg:px-8 pt-4 pb-4 sm:pt-6 sm:pb-6 scrollbar-none w-full"
+        className="flex gap-4 sm:gap-6 overflow-x-auto snap-x snap-mandatory scroll-smooth px-4 sm:px-4 lg:px-8 pt-4 pb-4 sm:pt-6 sm:pb-6 scrollbar-none w-full"
       >
         {packageSelections.map(({ pkg, selected }) => {
           const pkgTotal = selected.reduce((sum, item) => {
@@ -99,7 +98,8 @@ export default function PackageCards({ products, isGuest = false, isPartner = fa
           return (
             <div
               key={pkg.id}
-              className={`flex-shrink-0 w-[270px] sm:w-[300px] lg:w-[260px] xl:w-[280px] snap-start rounded-xl border-2 p-3 sm:p-4 flex flex-col transition-all ${pkg.highlight
+              onClick={() => setDetailsPkgId(pkg.id)}
+              className={`flex-shrink-0 w-[270px] sm:w-[300px] lg:w-[260px] xl:w-[280px] snap-start rounded-xl border-2 p-4 sm:p-4 flex flex-col transition-all cursor-pointer ${pkg.highlight
                 ? 'border-amber-400 bg-gradient-to-br from-amber-50 to-white shadow-md relative'
                 : 'border-border bg-white shadow-sm hover:border-gold-border'
                 }`}
@@ -110,10 +110,10 @@ export default function PackageCards({ products, isGuest = false, isPartner = fa
                 </span>
               )}
 
-              <div className="flex flex-col mb-1.5 sm:mb-2 mt-1">
-                <h3 className="font-extrabold text-[14px] sm:text-[16px] text-foreground leading-tight">{pkg.name}</h3>
-                <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 leading-snug">{pkg.description}</p>
-                <span className="text-[11px] sm:text-xs font-bold text-amber-600 mt-1">
+              <div className="flex flex-col mb-2 sm:mb-2 mt-1">
+                <h3 className="font-extrabold text-[18px] sm:text-[16px] text-foreground leading-tight">{pkg.name}</h3>
+                <p className="text-[13px] sm:text-xs text-muted-foreground mt-0.5 leading-snug">{pkg.description}</p>
+                <span className="text-[14px] sm:text-xs font-bold text-amber-600 mt-1">
                   {pkg.displayProductCount} Produtos Inclusos
                 </span>
               </div>
@@ -126,7 +126,7 @@ export default function PackageCards({ products, isGuest = false, isPartner = fa
                     <span className="text-sm text-muted-foreground font-medium">Ver preço ao cadastrar</span>
                   </div>
                 ) : (
-                  <span className="text-[18px] sm:text-2xl font-black gradient-gold-text">
+                  <span className="text-[22px] sm:text-2xl font-black gradient-gold-text">
                     R$ {pkgTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                     {isPartner && (
                       <span className="ml-2 text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded uppercase align-middle">Atacado</span>
@@ -159,12 +159,12 @@ export default function PackageCards({ products, isGuest = false, isPartner = fa
                 const remaining = pkg.displayProductCount - displayImages.length;
 
                 return (
-                  <div className="flex items-center mt-2 mb-4 sm:mb-6 pl-2 sm:pl-3">
-                    <div className="flex -space-x-3.5 sm:-space-x-4">
+                  <div className="flex items-center mt-2 mb-4 sm:mb-6">
+                    <div className="flex -space-x-5 sm:-space-x-4">
                       {displayImages.map((imgUrl, i) => (
                         <div
                           key={i}
-                          className="w-8 h-8 sm:w-10 sm:h-10 shrink-0 rounded-full border-2 border-white bg-white overflow-hidden shadow-sm relative hover:scale-110 transition-transform"
+                          className="w-14 h-14 sm:w-10 sm:h-10 shrink-0 rounded-full border-2 border-white bg-white overflow-hidden shadow-sm relative hover:scale-110 transition-transform"
                           style={{ zIndex: i }}
                         >
                           <img src={imgUrl} alt="Produto" className="w-full h-full object-cover" />
@@ -172,7 +172,7 @@ export default function PackageCards({ products, isGuest = false, isPartner = fa
                       ))}
                       {remaining > 0 && (
                         <div
-                          className="w-8 h-8 sm:w-10 sm:h-10 shrink-0 rounded-full border-2 border-white bg-surface-alt text-muted-foreground flex items-center justify-center text-[10px] sm:text-xs font-bold shadow-sm relative"
+                          className="w-14 h-14 sm:w-10 sm:h-10 shrink-0 rounded-full border-2 border-white bg-surface-alt text-muted-foreground flex items-center justify-center text-sm sm:text-xs font-bold shadow-sm relative"
                           style={{ zIndex: 10 }}
                         >
                           +{remaining}
@@ -184,10 +184,10 @@ export default function PackageCards({ products, isGuest = false, isPartner = fa
               })()}
 
               {!isGuest && (
-                <div className="space-y-1 text-[10px] sm:text-xs text-muted-foreground mb-3">
+                <div className="space-y-1 text-[12px] sm:text-xs text-muted-foreground mb-3">
                   <div className="flex items-center gap-1.5 text-green-700 font-semibold leading-tight">
-                    <TrendingUp className="w-3.5 h-3.5 shrink-0" />
-                    <span>
+                    <TrendingUp className="w-4 h-4 sm:w-3.5 sm:h-3.5 shrink-0" />
+                    <span className="text-[13px] sm:text-[12px]">
                       Potencial de retorno estimado*{' '}
                       <span className="whitespace-nowrap">R$ {dynamicRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
                     </span>
@@ -195,12 +195,11 @@ export default function PackageCards({ products, isGuest = false, isPartner = fa
                 </div>
               )}
 
-              <div className="flex-1" />
-
               {isGuest ? (
                 <Link
                   to="/cadastro"
-                  className={`w-full flex items-center justify-center gap-2 py-2 sm:py-2.5 rounded-lg text-xs font-bold transition-all tracking-wide ${pkg.highlight
+                  onClick={(e) => e.stopPropagation()}
+                  className={`w-full flex items-center justify-center gap-2 py-3 sm:py-2.5 rounded-lg text-sm sm:text-xs font-bold transition-all tracking-wide mt-2 ${pkg.highlight
                     ? 'bg-amber-500 hover:bg-amber-600 text-white'
                     : 'border border-gold-border text-gold-text hover:bg-gold hover:text-white'
                   }`}
@@ -209,8 +208,8 @@ export default function PackageCards({ products, isGuest = false, isPartner = fa
                 </Link>
               ) : (
                 <button
-                  onClick={() => handleSelectPackage(pkg.id)}
-                  className={`w-full flex items-center justify-center gap-2 py-2 sm:py-2.5 rounded-lg text-xs font-bold transition-all tracking-wide ${addedPkgId === pkg.id
+                  onClick={(e) => { e.stopPropagation(); handleSelectPackage(pkg.id) }}
+                  className={`w-full flex items-center justify-center gap-2 py-3 sm:py-2.5 rounded-lg text-sm sm:text-xs font-bold transition-all tracking-wide mt-2 ${addedPkgId === pkg.id
                     ? 'bg-green-600 shadow-none text-white'
                     : pkg.highlight
                       ? 'bg-amber-500 hover:bg-amber-600 shadow-sm text-white'
@@ -230,13 +229,6 @@ export default function PackageCards({ products, isGuest = false, isPartner = fa
                   )}
                 </button>
               )}
-
-              <button
-                onClick={() => setDetailsPkgId(pkg.id)}
-                className="w-full mt-2 py-2 text-xs font-bold text-muted-foreground hover:text-gold transition-colors underline bg-transparent border-none"
-              >
-                Ver + detalhes
-              </button>
             </div>
           )
         })}
