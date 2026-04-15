@@ -121,6 +121,51 @@ _Registro de decisões arquiteturais relevantes, com contexto e consequências._
 
 ---
 
+## [D-15] Auth loading — roleLoadedRef, uma única carga por sessão
+
+**Data:** 2026-04-15
+**Contexto:** `AuthContext` setava `loading=true` em todo evento de auth, incluindo `TOKEN_REFRESHED` e `SIGNED_IN` disparados no alt-tab (renovação automática de token). Isso desmontava rotas protegidas (`SalaoRoute`, `AdminRoute`), apagando estado local de formulários.
+**Decisão:** Introduzir `roleLoadedRef` (useRef booleano). `loading=true` + `fetchAccountMetadata` só disparam quando `roleLoadedRef.current === false` (primeira carga ou pós-logout). Eventos subsequentes atualizam apenas `session` e `user` sem tocar `loading` ou `role`.
+**Consequência:** Formulários longos (ex: /salao/pedido) sobrevivem a renovações de token. Na prática, `loading` é um bloqueio de rota de mão única por sessão. Admin e catálogo também param de piscar no alt-tab.
+
+---
+
+## [D-16] Login pós-auth — navegação via useEffect, não imperativa
+
+**Data:** 2026-04-15
+**Contexto:** `Login.tsx` chamava `navigate()` imediatamente após `signInWithPassword()`. Como `onAuthStateChange` é assíncrono, o React renderizava a nova rota antes de `role` estar disponível no `AuthContext`. `SalaoRoute` via `role=null` e redirecionava para `/`, impedindo o acesso.
+**Decisão:** Substituir o `navigate()` imperativo por `setPendingNav(true)` + `useEffect` que observa `[pendingNav, authLoading, user, role]`. A navegação só ocorre quando `authLoading=false` e `user` está definido — garantindo que o role já está resolvido.
+**Consequência:** Elimina a race condition no login de qualquer role. A dupla query ao DB (uma em `handleSubmit` para decidir rota, outra no `AuthContext`) foi eliminada — `AuthContext` é a única fonte de verdade do role.
+
+---
+
+## [D-17] create-user edge function — --no-verify-jwt (ES256 vs HS256)
+
+**Data:** 2026-04-15
+**Contexto:** O Supabase passou a assinar JWTs com `ES256` (curva elíptica). O gateway de edge functions com JWT verification habilitada esperava `HS256`, retornando `UNAUTHORIZED_UNSUPPORTED_TOKEN_ALGORITHM` antes de chegar no código da função.
+**Decisão:** Deploy da `create-user` com `--no-verify-jwt`. A função já faz sua própria verificação de auth (busca o usuário pelo token + checa role `salao` ou `admin` no DB), então a verificação de gateway é redundante.
+**Consequência:** A função é acessível sem JWT válido no gateway, mas rejeita qualquer chamada sem um Bearer token de usuário autenticado com role correto. Padrão a replicar em futuras edge functions que façam auth própria.
+
+---
+
+## [D-18] Pagamento dividido — payment_splits JSONB em orders
+
+**Data:** 2026-04-15
+**Contexto:** Operadores do salão precisavam registrar pagamentos mistos (ex: R$100 PIX + R$50 Dinheiro) em um único pedido.
+**Decisão:** Nova coluna `orders.payment_splits JSONB` com estrutura `[{method, amount}]`. Quando informado, `create_salao_order` valida que a soma bate com o subtotal (tolerância R$0,01) e grava `payment_method = 'MISTO'` automaticamente. Pedidos com pagamento único mantêm `payment_splits = NULL` — retrocompatível.
+**Consequência:** Admin Pedidos exibe badge roxo com detalhamento dos splits. `payment_method = 'MISTO'` é o discriminador para saber se há splits.
+
+---
+
+## [D-19] Clientes criados pelo salão — wholesale_buyer automático
+
+**Data:** 2026-04-15
+**Contexto:** Todo cliente cadastrado pelo operador do salão é um comprador atacado, não um parceiro da rede (`network_partner`).
+**Decisão:** `handleCreateClient` em `/salao/pedido` sempre seta `customer_segment = 'wholesale_buyer'` após criação via edge function `create-user`. Sem checkbox — decisão é automática e implícita.
+**Consequência:** Admin pode alterar a classificação depois via `admin_update_customer_segment`. O campo `is_partner` (legado) não é alterado.
+
+---
+
 ## [D-14] Tabelas de preço — price list merge no hook, não na query
 
 **Data:** 2026-04-10

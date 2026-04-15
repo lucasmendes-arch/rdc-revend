@@ -132,6 +132,7 @@ Pedidos de venda.
 | payment_id | text | YES | NULL | — |
 | origin | text | YES | NULL | — |
 | payment_method | text | YES | NULL | — |
+| payment_splits | jsonb | YES | NULL | — |
 | coupon_id | uuid | YES | NULL | coupons.id |
 | delivery_method | text | NO | `'shipping'` | — |
 | pickup_unit_slug | text | YES | NULL | — |
@@ -141,6 +142,7 @@ Pedidos de venda.
 | customer_segment_snapshot | text | YES | NULL | — |
 
 > `customer_segment_snapshot` válidos: `'network_partner'`, `'wholesale_buyer'`. Snapshot da classificação do cliente no momento da criação do pedido. NULL = pedido legado ou cliente sem classificação.
+> `payment_splits` estrutura: `[{"method": "PIX", "amount": 100.00}, {"method": "Dinheiro", "amount": 50.00}]`. Preenchido quando `payment_method = 'MISTO'`. NULL para pagamento único.
 > **ATENÇÃO:** campo de data é `created_at`, NÃO `order_date` ou `date`.
 > `discount_amount` é o valor efetivo do desconto aplicado (cupom percent/fixed). 0 se sem desconto.
 > Status válidos: `recebido`, `aguardando_pagamento`, `pago`, `separacao`, `enviado`, `entregue`, `concluido`, `cancelado`, `expirado`.
@@ -675,11 +677,13 @@ create_salao_order(
   p_payment_method   text        DEFAULT NULL,
   p_order_date       timestamptz DEFAULT NULL,
   p_seller_id        uuid        DEFAULT NULL,
-  p_pickup_unit_slug text        DEFAULT NULL
+  p_pickup_unit_slug text        DEFAULT NULL,
+  p_payment_splits   jsonb       DEFAULT NULL
 ) → uuid
 ```
 Cria pedido pelo operador do salão. Calcula subtotal server-side a partir dos preços reais do `catalog_products` (ignora preço do frontend). Aplica `partner_price` se cliente é parceiro. Status fixo `recebido`, origin fixo `salao`, delivery_method fixo `pickup`. Resolve seller padrão se não informado. Unidade de pickup obrigatória.
-Acessível por: `authenticated` (salao verificado internamente).
+`p_payment_splits`: array `[{method, amount}]`. Se informado, valida que soma == subtotal (tolerância R$0,01) e grava `payment_method = 'MISTO'` automaticamente.
+Acessível por: `authenticated` (salao verificado internamente). JWT verification desabilitada no gateway (--no-verify-jwt) — função faz a própria verificação de role internamente.
 
 ---
 
