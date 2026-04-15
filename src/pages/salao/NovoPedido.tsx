@@ -43,8 +43,14 @@ interface CartItem {
 const PAYMENT_METHODS = [
   { value: 'PIX',               label: 'PIX' },
   { value: 'Cartão de Crédito', label: 'Cartão de Crédito' },
+  { value: 'Cartão de Débito',  label: 'Cartão de Débito' },
   { value: 'Dinheiro',          label: 'Dinheiro' },
 ];
+
+interface PaymentSplit {
+  method: string;
+  amount: string; // string para input controlado
+}
 
 // ─── Hook: useDebounce ────────────────────────────────────────────────────────
 
@@ -73,12 +79,18 @@ export default function SalaoNovoPedido() {
   const [isSaving, setIsSaving]                   = useState(false);
   const [lastOrderId, setLastOrderId]             = useState<string | null>(null);
 
+  // ── Split payment states
+  const [splitMode, setSplitMode]                 = useState(false);
+  const [paymentSplits, setPaymentSplits]         = useState<PaymentSplit[]>([
+    { method: 'PIX',      amount: '' },
+    { method: 'Dinheiro', amount: '' },
+  ]);
+
   // ── Client Express States
   const [isCreatingClient, setIsCreatingClient]   = useState(false);
   const [newClientName, setNewClientName]         = useState('');
   const [newClientPhone, setNewClientPhone]       = useState('');
   const [newClientEmail, setNewClientEmail]       = useState('');
-  const [newClientPartner, setNewClientPartner]   = useState(false);
 
   const debouncedCustomerSearch = useDebounce(customerSearch, 300);
 
@@ -176,6 +188,9 @@ export default function SalaoNovoPedido() {
 
   const total = subtotal;
 
+  const splitsTotal = paymentSplits.reduce((s, p) => s + (parseFloat(p.amount) || 0), 0);
+  const splitsDiff  = total - splitsTotal;
+
   // ── Handlers ───────────────────────────────────────────────────────────────
 
   function addToCart(product: Product, isBulk = false) {
@@ -247,22 +262,37 @@ export default function SalaoNovoPedido() {
       return;
     }
 
+    if (splitMode) {
+      const allFilled = paymentSplits.every(s => parseFloat(s.amount) > 0);
+      if (!allFilled) {
+        toast.error('Preencha o valor de todas as formas de pagamento');
+        return;
+      }
+      if (Math.abs(splitsDiff) > 0.01) {
+        toast.error(`A soma dos pagamentos (R$ ${splitsTotal.toFixed(2)}) não bate com o total (R$ ${total.toFixed(2)})`);
+        return;
+      }
+    }
+
     setIsSaving(true);
 
     try {
       const { data, error } = await supabase.rpc('create_salao_order', {
-        p_user_id: selectedCustomer.id,
-        p_items: cartItems.map(i => ({
+        p_user_id:          selectedCustomer.id,
+        p_items:            cartItems.map(i => ({
           product_id:   i.product_id,
           product_name: i.product_name,
           quantity:     i.quantity,
           price:        i.price,
         })),
-        p_notes: notes || null,
-        p_payment_method: paymentMethod,
-        p_order_date: orderDate ? new Date(orderDate).toISOString() : null,
-        p_seller_id: selectedSellerId || null,
+        p_notes:            notes || null,
+        p_payment_method:   splitMode ? null : paymentMethod,
+        p_order_date:       orderDate ? new Date(orderDate).toISOString() : null,
+        p_seller_id:        selectedSellerId || null,
         p_pickup_unit_slug: selectedUnitSlug,
+        p_payment_splits:   splitMode
+          ? paymentSplits.map(s => ({ method: s.method, amount: parseFloat(s.amount) }))
+          : null,
       });
 
       if (error) throw error;
@@ -281,6 +311,8 @@ export default function SalaoNovoPedido() {
       setOrderDate('');
       setSelectedSellerId('');
       setSelectedUnitSlug('');
+      setSplitMode(false);
+      setPaymentSplits([{ method: 'PIX', amount: '' }, { method: 'Dinheiro', amount: '' }]);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Erro ao criar pedido';
       toast.error(`Erro: ${msg}`);
@@ -308,9 +340,12 @@ export default function SalaoNovoPedido() {
 
     setIsSaving(true);
     try {
-      await supabase.auth.refreshSession()
-      const { data: sessionData } = await supabase.auth.getSession()
-      const token = sessionData.session?.access_token
+      const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession()
+      if (refreshError || !refreshData.session) {
+        toast.error('Sessão expirada. Faça login novamente.');
+        return;
+      }
+      const token = refreshData.session.access_token;
 
       const { data, error } = await supabase.functions.invoke('create-user', {
         body: {
@@ -329,9 +364,9 @@ export default function SalaoNovoPedido() {
       }
       if (data?.error) throw new Error(data.error);
 
-      // Update is_partner flag
-      if (newClientPartner && data.user?.id) {
-        await supabase.from('profiles').update({ is_partner: true }).eq('id', data.user.id);
+      // Clientes criados pelo salão são sempre Comprador Atacado
+      if (data.user?.id) {
+        await supabase.from('profiles').update({ customer_segment: 'wholesale_buyer' }).eq('id', data.user.id);
       }
 
       toast.success('Cliente cadastrado com sucesso!');
@@ -341,7 +376,7 @@ export default function SalaoNovoPedido() {
         full_name: newClientName,
         phone: newClientPhone,
         email: newClientEmail || safeEmail,
-        is_partner: newClientPartner
+        is_partner: false
       };
       
       setSelectedCustomer(newProfile);
@@ -351,7 +386,6 @@ export default function SalaoNovoPedido() {
       setNewClientName('');
       setNewClientPhone('');
       setNewClientEmail('');
-      setNewClientPartner(false);
       setCustomerSearch('');
 
     } catch (err: unknown) {
@@ -424,7 +458,6 @@ export default function SalaoNovoPedido() {
                   </p>
                   <p className="text-xs text-muted-foreground">
                     {selectedCustomer.phone || 'Sem telefone'}
-                    {selectedCustomer.email ? ` · ${selectedCustomer.email}` : ''}
                   </p>
                 </div>
               </div>
@@ -448,16 +481,21 @@ export default function SalaoNovoPedido() {
                  </div>
                  <div className="space-y-1">
                     <label className="text-[11px] font-semibold text-muted-foreground uppercase">WhatsApp *</label>
-                     <input type="tel" required maxLength={15} value={newClientPhone} onChange={e => setNewClientPhone(e.target.value)} className="w-full px-3 py-2 rounded-lg border border-input text-sm focus:ring-2 focus:ring-amber-400 focus:outline-none" placeholder="(27) 99900-0000" />
+                     <input
+                       type="tel"
+                       required
+                       inputMode="numeric"
+                       maxLength={11}
+                       value={newClientPhone}
+                       onChange={e => setNewClientPhone(e.target.value.replace(/\D/g, '').slice(0, 11))}
+                       className="w-full px-3 py-2 rounded-lg border border-input text-sm focus:ring-2 focus:ring-amber-400 focus:outline-none"
+                       placeholder="DDD + número (10 ou 11 dígitos)"
+                     />
                  </div>
                  <div className="space-y-1 sm:col-span-2">
                     <label className="text-[11px] font-semibold text-muted-foreground uppercase">E-mail (opcional)</label>
                     <input type="email" value={newClientEmail} onChange={e => setNewClientEmail(e.target.value)} className="w-full px-3 py-2 rounded-lg border border-input text-sm focus:ring-2 focus:ring-amber-400 focus:outline-none" placeholder="cliente@email.com" />
                  </div>
-              </div>
-              <div className="flex items-center gap-2 pt-1 border-t border-border mt-3">
-                 <input type="checkbox" id="client_partner" checked={newClientPartner} onChange={e => setNewClientPartner(e.target.checked)} className="rounded border-input text-amber-400 focus:ring-amber-400" />
-                 <label htmlFor="client_partner" className="text-xs text-foreground cursor-pointer font-medium">Conta Perfil Parceiro/Atacado</label>
               </div>
               <button disabled={isSaving} type="submit" className="w-full py-2.5 rounded-lg font-semibold btn-gold text-white text-sm mt-4">
                  {isSaving ? 'Salvando...' : 'Cadastrar e Selecionar'}
@@ -516,7 +554,6 @@ export default function SalaoNovoPedido() {
                       </p>
                       <p className="text-xs text-muted-foreground">
                         {profile.phone || 'Sem telefone'}
-                        {profile.email ? ` · ${profile.email}` : ''}
                       </p>
                     </button>
                   ))}
@@ -785,23 +822,101 @@ export default function SalaoNovoPedido() {
             </div>
 
             {/* Pagamento */}
-            <div>
-              <label className="block text-xs font-semibold text-foreground mb-1.5">Método de Pagamento</label>
-              <div className="flex flex-wrap gap-2 mt-1">
-                {PAYMENT_METHODS.map(pm => (
-                  <button
-                    key={pm.value}
-                    onClick={() => setPaymentMethod(pm.value)}
-                    className={`px-4 py-2 rounded-xl text-xs font-semibold transition-colors border ${
-                      paymentMethod === pm.value
-                        ? 'border-amber-400 bg-amber-50 text-amber-900'
-                        : 'border-border bg-white text-muted-foreground hover:bg-surface-alt'
-                    }`}
-                  >
-                    {pm.label}
-                  </button>
-                ))}
+            <div className="sm:col-span-2">
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-xs font-semibold text-foreground">Método de Pagamento</label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSplitMode(v => !v);
+                    if (splitMode) setPaymentSplits([{ method: 'PIX', amount: '' }, { method: 'Dinheiro', amount: '' }]);
+                  }}
+                  className={`text-[10px] font-bold px-2.5 py-1 rounded-lg border transition-colors ${
+                    splitMode
+                      ? 'border-amber-400 bg-amber-50 text-amber-700'
+                      : 'border-border bg-white text-muted-foreground hover:bg-surface-alt'
+                  }`}
+                >
+                  {splitMode ? 'Pagamento único' : 'Dividir pagamento'}
+                </button>
               </div>
+
+              {!splitMode ? (
+                <div className="flex flex-wrap gap-2">
+                  {PAYMENT_METHODS.map(pm => (
+                    <button
+                      key={pm.value}
+                      type="button"
+                      onClick={() => setPaymentMethod(pm.value)}
+                      className={`px-4 py-2 rounded-xl text-xs font-semibold transition-colors border ${
+                        paymentMethod === pm.value
+                          ? 'border-amber-400 bg-amber-50 text-amber-900'
+                          : 'border-border bg-white text-muted-foreground hover:bg-surface-alt'
+                      }`}
+                    >
+                      {pm.label}
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {paymentSplits.map((split, idx) => (
+                    <div key={idx} className="flex items-center gap-2">
+                      <select
+                        value={split.method}
+                        onChange={e => setPaymentSplits(prev => prev.map((s, i) => i === idx ? { ...s, method: e.target.value } : s))}
+                        className="flex-1 px-3 py-2 rounded-xl border border-input text-sm focus:ring-2 focus:ring-amber-400 focus:outline-none bg-white font-medium"
+                      >
+                        {PAYMENT_METHODS.map(pm => <option key={pm.value} value={pm.value}>{pm.label}</option>)}
+                      </select>
+                      <div className="relative">
+                        <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground font-medium">R$</span>
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          placeholder="0,00"
+                          value={split.amount}
+                          onChange={e => setPaymentSplits(prev => prev.map((s, i) => i === idx ? { ...s, amount: e.target.value } : s))}
+                          className="w-28 pl-8 pr-2 py-2 rounded-xl border border-input text-sm focus:ring-2 focus:ring-amber-400 focus:outline-none"
+                        />
+                      </div>
+                      {paymentSplits.length > 2 && (
+                        <button
+                          type="button"
+                          onClick={() => setPaymentSplits(prev => prev.filter((_, i) => i !== idx))}
+                          className="p-1.5 rounded-lg text-muted-foreground hover:text-red-500 hover:bg-red-50 transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+
+                  <button
+                    type="button"
+                    onClick={() => setPaymentSplits(prev => [...prev, { method: 'PIX', amount: '' }])}
+                    className="flex items-center gap-1.5 text-xs text-amber-700 font-semibold hover:underline mt-1"
+                  >
+                    <Plus className="w-3.5 h-3.5" /> Adicionar forma
+                  </button>
+
+                  <div className={`flex items-center justify-between text-xs font-semibold px-3 py-2 rounded-lg border ${
+                    Math.abs(splitsDiff) < 0.01
+                      ? 'border-green-200 bg-green-50 text-green-700'
+                      : 'border-amber-200 bg-amber-50 text-amber-700'
+                  }`}>
+                    <span>Total a distribuir: R$ {total.toFixed(2)}</span>
+                    <span>
+                      {Math.abs(splitsDiff) < 0.01
+                        ? '✓ Conferido'
+                        : splitsDiff > 0
+                          ? `Faltam R$ ${splitsDiff.toFixed(2)}`
+                          : `Excesso R$ ${Math.abs(splitsDiff).toFixed(2)}`}
+                    </span>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Observações */}

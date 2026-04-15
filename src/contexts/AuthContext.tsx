@@ -43,30 +43,37 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [role, setRole] = useState<UserRole>(null)
   const [isPartner, setIsPartner] = useState(false)
   const initialized = useRef(false)
+  // Garante que loading=true só acontece UMA VEZ (na carga inicial).
+  // Após o role ser conhecido, nenhum evento de auth (inclusive SIGNED_IN
+  // disparado em renovação de token no alt-tab) volta a bloquear as rotas.
+  const roleLoadedRef = useRef(false)
 
   useEffect(() => {
-    // Use onAuthStateChange as the single source of truth.
-    // Supabase fires INITIAL_SESSION on mount (replaces getSession).
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      // console.log('[AUTH] event:', event)
-
       setSession(session)
       setUser(session?.user ?? null)
       initialized.current = true
 
       if (session?.user) {
-        // Fetch role before finishing loading to avoid route redirects
-        fetchAccountMetadata(session.user.id).then(meta => {
-          // console.log('[AUTH] role:', meta.role)
-          setRole(meta.role)
-          setIsPartner(meta.is_partner)
-        }).catch(() => {
-          setRole('user')
-          setIsPartner(false)
-        }).finally(() => {
-          setLoading(false)
-        })
+        if (!roleLoadedRef.current) {
+          // Primeira carga: busca o role e bloqueia as rotas até ter resposta.
+          setLoading(true)
+          fetchAccountMetadata(session.user.id).then(meta => {
+            setRole(meta.role)
+            setIsPartner(meta.is_partner)
+            roleLoadedRef.current = true
+          }).catch(() => {
+            setRole('user')
+            setIsPartner(false)
+            roleLoadedRef.current = true
+          }).finally(() => {
+            setLoading(false)
+          })
+        }
+        // Role já carregado: apenas atualiza session/user em background.
+        // NÃO toca loading nem role — evita desmontar formulários no alt-tab.
       } else {
+        roleLoadedRef.current = false
         setRole(null)
         setIsPartner(false)
         setLoading(false)

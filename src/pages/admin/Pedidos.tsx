@@ -23,6 +23,7 @@ interface Order {
   pickup_unit_slug?: string;
   pickup_unit_address?: string;
   payment_method?: string | null;
+  payment_splits?: Array<{ method: string; amount: number }> | null;
   subtotal?: number;
   shipping?: number;
   discount_amount?: number;
@@ -421,6 +422,20 @@ const AdminPedidos = () => {
                               <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-bold ring-1 ring-inset ring-amber-600/20 bg-amber-50 text-amber-700">
                                 <Truck className="w-3 h-3" />
                                 PAGAR NA ENTREGA
+                              </span>
+                            )}
+                            {order.payment_method === 'MISTO' && order.payment_splits && order.payment_splits.length > 0 && (
+                              <span className="inline-flex flex-wrap items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-bold ring-1 ring-inset ring-violet-600/20 bg-violet-50 text-violet-700">
+                                {order.payment_splits.map((s, i) => (
+                                  <span key={i}>
+                                    {s.method} R${s.amount.toFixed(2)}{i < order.payment_splits!.length - 1 ? ' +' : ''}
+                                  </span>
+                                ))}
+                              </span>
+                            )}
+                            {order.payment_method && order.payment_method !== 'pay_on_delivery' && order.payment_method !== 'MISTO' && (
+                              <span className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-bold ring-1 ring-inset ring-zinc-600/20 bg-zinc-50 text-zinc-600">
+                                {order.payment_method}
                               </span>
                             )}
                             {itemsCount > 0 && (

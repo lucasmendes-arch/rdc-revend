@@ -1,12 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ArrowRight, Crown, Eye, EyeOff, Lock, Mail } from "lucide-react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import logo from "@/assets/logo-rei-dos-cachos.png";
 import { supabase } from "@/lib/supabase";
-
-interface LocationState {
-  returnTo?: string;
-}
+import { useAuth } from "@/contexts/AuthContext";
 
 // ── Phone detection helpers ──────────────────────────────────────────────────
 
@@ -33,12 +30,28 @@ function normalizePhone(raw: string): string | null {
 const Login = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { user, role, loading: authLoading } = useAuth();
   const [form, setForm] = useState({ identifier: "", password: "" });
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [resetSent, setResetSent] = useState(false);
   const [resetLoading, setResetLoading] = useState(false);
+  const [pendingNav, setPendingNav] = useState(false);
+
+  // Navigate only after AuthContext resolved user + role (avoids race condition
+  // where SalaoRoute/AdminRoute see role=null before SIGNED_IN is processed).
+  useEffect(() => {
+    if (!pendingNav || authLoading || !user) return;
+    const state = location.state as { returnTo?: string } | null;
+    if (state?.returnTo) {
+      navigate(state.returnTo, { replace: true });
+      return;
+    }
+    if (role === "admin") navigate("/admin/financeiro", { replace: true });
+    else if (role === "salao") navigate("/salao/pedido", { replace: true });
+    else navigate("/catalogo", { replace: true });
+  }, [pendingNav, authLoading, user, role]);
 
   const identifierIsPhone = looksLikePhone(form.identifier.trim());
 
@@ -108,12 +121,12 @@ const Login = () => {
           return;
         }
 
-        navigate("/catalogo", { replace: true });
+        setPendingNav(true);
         return;
       }
 
       // ── Email login path (default) ─────────────────────────────────────────
-      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+      const { error: signInError } = await supabase.auth.signInWithPassword({
         email: identifier,
         password: form.password,
       });
@@ -124,28 +137,7 @@ const Login = () => {
         return;
       }
 
-      const state = location.state as LocationState | null;
-      if (state?.returnTo) {
-        navigate(state.returnTo, { replace: true });
-      } else {
-        const userId = signInData.user?.id;
-        if (userId) {
-          const { data: profile } = await supabase
-            .from("profiles")
-            .select("role")
-            .eq("id", userId)
-            .maybeSingle();
-          if (profile?.role === "admin") {
-            navigate("/admin/financeiro", { replace: true });
-            return;
-          }
-          if (profile?.role === "salao") {
-            navigate("/salao/pedido", { replace: true });
-            return;
-          }
-        }
-        navigate("/catalogo", { replace: true });
-      }
+      setPendingNav(true);
     } catch (err) {
       setLoading(false);
       setError("Erro ao fazer login. Tente novamente.");
