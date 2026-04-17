@@ -15,6 +15,10 @@ import { useCart } from "@/contexts/CartContext";
 import { useTrackPageView, useTrackAddToCart, useTrackProductView } from "@/hooks/useSessionTracking";
 import { ProfileCompletionModal } from "@/components/ProfileCompletionModal";
 import { isProfileIncomplete } from "@/utils/profile";
+import { extractVolume } from "@/utils/product";
+import B2BHero from "@/components/catalog/B2BHero";
+import HowItWorks from "@/components/catalog/HowItWorks";
+import WhatsAppCTA from "@/components/catalog/WhatsAppCTA";
 
 // ============================================================================
 // TYPES & CONSTANTS
@@ -137,6 +141,14 @@ const Catalogo = () => {
   useTrackPageView('Catálogo');
   const trackAddToCart = useTrackAddToCart();
   const trackProductView = useTrackProductView();
+
+  const scrollToKits = () => {
+    document.getElementById('kits-section')?.scrollIntoView({ behavior: 'smooth' });
+  };
+  const scrollToProducts = () => {
+    const target = document.getElementById('categoria-uso-profissional') || document.getElementById('produtos-section');
+    target?.scrollIntoView({ behavior: 'smooth' });
+  };
 
   // ========================================================================
   // STATE
@@ -638,6 +650,14 @@ const Catalogo = () => {
         </div>
       )}
 
+      {/* Hero B2B Section - Visible before anything else */}
+      {!debouncedSearch && !viewAll && (
+        <B2BHero
+          onScrollToKits={scrollToKits}
+          onScrollToProducts={scrollToProducts}
+        />
+      )}
+
       <div className="flex flex-col lg:flex-row lg:gap-6 w-full max-w-full">
         {/* Sidebar Filters (Desktop) */}
         <aside className="hidden lg:block w-64 px-3 pt-4 pb-6">
@@ -840,11 +860,15 @@ const Catalogo = () => {
 
             {/* Package Cards Header (Desktop Only) — ocultar durante busca ou viewAll */}
             {!debouncedSearch && !viewAll && !isLoading && !error && products.length > 0 && !isPartner && (
-              <div className="hidden sm:block">
+              <div id="kits-section" className="hidden sm:block">
                 <div className="mb-8">
                   <PackageCards products={products} isGuest={isGuest} isPartner={isPartner} />
                 </div>
               </div>
+            )}
+
+            {!debouncedSearch && !viewAll && (
+              <HowItWorks />
             )}
 
             {/* Category Bubbles: moved to sticky bar above content */}
@@ -865,14 +889,16 @@ const Catalogo = () => {
             )}
 
             {/* Título da seção de produtos — oculto em viewAll sem busca (substituído pelo banner) */}
-            {!isLoading && !error && filtered.length > 0 && (!viewAll || debouncedSearch) && (
-              <div className="flex items-center gap-1.5 mb-4 mt-4 sm:mt-8">
-                <div className="w-1 h-5 bg-amber-500 rounded-full"></div>
-                <h2 className="text-[16px] sm:text-lg font-bold text-foreground">
-                  {debouncedSearch ? `Resultados para "${debouncedSearch}"` : "Aproveite e leve também"}
-                </h2>
-              </div>
-            )}
+            <div id="produtos-section">
+              {!isLoading && !error && filtered.length > 0 && (!viewAll || debouncedSearch) && (
+                <div className="flex items-center gap-1.5 mb-4 mt-4 sm:mt-8">
+                  <div className="w-1 h-5 bg-amber-500 rounded-full"></div>
+                  <h2 className="text-[16px] sm:text-lg font-bold text-foreground">
+                    {debouncedSearch ? `Resultados para "${debouncedSearch}"` : "Aproveite e leve também"}
+                  </h2>
+                </div>
+              )}
+            </div>
             {activeFiltersCount > 0 && (
               <div className="flex flex-wrap gap-1 mb-2.5">
                 {debouncedSearch && (
@@ -934,10 +960,11 @@ const Catalogo = () => {
                     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4 mb-8">
                       {filteredSortedByCategory.map(product => {
                         const suggested = getSuggestedPrice(product.price, product.compare_at_price);
+                        const { baseName, volume } = extractVolume(product.name);
                         return (
                           <div
                             key={product.id}
-                            className="bg-white rounded-xl border border-border shadow-sm hover:shadow-md transition-shadow flex flex-col overflow-hidden group"
+                            className="bg-white rounded-2xl border border-amber-100 shadow-[0_2px_12px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_24px_rgba(217,119,6,0.12)] transition-all flex flex-col overflow-hidden group"
                           >
                             <div
                               className="w-full aspect-square bg-surface-alt flex items-center justify-center overflow-hidden cursor-pointer relative"
@@ -953,14 +980,23 @@ const Catalogo = () => {
                               ) : (
                                 <ShoppingCart className="w-10 h-10 text-muted-foreground/25" />
                               )}
+                              {volume && (
+                                <div className="absolute bottom-2 right-2 z-10">
+                                  <span className="inline-flex items-center px-1.5 py-0.5 rounded shadow-sm text-[9px] sm:text-[10px] font-black bg-white/90 backdrop-blur-sm text-amber-900 border border-amber-200/60 uppercase tracking-wider">
+                                    {volume}
+                                  </span>
+                                </div>
+                              )}
                             </div>
                             <div className="p-2.5 sm:p-3 flex flex-col flex-1">
-                              <h3
-                                className="font-semibold text-foreground text-[11px] sm:text-[13px] leading-snug line-clamp-2 mb-1.5 cursor-pointer group-hover:text-amber-600 transition-colors"
+                              <div 
+                                className="cursor-pointer group-hover:text-amber-600 transition-colors"
                                 onClick={() => handleSelectProduct(product)}
                               >
-                                {product.name}
-                              </h3>
+                                <h3 className="font-bold text-foreground text-[11px] sm:text-[13px] leading-snug line-clamp-2 mb-1.5 sm:mb-2">
+                                  {baseName}
+                                </h3>
+                              </div>
                               <div className="mt-auto">
                                 {/* Resale price: hidden for guest */}
                                 {!isGuest && !product.is_professional && (
@@ -975,7 +1011,7 @@ const Catalogo = () => {
                                     <span className="text-[11px] text-muted-foreground font-medium">Ver preço ao cadastrar</span>
                                   </div>
                                 ) : (
-                                  <div className="text-sm font-bold text-foreground mb-2">
+                                  <div className="text-sm sm:text-[15px] font-black text-foreground mb-2">
                                     {isPartner && product.partner_price
                                       ? <>R$ {product.partner_price.toFixed(2)}</>
                                       : <>R$ {product.price.toFixed(2)}</>
@@ -985,39 +1021,46 @@ const Catalogo = () => {
                                 {isGuest ? (
                                   <Link
                                     to="/cadastro"
-                                    className="w-full flex items-center justify-center gap-1 py-1.5 rounded text-[10px] font-bold border border-gold-border text-gold-text hover:bg-gold hover:text-white transition-all"
+                                    className="w-full flex items-center justify-center gap-1 py-1.5 rounded-lg text-[10px] font-bold border border-gold-border text-gold-text hover:bg-gold hover:text-white transition-all shadow-sm"
                                   >
                                     Cadastre-se para comprar
                                   </Link>
                                 ) : (
-                                  <div className="flex items-center gap-1 mt-1">
-                                    <div className="flex items-center gap-0.5">
-                                      <button
-                                        onClick={(e) => { e.stopPropagation(); setQty(product.id, getQty(product.id) - 1); }}
-                                        disabled={getQty(product.id) <= 1}
-                                        className="w-6 h-6 flex items-center justify-center rounded border border-border bg-white text-muted-foreground hover:bg-surface-alt transition-colors disabled:opacity-40 text-xs font-medium"
-                                      >−</button>
-                                      <input
-                                        type="text"
-                                        inputMode="numeric"
-                                        value={getQty(product.id)}
-                                        onChange={(e) => { const v = parseInt(e.target.value, 10); if (!isNaN(v)) setQty(product.id, v); }}
-                                        onBlur={(e) => { const v = parseInt(e.target.value, 10); if (isNaN(v) || v < 1) setQty(product.id, 1); }}
-                                        className="w-7 h-6 text-center text-[11px] font-semibold text-foreground border border-border rounded bg-white focus:outline-none focus:ring-1 focus:ring-gold"
-                                      />
-                                      <button
-                                        onClick={(e) => { e.stopPropagation(); setQty(product.id, getQty(product.id) + 1); }}
-                                        className="w-6 h-6 flex items-center justify-center rounded-lg border border-border bg-white text-muted-foreground hover:bg-surface-alt transition-colors text-xs font-medium"
-                                      >+</button>
+                                  <div className="flex flex-col gap-1 mt-1">
+                                    <div className="flex items-center gap-1">
+                                      <button onClick={(e) => { e.stopPropagation(); setQty(product.id, 6); }} className="flex-1 py-0.5 rounded bg-surface-alt text-muted-foreground text-[9px] font-bold border border-border hover:bg-amber-50 hover:text-amber-700 hover:border-amber-200 transition-colors">+6</button>
+                                      <button onClick={(e) => { e.stopPropagation(); setQty(product.id, 12); }} className="flex-1 py-0.5 rounded bg-surface-alt text-muted-foreground text-[9px] font-bold border border-border hover:bg-amber-50 hover:text-amber-700 hover:border-amber-200 transition-colors">+12</button>
+                                      <button onClick={(e) => { e.stopPropagation(); setQty(product.id, 24); }} className="flex-1 py-0.5 rounded bg-surface-alt text-muted-foreground text-[9px] font-bold border border-border hover:bg-amber-50 hover:text-amber-700 hover:border-amber-200 transition-colors">+24</button>
                                     </div>
-                                    <button
-                                      onClick={(e) => { e.stopPropagation(); handleAddItem(product); }}
-                                      className={`flex-1 h-6 flex items-center justify-center gap-1 rounded text-[10px] font-bold transition-all uppercase ${addedId === product.id ? 'bg-green-600 text-white' : 'bg-gold-light text-gold-text border border-gold-border hover:bg-gold hover:text-white'}`}
-                                    >
-                                      {addedId === product.id
-                                        ? <><Check className="w-3 h-3" /> OK</>
-                                        : <><ShoppingCart className="w-3 h-3" /> ADD</>}
-                                    </button>
+                                    <div className="flex items-center gap-1.5 mt-0.5">
+                                      <div className="flex items-center gap-0.5">
+                                        <button
+                                          onClick={(e) => { e.stopPropagation(); setQty(product.id, getQty(product.id) - 1); }}
+                                          disabled={getQty(product.id) <= 1}
+                                          className="w-7 h-7 flex items-center justify-center rounded-md border border-border bg-surface-alt text-muted-foreground hover:bg-border transition-colors disabled:opacity-40 text-xs font-medium"
+                                        >−</button>
+                                        <input
+                                          type="text"
+                                          inputMode="numeric"
+                                          value={getQty(product.id)}
+                                          onChange={(e) => { const v = parseInt(e.target.value, 10); if (!isNaN(v)) setQty(product.id, v); }}
+                                          onBlur={(e) => { const v = parseInt(e.target.value, 10); if (isNaN(v) || v < 1) setQty(product.id, 1); }}
+                                          className="w-8 h-7 text-center text-xs font-bold text-foreground border border-border rounded-md bg-surface focus:outline-none focus:ring-1 focus:ring-amber-500"
+                                        />
+                                        <button
+                                          onClick={(e) => { e.stopPropagation(); setQty(product.id, getQty(product.id) + 1); }}
+                                          className="w-7 h-7 flex items-center justify-center rounded-md border border-border bg-surface-alt text-muted-foreground hover:bg-border transition-colors text-xs font-medium"
+                                        >+</button>
+                                      </div>
+                                      <button
+                                        onClick={(e) => { e.stopPropagation(); handleAddItem(product); }}
+                                        className={`flex-1 h-7 flex items-center justify-center gap-1 rounded-md text-[10px] font-black transition-all uppercase tracking-wider shadow-sm hover:shadow ${addedId === product.id ? 'bg-green-600 text-white hover:-translate-y-0.5' : 'bg-amber-500 hover:bg-amber-600 text-white hover:-translate-y-0.5'}`}
+                                      >
+                                        {addedId === product.id
+                                          ? <><Check className="w-3.5 h-3.5" /> OK</>
+                                          : <><ShoppingCart className="w-3.5 h-3.5" /> ADD</>}
+                                      </button>
+                                    </div>
                                   </div>
                                 )}
                               </div>
@@ -1041,7 +1084,11 @@ const Catalogo = () => {
                         const categoryProducts = filtered.filter(p => p.category_id === category.id);
                         if (categoryProducts.length === 0) return null;
                         return (
-                          <div key={category.id} className="w-full">
+                          <div 
+                            key={category.id} 
+                            id={`categoria-${category.name.toLowerCase().replace(/\s+/g, '-')}`}
+                            className="w-full scroll-mt-24"
+                          >
                             <CompactProductCarousel
                               title={category.name}
                               products={categoryProducts}
@@ -1077,6 +1124,8 @@ const Catalogo = () => {
                     )}
                   </>
                 )}
+
+                <WhatsAppCTA />
               </>
             )}
           </div>
@@ -1281,45 +1330,55 @@ const Catalogo = () => {
                   </div>
                 )}
 
-                {/* Quantity Control */}
-                <div className="flex items-center justify-center gap-2 mb-3 px-2 py-1.5 sm:py-2 bg-surface-alt rounded">
-                  <button
-                    onClick={() => setQty(selectedProduct.id, getQty(selectedProduct.id) - 1)}
-                    disabled={getQty(selectedProduct.id) <= 1}
-                    className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-white rounded transition-colors disabled:opacity-40 disabled:cursor-not-allowed text-sm"
-                  >
-                    −
-                  </button>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    value={getQty(selectedProduct.id)}
-                    onChange={(e) => {
-                      const v = parseInt(e.target.value, 10);
-                      if (!isNaN(v)) setQty(selectedProduct.id, v);
-                    }}
-                    onBlur={(e) => {
-                      const v = parseInt(e.target.value, 10);
-                      if (isNaN(v) || v < 1) setQty(selectedProduct.id, 1);
-                    }}
-                    className="w-10 text-center text-sm font-semibold text-foreground border border-border rounded bg-white focus:outline-none focus:ring-1 focus:ring-gold"
-                  />
-                  <button
-                    onClick={() => setQty(selectedProduct.id, getQty(selectedProduct.id) + 1)}
-                    className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-white rounded transition-colors text-sm"
-                  >
-                    +
-                  </button>
+                {/* Quantity Control & Quick Lot Buttons */}
+                <div className="flex flex-col mb-4 bg-surface rounded-xl border border-border p-3 sm:p-4 shadow-sm">
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-sm font-bold text-foreground">Quantidade</span>
+                    <div className="flex gap-2">
+                       <button onClick={() => setQty(selectedProduct.id, 6)} className="px-2 py-0.5 rounded bg-amber-50 text-amber-700 text-xs font-bold border border-amber-200 hover:bg-amber-100 transition-colors">+6</button>
+                       <button onClick={() => setQty(selectedProduct.id, 12)} className="px-2 py-0.5 rounded bg-amber-50 text-amber-700 text-xs font-bold border border-amber-200 hover:bg-amber-100 transition-colors">+12</button>
+                       <button onClick={() => setQty(selectedProduct.id, 24)} className="px-2 py-0.5 rounded bg-amber-50 text-amber-700 text-xs font-bold border border-amber-200 hover:bg-amber-100 transition-colors">+24</button>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setQty(selectedProduct.id, getQty(selectedProduct.id) - 1)}
+                      disabled={getQty(selectedProduct.id) <= 1}
+                      className="w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center text-muted-foreground bg-white border border-border hover:bg-surface-alt rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed text-lg font-medium flex-shrink-0"
+                    >
+                      −
+                    </button>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={getQty(selectedProduct.id)}
+                      onChange={(e) => {
+                        const v = parseInt(e.target.value, 10);
+                        if (!isNaN(v)) setQty(selectedProduct.id, v);
+                      }}
+                      onBlur={(e) => {
+                        const v = parseInt(e.target.value, 10);
+                        if (isNaN(v) || v < 1) setQty(selectedProduct.id, 1);
+                      }}
+                      className="flex-1 min-w-0 h-10 sm:h-12 text-center text-base sm:text-lg font-black text-foreground border border-border rounded-lg bg-white shadow-inner focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all"
+                    />
+                    <button
+                      onClick={() => setQty(selectedProduct.id, getQty(selectedProduct.id) + 1)}
+                      className="w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center text-muted-foreground bg-white border border-border hover:bg-surface-alt rounded-lg transition-colors text-lg font-medium flex-shrink-0"
+                    >
+                      +
+                    </button>
+                  </div>
                 </div>
 
                 {/* Action buttons */}
-                <div className="space-y-1.5 sm:space-y-2">
+                <div className="space-y-2">
                   {isGuest ? (
                     <Link
                       to="/cadastro"
-                      className="w-full flex items-center justify-center gap-1.5 py-2 sm:py-3 rounded text-xs sm:text-sm font-semibold text-white btn-gold"
+                      className="w-full flex items-center justify-center gap-1.5 py-3 sm:py-3.5 rounded-xl text-sm sm:text-base font-bold text-white bg-amber-500 hover:bg-amber-600 shadow-sm"
                     >
-                      <ArrowRight className="w-3.5 h-3.5" />
+                      <ArrowRight className="w-4 h-4" />
                       Cadastre-se para comprar
                     </Link>
                   ) : (
@@ -1328,27 +1387,27 @@ const Catalogo = () => {
                         handleAddItem(selectedProduct);
                         setSelectedProduct(null);
                       }}
-                      className={`w-full flex items-center justify-center gap-1.5 py-2 sm:py-3 rounded text-xs sm:text-sm font-semibold text-white transition-all ${addedId === selectedProduct.id
-                        ? 'bg-green-600'
-                        : 'btn-gold'
+                      className={`w-full flex items-center justify-center gap-2 py-3 sm:py-3.5 rounded-xl text-sm sm:text-base font-black text-white transition-all shadow-sm hover:shadow hover:-translate-y-0.5 uppercase tracking-wide ${addedId === selectedProduct.id
+                        ? 'bg-green-600 hover:bg-green-700'
+                        : 'bg-amber-500 hover:bg-amber-600'
                         }`}
                     >
                       {addedId === selectedProduct.id ? (
                         <>
-                          <Check className="w-3.5 h-3.5" />
+                          <Check className="w-5 h-5" />
                           Adicionado!
                         </>
                       ) : (
                         <>
-                          <ShoppingCart className="w-3.5 h-3.5" />
-                          ADICIONAR AO PEDIDO
+                          <ShoppingCart className="w-5 h-5" />
+                          Adicionar ao Pedido
                         </>
                       )}
                     </button>
                   )}
                   <button
                     onClick={() => setSelectedProduct(null)}
-                    className="w-full px-3 sm:px-4 py-1.5 sm:py-2 rounded text-xs sm:text-sm font-medium border border-border bg-white text-foreground hover:bg-surface-alt transition-colors"
+                    className="w-full py-2.5 sm:py-3 rounded-xl text-sm font-semibold text-muted-foreground hover:text-foreground hover:bg-surface-alt transition-colors"
                   >
                     Fechar
                   </button>

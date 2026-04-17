@@ -99,9 +99,9 @@ export default function PackageCards({ products, isGuest = false, isPartner = fa
             <div
               key={pkg.id}
               onClick={() => setDetailsPkgId(pkg.id)}
-              className={`flex-shrink-0 w-[270px] sm:w-[300px] lg:w-[260px] xl:w-[280px] snap-start rounded-xl border-2 p-4 sm:p-4 flex flex-col transition-all cursor-pointer ${pkg.highlight
+              className={`flex-shrink-0 w-[270px] sm:w-[300px] lg:w-[260px] xl:w-[280px] snap-start rounded-2xl border p-4 sm:p-5 flex flex-col transition-all cursor-pointer ${pkg.highlight
                 ? 'border-amber-400 bg-gradient-to-br from-amber-50 to-white shadow-md relative'
-                : 'border-border bg-white shadow-sm hover:border-gold-border'
+                : 'border-amber-100 bg-white shadow-[0_2px_12px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_24px_rgba(217,119,6,0.12)]'
                 }`}
             >
               {pkg.highlight && (
@@ -111,11 +111,8 @@ export default function PackageCards({ products, isGuest = false, isPartner = fa
               )}
 
               <div className="flex flex-col mb-2 sm:mb-2 mt-1">
-                <h3 className="font-extrabold text-[18px] sm:text-[16px] text-foreground leading-tight">{pkg.name}</h3>
+                <h3 className="font-extrabold text-[18px] sm:text-[17px] text-foreground leading-tight">{pkg.name}</h3>
                 <p className="text-[13px] sm:text-xs text-muted-foreground mt-0.5 leading-snug">{pkg.description}</p>
-                <span className="text-[14px] sm:text-xs font-bold text-amber-600 mt-1">
-                  {pkg.displayProductCount} Produtos Inclusos
-                </span>
               </div>
 
               {/* Price pill */}
@@ -199,35 +196,43 @@ export default function PackageCards({ products, isGuest = false, isPartner = fa
                 <Link
                   to="/cadastro"
                   onClick={(e) => e.stopPropagation()}
-                  className={`w-full flex items-center justify-center gap-2 py-3 sm:py-2.5 rounded-lg text-sm sm:text-xs font-bold transition-all tracking-wide mt-2 ${pkg.highlight
-                    ? 'bg-amber-500 hover:bg-amber-600 text-white'
+                  className={`w-full flex items-center justify-center gap-2 py-3 sm:py-2.5 rounded-xl text-sm sm:text-xs font-bold transition-all tracking-wide mt-2 ${pkg.highlight
+                    ? 'bg-amber-500 hover:bg-amber-600 text-white shadow-sm'
                     : 'border border-gold-border text-gold-text hover:bg-gold hover:text-white'
                   }`}
                 >
                   Cadastre-se para comprar
                 </Link>
               ) : (
-                <button
-                  onClick={(e) => { e.stopPropagation(); handleSelectPackage(pkg.id) }}
-                  className={`w-full flex items-center justify-center gap-2 py-3 sm:py-2.5 rounded-lg text-sm sm:text-xs font-bold transition-all tracking-wide mt-2 ${addedPkgId === pkg.id
-                    ? 'bg-green-600 shadow-none text-white'
-                    : pkg.highlight
-                      ? 'bg-amber-500 hover:bg-amber-600 shadow-sm text-white'
-                      : 'bg-surface-alt font-semibold text-foreground border border-border hover:bg-gold hover:text-white hover:border-gold'
-                    }`}
-                >
-                  {addedPkgId === pkg.id ? (
-                    <>
-                      <Check className="w-4 h-4" />
-                      Adicionado!
-                    </>
-                  ) : (
-                    <>
-                      <ShoppingCart className="w-4 h-4" />
-                      Adicionar Pacote
-                    </>
-                  )}
-                </button>
+                <div className="flex flex-col gap-2 mt-2">
+                  <button
+                    onClick={(e) => { e.stopPropagation(); handleSelectPackage(pkg.id) }}
+                    className={`w-full h-10 sm:h-11 flex items-center justify-center gap-2 rounded-xl text-sm font-black transition-all tracking-wide uppercase shadow-sm hover:-translate-y-0.5 ${addedPkgId === pkg.id
+                      ? 'bg-green-600 text-white'
+                      : pkg.highlight
+                        ? 'bg-amber-500 hover:bg-amber-600 text-white'
+                        : 'bg-green-600 hover:bg-green-700 text-white'
+                      }`}
+                  >
+                    {addedPkgId === pkg.id ? (
+                      <>
+                        <Check className="w-4 h-4" />
+                        Adicionado!
+                      </>
+                    ) : (
+                      <>
+                        <ShoppingCart className="w-4 h-4" />
+                        Adicionar Pacote
+                      </>
+                    )}
+                  </button>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setDetailsPkgId(pkg.id) }}
+                    className="w-full flex items-center justify-center py-2 text-xs font-bold text-muted-foreground hover:text-amber-700 underline decoration-amber-700/30 transition-colors uppercase"
+                  >
+                    Ver composição do kit ({pkg.displayProductCount} itens)
+                  </button>
+                </div>
               )}
             </div>
           )

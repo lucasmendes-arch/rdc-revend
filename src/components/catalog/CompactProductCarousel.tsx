@@ -1,6 +1,7 @@
 import { Check, Lock, ShoppingCart, Leaf, Sparkles, Briefcase } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import type { PublicProduct } from '@/hooks/useCatalogProducts'
+import { extractVolume } from '@/utils/product'
 
 interface CompactProductCarouselProps {
     title: string
@@ -108,21 +109,22 @@ export default function CompactProductCarousel({
             >
                 {products.map((product, index) => {
                     const suggested = getSuggestedPrice(product.price, product.compare_at_price)
+                    const { baseName, volume } = extractVolume(product.name)
                     // Items beyond the 4th are locked for guests
                     const isBlocked = isGuest && index >= 4
 
                     return (
                         <div
                             key={product.id}
-                            className={`flex-shrink-0 w-[140px] sm:w-[160px] md:w-[180px] lg:w-[190px] xl:w-[200px] snap-start bg-white rounded-xl border border-border shadow-sm hover:shadow-md transition-shadow flex flex-col relative overflow-hidden group`}
+                            className={`flex-shrink-0 w-[140px] sm:w-[160px] md:w-[180px] lg:w-[190px] xl:w-[200px] snap-start bg-white rounded-2xl border border-amber-100 shadow-[0_2px_12px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_24px_rgba(217,119,6,0.12)] transition-all flex flex-col relative overflow-hidden group`}
                         >
                             {/* Lock overlay for items 5+ when guest */}
                             {isBlocked && (
                                 <>
                                     {/* Visual layer — pointer-events-none to not block scroll */}
-                                    <div className="absolute inset-0 z-10 rounded-xl pointer-events-none" style={{ backdropFilter: 'blur(6px)', background: 'rgba(255,255,255,0.75)' }} />
+                                    <div className="absolute inset-0 z-10 rounded-2xl pointer-events-none" style={{ backdropFilter: 'blur(6px)', background: 'rgba(255,255,255,0.75)' }} />
                                     {/* Interactive content */}
-                                    <div className="absolute inset-0 z-20 rounded-xl flex flex-col items-center justify-center gap-1.5 px-3">
+                                    <div className="absolute inset-0 z-20 rounded-2xl flex flex-col items-center justify-center gap-1.5 px-3">
                                         <Lock className="w-4 h-4 text-amber-500 flex-shrink-0" />
                                         <p className="text-[10px] font-semibold text-foreground text-center leading-snug">
                                             Cadastre-se para ver todos
@@ -146,20 +148,29 @@ export default function CompactProductCarousel({
                                         src={product.main_image}
                                         alt={product.name}
                                         loading="lazy"
-                                        className="w-full h-full object-contain mix-blend-multiply transition-transform duration-500 group-hover:scale-105"
+                                        className="w-full h-full object-contain mix-blend-multiply transition-transform duration-500 group-hover:scale-[1.1]"
                                     />
                                 ) : (
                                     <ShoppingCart className="w-8 h-8 sm:w-12 sm:h-12 text-muted-foreground/25" />
                                 )}
+                                {volume && (
+                                    <div className="absolute bottom-2 right-2 z-10">
+                                        <span className="inline-flex items-center px-1.5 py-0.5 rounded shadow-sm text-[9px] sm:text-[10px] font-black bg-white/90 backdrop-blur-sm text-amber-900 border border-amber-200/60 uppercase tracking-wider">
+                                            {volume}
+                                        </span>
+                                    </div>
+                                )}
                             </div>
 
                             <div className="p-2.5 sm:p-4 flex flex-col flex-1">
-                                <h3
-                                    className="font-semibold text-foreground text-[11px] sm:text-[13px] md:text-[13px] lg:text-[14px] leading-snug line-clamp-2 mb-1.5 sm:mb-2 cursor-pointer group-hover:text-amber-600 transition-colors"
+                                <div 
+                                    className="cursor-pointer group-hover:text-amber-600 transition-colors"
                                     onClick={() => !isBlocked && onSelect(product)}
                                 >
-                                    {product.name}
-                                </h3>
+                                    <h3 className="font-bold text-foreground text-[11px] sm:text-[13px] md:text-[13px] lg:text-[14px] leading-snug line-clamp-2 mb-1.5 sm:mb-2">
+                                        {baseName}
+                                    </h3>
+                                </div>
 
                                 <div className="mt-auto">
                                     {/* Resale price: hidden for guest */}
@@ -191,17 +202,22 @@ export default function CompactProductCarousel({
                                     {isGuest ? (
                                         <Link
                                             to="/cadastro"
-                                            className="mt-1.5 w-full flex items-center justify-center py-1 rounded text-[9px] sm:text-[10px] font-bold border border-gold-border text-gold-text hover:bg-gold hover:text-white transition-all leading-tight"
+                                            className="mt-1.5 w-full flex items-center justify-center py-1.5 rounded-lg text-[9px] sm:text-[10px] font-bold border border-gold-border text-gold-text hover:bg-gold hover:text-white transition-all shadow-sm"
                                         >
-                                            Cadastre-se
+                                            Cadastre-se para comprar
                                         </Link>
                                     ) : (
                                         <div className="flex flex-col gap-1.5 mt-2">
-                                            <div className="flex items-center gap-0.5">
+                                            <div className="flex items-center gap-1">
+                                                <button onClick={(e) => { e.stopPropagation(); setQty(product.id, 6); }} className="flex-1 py-0.5 rounded bg-surface-alt text-muted-foreground text-[9px] font-bold border border-border hover:bg-amber-50 hover:text-amber-700 hover:border-amber-200 transition-colors">+6</button>
+                                                <button onClick={(e) => { e.stopPropagation(); setQty(product.id, 12); }} className="flex-1 py-0.5 rounded bg-surface-alt text-muted-foreground text-[9px] font-bold border border-border hover:bg-amber-50 hover:text-amber-700 hover:border-amber-200 transition-colors">+12</button>
+                                                <button onClick={(e) => { e.stopPropagation(); setQty(product.id, 24); }} className="flex-1 py-0.5 rounded bg-surface-alt text-muted-foreground text-[9px] font-bold border border-border hover:bg-amber-50 hover:text-amber-700 hover:border-amber-200 transition-colors">+24</button>
+                                            </div>
+                                            <div className="flex items-center gap-1">
                                                 <button
                                                     onClick={(e) => { e.stopPropagation(); setQty(product.id, getQty(product.id) - 1) }}
                                                     disabled={getQty(product.id) <= 1}
-                                                    className="w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center rounded border border-border bg-white text-muted-foreground hover:bg-surface-alt transition-colors disabled:opacity-40 disabled:cursor-not-allowed text-xs font-medium flex-shrink-0"
+                                                    className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded-lg border border-border bg-surface-alt text-muted-foreground hover:bg-border transition-colors disabled:opacity-40 disabled:cursor-not-allowed text-sm font-medium flex-shrink-0"
                                                     aria-label="Diminuir quantidade"
                                                 >
                                                     −
@@ -219,11 +235,11 @@ export default function CompactProductCarousel({
                                                         const v = parseInt(e.target.value, 10);
                                                         if (isNaN(v) || v < 1) setQty(product.id, 1);
                                                     }}
-                                                    className="w-8 h-6 sm:w-10 sm:h-7 text-center text-[11px] sm:text-xs font-semibold text-foreground border border-border rounded bg-white focus:outline-none focus:ring-1 focus:ring-gold"
+                                                    className="flex-1 min-w-0 h-7 sm:h-8 text-center text-xs sm:text-sm font-bold text-foreground border border-border rounded-lg bg-surface focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-shadow"
                                                 />
                                                 <button
                                                     onClick={(e) => { e.stopPropagation(); setQty(product.id, getQty(product.id) + 1) }}
-                                                    className="w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center rounded-lg border border-border bg-white text-muted-foreground hover:bg-surface-alt transition-colors text-xs font-medium flex-shrink-0"
+                                                    className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded-lg border border-border bg-surface-alt text-muted-foreground hover:bg-border transition-colors text-sm font-medium flex-shrink-0"
                                                     aria-label="Aumentar quantidade"
                                                 >
                                                     +
@@ -232,18 +248,18 @@ export default function CompactProductCarousel({
 
                                             <button
                                                 onClick={(e) => { e.stopPropagation(); onAdd(product) }}
-                                                className={`w-full h-7 sm:h-8 flex items-center justify-center gap-1.5 rounded text-[10px] sm:text-xs font-bold transition-all uppercase tracking-wide ${cartAddedId === product.id
-                                                    ? 'bg-green-600 text-white'
-                                                    : 'bg-gold-light text-gold-text border border-gold-border hover:bg-gold hover:text-white'
+                                                className={`w-full h-8 sm:h-9 mt-1 flex items-center justify-center gap-1.5 rounded-lg text-[11px] sm:text-xs font-black transition-all uppercase tracking-wide shadow-sm hover:shadow ${cartAddedId === product.id
+                                                    ? 'bg-green-600 text-white hover:bg-green-700 hover:-translate-y-0.5'
+                                                    : 'bg-amber-500 text-white hover:bg-amber-600 hover:-translate-y-0.5'
                                                     }`}
                                             >
                                                 {cartAddedId === product.id ? (
                                                     <>
-                                                        <Check className="w-3 h-3 sm:w-3.5 sm:h-3.5" /> Adicionado
+                                                        <Check className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> Adicionado
                                                     </>
                                                 ) : (
                                                     <>
-                                                        <ShoppingCart className="w-3 h-3 sm:w-3.5 sm:h-3.5" /> Comprar
+                                                        <ShoppingCart className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> Comprar
                                                     </>
                                                 )}
                                             </button>
