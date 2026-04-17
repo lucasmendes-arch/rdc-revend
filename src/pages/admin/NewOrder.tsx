@@ -17,6 +17,8 @@ interface CustomerProfile {
   business_type: string | null;
   email?: string;
   is_partner?: boolean;
+  price_list_id?: string | null;
+  price_list_name?: string | null;
 }
 
 interface Product {
@@ -161,6 +163,32 @@ const NewOrder = () => {
     staleTime: 60 * 60 * 1000,
   });
 
+  const { data: priceListItems = [] } = useQuery<{ product_id: string; price: number }[]>({
+    queryKey: ['price-list-items', selectedCustomer?.price_list_id],
+    enabled: !!selectedCustomer?.price_list_id,
+    queryFn: async () => {
+      const { data: list } = await supabase
+        .from('price_lists')
+        .select('is_active')
+        .eq('id', selectedCustomer!.price_list_id!)
+        .single();
+      if (!list?.is_active) return [];
+      const { data, error } = await supabase
+        .from('price_list_items')
+        .select('product_id, price')
+        .eq('price_list_id', selectedCustomer!.price_list_id!);
+      if (error) throw error;
+      return data || [];
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const priceMap = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const item of priceListItems) map.set(item.product_id, item.price);
+    return map;
+  }, [priceListItems]);
+
   const kitCategoryIds = useMemo(() => 
     categories
       .filter(c => c.name.toLowerCase().includes('kit') || c.name.toLowerCase().includes('pacote'))
@@ -233,8 +261,14 @@ const NewOrder = () => {
 
   // ── Handlers ─────────────────────────────────────────────────────────────────
 
+  function resolvePrice(product: { id: string; price: number; partner_price: number | null }): number {
+    if (priceMap.has(product.id)) return priceMap.get(product.id)!;
+    if (selectedCustomer?.is_partner && product.partner_price != null) return product.partner_price;
+    return product.price;
+  }
+
   async function addToCartOrExplode(product: Product, isBulk = false) {
-    const finalPrice = selectedCustomer?.is_partner && product.partner_price ? product.partner_price : product.price;
+    const finalPrice = resolvePrice(product);
 
     setCartItems(prev => {
       const existing = prev.find(i => i.product_id === product.id);
@@ -272,7 +306,7 @@ const NewOrder = () => {
         for (const item of entry.selected) {
           if (item.product.id === 'not_found' ) continue;
           
-          const finalPPrice = selectedCustomer?.is_partner && item.product.partner_price ? item.product.partner_price : item.product.price;
+          const finalPPrice = resolvePrice(item.product);
 
           const existing = currentCart.find(i => i.product_id === item.product.id);
           if (existing) {
@@ -543,7 +577,12 @@ const NewOrder = () => {
             <div className="flex items-center justify-between p-3 rounded-xl bg-surface border border-border">
               <div>
                 <p className="font-semibold text-foreground">{selectedCustomer.full_name || 'Sem nome'}</p>
-                <p className="text-xs text-muted-foreground">{selectedCustomer.phone || 'Sem telefone'} · {selectedCustomer.business_type || '—'}</p>
+                <p className="text-xs text-muted-foreground">
+                  {selectedCustomer.phone || 'Sem telefone'} · {selectedCustomer.business_type || '—'}
+                  {selectedCustomer.price_list_name && (
+                    <span className="ml-2 text-amber-600 font-semibold">· Tabela: {selectedCustomer.price_list_name}</span>
+                  )}
+                </p>
               </div>
               <button
                 onClick={() => { setSelectedCustomer(null); setCustomerSearch(''); }}
@@ -621,8 +660,7 @@ const NewOrder = () => {
             {packageSelections.map(({ pkg, selected }) => {
               const pkgTotal = selected.reduce((sum, item) => {
                  if (item.product.id === 'not_found') return sum;
-                 const finalPPrice = selectedCustomer?.is_partner && item.product.partner_price ? item.product.partner_price : item.product.price;
-                 return sum + finalPPrice * item.qty;
+                 return sum + resolvePrice(item.product) * item.qty;
               }, 0);
               const allUniqueImages = Array.from(
                 new Set(
