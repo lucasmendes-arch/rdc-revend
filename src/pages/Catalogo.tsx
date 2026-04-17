@@ -16,6 +16,9 @@ import { useTrackPageView, useTrackAddToCart, useTrackProductView } from "@/hook
 import { ProfileCompletionModal } from "@/components/ProfileCompletionModal";
 import { isProfileIncomplete } from "@/utils/profile";
 import { extractVolume } from "@/utils/product";
+import B2BHero from "@/components/catalog/B2BHero";
+import HowItWorks from "@/components/catalog/HowItWorks";
+import WhatsAppCTA from "@/components/catalog/WhatsAppCTA";
 
 // ============================================================================
 // TYPES & CONSTANTS
@@ -138,6 +141,14 @@ const Catalogo = () => {
   useTrackPageView('Catálogo');
   const trackAddToCart = useTrackAddToCart();
   const trackProductView = useTrackProductView();
+
+  const scrollToKits = () => {
+    document.getElementById('kits-section')?.scrollIntoView({ behavior: 'smooth' });
+  };
+  const scrollToProducts = () => {
+    const target = document.getElementById('categoria-uso-profissional') || document.getElementById('produtos-section');
+    target?.scrollIntoView({ behavior: 'smooth' });
+  };
 
   // ========================================================================
   // STATE
@@ -639,6 +650,14 @@ const Catalogo = () => {
         </div>
       )}
 
+      {/* Hero B2B Section - Visible before anything else */}
+      {!debouncedSearch && !viewAll && (
+        <B2BHero
+          onScrollToKits={scrollToKits}
+          onScrollToProducts={scrollToProducts}
+        />
+      )}
+
       <div className="flex flex-col lg:flex-row lg:gap-6 w-full max-w-full">
         {/* Sidebar Filters (Desktop) */}
         <aside className="hidden lg:block w-64 px-3 pt-4 pb-6">
@@ -841,11 +860,15 @@ const Catalogo = () => {
 
             {/* Package Cards Header (Desktop Only) — ocultar durante busca ou viewAll */}
             {!debouncedSearch && !viewAll && !isLoading && !error && products.length > 0 && !isPartner && (
-              <div className="hidden sm:block">
+              <div id="kits-section" className="hidden sm:block">
                 <div className="mb-8">
                   <PackageCards products={products} isGuest={isGuest} isPartner={isPartner} />
                 </div>
               </div>
+            )}
+
+            {!debouncedSearch && !viewAll && (
+              <HowItWorks />
             )}
 
             {/* Category Bubbles: moved to sticky bar above content */}
@@ -866,14 +889,16 @@ const Catalogo = () => {
             )}
 
             {/* Título da seção de produtos — oculto em viewAll sem busca (substituído pelo banner) */}
-            {!isLoading && !error && filtered.length > 0 && (!viewAll || debouncedSearch) && (
-              <div className="flex items-center gap-1.5 mb-4 mt-4 sm:mt-8">
-                <div className="w-1 h-5 bg-amber-500 rounded-full"></div>
-                <h2 className="text-[16px] sm:text-lg font-bold text-foreground">
-                  {debouncedSearch ? `Resultados para "${debouncedSearch}"` : "Aproveite e leve também"}
-                </h2>
-              </div>
-            )}
+            <div id="produtos-section">
+              {!isLoading && !error && filtered.length > 0 && (!viewAll || debouncedSearch) && (
+                <div className="flex items-center gap-1.5 mb-4 mt-4 sm:mt-8">
+                  <div className="w-1 h-5 bg-amber-500 rounded-full"></div>
+                  <h2 className="text-[16px] sm:text-lg font-bold text-foreground">
+                    {debouncedSearch ? `Resultados para "${debouncedSearch}"` : "Aproveite e leve também"}
+                  </h2>
+                </div>
+              )}
+            </div>
             {activeFiltersCount > 0 && (
               <div className="flex flex-wrap gap-1 mb-2.5">
                 {debouncedSearch && (
@@ -1059,7 +1084,11 @@ const Catalogo = () => {
                         const categoryProducts = filtered.filter(p => p.category_id === category.id);
                         if (categoryProducts.length === 0) return null;
                         return (
-                          <div key={category.id} className="w-full">
+                          <div 
+                            key={category.id} 
+                            id={`categoria-${category.name.toLowerCase().replace(/\s+/g, '-')}`}
+                            className="w-full scroll-mt-24"
+                          >
                             <CompactProductCarousel
                               title={category.name}
                               products={categoryProducts}
@@ -1095,6 +1124,8 @@ const Catalogo = () => {
                     )}
                   </>
                 )}
+
+                <WhatsAppCTA />
               </>
             )}
           </div>
