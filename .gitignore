@@ -84,3 +84,12 @@ Thumbs.db
 .env.production
 .vercel
 .netlify
+
+node_modules/
+.next/
+.vercel/
+.supabase/
+dist/
+build/
+*.log
+*.sqlite

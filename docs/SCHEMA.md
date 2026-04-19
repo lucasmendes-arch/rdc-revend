@@ -143,6 +143,7 @@ Pedidos de venda.
 
 > `customer_segment_snapshot` válidos: `'network_partner'`, `'wholesale_buyer'`. Snapshot da classificação do cliente no momento da criação do pedido. NULL = pedido legado ou cliente sem classificação.
 > `payment_splits` estrutura: `[{"method": "PIX", "amount": 100.00}, {"method": "Dinheiro", "amount": 50.00}]`. Preenchido quando `payment_method = 'MISTO'`. NULL para pagamento único.
+> `partner_webhook_sent_at` (timestamptz, nullable): timestamp do disparo do webhook n8n para pedidos `network_partner`. NULL = ainda não disparado. Gerenciado exclusivamente por `send_pending_partner_order_webhooks()` via pg_cron.
 > **ATENÇÃO:** campo de data é `created_at`, NÃO `order_date` ou `date`.
 > `discount_amount` é o valor efetivo do desconto aplicado (cupom percent/fixed). 0 se sem desconto.
 > Status válidos: `recebido`, `aguardando_pagamento`, `pago`, `separacao`, `enviado`, `entregue`, `concluido`, `cancelado`, `expirado`.
@@ -932,6 +933,35 @@ reset_stuck_outbox_items() → INT
 ```
 Reseta itens em `processing` há mais de 10 minutos de volta para `pending`. Retorna contagem de itens resetados.
 Acessível por: `service_role` / admin.
+
+---
+
+### `build_partner_order_payload`
+```
+build_partner_order_payload(p_order_id uuid) → jsonb
+```
+Monta o payload para o webhook n8n de pedidos `network_partner`. Expande kits via `kit_components` e retorna `separation_list` consolidada por produto.
+Acessível por: `service_role` / SECURITY DEFINER (chamada interna).
+
+**Retorno:**
+```json
+{
+  "event": "partner_order_created",
+  "order": { "id", "created_at", "status", "total", "subtotal", "discount_amount", "payment_method", "origin", "notes", "delivery_method", "customer": { "name", "whatsapp", "email" } },
+  "items": [{ "product_id", "product_name", "qty", "unit_price", "line_total", "is_kit", "components": [{ "product_id", "product_name", "qty_per_kit", "total_qty" }] }],
+  "separation_list": [{ "product_name", "qty" }]
+}
+```
+
+---
+
+### `send_pending_partner_order_webhooks`
+```
+send_pending_partner_order_webhooks() → int
+```
+Busca pedidos `network_partner` com `partner_webhook_sent_at IS NULL` e items já inseridos, dispara `pg_net.http_post` para o webhook n8n e marca `partner_webhook_sent_at = now()`. Usa `FOR UPDATE SKIP LOCKED` para evitar duplicatas em runs concorrentes.
+Executada via pg_cron (`partner-order-webhook-notifier`) a cada minuto.
+Retorno: quantidade de pedidos processados.
 
 ---
 
