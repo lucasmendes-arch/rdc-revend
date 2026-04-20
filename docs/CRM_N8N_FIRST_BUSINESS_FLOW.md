@@ -38,7 +38,7 @@
       └─ POST /functions/v1/n8n-sync-back
            body: { user_id, source: 'n8n', outbox_id, fields: { clickup_task_id, lead_status } }
            └─ profiles.clickup_task_id = '<task-id>'
-           └─ profiles.lead_status = 'em-contato'
+           └─ profiles.lead_status = 'em_contato'
            └─ profiles.last_synced_at = now()
            └─ crm_events INSERT (profile_synced)
            └─ integration_outbox.acked_at = now()
@@ -94,7 +94,7 @@ O n8n deve chamar `POST /functions/v1/n8n-sync-back` com:
   "outbox_id": "uuid-do-item-no-outbox",
   "fields": {
     "clickup_task_id": "abc123xyz",
-    "lead_status":     "em-contato"
+    "lead_status":     "em_contato"
   }
 }
 ```
@@ -106,7 +106,7 @@ O n8n deve chamar `POST /functions/v1/n8n-sync-back` com:
 | Campo em `profiles` | Valor | Regra |
 |---|---|---|
 | `clickup_task_id` | ID da task criada | Sempre sobrescrito (ClickUp-owned) |
-| `lead_status` | `"em-contato"` | Sempre sobrescrito (ClickUp-owned) |
+| `lead_status` | `"em_contato"` | Sempre sobrescrito (ClickUp-owned) |
 | `last_synced_at` | now() | Sempre atualizado |
 | `updated_by` | `"n8n"` | Sempre atualizado |
 
@@ -256,7 +256,7 @@ curl -X POST https://<project>.supabase.co/functions/v1/n8n-sync-back \
     "outbox_id": "<uuid-do-item-no-outbox>",
     "fields": {
       "clickup_task_id": "TEST-001",
-      "lead_status":     "em-contato"
+      "lead_status":     "em_contato"
     }
   }'
 # Esperado: { "ok": true, "fields_updated": ["clickup_task_id","lead_status",...], "outbox_acked": true }
@@ -275,7 +275,7 @@ FROM integration_outbox o
 JOIN profiles p ON p.id = o.user_id
 WHERE o.event_type = 'lead_created'
   AND o.user_id = '<uuid>';
--- Esperado: status=delivered, enviado=true, acked=true, clickup_task_id='TEST-001', lead_status='em-contato'
+-- Esperado: status=delivered, enviado=true, acked=true, clickup_task_id='TEST-001', lead_status='em_contato'
 ```
 
 ---
@@ -286,7 +286,7 @@ WHERE o.event_type = 'lead_created'
 - [ ] Após flush: `status=delivered`, `delivered_at` preenchido, `last_http_status=200`
 - [ ] Após callback do n8n: `acked_at` preenchido, `outbox_acked=true` na resposta
 - [ ] `profiles.clickup_task_id` atualizado
-- [ ] `profiles.lead_status` atualizado para `'em-contato'`
+- [ ] `profiles.lead_status` atualizado para `'em_contato'`
 - [ ] `crm_events` contém entrada `profile_synced` com `fields_updated` listando os campos
 
 ---
@@ -306,7 +306,7 @@ O workflow n8n deve:
      "outbox_id": "{{ $json.outbox_id }}",
      "fields": {
        "clickup_task_id": "{{ $json.clickup_task_id }}",
-       "lead_status":     "em-contato"
+       "lead_status":     "em_contato"
      }
    }
    ```
