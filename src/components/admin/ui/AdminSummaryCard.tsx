@@ -20,7 +20,7 @@ export function AdminSummaryCard({
   className = ''
 }: AdminSummaryCardProps) {
   return (
-    <div className={`bg-white rounded-xl border border-border p-3 lg:px-4 lg:py-3 shadow-sm flex flex-col justify-between ${className}`}>
+    <div className={`bg-card rounded-xl border border-border p-3 lg:px-4 lg:py-3 shadow-sm flex flex-col justify-between ${className}`}>
       <div>
         <div className="flex items-center gap-1.5 mb-1.5">
           {Icon && <Icon className={`w-3.5 h-3.5 lg:w-4 lg:h-4 shrink-0 ${iconColor}`} />}

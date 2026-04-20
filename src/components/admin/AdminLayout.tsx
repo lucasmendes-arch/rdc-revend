@@ -6,6 +6,7 @@ import {
   Megaphone, UserCheck, History, BadgeDollarSign, ChevronRight,
 } from 'lucide-react'
 import logo from '@/assets/logo-rei-dos-cachos.png'
+import { ThemeToggle } from '@/components/ui/ThemeToggle'
 
 type NavItem = { label: string; path: string; icon: React.ElementType }
 
@@ -159,7 +160,7 @@ function SidebarContent({ onNavClick }: { onNavClick?: () => void }) {
       </nav>
 
       {/* Footer */}
-      <div className="px-2 pb-4 pt-2 border-t border-white/[0.07]">
+      <div className="px-2 pb-4 pt-2 border-t border-white/[0.07] space-y-0.5">
         <Link
           to="/catalogo"
           onClick={onNavClick}
@@ -168,6 +169,10 @@ function SidebarContent({ onNavClick }: { onNavClick?: () => void }) {
           <ExternalLink className="w-[15px] h-[15px] flex-shrink-0 text-white/20" />
           <span>Ver Site</span>
         </Link>
+        <div className="flex items-center gap-3 px-3 py-[7px] rounded-md text-[13px] text-white/30 hover:text-white/60 hover:bg-white/[0.05] transition-all duration-150">
+          <ThemeToggle className="text-white/20 hover:text-white/60" />
+          <span className="select-none">Aparência</span>
+        </div>
       </div>
     </>
   )

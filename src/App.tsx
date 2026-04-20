@@ -1,3 +1,4 @@
+import { ThemeProvider } from "next-themes";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -51,6 +52,7 @@ const queryClient = new QueryClient({
 });
 
 const App = () => (
+  <ThemeProvider attribute="class" storageKey="rdc-theme" defaultTheme="system" enableSystem disableTransitionOnChange>
   <ErrorBoundary>
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
@@ -102,6 +104,7 @@ const App = () => (
       </TooltipProvider>
     </QueryClientProvider>
   </ErrorBoundary>
+  </ThemeProvider>
 );
 
 export default App;

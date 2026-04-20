@@ -22,6 +22,19 @@
   <meta property="og:description" content="Rei dos Cachos Atacado">
   <meta name="twitter:description" content="Rei dos Cachos Atacado">
 
+  <!-- Dark theme: runs before React to avoid flash -->
+  <script>
+    (function () {
+      try {
+        var saved = localStorage.getItem('rdc-theme');
+        var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        if (saved === 'dark' || (!saved && prefersDark)) {
+          document.documentElement.classList.add('dark');
+        }
+      } catch (e) {}
+    })();
+  </script>
+
   <!-- Meta Pixel Code -->
   <script>
     !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?

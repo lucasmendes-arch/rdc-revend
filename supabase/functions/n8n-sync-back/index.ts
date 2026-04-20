@@ -47,6 +47,7 @@ interface SyncRequest {
   user_id: string
   source: string
   fields: Record<string, unknown>
+  outbox_id?: string
 }
 
 serve(async (req: Request) => {
@@ -76,7 +77,7 @@ serve(async (req: Request) => {
 
     // --- Parse body ---
     const body: SyncRequest = await req.json()
-    const { user_id, source, fields } = body
+    const { user_id, source, fields, outbox_id } = body
 
     if (!user_id || !fields || typeof fields !== 'object') {
       return new Response(
@@ -178,6 +179,22 @@ serve(async (req: Request) => {
       console.error('Audit insert failed (non-blocking):', auditError.message)
     }
 
+    // --- Ack outbox item (fecha rastreabilidade ponta a ponta) ---
+    let outboxAcked = false
+    if (outbox_id) {
+      const { error: ackError } = await supabase
+        .from('integration_outbox')
+        .update({ acked_at: new Date().toISOString() })
+        .eq('id', outbox_id)
+        .eq('status', 'delivered')
+
+      if (ackError) {
+        console.error('Outbox ack failed (non-blocking):', ackError.message)
+      } else {
+        outboxAcked = true
+      }
+    }
+
     // --- Response ---
     return new Response(
       JSON.stringify({
@@ -185,6 +202,7 @@ serve(async (req: Request) => {
         user_id,
         fields_updated: fieldsUpdated,
         fields_skipped: fieldsSkipped,
+        outbox_acked: outboxAcked,
       }),
       { status: 200, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } }
     )

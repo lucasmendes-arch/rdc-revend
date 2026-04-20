@@ -70,6 +70,73 @@
     --sidebar-border: 220 13% 91%;
     --sidebar-ring: 217.2 91.2% 59.8%;
   }
+
+  /* ─── Dark Mode ─────────────────────────────────────────────── */
+  .dark {
+    /* Base */
+    --background: 218 20% 8%;
+    --foreground: 214 18% 88%;
+
+    /* Cards / panels */
+    --card: 218 18% 11%;
+    --card-foreground: 214 18% 88%;
+
+    /* Popovers / dropdowns — slightly elevated */
+    --popover: 218 17% 13%;
+    --popover-foreground: 214 18% 88%;
+
+    /* Primary = gold */
+    --primary: 38 90% 58%;
+    --primary-foreground: 218 20% 8%;
+
+    /* Secondary surface */
+    --secondary: 218 15% 16%;
+    --secondary-foreground: 214 14% 72%;
+
+    /* Muted */
+    --muted: 218 15% 16%;
+    --muted-foreground: 218 10% 50%;
+
+    /* Accent (hover bg) */
+    --accent: 218 15% 18%;
+    --accent-foreground: 214 18% 88%;
+
+    /* Destructive */
+    --destructive: 0 62% 50%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* Borders & inputs */
+    --border: 218 14% 18%;
+    --input: 218 14% 18%;
+    --ring: 38 90% 58%;
+
+    /* Brand surfaces */
+    --surface: 218 18% 10%;
+    --surface-alt: 218 20% 8%;
+
+    /* Gold adjusted for dark backgrounds */
+    --gold-start: 38 95% 52%;
+    --gold-end: 36 62% 43%;
+    --gold-light: 38 70% 14%;
+    --gold-mid: 38 90% 58%;
+    --gold-text: 38 92% 68%;
+    --gold-border: 38 50% 30%;
+
+    /* Shadows */
+    --shadow-gold: 0 4px 20px -4px hsl(38 90% 58% / 0.18);
+    --shadow-card: 0 2px 24px -4px hsl(218 20% 5% / 0.70);
+    --shadow-card-hover: 0 8px 40px -8px hsl(218 20% 5% / 0.90);
+
+    /* Sidebar (stays the same — already dark) */
+    --sidebar-background: 218 18% 11%;
+    --sidebar-foreground: 214 18% 88%;
+    --sidebar-primary: 38 90% 58%;
+    --sidebar-primary-foreground: 218 20% 8%;
+    --sidebar-accent: 218 15% 16%;
+    --sidebar-accent-foreground: 214 18% 88%;
+    --sidebar-border: 218 14% 18%;
+    --sidebar-ring: 38 90% 58%;
+  }
 }
 
 @layer base {
@@ -237,6 +304,26 @@
   .btn-gold-outline:hover {
     background: hsl(var(--gold-light));
     border-color: hsl(var(--gold-mid));
+  }
+
+  /* Action button: dark in light mode, elevated surface in dark mode */
+  .btn-action {
+    background: hsl(220, 14%, 14%);
+    color: white;
+    transition: background 0.15s ease;
+  }
+  .btn-action:hover {
+    background: hsl(220, 14%, 22%);
+  }
+  .btn-action:disabled {
+    opacity: 0.5;
+  }
+  .dark .btn-action {
+    background: hsl(218, 15%, 22%);
+    color: hsl(214, 18%, 88%);
+  }
+  .dark .btn-action:hover {
+    background: hsl(218, 15%, 28%);
   }
 
   /* Hide scrollbar for snap carousels */

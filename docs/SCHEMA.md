@@ -391,11 +391,19 @@ Fila de integração outbound (outbox pattern) para n8n/ClickUp.
 | created_at | timestamptz | NO | `now()` | — |
 | processed_at | timestamptz | YES | NULL | — |
 | delivered_at | timestamptz | YES | NULL | — |
+| next_retry_at | timestamptz | YES | NULL | — |
+| last_http_status | int | YES | NULL | — |
+| acked_at | timestamptz | YES | NULL | — |
 
 > Status válidos: `pending`, `processing`, `delivered`, `failed`.
 > `idempotency_key` é UNIQUE — previne duplicatas (ex: `'lead_created:{user_id}'`).
+> `next_retry_at`: quando NULL ou <= now(), o item é elegível para processamento. Usado pelo backoff exponencial.
+> `last_http_status`: HTTP status code da última tentativa de envio ao n8n. Útil para diagnóstico.
+> `acked_at`: preenchido por `n8n-sync-back` quando o n8n devolve `outbox_id` no callback. `delivered + acked_at IS NOT NULL` = ciclo completo confirmado.
 > RLS: admin-only. service_role bypassa automaticamente.
 > Triggers automáticos populam esta tabela a partir de `crm_events` (user_registered) e `profiles` (profile completed).
+> Worker de flush: edge function `integration-outbox-flush`. Ver `docs/CRM_N8N_OUTBOX_OPERATIONS.md`.
+> Primeiro fluxo de negócio: `lead_created`. Ver `docs/CRM_N8N_FIRST_BUSINESS_FLOW.md`.
 
 ---
 

@@ -39,7 +39,7 @@ export function AdminPeriodFilter({
           className={`px-3 py-1.5 text-xs font-medium rounded-full border transition-colors shrink-0 ${
             activePreset === p.key
               ? 'bg-gold text-white border-gold shadow-sm'
-              : 'bg-white text-muted-foreground border-border hover:border-gold-border hover:text-foreground'
+              : 'bg-card text-muted-foreground border-border hover:border-gold-border hover:text-foreground'
           }`}
         >
           {p.label}
@@ -48,7 +48,7 @@ export function AdminPeriodFilter({
 
       {activePreset === customPresetKey && (
         <div className="flex flex-wrap items-center gap-2 mt-1 sm:mt-0 sm:ml-2 shrink-0">
-          <div className="flex items-center gap-1.5 bg-white rounded-lg p-0.5 border border-border shadow-sm">
+          <div className="flex items-center gap-1.5 bg-card rounded-lg p-0.5 border border-border shadow-sm">
             <div className="flex items-center gap-1.5 pl-2">
               <span className="text-[10px] text-muted-foreground font-bold uppercase">De:</span>
               <input
@@ -60,7 +60,7 @@ export function AdminPeriodFilter({
               />
             </div>
           </div>
-          <div className="flex items-center gap-1.5 bg-white rounded-lg p-0.5 border border-border shadow-sm">
+          <div className="flex items-center gap-1.5 bg-card rounded-lg p-0.5 border border-border shadow-sm">
             <div className="flex items-center gap-1.5 pl-2 pr-2">
               <span className="text-[10px] text-muted-foreground font-bold uppercase">Até:</span>
               <input

@@ -37,7 +37,7 @@ export function AdminSelect({
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <button
-          className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border border-border bg-white text-foreground font-medium hover:border-gold-border focus:outline-none focus:ring-2 focus:ring-gold/30 shadow-sm shrink-0 cursor-pointer transition-colors ${className}`}
+          className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border border-border bg-card text-foreground font-medium hover:border-gold-border focus:outline-none focus:ring-2 focus:ring-gold/30 shadow-sm shrink-0 cursor-pointer transition-colors ${className}`}
         >
           {Icon && <Icon className="w-3 h-3 text-muted-foreground" />}
           <span>{selectedLabel || placeholder}</span>
