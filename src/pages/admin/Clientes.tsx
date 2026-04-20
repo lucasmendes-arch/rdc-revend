@@ -145,15 +145,15 @@ const revenueLabels: Record<string, string> = {
 }
 
 const orderStatusLabels: Record<string, { label: string; color: string }> = {
-  recebido: { label: 'Recebido', color: 'bg-blue-100 text-blue-700' },
-  aguardando_pagamento: { label: 'Aguardando Pgto', color: 'bg-orange-100 text-orange-700' },
-  pago: { label: 'Pago', color: 'bg-emerald-100 text-emerald-700' },
-  separacao: { label: 'Separação', color: 'bg-yellow-100 text-yellow-700' },
-  enviado: { label: 'Enviado', color: 'bg-purple-100 text-purple-700' },
-  entregue: { label: 'Entregue', color: 'bg-teal-100 text-teal-700' },
-  concluido: { label: 'Concluído', color: 'bg-green-100 text-green-700' },
-  cancelado: { label: 'Cancelado', color: 'bg-red-100 text-red-700' },
-  expirado: { label: 'Expirado', color: 'bg-gray-100 text-gray-500' },
+  recebido: { label: 'Recebido', color: 'bg-blue-500/10 text-blue-600 dark:text-blue-400' },
+  aguardando_pagamento: { label: 'Aguardando Pgto', color: 'bg-orange-500/10 text-orange-600 dark:text-orange-400' },
+  pago: { label: 'Pago', color: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' },
+  separacao: { label: 'Separação', color: 'bg-yellow-500/10 text-yellow-600 dark:text-yellow-400' },
+  enviado: { label: 'Enviado', color: 'bg-purple-500/10 text-purple-600 dark:text-purple-400' },
+  entregue: { label: 'Entregue', color: 'bg-teal-500/10 text-teal-600 dark:text-teal-400' },
+  concluido: { label: 'Concluído', color: 'bg-green-500/10 text-green-600 dark:text-green-400' },
+  cancelado: { label: 'Cancelado', color: 'bg-red-500/10 text-red-600 dark:text-red-400' },
+  expirado: { label: 'Expirado', color: 'bg-muted text-muted-foreground' },
 }
 
 // --- Compute labels for a session ---
@@ -200,26 +200,26 @@ const QUEUE_PRIORITY_CONFIG: Record<QueuePriority, {
 }> = {
   vencido: {
     label: 'Vencido',
-    badgeClasses: 'bg-red-100 text-red-700 ring-red-200',
-    borderClasses: 'border-red-200 hover:border-red-300',
+    badgeClasses: 'bg-red-500/10 text-red-600 dark:text-red-400 ring-red-500/25',
+    borderClasses: 'border-red-500/25 hover:border-red-500/40',
     barClasses: 'bg-red-400',
   },
   hoje: {
     label: 'Hoje',
-    badgeClasses: 'bg-amber-100 text-amber-700 ring-amber-200',
-    borderClasses: 'border-amber-200 hover:border-amber-300',
+    badgeClasses: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 ring-amber-500/25',
+    borderClasses: 'border-amber-500/25 hover:border-amber-500/40',
     barClasses: 'bg-amber-400',
   },
   sem_acao: {
     label: 'Sem ação',
-    badgeClasses: 'bg-zinc-100 text-zinc-500 ring-zinc-200',
-    borderClasses: 'border-zinc-200 hover:border-zinc-300',
-    barClasses: 'bg-zinc-300',
+    badgeClasses: 'bg-muted text-muted-foreground ring-border',
+    borderClasses: 'border-border hover:border-border/80',
+    barClasses: 'bg-muted-foreground/30',
   },
   futuro: {
     label: '',
     badgeClasses: '',
-    borderClasses: 'border-zinc-200 hover:border-zinc-300',
+    borderClasses: 'border-border hover:border-border/80',
     barClasses: 'bg-transparent',
   },
 }
@@ -301,26 +301,26 @@ function InlineNextActionForm({ userId, nextAction, nextActionAt, onClose }: Inl
   const isLoading = saveMutation.isPending || clearMutation.isPending
 
   return (
-    <div className="mt-2 p-3 bg-zinc-50 rounded-lg border border-zinc-200 space-y-2">
+    <div className="mt-2 p-3 bg-muted/50 rounded-lg border border-border space-y-2">
       <input
         type="text"
         value={actionText}
         onChange={e => setActionText(e.target.value)}
         placeholder="Ex: Ligar, Enviar proposta..."
-        className="w-full px-2.5 py-1.5 text-sm rounded-lg border border-zinc-200 bg-white focus:outline-none focus:ring-2 focus:ring-zinc-400"
+        className="w-full px-2.5 py-1.5 text-sm rounded-lg border border-border bg-card focus:outline-none focus:ring-2 focus:ring-ring/40 text-foreground placeholder:text-muted-foreground"
         autoFocus
       />
       <input
         type="datetime-local"
         value={actionDate}
         onChange={e => setActionDate(e.target.value)}
-        className="w-full px-2.5 py-1.5 text-sm rounded-lg border border-zinc-200 bg-white focus:outline-none focus:ring-2 focus:ring-zinc-400"
+        className="w-full px-2.5 py-1.5 text-sm rounded-lg border border-border bg-card focus:outline-none focus:ring-2 focus:ring-ring/40 text-foreground"
       />
       <div className="flex gap-2">
         <button
           onClick={() => saveMutation.mutate()}
           disabled={isLoading || !actionText.trim()}
-          className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs font-bold bg-zinc-900 text-white rounded-lg hover:bg-zinc-700 disabled:opacity-50 transition-colors"
+          className="btn-action flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs font-bold rounded-lg disabled:opacity-50 transition-colors"
         >
           {saveMutation.isPending ? <Loader className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
           Salvar
@@ -329,14 +329,14 @@ function InlineNextActionForm({ userId, nextAction, nextActionAt, onClose }: Inl
           <button
             onClick={() => clearMutation.mutate()}
             disabled={isLoading}
-            className="px-2 py-1.5 text-xs font-medium text-red-600 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 disabled:opacity-50 transition-colors"
+            className="px-2 py-1.5 text-xs font-medium text-red-600 dark:text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg hover:bg-red-500/20 disabled:opacity-50 transition-colors"
           >
             Remover
           </button>
         )}
         <button
           onClick={onClose}
-          className="px-2 py-1.5 text-xs text-zinc-400 hover:text-zinc-600 border border-zinc-200 rounded-lg hover:bg-zinc-100 transition-colors"
+          className="px-2 py-1.5 text-xs text-muted-foreground hover:text-foreground border border-border rounded-lg hover:bg-muted transition-colors"
         >
           Cancelar
         </button>
@@ -374,7 +374,7 @@ function WorkQueueCard({ session, priority, onOpen }: WorkQueueCardProps) {
     : null
 
   return (
-    <div className={`bg-white rounded-xl border ${pConf.borderClasses} flex overflow-hidden transition-all`}>
+    <div className={`bg-card rounded-xl border ${pConf.borderClasses} flex overflow-hidden transition-all`}>
       {/* Priority bar */}
       <div className={`w-1 flex-shrink-0 ${pConf.barClasses}`} />
 
@@ -383,7 +383,7 @@ function WorkQueueCard({ session, priority, onOpen }: WorkQueueCardProps) {
         {/* Row 1: name + priority badge + actions */}
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-2 min-w-0 flex-1">
-            <h4 className="text-[13px] font-bold text-zinc-900 truncate leading-snug">{name}</h4>
+            <h4 className="text-[13px] font-bold text-foreground truncate leading-snug">{name}</h4>
             {priority !== 'futuro' && (
               <span className={`flex-shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded-md ring-1 ring-inset ${pConf.badgeClasses}`}>
                 {pConf.label}
@@ -394,13 +394,13 @@ function WorkQueueCard({ session, priority, onOpen }: WorkQueueCardProps) {
             <button
               onClick={() => setInlineEditing(v => !v)}
               title="Editar próxima ação"
-              className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-700 hover:bg-zinc-100 transition-colors"
+              className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
             >
               <Edit2 className="w-3.5 h-3.5" />
             </button>
             <button
               onClick={onOpen}
-              className="flex items-center gap-0.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-zinc-900 text-white hover:bg-zinc-700 transition-colors"
+              className="btn-action flex items-center gap-0.5 px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors"
             >
               Abrir <ChevronRight className="w-3 h-3" />
             </button>
@@ -411,9 +411,9 @@ function WorkQueueCard({ session, priority, onOpen }: WorkQueueCardProps) {
         {(profile.seller_name || profile.customer_segment) && (
           <div className="flex items-center gap-2 mt-1">
             {profile.seller_name && (
-              <span className="text-[11px] text-zinc-400">
-                <span className="text-zinc-400">Owner:</span>{' '}
-                <span className="text-zinc-600 font-medium">{profile.seller_name}</span>
+              <span className="text-[11px] text-muted-foreground">
+                <span className="text-muted-foreground">Owner:</span>{' '}
+                <span className="text-foreground font-medium">{profile.seller_name}</span>
               </span>
             )}
             {profile.customer_segment && (
@@ -427,14 +427,14 @@ function WorkQueueCard({ session, priority, onOpen }: WorkQueueCardProps) {
         {/* Row 3: próxima ação */}
         {profile.next_action && !inlineEditing && (
           <div className="mt-2 flex items-start gap-1.5">
-            <Clock className="w-3.5 h-3.5 text-zinc-400 flex-shrink-0 mt-px" />
+            <Clock className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0 mt-px" />
             <div className="min-w-0">
-              <p className="text-xs text-zinc-700 line-clamp-1">{profile.next_action}</p>
+              <p className="text-xs text-foreground line-clamp-1">{profile.next_action}</p>
               {nextActionDate && (
                 <p className={`text-[10px] font-medium mt-0.5 ${
-                  priority === 'vencido' ? 'text-red-500' :
-                  priority === 'hoje' ? 'text-amber-600' :
-                  'text-zinc-400'
+                  priority === 'vencido' ? 'text-red-500 dark:text-red-400' :
+                  priority === 'hoje' ? 'text-amber-600 dark:text-amber-400' :
+                  'text-muted-foreground'
                 }`}>
                   {priority === 'vencido' ? 'Venceu ' : 'Agendado '}{nextActionDate}
                 </p>
@@ -443,7 +443,7 @@ function WorkQueueCard({ session, priority, onOpen }: WorkQueueCardProps) {
           </div>
         )}
         {!profile.next_action && !inlineEditing && (
-          <p className="mt-2 text-[11px] text-zinc-400 italic">Sem próxima ação definida</p>
+          <p className="mt-2 text-[11px] text-muted-foreground italic">Sem próxima ação definida</p>
         )}
 
         {/* Inline next action editor */}
@@ -458,9 +458,9 @@ function WorkQueueCard({ session, priority, onOpen }: WorkQueueCardProps) {
 
         {/* Row 4: order stats */}
         {!inlineEditing && (
-          <div className="mt-2 flex items-center gap-3 text-[11px] text-zinc-400 border-t border-zinc-100 pt-2">
+          <div className="mt-2 flex items-center gap-3 text-[11px] text-muted-foreground border-t border-border pt-2">
             {lastOrderDate ? (
-              <span>Último pedido: <span className="text-zinc-600 font-medium">{lastOrderDate}</span></span>
+              <span>Último pedido: <span className="text-foreground font-medium">{lastOrderDate}</span></span>
             ) : (
               <span className="italic">Sem pedidos</span>
             )}
@@ -468,7 +468,7 @@ function WorkQueueCard({ session, priority, onOpen }: WorkQueueCardProps) {
               <span>{profile.total_orders} {profile.total_orders === 1 ? 'pedido' : 'pedidos'}</span>
             )}
             {totalSpentFormatted && (
-              <span className="font-medium text-zinc-500">{totalSpentFormatted}</span>
+              <span className="font-medium text-muted-foreground">{totalSpentFormatted}</span>
             )}
           </div>
         )}
@@ -488,9 +488,9 @@ const segmentLabel = (v: string | null) =>
   SEGMENT_OPTIONS.find(o => o.value === (v || ''))?.label || v || 'Não classificado'
 
 const segmentBadgeColor = (v: string | null) => {
-  if (v === 'network_partner') return 'bg-amber-100 text-amber-700 border-amber-300'
-  if (v === 'wholesale_buyer') return 'bg-teal-100 text-teal-700 border-teal-300'
-  return 'bg-gray-100 text-gray-500 border-gray-200'
+  if (v === 'network_partner') return 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30'
+  if (v === 'wholesale_buyer') return 'bg-teal-500/10 text-teal-600 dark:text-teal-400 border-teal-500/30'
+  return 'bg-muted text-muted-foreground border-border'
 }
 
 function ClientDetailPanel({ session, onClose, onDeleteClick }: { session: ClientSession; onClose: () => void; onDeleteClick: () => void }) {
@@ -677,16 +677,16 @@ function ClientDetailPanel({ session, onClose, onDeleteClick }: { session: Clien
 
   return (
     <>
-      <div className="fixed inset-0 bg-zinc-900/40 z-40 transition-opacity backdrop-blur-sm" onClick={onClose} />
+      <div className="fixed inset-0 bg-foreground/30 z-40 transition-opacity backdrop-blur-sm" onClick={onClose} />
 
-      <div className="fixed right-0 top-0 bottom-0 w-full max-w-lg bg-white z-50 shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
+      <div className="fixed right-0 top-0 bottom-0 w-full max-w-lg bg-card z-50 shadow-2xl flex flex-col animate-in slide-in-from-right duration-300 border-l border-border">
         {/* Header */}
-        <div className="border-b border-zinc-200 px-5 py-4 flex items-start gap-3.5">
-          <div className="w-12 h-12 rounded-xl bg-zinc-900 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+        <div className="border-b border-border px-5 py-4 flex items-start gap-3.5">
+          <div className="w-12 h-12 rounded-xl bg-foreground flex items-center justify-center text-background font-bold text-sm flex-shrink-0">
             {initials}
           </div>
           <div className="flex-1 min-w-0">
-            <h2 className="text-base font-bold text-zinc-900 truncate">{clientName}</h2>
+            <h2 className="text-base font-bold text-foreground truncate">{clientName}</h2>
             <div className="flex flex-wrap items-center gap-1.5 mt-2">
               <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-md ring-1 ring-inset text-white ${stageInfo.indicatorColor}`}>
                 <StageIcon className="w-3 h-3" />
@@ -704,13 +704,13 @@ function ClientDetailPanel({ session, onClose, onDeleteClick }: { session: Clien
                 </span>
               )}
               {session.tags?.map(t => (
-                <span key={t.id} className="inline-flex items-center text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-zinc-50 text-zinc-600 ring-1 ring-inset ring-zinc-200">
+                <span key={t.id} className="inline-flex items-center text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-muted text-muted-foreground ring-1 ring-inset ring-border">
                   {t.name}
                 </span>
               ))}
             </div>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-zinc-100 transition-colors text-zinc-400 hover:text-zinc-600 flex-shrink-0">
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground flex-shrink-0">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -718,13 +718,13 @@ function ClientDetailPanel({ session, onClose, onDeleteClick }: { session: Clien
         {/* Content */}
         <div className="flex-1 overflow-y-auto">
           {/* Client Profile */}
-          <div className="px-5 py-4 border-b border-zinc-200">
+          <div className="px-5 py-4 border-b border-border">
             <div className="flex items-center justify-between mb-3.5">
-              <h3 className="text-[11px] font-bold text-zinc-400 uppercase tracking-widest">Dados do Cadastro</h3>
+              <h3 className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest">Dados do Cadastro</h3>
               {session.user_id && profile && !editingProfile && (
                 <button
                   onClick={startEditProfile}
-                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium text-zinc-600 hover:bg-zinc-100 border border-zinc-200 transition-colors"
+                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium text-muted-foreground hover:bg-muted border border-border transition-colors"
                 >
                   <Edit2 className="w-3.5 h-3.5" />
                   Editar
@@ -733,7 +733,7 @@ function ClientDetailPanel({ session, onClose, onDeleteClick }: { session: Clien
               {editingProfile && (
                 <button
                   onClick={() => setEditingProfile(false)}
-                  className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium text-zinc-400 hover:bg-zinc-50 transition-colors"
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium text-muted-foreground hover:bg-muted transition-colors"
                 >
                   <X className="w-3.5 h-3.5" />
                   Cancelar
@@ -744,32 +744,32 @@ function ClientDetailPanel({ session, onClose, onDeleteClick }: { session: Clien
             {editingProfile ? (
               <div className="space-y-3">
                 <div>
-                  <label className="block text-[11px] text-zinc-500 mb-1">Nome completo</label>
+                  <label className="block text-[11px] text-muted-foreground mb-1">Nome completo</label>
                   <input
                     type="text"
                     value={profileForm.full_name}
                     onChange={e => setProfileForm(p => ({ ...p, full_name: e.target.value }))}
-                    className="w-full px-3 py-2 text-sm rounded-lg border border-zinc-200 bg-white focus:outline-none focus:ring-2 focus:ring-zinc-400"
+                    className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-card focus:outline-none focus:ring-2 focus:ring-ring/40 text-foreground"
                     autoFocus
                   />
                 </div>
                 <div>
-                  <label className="block text-[11px] text-zinc-500 mb-1">WhatsApp / Telefone</label>
+                  <label className="block text-[11px] text-muted-foreground mb-1">WhatsApp / Telefone</label>
                   <input
                     type="text"
                     value={profileForm.phone}
                     onChange={e => setProfileForm(p => ({ ...p, phone: e.target.value }))}
-                    className="w-full px-3 py-2 text-sm rounded-lg border border-zinc-200 bg-white focus:outline-none focus:ring-2 focus:ring-zinc-400"
+                    className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-card focus:outline-none focus:ring-2 focus:ring-ring/40 text-foreground"
                     placeholder="Ex: 5527999990000"
                   />
                 </div>
                 <div className="flex gap-2">
                   <div className="w-24">
-                    <label className="block text-[11px] text-zinc-500 mb-1">Tipo doc.</label>
+                    <label className="block text-[11px] text-muted-foreground mb-1">Tipo doc.</label>
                     <select
                       value={profileForm.document_type}
                       onChange={e => setProfileForm(p => ({ ...p, document_type: e.target.value }))}
-                      className="w-full px-2 py-2 text-sm rounded-lg border border-zinc-200 bg-white focus:outline-none focus:ring-2 focus:ring-zinc-400"
+                      className="w-full px-2 py-2 text-sm rounded-lg border border-border bg-card focus:outline-none focus:ring-2 focus:ring-ring/40 text-foreground"
                     >
                       <option value="">—</option>
                       <option value="CPF">CPF</option>
@@ -777,22 +777,22 @@ function ClientDetailPanel({ session, onClose, onDeleteClick }: { session: Clien
                     </select>
                   </div>
                   <div className="flex-1">
-                    <label className="block text-[11px] text-zinc-500 mb-1">Número</label>
+                    <label className="block text-[11px] text-muted-foreground mb-1">Número</label>
                     <input
                       type="text"
                       value={profileForm.document}
                       onChange={e => setProfileForm(p => ({ ...p, document: e.target.value }))}
-                      className="w-full px-3 py-2 text-sm rounded-lg border border-zinc-200 bg-white focus:outline-none focus:ring-2 focus:ring-zinc-400"
+                      className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-card focus:outline-none focus:ring-2 focus:ring-ring/40 text-foreground"
                       placeholder="000.000.000-00"
                     />
                   </div>
                 </div>
                 <div>
-                  <label className="block text-[11px] text-zinc-500 mb-1">Tipo de atuação</label>
+                  <label className="block text-[11px] text-muted-foreground mb-1">Tipo de atuação</label>
                   <select
                     value={profileForm.business_type}
                     onChange={e => setProfileForm(p => ({ ...p, business_type: e.target.value }))}
-                    className="w-full px-3 py-2 text-sm rounded-lg border border-zinc-200 bg-white focus:outline-none focus:ring-2 focus:ring-zinc-400"
+                    className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-card focus:outline-none focus:ring-2 focus:ring-ring/40 text-foreground"
                   >
                     <option value="">Não informado</option>
                     {Object.entries(businessTypeLabels).map(([v, l]) => (
@@ -801,11 +801,11 @@ function ClientDetailPanel({ session, onClose, onDeleteClick }: { session: Clien
                   </select>
                 </div>
                 <div>
-                  <label className="block text-[11px] text-zinc-500 mb-1">Funcionários</label>
+                  <label className="block text-[11px] text-muted-foreground mb-1">Funcionários</label>
                   <select
                     value={profileForm.employees}
                     onChange={e => setProfileForm(p => ({ ...p, employees: e.target.value }))}
-                    className="w-full px-3 py-2 text-sm rounded-lg border border-zinc-200 bg-white focus:outline-none focus:ring-2 focus:ring-zinc-400"
+                    className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-card focus:outline-none focus:ring-2 focus:ring-ring/40 text-foreground"
                   >
                     <option value="">Não informado</option>
                     {Object.entries(employeesLabels).map(([v, l]) => (
@@ -814,11 +814,11 @@ function ClientDetailPanel({ session, onClose, onDeleteClick }: { session: Clien
                   </select>
                 </div>
                 <div>
-                  <label className="block text-[11px] text-zinc-500 mb-1">Faturamento estimado</label>
+                  <label className="block text-[11px] text-muted-foreground mb-1">Faturamento estimado</label>
                   <select
                     value={profileForm.revenue}
                     onChange={e => setProfileForm(p => ({ ...p, revenue: e.target.value }))}
-                    className="w-full px-3 py-2 text-sm rounded-lg border border-zinc-200 bg-white focus:outline-none focus:ring-2 focus:ring-zinc-400"
+                    className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-card focus:outline-none focus:ring-2 focus:ring-ring/40 text-foreground"
                   >
                     <option value="">Não informado</option>
                     {Object.entries(revenueLabels).map(([v, l]) => (
@@ -829,7 +829,7 @@ function ClientDetailPanel({ session, onClose, onDeleteClick }: { session: Clien
                 <button
                   onClick={() => updateProfileMutation.mutate(profileForm)}
                   disabled={updateProfileMutation.isPending}
-                  className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-zinc-900 text-white text-sm font-medium disabled:opacity-50 hover:bg-zinc-700 transition-colors"
+                  className="btn-action flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-50 transition-colors"
                 >
                   {updateProfileMutation.isPending
                     ? <Loader className="w-4 h-4 animate-spin" />
@@ -867,13 +867,13 @@ function ClientDetailPanel({ session, onClose, onDeleteClick }: { session: Clien
                   </div>
                 )}
                 {!profile && session.user_id && (
-                  <div className="bg-zinc-50 ring-1 ring-inset ring-zinc-200 text-zinc-600 p-3 rounded-lg text-xs flex items-center gap-2">
-                    <Loader className="w-4 h-4 animate-spin flex-shrink-0 text-zinc-400" />
+                  <div className="bg-muted ring-1 ring-inset ring-border text-muted-foreground p-3 rounded-lg text-xs flex items-center gap-2">
+                    <Loader className="w-4 h-4 animate-spin flex-shrink-0 text-muted-foreground/50" />
                     <p>Aguardando sincronização de perfil.</p>
                   </div>
                 )}
                 {!profile && !session.user_id && !session.email && (
-                  <p className="text-sm text-zinc-400 italic">Visitante anônimo — sem dados de perfil</p>
+                  <p className="text-sm text-muted-foreground italic">Visitante anônimo — sem dados de perfil</p>
                 )}
               </div>
             )}
@@ -881,20 +881,20 @@ function ClientDetailPanel({ session, onClose, onDeleteClick }: { session: Clien
 
           {/* Commercial Segment */}
           {session.user_id && (
-            <div className="px-5 py-4 border-b border-zinc-200">
-              <h3 className="text-[11px] font-bold text-zinc-400 uppercase tracking-widest mb-3">Segmento Comercial</h3>
+            <div className="px-5 py-4 border-b border-border">
+              <h3 className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest mb-3">Segmento Comercial</h3>
               <div className="flex items-center gap-3">
                 <select
                   value={profile?.customer_segment || ''}
                   onChange={e => segmentMutation.mutate(e.target.value || null)}
                   disabled={segmentMutation.isPending}
-                  className="appearance-none px-3 py-1.5 text-sm font-medium border border-zinc-200 rounded-lg bg-white focus:ring-2 focus:ring-zinc-400 focus:outline-none transition-all"
+                  className="appearance-none px-3 py-1.5 text-sm font-medium border border-border rounded-lg bg-card text-foreground focus:ring-2 focus:ring-ring/40 focus:outline-none transition-all"
                 >
                   {SEGMENT_OPTIONS.map(o => (
                     <option key={o.value} value={o.value}>{o.label}</option>
                   ))}
                 </select>
-                {segmentMutation.isPending && <Loader className="w-4 h-4 animate-spin text-zinc-400" />}
+                {segmentMutation.isPending && <Loader className="w-4 h-4 animate-spin text-muted-foreground" />}
                 {profile?.customer_segment && (
                   <span className={`inline-flex items-center text-[10px] font-bold px-1.5 py-0.5 rounded-md ring-1 ring-inset ${segmentBadgeColor(profile.customer_segment).replace(/border-/g, 'ring-')}`}>
                     {segmentLabel(profile.customer_segment)}
@@ -906,8 +906,8 @@ function ClientDetailPanel({ session, onClose, onDeleteClick }: { session: Clien
 
           {/* Responsável Comercial */}
           {session.user_id && (
-            <div className="px-5 py-4 border-b border-zinc-200">
-              <h3 className="text-[11px] font-bold text-zinc-400 uppercase tracking-widest mb-3">Responsável Comercial</h3>
+            <div className="px-5 py-4 border-b border-border">
+              <h3 className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest mb-3">Responsável Comercial</h3>
               <div className="flex items-center gap-3">
                 <AdminSelect
                   options={activeSellers.map(s => ({ value: s.id, label: s.name }))}
@@ -917,9 +917,9 @@ function ClientDetailPanel({ session, onClose, onDeleteClick }: { session: Clien
                   allLabel="Sem responsável"
                   icon={Users}
                 />
-                {sellerMutation.isPending && <Loader className="w-4 h-4 animate-spin text-zinc-400" />}
+                {sellerMutation.isPending && <Loader className="w-4 h-4 animate-spin text-muted-foreground" />}
                 {profile?.seller_name && !sellerMutation.isPending && (
-                  <span className="text-xs font-medium text-zinc-600 bg-zinc-100 px-2 py-1 rounded-md">
+                  <span className="text-xs font-medium text-foreground bg-muted px-2 py-1 rounded-md">
                     {profile.seller_name}
                   </span>
                 )}
@@ -943,8 +943,8 @@ function ClientDetailPanel({ session, onClose, onDeleteClick }: { session: Clien
 
           {/* Price List */}
           {session.user_id && profile?.customer_segment === 'network_partner' && (
-            <div className="px-5 py-4 border-b border-zinc-200">
-              <h3 className="text-[11px] font-bold text-zinc-400 uppercase tracking-widest mb-3">Tabela de Preço</h3>
+            <div className="px-5 py-4 border-b border-border">
+              <h3 className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest mb-3">Tabela de Preço</h3>
               <div className="flex items-center gap-3">
                 <AdminSelect
                   options={availablePriceLists.map(l => ({ value: l.id, label: l.name }))}
@@ -953,15 +953,15 @@ function ClientDetailPanel({ session, onClose, onDeleteClick }: { session: Clien
                   placeholder="Preço padrão do catálogo"
                   allLabel="Preço padrão do catálogo"
                 />
-                {priceListMutation.isPending && <Loader className="w-4 h-4 animate-spin text-zinc-400" />}
+                {priceListMutation.isPending && <Loader className="w-4 h-4 animate-spin text-muted-foreground" />}
               </div>
             </div>
           )}
 
           {/* Cart info */}
           {session.cart_items_count > 0 && orders.length === 0 && (
-            <div className="px-5 py-4 border-b border-zinc-200">
-              <h3 className="text-[11px] font-bold text-zinc-400 uppercase tracking-widest mb-3.5">Carrinho</h3>
+            <div className="px-5 py-4 border-b border-border">
+              <h3 className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest mb-3.5">Carrinho</h3>
               <div className="flex items-center gap-3 bg-amber-50 rounded-lg p-3.5 ring-1 ring-inset ring-amber-200">
                 <div className="w-9 h-9 rounded-lg bg-amber-100 flex items-center justify-center flex-shrink-0">
                   <ShoppingCart className="w-4 h-4 text-amber-600" />
@@ -980,23 +980,23 @@ function ClientDetailPanel({ session, onClose, onDeleteClick }: { session: Clien
 
           {/* Orders */}
           {orders.length > 0 && (
-            <div className="px-5 py-4 border-b border-zinc-200">
-              <h3 className="text-[11px] font-bold text-zinc-400 uppercase tracking-widest mb-3.5">
+            <div className="px-5 py-4 border-b border-border">
+              <h3 className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest mb-3.5">
                 Pedidos ({orders.length})
               </h3>
               <div className="space-y-3">
                 {orders.map((order) => {
                   const statusInfo = orderStatusLabels[order.status] || { label: order.status, color: 'bg-gray-100 text-gray-600' }
                   return (
-                    <div key={order.id} className="bg-zinc-50 rounded-xl border border-zinc-200/80 overflow-hidden">
-                      <div className="px-3.5 py-2.5 flex items-center justify-between border-b border-zinc-200/60 bg-white">
+                    <div key={order.id} className="bg-muted/30 rounded-xl border border-border overflow-hidden">
+                      <div className="px-3.5 py-2.5 flex items-center justify-between border-b border-border bg-card">
                         <div className="flex items-center gap-2.5">
-                          <span className="text-[13px] font-bold text-zinc-900">#{order.id.slice(0, 8).toUpperCase()}</span>
+                          <span className="text-[13px] font-bold text-foreground">#{order.id.slice(0, 8).toUpperCase()}</span>
                           <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md ring-1 ring-inset ${statusInfo.color.replace(/bg-/, 'ring-').replace(/text-.*/, '')} ${statusInfo.color}`}>{statusInfo.label}</span>
                         </div>
                         <div className="text-right">
-                          <p className="text-[13px] font-extrabold text-zinc-900">R$ {Number(order.total).toFixed(2)}</p>
-                          <p className="text-[10px] text-zinc-400 font-medium">{new Date(order.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}</p>
+                          <p className="text-[13px] font-extrabold text-foreground">R$ {Number(order.total).toFixed(2)}</p>
+                          <p className="text-[10px] text-muted-foreground font-medium">{new Date(order.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}</p>
                         </div>
                       </div>
                       <div className="p-2.5 space-y-1.5">
@@ -1008,19 +1008,19 @@ function ClientDetailPanel({ session, onClose, onDeleteClick }: { session: Clien
                             imgUrl = item.catalog_products?.main_image || null
                           }
                           return (
-                            <div key={item.id} className="flex items-center gap-2.5 bg-white rounded-lg p-2 border border-zinc-100">
+                            <div key={item.id} className="flex items-center gap-2.5 bg-card rounded-lg p-2 border border-border">
                               {imgUrl ? (
                                 <img src={imgUrl} alt="" className="w-10 h-10 rounded-lg object-cover flex-shrink-0" />
                               ) : (
-                                <div className="w-10 h-10 rounded-lg bg-zinc-100 flex items-center justify-center flex-shrink-0">
-                                  <Package className="w-4 h-4 text-zinc-400" />
+                                <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
+                                  <Package className="w-4 h-4 text-muted-foreground" />
                                 </div>
                               )}
                               <div className="flex-1 min-w-0">
-                                <p className="text-[13px] font-medium text-zinc-800 truncate">{item.product_name_snapshot}</p>
-                                <p className="text-[11px] text-zinc-400 mt-0.5">{item.qty}× R$ {Number(item.unit_price_snapshot).toFixed(2)}</p>
+                                <p className="text-[13px] font-medium text-foreground truncate">{item.product_name_snapshot}</p>
+                                <p className="text-[11px] text-muted-foreground mt-0.5">{item.qty}× R$ {Number(item.unit_price_snapshot).toFixed(2)}</p>
                               </div>
-                              <span className="text-[13px] font-bold text-zinc-800 flex-shrink-0">R$ {Number(item.line_total).toFixed(2)}</span>
+                              <span className="text-[13px] font-bold text-foreground flex-shrink-0">R$ {Number(item.line_total).toFixed(2)}</span>
                             </div>
                           )
                         })}
@@ -1033,8 +1033,8 @@ function ClientDetailPanel({ session, onClose, onDeleteClick }: { session: Clien
           )}
 
           {/* Activity */}
-          <div className="px-5 py-4 bg-zinc-50">
-            <h3 className="text-[11px] font-bold text-zinc-400 uppercase tracking-widest mb-3.5">Atividade da Sessão</h3>
+          <div className="px-5 py-4 bg-muted/30">
+            <h3 className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest mb-3.5">Atividade da Sessão</h3>
             <div className="space-y-3">
               <InfoRow icon={Calendar} label="Primeira visita" value={new Date(session.created_at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })} />
               <InfoRow icon={Clock} label="Última atividade" value={new Date(session.updated_at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })} />
@@ -1055,15 +1055,15 @@ function ClientDetailPanel({ session, onClose, onDeleteClick }: { session: Clien
           )}
 
           {/* Danger Zone */}
-          <div className="px-5 py-5 mt-2 border-t border-zinc-200">
+          <div className="px-5 py-5 mt-2 border-t border-border">
             <button
               onClick={onDeleteClick}
-              className="w-full py-2.5 px-4 rounded-xl ring-1 ring-inset ring-red-200 text-red-600 bg-red-50 hover:bg-red-100 font-bold text-sm transition-colors flex items-center justify-center gap-2"
+              className="w-full py-2.5 px-4 rounded-xl ring-1 ring-inset ring-red-500/20 text-red-600 dark:text-red-400 bg-red-500/10 hover:bg-red-500/20 font-bold text-sm transition-colors flex items-center justify-center gap-2"
             >
               <Trash2 className="w-4 h-4" />
               Excluir Cliente
             </button>
-            <p className="text-[10px] text-zinc-400 text-center mt-2">Ação administrativa irreversível</p>
+            <p className="text-[10px] text-muted-foreground text-center mt-2">Ação administrativa irreversível</p>
           </div>
         </div>
       </div>
@@ -1077,12 +1077,12 @@ function ClientDetailPanel({ session, onClose, onDeleteClick }: { session: Clien
 function InfoRow({ icon: Icon, label, value }: { icon: typeof User; label: string; value: string }) {
   return (
     <div className="flex items-center gap-3">
-      <div className="w-8 h-8 rounded-lg bg-zinc-100 flex items-center justify-center flex-shrink-0">
-        <Icon className="w-4 h-4 text-zinc-500" />
+      <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
+        <Icon className="w-4 h-4 text-muted-foreground" />
       </div>
       <div className="min-w-0">
-        <p className="text-[11px] text-zinc-500 leading-none">{label}</p>
-        <p className="text-sm font-medium text-zinc-800 truncate mt-0.5">{value}</p>
+        <p className="text-[11px] text-muted-foreground leading-none">{label}</p>
+        <p className="text-sm font-medium text-foreground truncate mt-0.5">{value}</p>
       </div>
     </div>
   )
@@ -1186,9 +1186,9 @@ function PartnerAccessSection({ session }: { session: ClientSession }) {
   const isLoading = createMutation.isPending || resetMutation.isPending || blockMutation.isPending || unblockMutation.isPending
 
   const statusConfig = {
-    not_created: { label: 'Sem acesso', classes: 'bg-zinc-100 text-zinc-500 ring-zinc-200' },
-    active:      { label: 'Ativo',      classes: 'bg-emerald-100 text-emerald-700 ring-emerald-200' },
-    blocked:     { label: 'Bloqueado',  classes: 'bg-red-100 text-red-600 ring-red-200' },
+    not_created: { label: 'Sem acesso', classes: 'bg-muted text-muted-foreground ring-border' },
+    active:      { label: 'Ativo',      classes: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 ring-emerald-500/25' },
+    blocked:     { label: 'Bloqueado',  classes: 'bg-red-500/10 text-red-600 dark:text-red-400 ring-red-500/25' },
   }
   const statusInfo = statusConfig[accessStatus as keyof typeof statusConfig] ?? statusConfig.not_created
 
@@ -1202,9 +1202,9 @@ function PartnerAccessSection({ session }: { session: ClientSession }) {
   }
 
   return (
-    <div className="px-5 py-4 border-b border-zinc-200">
+    <div className="px-5 py-4 border-b border-border">
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-[11px] font-bold text-zinc-400 uppercase tracking-widest">Acesso ao Portal</h3>
+        <h3 className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest">Acesso ao Portal</h3>
         <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md ring-1 ring-inset ${statusInfo.classes}`}>
           {statusInfo.label}
         </span>
@@ -1212,13 +1212,13 @@ function PartnerAccessSection({ session }: { session: ClientSession }) {
 
       {/* Metadata */}
       {profile.credentials_created_at && (
-        <p className="text-[11px] text-zinc-400 mb-1">
+        <p className="text-[11px] text-muted-foreground mb-1">
           Criado em {new Date(profile.credentials_created_at).toLocaleDateString('pt-BR')}
-          {profile.auth_phone && <> · Login: <span className="font-medium text-zinc-600">{profile.auth_phone}</span></>}
+          {profile.auth_phone && <> · Login: <span className="font-medium text-foreground">{profile.auth_phone}</span></>}
         </p>
       )}
       {profile.last_password_reset_at && (
-        <p className="text-[11px] text-zinc-400 mb-3">
+        <p className="text-[11px] text-muted-foreground mb-3">
           Senha resetada em {new Date(profile.last_password_reset_at).toLocaleDateString('pt-BR')}
         </p>
       )}
@@ -1231,7 +1231,7 @@ function PartnerAccessSection({ session }: { session: ClientSession }) {
             placeholder="Senha personalizada (opcional)"
             value={manualPassword}
             onChange={e => setManualPassword(e.target.value)}
-            className="flex-1 px-3 py-1.5 text-sm border border-zinc-200 rounded-lg focus:ring-2 focus:ring-zinc-400 focus:outline-none bg-white"
+            className="flex-1 px-3 py-1.5 text-sm border border-border rounded-lg focus:ring-2 focus:ring-ring/40 focus:outline-none bg-card text-foreground"
           />
           <button onClick={() => { setShowPasswordInput(false); setManualPassword('') }} className="text-zinc-400 hover:text-zinc-600 p-1">
             <X className="w-4 h-4" />
@@ -1246,14 +1246,14 @@ function PartnerAccessSection({ session }: { session: ClientSession }) {
             <button
               onClick={() => createMutation.mutate()}
               disabled={isLoading}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold bg-zinc-900 text-white rounded-lg hover:bg-zinc-700 disabled:opacity-50 transition-colors"
+              className="btn-action flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg disabled:opacity-50 transition-colors"
             >
               {isLoading ? <Loader className="w-3.5 h-3.5 animate-spin" /> : <KeyRound className="w-3.5 h-3.5" />}
               Criar Acesso
             </button>
             <button
               onClick={() => setShowPasswordInput(v => !v)}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-zinc-200 rounded-lg hover:border-zinc-300 text-zinc-600 transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-border rounded-lg hover:bg-muted text-muted-foreground transition-colors"
             >
               Definir senha
             </button>
@@ -1265,14 +1265,14 @@ function PartnerAccessSection({ session }: { session: ClientSession }) {
             <button
               onClick={() => resetMutation.mutate()}
               disabled={isLoading}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold bg-zinc-900 text-white rounded-lg hover:bg-zinc-700 disabled:opacity-50 transition-colors"
+              className="btn-action flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg disabled:opacity-50 transition-colors"
             >
               {resetMutation.isPending ? <Loader className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
               Resetar Senha
             </button>
             <button
               onClick={() => setShowPasswordInput(v => !v)}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-zinc-200 rounded-lg hover:border-zinc-300 text-zinc-600 transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-border rounded-lg hover:bg-muted text-muted-foreground transition-colors"
             >
               Definir senha
             </button>
@@ -1586,18 +1586,18 @@ export default function AdminClientes() {
 
   // Stage color config matching Pedidos' ring/bg/text pattern
   const stageColorConfig: Record<string, { ring: string; bg: string; text: string }> = {
-    visitou:              { ring: 'ring-zinc-600/15',    bg: 'bg-zinc-50',    text: 'text-zinc-600' },
-    visualizou_produto:   { ring: 'ring-blue-600/20',    bg: 'bg-blue-50',    text: 'text-blue-700' },
-    adicionou_carrinho:   { ring: 'ring-amber-600/20',   bg: 'bg-amber-50',   text: 'text-amber-700' },
-    iniciou_checkout:     { ring: 'ring-purple-600/20',  bg: 'bg-purple-50',  text: 'text-purple-700' },
-    comprou:              { ring: 'ring-emerald-600/20', bg: 'bg-emerald-50', text: 'text-emerald-700' },
-    abandonou:            { ring: 'ring-red-600/20',     bg: 'bg-red-50',     text: 'text-red-700' },
+    visitou:              { ring: 'ring-muted-foreground/15', bg: 'bg-muted',          text: 'text-muted-foreground' },
+    visualizou_produto:   { ring: 'ring-blue-600/20',         bg: 'bg-blue-500/10',    text: 'text-blue-600 dark:text-blue-400' },
+    adicionou_carrinho:   { ring: 'ring-amber-600/20',        bg: 'bg-amber-500/10',   text: 'text-amber-600 dark:text-amber-400' },
+    iniciou_checkout:     { ring: 'ring-purple-600/20',       bg: 'bg-purple-500/10',  text: 'text-purple-600 dark:text-purple-400' },
+    comprou:              { ring: 'ring-emerald-600/20',      bg: 'bg-emerald-500/10', text: 'text-emerald-600 dark:text-emerald-400' },
+    abandonou:            { ring: 'ring-red-600/20',          bg: 'bg-red-500/10',     text: 'text-red-600 dark:text-red-400' },
   }
 
   return (
     <AdminLayout>
       {/* ── HEADER ── */}
-      <div className="bg-white border-b border-border sticky top-0 z-30 shadow-sm flex flex-col w-full text-left">
+      <div className="bg-card border-b border-border sticky top-0 z-30 shadow-sm flex flex-col w-full text-left">
         <AdminHeader
           title="Clientes"
           subtitle={
@@ -1607,7 +1607,7 @@ export default function AdminClientes() {
           }
           badge={
             !isLoading && totalSessions > 0 ? (
-              <span className="px-2.5 py-1 rounded-full bg-zinc-100 text-zinc-600 text-xs font-semibold border border-zinc-200 shadow-sm">
+              <span className="px-2.5 py-1 rounded-full bg-muted text-muted-foreground text-xs font-semibold border border-border shadow-sm">
                 {totalSessions} clientes
               </span>
             ) : undefined
@@ -1615,13 +1615,13 @@ export default function AdminClientes() {
           actionNode={
             <div className="flex flex-wrap items-center gap-2">
               {/* Mode toggle */}
-              <div className="flex items-center gap-0.5 bg-zinc-100 rounded-lg p-0.5">
+              <div className="flex items-center gap-0.5 bg-muted rounded-lg p-0.5">
                 <button
                   onClick={() => setViewMode('funnel')}
                   className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-semibold transition-all ${
                     viewMode === 'funnel'
-                      ? 'bg-white text-zinc-800 shadow-sm'
-                      : 'text-zinc-500 hover:text-zinc-700'
+                      ? 'bg-card text-foreground shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground'
                   }`}
                 >
                   <Columns3 className="w-3.5 h-3.5" />
@@ -1631,8 +1631,8 @@ export default function AdminClientes() {
                   onClick={() => setViewMode('queue')}
                   className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-semibold transition-all ${
                     viewMode === 'queue'
-                      ? 'bg-white text-zinc-800 shadow-sm'
-                      : 'text-zinc-500 hover:text-zinc-700'
+                      ? 'bg-card text-foreground shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground'
                   }`}
                 >
                   <LayoutList className="w-3.5 h-3.5" />
@@ -1677,7 +1677,7 @@ export default function AdminClientes() {
 
               {/* Queue: indicador do seller vinculado (auto-resolvido) */}
               {viewMode === 'queue' && mySellerId && (
-                <span className="text-[11px] text-zinc-400 font-medium whitespace-nowrap">
+                <span className="text-[11px] text-muted-foreground font-medium whitespace-nowrap">
                   <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400 mr-1 align-middle" />
                   {sellers.find(s => s.id === mySellerId)?.name ?? 'Vendedor vinculado'}
                 </span>
@@ -1690,7 +1690,7 @@ export default function AdminClientes() {
         {viewMode === 'queue' && !isLoading && (
           <>
             {/* Row 1: Segmento (foco principal do comercial) */}
-            <div className="w-full border-t border-zinc-200 bg-white px-4 sm:px-6 lg:px-8 flex flex-nowrap gap-0 items-stretch">
+            <div className="w-full border-t border-border bg-card px-4 sm:px-6 lg:px-8 flex flex-nowrap gap-0 items-stretch">
               {(
                 [
                   { key: 'wholesale_buyer' as SegmentTab, label: 'Compradores Atacado', star: true },
@@ -1709,17 +1709,17 @@ export default function AdminClientes() {
                     onClick={() => handleSegmentChange(seg.key)}
                     className={`flex items-center gap-1.5 px-4 py-2.5 text-xs font-semibold border-b-2 transition-all whitespace-nowrap ${
                       isActive
-                        ? 'border-zinc-900 text-zinc-900'
-                        : 'border-transparent text-zinc-400 hover:text-zinc-600 hover:border-zinc-300'
+                        ? 'border-foreground text-foreground'
+                        : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
                     }`}
                   >
                     {seg.label}
                     {seg.star && (
-                      <span className="text-[9px] font-bold px-1 py-0.5 rounded bg-zinc-900 text-white leading-none">
+                      <span className="btn-action text-[9px] font-bold px-1 py-0.5 rounded leading-none">
                         PRINCIPAL
                       </span>
                     )}
-                    <span className={`text-[10px] font-bold ${isActive ? 'text-zinc-500' : 'text-zinc-300'}`}>
+                    <span className={`text-[10px] font-bold ${isActive ? 'text-muted-foreground' : 'text-muted-foreground/40'}`}>
                       {totalInSeg}
                     </span>
                   </button>
@@ -1728,7 +1728,7 @@ export default function AdminClientes() {
             </div>
 
             {/* Row 2: Views prontas (filtradas por segmento) */}
-            <div className="w-full border-t border-zinc-100 bg-zinc-50/50 px-4 sm:px-6 lg:px-8 overflow-x-auto flex flex-nowrap gap-1.5 items-center py-2" style={{ scrollbarWidth: 'thin' }}>
+            <div className="w-full border-t border-border bg-muted/30 px-4 sm:px-6 lg:px-8 overflow-x-auto flex flex-nowrap gap-1.5 items-center py-2" style={{ scrollbarWidth: 'thin' }}>
               {availableQueueViews.map(view => {
                 const count = queueCounts[view.key] ?? 0
                 const isActive = activeQueueView === view.key
@@ -1742,16 +1742,16 @@ export default function AdminClientes() {
                     title={noSeller ? 'Nenhum vendedor vinculado ao seu usuário. Configure em Vendedores.' : undefined}
                     className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap ${
                       isActive
-                        ? 'bg-zinc-900 text-white shadow-sm'
+                        ? 'bg-foreground text-background shadow-sm'
                         : noSeller
-                        ? 'bg-zinc-100 text-zinc-300 cursor-not-allowed'
-                        : 'bg-white text-zinc-600 border border-zinc-200 hover:border-zinc-300 hover:bg-zinc-50'
+                        ? 'bg-muted text-muted-foreground/40 cursor-not-allowed'
+                        : 'bg-card text-muted-foreground border border-border hover:border-border/70 hover:bg-muted/50'
                     }`}
                   >
                     {view.label}
                     {count > 0 && (
                       <span className={`inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold ${
-                        isActive ? 'bg-white/20 text-white' : 'bg-zinc-100 text-zinc-500'
+                        isActive ? 'bg-background/20 text-background' : 'bg-muted text-muted-foreground'
                       }`}>
                         {count}
                       </span>
@@ -1765,14 +1765,14 @@ export default function AdminClientes() {
 
         {/* ── SUMMARY CARDS ── */}
         {!isLoading && sessions.length > 0 && viewMode === 'funnel' && (
-          <div className="w-full border-t border-zinc-100 bg-zinc-50/50 py-3 px-4 sm:px-6 lg:px-8 overflow-x-auto flex flex-nowrap gap-3 items-center" style={{ scrollbarWidth: 'thin' }}>
+          <div className="w-full border-t border-border bg-muted/30 py-3 px-4 sm:px-6 lg:px-8 overflow-x-auto flex flex-nowrap gap-3 items-center" style={{ scrollbarWidth: 'thin' }}>
             <AdminSummaryCard
               icon={Users}
               iconColor="text-zinc-500"
               label="Total clientes"
               value={String(totalSessions)}
               subtitle={
-                <span className="inline-block text-[11px] font-bold px-1.5 py-0.5 rounded-md bg-zinc-50 text-zinc-600 border border-zinc-100">
+                <span className="inline-block text-[11px] font-bold px-1.5 py-0.5 rounded-md bg-muted text-muted-foreground border border-border">
                   {funnelStages.length} etapas
                 </span>
               }
@@ -1783,7 +1783,7 @@ export default function AdminClientes() {
               indicatorColor="bg-emerald-400"
               value={String(grouped['comprou']?.length || 0)}
               subtitle={
-                <span className={`inline-block text-[11px] font-bold px-1.5 py-0.5 rounded-md ${(grouped['comprou']?.length || 0) > 0 ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-zinc-100 text-zinc-400'}`}>
+                <span className={`inline-block text-[11px] font-bold px-1.5 py-0.5 rounded-md ${(grouped['comprou']?.length || 0) > 0 ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20' : 'bg-muted text-muted-foreground'}`}>
                   {totalSessions > 0 ? `${((grouped['comprou']?.length || 0) / totalSessions * 100).toFixed(0)}% do total` : '—'}
                 </span>
               }
@@ -1794,7 +1794,7 @@ export default function AdminClientes() {
               indicatorColor="bg-red-400"
               value={String(grouped['abandonou']?.length || 0)}
               subtitle={
-                <span className={`inline-block text-[11px] font-bold px-1.5 py-0.5 rounded-md ${(grouped['abandonou']?.length || 0) > 0 ? 'bg-red-50 text-red-700 border border-red-100' : 'bg-zinc-100 text-zinc-400'}`}>
+                <span className={`inline-block text-[11px] font-bold px-1.5 py-0.5 rounded-md ${(grouped['abandonou']?.length || 0) > 0 ? 'bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20' : 'bg-muted text-muted-foreground'}`}>
                   {totalSessions > 0 ? `${((grouped['abandonou']?.length || 0) / totalSessions * 100).toFixed(0)}% do total` : '—'}
                 </span>
               }
@@ -1806,7 +1806,7 @@ export default function AdminClientes() {
               label="Conversão"
               value={`${conversionRate}%`}
               subtitle={
-                <span className="inline-block text-[11px] font-bold px-1.5 py-0.5 rounded-md bg-zinc-50 text-zinc-600 border border-zinc-100">
+                <span className="inline-block text-[11px] font-bold px-1.5 py-0.5 rounded-md bg-muted text-muted-foreground border border-border">
                   visitou → comprou
                 </span>
               }
@@ -1818,24 +1818,24 @@ export default function AdminClientes() {
 
       {/* ── FUNNEL BOARD ── */}
       {viewMode === 'funnel' && (
-        <div className="w-full flex-1 min-w-0 relative border-t border-zinc-100 shadow-inner bg-zinc-50/40 min-h-[calc(100vh-210px)]">
+        <div className="w-full flex-1 min-w-0 relative border-t border-border shadow-inner bg-muted/20 min-h-[calc(100vh-210px)]">
           <style dangerouslySetInnerHTML={{__html: `
             .funnel-scroll::-webkit-scrollbar { height: 16px; }
-            .funnel-scroll::-webkit-scrollbar-track { background: transparent; border-top: 1px solid #e2e8f0; border-bottom: 1px solid #e2e8f0; }
-            .funnel-scroll::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 8px; border: 3px solid #f8fafc; }
-            .funnel-scroll::-webkit-scrollbar-thumb:hover { background-color: #94a3b8; }
+            .funnel-scroll::-webkit-scrollbar-track { background: transparent; }
+            .funnel-scroll::-webkit-scrollbar-thumb { background-color: hsl(var(--muted-foreground) / 0.3); border-radius: 8px; border: 3px solid hsl(var(--background)); }
+            .funnel-scroll::-webkit-scrollbar-thumb:hover { background-color: hsl(var(--muted-foreground) / 0.5); }
           `}} />
           <div className="absolute inset-0 overflow-x-auto overflow-y-hidden funnel-scroll px-3 sm:px-6 lg:px-8 pt-3 sm:pt-5 pb-4 sm:pb-6">
             {isLoading ? (
               <div className="flex flex-col items-center justify-center py-24 w-full">
-                <Loader className="w-8 h-8 animate-spin text-zinc-400 mb-4" />
-                <p className="text-sm font-medium text-zinc-500">Sincronizando clientes...</p>
+                <Loader className="w-8 h-8 animate-spin text-muted-foreground/40 mb-4" />
+                <p className="text-sm font-medium text-muted-foreground">Sincronizando clientes...</p>
               </div>
             ) : sessions.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-32 bg-white rounded-2xl border border-zinc-200 border-dashed max-w-4xl mx-auto shadow-sm w-full">
-                <Users className="w-12 h-12 text-zinc-300 mb-4" />
-                <h3 className="text-lg font-bold text-zinc-700">Nenhum cliente ainda</h3>
-                <p className="text-zinc-500 text-sm mt-1 mb-6 text-center max-w-xs">Os clientes aparecerão aqui quando visitantes acessarem o catálogo.</p>
+              <div className="flex flex-col items-center justify-center py-32 bg-card rounded-2xl border border-border border-dashed max-w-4xl mx-auto shadow-sm w-full">
+                <Users className="w-12 h-12 text-muted-foreground/30 mb-4" />
+                <h3 className="text-lg font-bold text-foreground">Nenhum cliente ainda</h3>
+                <p className="text-muted-foreground text-sm mt-1 mb-6 text-center max-w-xs">Os clientes aparecerão aqui quando visitantes acessarem o catálogo.</p>
               </div>
             ) : (
               <div className="flex gap-4 min-w-max h-full items-start">
@@ -1845,14 +1845,14 @@ export default function AdminClientes() {
                   const colors = stageColorConfig[stage.key]
 
                   return (
-                    <div key={stage.key} className="flex flex-col w-[260px] sm:w-[300px] lg:w-[320px] bg-zinc-100/60 rounded-xl border border-zinc-200/80 shrink-0 self-stretch max-h-[75vh] flex-nowrap shadow-sm">
+                    <div key={stage.key} className="flex flex-col w-[260px] sm:w-[300px] lg:w-[320px] bg-muted/40 rounded-xl border border-border shrink-0 self-stretch max-h-[75vh] flex-nowrap shadow-sm">
                       {/* Column Header */}
-                      <div className="p-3 border-b border-zinc-200/60 sticky top-0 bg-white/60 backdrop-blur-md rounded-t-xl z-20 flex items-center justify-between">
+                      <div className="p-3 border-b border-border/60 sticky top-0 bg-card/60 backdrop-blur-md rounded-t-xl z-20 flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                          <div className={`w-2 h-2 rounded-full ring-2 ${stage.indicatorColor} ${colors.ring}`} />
-                          <h3 className="font-bold text-[13px] text-zinc-800 tracking-tight">{stage.label}</h3>
+                          <div className={`w-2 h-2 rounded-full ${stage.indicatorColor}`} />
+                          <h3 className="font-bold text-[13px] text-foreground tracking-tight">{stage.label}</h3>
                         </div>
-                        <span className="text-[10px] font-bold text-zinc-500 bg-white border border-zinc-200 shadow-sm px-2 py-0.5 rounded-full">
+                        <span className="text-[10px] font-bold text-muted-foreground bg-card border border-border shadow-sm px-2 py-0.5 rounded-full">
                           {items.length}
                         </span>
                       </div>
@@ -1860,8 +1860,8 @@ export default function AdminClientes() {
                       {/* Column Body */}
                       <div className="flex-1 overflow-y-auto p-2.5 space-y-2.5 scrollbar-thin">
                         {items.length === 0 ? (
-                          <div className="h-16 flex items-center justify-center rounded-xl border border-zinc-200 border-dashed bg-white/50">
-                            <span className="text-[11px] font-semibold text-zinc-400">Nenhum cliente</span>
+                          <div className="h-16 flex items-center justify-center rounded-xl border border-border border-dashed bg-card/50">
+                            <span className="text-[11px] font-semibold text-muted-foreground">Nenhum cliente</span>
                           </div>
                         ) : (
                           items.slice(0, 30).map((session) => {
@@ -1877,26 +1877,26 @@ export default function AdminClientes() {
                               <button
                                 key={session.id}
                                 onClick={() => setSelectedSessionId(session.id)}
-                                className={`w-full text-left bg-white p-2.5 sm:p-3 md:p-3.5 rounded-xl shadow-[0_2px_8px_-4px_rgba(0,0,0,0.05)] hover:shadow-md border transition-all duration-200 cursor-pointer group flex flex-col gap-2 sm:gap-2.5 relative ${followUpVencido ? 'border-red-200 hover:border-red-300' : 'border-zinc-200/80 hover:border-zinc-300'}`}
+                                className={`w-full text-left bg-card p-2.5 sm:p-3 md:p-3.5 rounded-xl shadow-[0_2px_8px_-4px_rgba(0,0,0,0.05)] hover:shadow-md border transition-all duration-200 cursor-pointer group flex flex-col gap-2 sm:gap-2.5 relative ${followUpVencido ? 'border-red-500/30 hover:border-red-500/50' : 'border-border hover:border-border/70'}`}
                               >
                                 {/* Identity */}
                                 <div className="flex items-start justify-between gap-3 w-full">
                                   <div className="flex flex-col gap-0.5 min-w-0">
-                                    <h4 className="text-[13px] md:text-[14px] font-bold text-zinc-800 group-hover:text-zinc-600 leading-snug line-clamp-2 transition-colors" title={clientName}>
+                                    <h4 className="text-[13px] md:text-[14px] font-bold text-foreground group-hover:text-muted-foreground leading-snug line-clamp-2 transition-colors" title={clientName}>
                                       {clientName}
                                     </h4>
-                                    <span className="text-[11px] font-medium text-zinc-400 leading-none">
+                                    <span className="text-[11px] font-medium text-muted-foreground leading-none">
                                       {new Date(session.updated_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
                                     </span>
                                   </div>
                                   {followUpVencido && (
-                                    <span className="flex-shrink-0 flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-red-100 text-red-600 ring-1 ring-inset ring-red-200" title="Follow-up vencido">
+                                    <span className="flex-shrink-0 flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-red-500/10 text-red-600 dark:text-red-400 ring-1 ring-inset ring-red-500/25" title="Follow-up vencido">
                                       <Clock className="w-3 h-3" />
                                       Vencido
                                     </span>
                                   )}
                                   {!followUpVencido && temProximaAcao && (
-                                    <span className="flex-shrink-0 flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-emerald-50 text-emerald-600 ring-1 ring-inset ring-emerald-200" title={session.profile?.next_action ?? ''}>
+                                    <span className="flex-shrink-0 flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 ring-1 ring-inset ring-emerald-500/25" title={session.profile?.next_action ?? ''}>
                                       <Clock className="w-3 h-3" />
                                     </span>
                                   )}
@@ -1905,11 +1905,11 @@ export default function AdminClientes() {
                                 {/* Contact */}
                                 <div className="flex items-center gap-2 mt-0.5">
                                   {session.profile?.phone ? (
-                                    <span className="text-[11px] md:text-[12px] text-zinc-500 font-medium truncate">{session.profile.phone}</span>
+                                    <span className="text-[11px] md:text-[12px] text-muted-foreground font-medium truncate">{session.profile.phone}</span>
                                   ) : session.user_id ? (
-                                    <span className="text-[11px] text-zinc-400 italic">Ficha incompleta</span>
+                                    <span className="text-[11px] text-muted-foreground italic">Ficha incompleta</span>
                                   ) : (
-                                    <span className="text-[11px] text-zinc-400 italic">Visitante anônimo</span>
+                                    <span className="text-[11px] text-muted-foreground italic">Visitante anônimo</span>
                                   )}
                                 </div>
 
@@ -1922,29 +1922,29 @@ export default function AdminClientes() {
                                       </span>
                                     )}
                                     {session.tags?.slice(0, 3).map(t => (
-                                      <span key={t.id} className="inline-flex items-center text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-zinc-50 text-zinc-500 border border-zinc-200 max-w-full" title={t.name}>
+                                      <span key={t.id} className="inline-flex items-center text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-muted text-muted-foreground border border-border max-w-full" title={t.name}>
                                         <span className="truncate">{t.name}</span>
                                       </span>
                                     ))}
                                     {session.tags.length > 3 && (
-                                      <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-md bg-zinc-50 text-zinc-500 border border-zinc-200">+{session.tags.length - 3}</span>
+                                      <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-md bg-muted text-muted-foreground border border-border">+{session.tags.length - 3}</span>
                                     )}
                                   </div>
                                 )}
 
                                 {/* Cart + Labels footer */}
                                 {(labels.length > 0 || session.cart_items_count > 0) && (
-                                  <div className="pt-2.5 border-t border-zinc-100 flex items-center justify-between gap-2 mt-auto">
-                                    <div className="flex items-center flex-wrap gap-2 text-zinc-500 truncate">
+                                  <div className="pt-2.5 border-t border-border flex items-center justify-between gap-2 mt-auto">
+                                    <div className="flex items-center flex-wrap gap-2 text-muted-foreground truncate">
                                       {labels.map(l => (
                                         <span key={l.text} className="inline-flex items-center gap-1 text-[10px] font-medium">
-                                          <l.icon className="w-3 h-3 text-zinc-400" />
+                                          <l.icon className="w-3 h-3 text-muted-foreground" />
                                           <span className="truncate hidden sm:inline">{l.text}</span>
                                         </span>
                                       ))}
                                     </div>
                                     {session.cart_items_count > 0 && (
-                                      <span className="inline-flex items-center px-1.5 py-0.5 bg-zinc-50 text-zinc-500 border border-zinc-200 rounded-md text-[10px] font-bold">
+                                      <span className="inline-flex items-center px-1.5 py-0.5 bg-muted text-muted-foreground border border-border rounded-md text-[10px] font-bold">
                                         {session.cart_items_count} {session.cart_items_count === 1 ? 'item' : 'itens'}
                                       </span>
                                     )}
@@ -1966,19 +1966,19 @@ export default function AdminClientes() {
 
       {/* ── FILA COMERCIAL ── */}
       {viewMode === 'queue' && (
-        <div className="w-full flex-1 min-h-[calc(100vh-210px)] bg-zinc-50/40 border-t border-zinc-100">
+        <div className="w-full flex-1 min-h-[calc(100vh-210px)] bg-muted/20 border-t border-border">
           {isLoading ? (
             <div className="flex flex-col items-center justify-center py-24">
-              <Loader className="w-8 h-8 animate-spin text-zinc-400 mb-4" />
-              <p className="text-sm font-medium text-zinc-500">Carregando fila...</p>
+              <Loader className="w-8 h-8 animate-spin text-muted-foreground/40 mb-4" />
+              <p className="text-sm font-medium text-muted-foreground">Carregando fila...</p>
             </div>
           ) : queueSessions.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-32 max-w-md mx-auto text-center px-4">
-              <div className="w-14 h-14 bg-zinc-100 rounded-2xl flex items-center justify-center mb-4">
-                <LayoutList className="w-6 h-6 text-zinc-400" />
+              <div className="w-14 h-14 bg-muted rounded-2xl flex items-center justify-center mb-4">
+                <LayoutList className="w-6 h-6 text-muted-foreground" />
               </div>
-              <h3 className="text-base font-bold text-zinc-700 mb-1">Fila vazia</h3>
-              <p className="text-sm text-zinc-400 max-w-xs">
+              <h3 className="text-base font-bold text-foreground mb-1">Fila vazia</h3>
+              <p className="text-sm text-muted-foreground max-w-xs">
                 {activeQueueView === 'my_accounts' && !mySellerId
                   ? 'Seu usuário não está vinculado a nenhum vendedor. Um admin pode configurar isso em Vendedores.'
                   : 'Nenhum cliente nesta view no momento.'}
@@ -1988,7 +1988,7 @@ export default function AdminClientes() {
             <div className="max-w-3xl mx-auto px-4 sm:px-6 py-5 space-y-2.5">
               {/* Contagem + legenda de ordenação */}
               <div className="flex items-center justify-between mb-1">
-                <p className="text-[11px] text-zinc-400 font-medium">
+                <p className="text-[11px] text-muted-foreground font-medium">
                   {queueSessions.length} cliente{queueSessions.length !== 1 ? 's' : ''} · ordenado por prioridade
                 </p>
                 <div className="flex items-center gap-2">
@@ -2030,29 +2030,29 @@ export default function AdminClientes() {
 
       {/* Delete Confirmation Modal */}
       {clientToDelete && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-zinc-900/40 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-foreground/30 backdrop-blur-sm">
+          <div className="bg-card rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl border border-border">
             <div className="p-6 text-center">
-              <div className="w-14 h-14 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-100">
+              <div className="w-14 h-14 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-500/20">
                 <AlertTriangle className="w-6 h-6 text-red-500" />
               </div>
-              <h3 className="text-lg font-bold text-zinc-900 mb-2">Excluir Cliente?</h3>
+              <h3 className="text-lg font-bold text-foreground mb-2">Excluir Cliente?</h3>
               {clientToDelete.orders && clientToDelete.orders.length > 0 ? (
                 <>
-                  <p className="text-sm text-amber-700 font-medium bg-amber-50 p-3 rounded-lg border border-amber-200 mb-6">
+                  <p className="text-sm text-amber-600 dark:text-amber-400 font-medium bg-amber-500/10 p-3 rounded-lg border border-amber-500/20 mb-6">
                     Bloqueado: Este cliente possui {clientToDelete.orders.length} pedido(s) vinculados. Você deve excluir os pedidos antes de excluir o cliente.
                   </p>
-                  <button onClick={() => setClientToDelete(null)} className="w-full py-3 px-4 bg-zinc-100 hover:bg-zinc-200 text-zinc-700 rounded-xl font-bold transition-colors">Voltar</button>
+                  <button onClick={() => setClientToDelete(null)} className="w-full py-3 px-4 bg-muted hover:bg-muted/80 text-foreground rounded-xl font-bold transition-colors">Voltar</button>
                 </>
               ) : (
                 <>
-                  <p className="text-sm text-zinc-500 mb-6 px-2">Esta ação apagará o cadastro inteiro deste cliente (sessão e CRM). Confirma a exclusão de <strong>{getClientName(clientToDelete)}</strong>?</p>
+                  <p className="text-sm text-muted-foreground mb-6 px-2">Esta ação apagará o cadastro inteiro deste cliente (sessão e CRM). Confirma a exclusão de <strong>{getClientName(clientToDelete)}</strong>?</p>
 
                   <div className="flex gap-3">
                     <button
                       onClick={() => setClientToDelete(null)}
                       disabled={deleteClientMutation.isPending}
-                      className="flex-1 py-3 px-4 border border-zinc-200 text-zinc-700 hover:bg-zinc-50 rounded-xl font-bold transition-colors"
+                      className="flex-1 py-3 px-4 border border-border text-foreground hover:bg-muted rounded-xl font-bold transition-colors"
                     >
                       Cancelar
                     </button>

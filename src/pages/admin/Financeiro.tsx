@@ -633,11 +633,6 @@ export default function AdminFinanceiro() {
               subtitle={`${stats.weekCount} pedido${stats.weekCount !== 1 ? 's' : ''}`}
             />
             <AdminSummaryCard
-              icon={Clock} label="Pendentes" iconColor="text-orange-500"
-              value={`R$ ${fmt(stats.pendingTotal)}`}
-              subtitle={`${stats.pendingOrders.length} pedido${stats.pendingOrders.length !== 1 ? 's' : ''}`}
-            />
-            <AdminSummaryCard
               icon={Percent} label="Descontos" iconColor="text-rose-500"
               value={`R$ ${fmt(stats.periodDiscount)}`}
               subtitle="no período"
@@ -813,7 +808,7 @@ export default function AdminFinanceiro() {
                               {pct.toFixed(0)}%
                             </span>
                           </div>
-                          <div className="w-full bg-surface-alt rounded-full h-2.5 overflow-hidden">
+                          <div className="w-full bg-surface-alt rounded-full h-1.5 overflow-hidden">
                             <div
                               className={`h-full rounded-full transition-all duration-500 ${
                                 pct >= 100 ? 'bg-emerald-500' : pct >= 70 ? 'bg-gold' : 'bg-amber-400'
@@ -870,45 +865,6 @@ export default function AdminFinanceiro() {
                         <div className="text-right flex-shrink-0 w-24">
                           <p className="text-xs font-bold text-foreground">R$ {fmt(data.revenue)}</p>
                           <p className="text-[10px] text-muted-foreground">{data.qty} un</p>
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
-            </div>
-
-            {/* Pending Orders (always global) */}
-            <div className="bg-white rounded-xl border border-border p-4 lg:p-6 shadow-sm">
-              <div className="flex items-center justify-between mb-4 lg:mb-5">
-                <div className="flex items-center gap-2">
-                  <Clock className="w-4 h-4 text-orange-500" />
-                  <h3 className="text-sm lg:text-base font-bold text-foreground">Aguardando pagamento</h3>
-                </div>
-                {stats.pendingOrders.length > 0 && (
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-orange-500/10 text-orange-600 dark:text-orange-400">
-                    R$ {fmt(stats.pendingTotal)}
-                  </span>
-                )}
-              </div>
-              {stats.pendingOrders.length === 0 ? (
-                <div className="text-center py-10">
-                  <Clock className="w-6 h-6 text-muted-foreground/30 mx-auto mb-2" />
-                  <p className="text-xs text-muted-foreground">Nenhum pedido pendente</p>
-                </div>
-              ) : (
-                <div className="space-y-2.5 lg:space-y-3 max-h-[300px] overflow-y-auto">
-                  {stats.pendingOrders.slice(0, 10).map(order => {
-                    const hoursAgo = Math.round((Date.now() - new Date(order.created_at).getTime()) / (1000 * 60 * 60))
-                    return (
-                      <div key={order.id} className="flex items-center justify-between p-2.5 lg:p-3.5 bg-surface-alt rounded-lg border border-border">
-                        <div className="min-w-0">
-                          <p className="text-xs font-bold text-foreground truncate">{order.customer_name}</p>
-                          <p className="text-[10px] text-muted-foreground">{order.customer_whatsapp}</p>
-                        </div>
-                        <div className="text-right flex-shrink-0 ml-3">
-                          <p className="text-xs font-black text-foreground">R$ {fmt(Number(order.total))}</p>
-                          <p className="text-[10px] text-orange-600 font-medium">{hoursAgo}h atrás</p>
                         </div>
                       </div>
                     )

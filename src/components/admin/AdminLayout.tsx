@@ -14,9 +14,9 @@ const navGroups: { label: string; items: NavItem[] }[] = [
   {
     label: 'Comercial',
     items: [
-      { label: 'Catálogo', path: '/admin/catalogo', icon: Package },
       { label: 'Pedidos', path: '/admin/pedidos', icon: ShoppingCart },
       { label: 'Financeiro', path: '/admin/financeiro', icon: DollarSign },
+      { label: 'Tabelas de Preço', path: '/admin/tabelas-preco', icon: BadgeDollarSign },
     ],
   },
   {
@@ -30,9 +30,9 @@ const navGroups: { label: string; items: NavItem[] }[] = [
   {
     label: 'Operações',
     items: [
+      { label: 'Catálogo', path: '/admin/catalogo', icon: Package },
       { label: 'Estoque', path: '/admin/estoque', icon: Warehouse },
       { label: 'Categorias', path: '/admin/categorias', icon: Tag },
-      { label: 'Tabelas de Preço', path: '/admin/tabelas-preco', icon: BadgeDollarSign },
       { label: 'Marketing', path: '/admin/marketing', icon: Megaphone },
     ],
   },
