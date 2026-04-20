@@ -136,7 +136,48 @@
     --sidebar-accent-foreground: 214 18% 88%;
     --sidebar-border: 218 14% 18%;
     --sidebar-ring: 38 90% 58%;
+
+    /* Dark mode: native elements (date inputs, scrollbars) */
+    color-scheme: dark;
   }
+}
+
+/* ─── Dark mode coherence layer ──────────────────────────────────
+   Higher specificity than Tailwind utilities (.dark .x > .x).
+   Maps hardcoded white/gray classes used in admin pages to dark
+   semantic tokens, avoiding the need to touch every page file.
+   Scoped to .dark so light mode is untouched.
+────────────────────────────────────────────────────────────────── */
+.dark .bg-white {
+  background-color: hsl(var(--card));
+}
+.dark .bg-gray-50 {
+  background-color: hsl(218 18% 13%);
+}
+.dark .bg-gray-100 {
+  background-color: hsl(var(--muted));
+}
+.dark .bg-gray-200 {
+  background-color: hsl(var(--muted));
+}
+.dark .border-gray-100,
+.dark .border-gray-200,
+.dark .border-gray-300 {
+  border-color: hsl(var(--border));
+}
+.dark .divide-gray-100 > * + *,
+.dark .divide-gray-200 > * + * {
+  border-color: hsl(var(--border));
+}
+
+/* Recharts chart surface in dark mode */
+.dark .recharts-cartesian-grid line {
+  stroke: hsl(218, 14%, 18%);
+}
+.dark .recharts-tooltip-wrapper .recharts-default-tooltip {
+  background-color: hsl(var(--popover)) !important;
+  border-color: hsl(var(--border)) !important;
+  color: hsl(var(--foreground)) !important;
 }
 
 @layer base {

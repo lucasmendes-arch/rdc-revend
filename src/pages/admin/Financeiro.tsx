@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react'
+import { useTheme } from 'next-themes'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import {
@@ -218,6 +219,20 @@ function VariationBadge({ current, previous, invert }: { current: number; previo
 
 
 export default function AdminFinanceiro() {
+  const { resolvedTheme } = useTheme()
+  const isDark = resolvedTheme === 'dark'
+
+  // Chart colors adapt to theme
+  const ch = {
+    grid:        isDark ? 'hsl(218,14%,18%)' : '#f3f4f6',
+    axis:        isDark ? 'hsl(218,14%,20%)' : '#e5e7eb',
+    tick:        isDark ? '#64748b' : '#9ca3af',
+    prevLine:    isDark ? 'hsl(218,14%,32%)' : '#d1d5db',
+    tooltipBg:   isDark ? 'hsl(218,17%,13%)' : '#ffffff',
+    tooltipBorder: isDark ? 'hsl(218,14%,22%)' : '#e5e7eb',
+    tooltipText: isDark ? 'hsl(214,18%,88%)' : '#111827',
+  }
+
   const [editingGoal, setEditingGoal] = useState(false)
   const [goalInput, setGoalInput] = useState('')
   const [activePreset, setActivePreset] = useState<PeriodPreset>('month')
@@ -470,7 +485,7 @@ export default function AdminFinanceiro() {
   return (
     <AdminLayout>
       {/* ── HEADER ── */}
-      <div className="bg-white border-b border-border sticky top-0 lg:top-0 z-30">
+      <div className="bg-card border-b border-border sticky top-0 lg:top-0 z-30">
         <AdminHeader 
           title="Financeiro"
           subtitle={`${bounds.periodLabel} — comparando com ${bounds.compLabel}`}
@@ -656,7 +671,7 @@ export default function AdminFinanceiro() {
                     <span className="text-muted-foreground capitalize">{stats.chartCurrentMonthName}</span>
                   </span>
                   <span className="flex items-center gap-1">
-                    <span className="w-3 h-0.5 bg-gray-300 rounded-full inline-block" style={{ borderTop: '1px dashed #d1d5db' }} />
+                    <span className="w-3 h-0.5 rounded-full inline-block" style={{ backgroundColor: ch.prevLine, borderTop: `1px dashed ${ch.prevLine}` }} />
                     <span className="text-muted-foreground capitalize">{stats.chartPrevMonthName}</span>
                   </span>
                 </div>
@@ -669,15 +684,15 @@ export default function AdminFinanceiro() {
                 <div className="h-44 sm:h-48 lg:h-52">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={stats.chartData}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
+                      <CartesianGrid strokeDasharray="3 3" stroke={ch.grid} />
                       <XAxis
                         dataKey="label"
-                        tick={{ fontSize: 9, fill: '#9ca3af' }}
+                        tick={{ fontSize: 9, fill: ch.tick }}
                         interval="preserveStartEnd"
-                        axisLine={{ stroke: '#e5e7eb' }}
+                        axisLine={{ stroke: ch.axis }}
                       />
                       <YAxis
-                        tick={{ fontSize: 9, fill: '#9ca3af' }}
+                        tick={{ fontSize: 9, fill: ch.tick }}
                         tickFormatter={v => `R$${v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v}`}
                         axisLine={false}
                         tickLine={false}
@@ -689,13 +704,19 @@ export default function AdminFinanceiro() {
                           name === 'atual' ? stats.chartCurrentMonthName : stats.chartPrevMonthName,
                         ]}
                         labelFormatter={l => `Dia ${l}`}
-                        contentStyle={{ borderRadius: '8px', border: '1px solid #e5e7eb', fontSize: '11px' }}
+                        contentStyle={{
+                          borderRadius: '8px',
+                          border: `1px solid ${ch.tooltipBorder}`,
+                          fontSize: '11px',
+                          backgroundColor: ch.tooltipBg,
+                          color: ch.tooltipText,
+                        }}
                       />
                       <Legend content={() => null} />
                       <Line
                         type="monotone" dataKey="anterior" name="anterior"
-                        stroke="#d1d5db" strokeWidth={1.5} strokeDasharray="6 3"
-                        dot={false} activeDot={{ r: 3, fill: '#d1d5db' }}
+                        stroke={ch.prevLine} strokeWidth={1.5} strokeDasharray="6 3"
+                        dot={false} activeDot={{ r: 3, fill: ch.prevLine }}
                       />
                       <Line
                         type="monotone" dataKey="atual" name="atual"
@@ -744,7 +765,7 @@ export default function AdminFinanceiro() {
                         <div className="text-right flex-shrink-0">
                           <p className="text-xs font-bold text-foreground">R$ {fmt(seller.revenue)}</p>
                           {seller.commission_pct > 0 ? (
-                            <span className="inline-block mt-1 px-2 py-0.5 rounded-md bg-amber-50 text-[11px] font-semibold text-amber-700 border border-amber-200">
+                            <span className="inline-block mt-1 px-2 py-0.5 rounded-md bg-amber-500/10 text-[11px] font-semibold text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-500/25">
                               R$ {fmt(commission)} com.
                             </span>
                           ) : (
@@ -865,7 +886,7 @@ export default function AdminFinanceiro() {
                   <h3 className="text-sm lg:text-base font-bold text-foreground">Aguardando pagamento</h3>
                 </div>
                 {stats.pendingOrders.length > 0 && (
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-orange-100 text-orange-700">
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-orange-500/10 text-orange-600 dark:text-orange-400">
                     R$ {fmt(stats.pendingTotal)}
                   </span>
                 )}

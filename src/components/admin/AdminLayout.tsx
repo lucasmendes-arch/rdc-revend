@@ -96,24 +96,27 @@ function SidebarContent({ onNavClick }: { onNavClick?: () => void }) {
   return (
     <>
       {/* Brand header */}
-      <div className="px-4 py-5 border-b border-white/[0.07]">
-        <Link
-          to="/admin/catalogo"
-          onClick={onNavClick}
-          className="flex items-center gap-3"
-        >
-          <div className="w-8 h-8 rounded-lg bg-white/[0.07] flex items-center justify-center flex-shrink-0 ring-1 ring-white/[0.08]">
-            <img src={logo} alt="Rei dos Cachos" className="h-5 w-auto" />
-          </div>
-          <div className="min-w-0">
-            <p className="text-[13px] font-semibold text-white leading-tight truncate">
-              Rei dos Cachos
-            </p>
-            <p className="text-[10px] text-white/30 leading-tight tracking-[0.15em] uppercase mt-[2px]">
-              Admin
-            </p>
-          </div>
-        </Link>
+      <div className="px-4 pt-4 pb-3.5 border-b border-white/[0.07]">
+        <div className="flex items-center justify-between gap-2">
+          <Link
+            to="/admin/catalogo"
+            onClick={onNavClick}
+            className="flex items-center gap-3 min-w-0"
+          >
+            <div className="w-8 h-8 rounded-lg bg-white/[0.07] flex items-center justify-center flex-shrink-0 ring-1 ring-white/[0.08]">
+              <img src={logo} alt="Rei dos Cachos" className="h-5 w-auto" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[13px] font-semibold text-white leading-tight truncate">
+                Rei dos Cachos
+              </p>
+              <p className="text-[10px] text-white/30 leading-tight tracking-[0.15em] uppercase mt-[2px]">
+                Admin
+              </p>
+            </div>
+          </Link>
+          <ThemeToggle className="flex-shrink-0 p-1.5 rounded-md text-white/20 hover:text-white/55 hover:bg-white/[0.06] transition-all duration-150" />
+        </div>
       </div>
 
       {/* Navigation */}
@@ -160,7 +163,7 @@ function SidebarContent({ onNavClick }: { onNavClick?: () => void }) {
       </nav>
 
       {/* Footer */}
-      <div className="px-2 pb-4 pt-2 border-t border-white/[0.07] space-y-0.5">
+      <div className="px-2 pb-4 pt-2 border-t border-white/[0.07]">
         <Link
           to="/catalogo"
           onClick={onNavClick}
@@ -169,10 +172,6 @@ function SidebarContent({ onNavClick }: { onNavClick?: () => void }) {
           <ExternalLink className="w-[15px] h-[15px] flex-shrink-0 text-white/20" />
           <span>Ver Site</span>
         </Link>
-        <div className="flex items-center gap-3 px-3 py-[7px] rounded-md text-[13px] text-white/30 hover:text-white/60 hover:bg-white/[0.05] transition-all duration-150">
-          <ThemeToggle className="text-white/20 hover:text-white/60" />
-          <span className="select-none">Aparência</span>
-        </div>
       </div>
     </>
   )
@@ -201,13 +200,16 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <img src={logo} alt="Rei dos Cachos" className="h-7 w-auto" />
           <span className="text-[13px] font-semibold text-white">Admin</span>
         </Link>
-        <button
-          onClick={() => setMobileOpen(!mobileOpen)}
-          aria-label="Menu de navegação"
-          className="p-2 rounded-lg hover:bg-white/10 transition-colors text-white"
-        >
-          {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-        </button>
+        <div className="flex items-center gap-1">
+          <ThemeToggle className="p-2 rounded-lg text-white/30 hover:text-white/70 hover:bg-white/10 transition-colors" />
+          <button
+            onClick={() => setMobileOpen(!mobileOpen)}
+            aria-label="Menu de navegação"
+            className="p-2 rounded-lg hover:bg-white/10 transition-colors text-white"
+          >
+            {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+          </button>
+        </div>
       </header>
 
       {/* Mobile Menu Overlay */}
