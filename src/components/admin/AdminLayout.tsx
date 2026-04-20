@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom'
 import {
   Package, ShoppingCart, Users, Warehouse, UserCog,
   Menu, X, ExternalLink, Tag, DollarSign, GitBranch,
-  Megaphone, UserCheck, History, BadgeDollarSign,
+  Megaphone, UserCheck, History, BadgeDollarSign, ChevronRight,
 } from 'lucide-react'
 import logo from '@/assets/logo-rei-dos-cachos.png'
 
@@ -74,6 +74,24 @@ function SidebarNavItem({ item, isActive, onClick }: { item: NavItem; isActive: 
 function SidebarContent({ onNavClick }: { onNavClick?: () => void }) {
   const location = useLocation()
 
+  const [expanded, setExpanded] = useState<Set<string>>(() => {
+    const initial = new Set<string>()
+    navGroups.forEach((group) => {
+      if (group.items.some((item) => item.path === location.pathname)) {
+        initial.add(group.label)
+      }
+    })
+    return initial
+  })
+
+  const toggle = (label: string) => {
+    setExpanded((prev) => {
+      const next = new Set(prev)
+      next.has(label) ? next.delete(label) : next.add(label)
+      return next
+    })
+  }
+
   return (
     <>
       {/* Brand header */}
@@ -81,7 +99,7 @@ function SidebarContent({ onNavClick }: { onNavClick?: () => void }) {
         <Link
           to="/admin/catalogo"
           onClick={onNavClick}
-          className="flex items-center gap-3 group"
+          className="flex items-center gap-3"
         >
           <div className="w-8 h-8 rounded-lg bg-white/[0.07] flex items-center justify-center flex-shrink-0 ring-1 ring-white/[0.08]">
             <img src={logo} alt="Rei dos Cachos" className="h-5 w-auto" />
@@ -98,24 +116,46 @@ function SidebarContent({ onNavClick }: { onNavClick?: () => void }) {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto py-4 px-2 space-y-5 scrollbar-none">
-        {navGroups.map((group) => (
-          <div key={group.label}>
-            <p className="px-3 mb-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/20 select-none">
-              {group.label}
-            </p>
-            <div className="space-y-0.5">
-              {group.items.map((item) => (
-                <SidebarNavItem
-                  key={item.path}
-                  item={item}
-                  isActive={location.pathname === item.path}
-                  onClick={onNavClick}
+      <nav className="flex-1 overflow-y-auto py-3 px-2 scrollbar-none">
+        {navGroups.map((group) => {
+          const isOpen = expanded.has(group.label)
+          const hasActive = group.items.some((item) => item.path === location.pathname)
+
+          return (
+            <div key={group.label} className="mb-0.5">
+              <button
+                onClick={() => toggle(group.label)}
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-md transition-all duration-150 ${
+                  hasActive && !isOpen
+                    ? 'text-[hsl(38,90%,58%)] bg-white/[0.06]'
+                    : 'text-white/35 hover:text-white/60 hover:bg-white/[0.04]'
+                }`}
+              >
+                <span className="text-[11px] font-semibold uppercase tracking-[0.14em]">
+                  {group.label}
+                </span>
+                <ChevronRight
+                  className={`w-3 h-3 flex-shrink-0 transition-transform duration-200 ${
+                    isOpen ? 'rotate-90' : ''
+                  }`}
                 />
-              ))}
+              </button>
+
+              {isOpen && (
+                <div className="mt-0.5 mb-1 space-y-0.5">
+                  {group.items.map((item) => (
+                    <SidebarNavItem
+                      key={item.path}
+                      item={item}
+                      isActive={location.pathname === item.path}
+                      onClick={onNavClick}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
-          </div>
-        ))}
+          )
+        })}
       </nav>
 
       {/* Footer */}
