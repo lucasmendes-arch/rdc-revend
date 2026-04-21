@@ -1,6 +1,8 @@
 import { useState, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Loader, ChevronDown, Plus, Globe, Tag, Hand, MessageSquare, UserCheck, Trash2, AlertTriangle, Package, Calendar, Truck, CheckCircle2 } from 'lucide-react';
+import { Loader, ChevronDown, Plus, Globe, Tag, Hand, MessageSquare, UserCheck, Trash2, AlertTriangle, Package, Calendar, Truck, CheckCircle2, Receipt, Pencil } from 'lucide-react';
+import OrderCouponModal from '@/components/admin/OrderCouponModal';
+import { useAuth } from '@/contexts/AuthContext';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
@@ -59,8 +61,11 @@ const statusOptions = ['recebido', 'aguardando_pagamento', 'pago', 'separacao', 
 const AdminPedidos = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { hasPermission } = useAuth();
+  const canEditOrders = hasPermission('can_edit_orders');
   const [filterSeller, setFilterSeller] = useState<string>('');
   const [orderToDelete, setOrderToDelete] = useState<Order | null>(null);
+  const [orderToCoupon, setOrderToCoupon] = useState<Order | null>(null);
 
   // Date Filter State
   const [dateFilterType, setDateFilterType] = useState<PeriodPresetKey>('esteMes');
@@ -385,13 +390,31 @@ const AdminPedidos = () => {
                               </span>
                             </div>
                             
-                            <button
-                              onClick={(e) => { e.stopPropagation(); setOrderToDelete(order); }}
-                              className="text-muted-foreground/40 hover:text-red-500 hover:bg-red-500/10 p-1.5 rounded-md transition-colors shrink-0 opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
-                              title="Excluir"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
+                            <div className="flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100">
+                              {canEditOrders && (
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); navigate(`/admin/pedidos/${order.id}/editar`); }}
+                                  className="text-muted-foreground/40 hover:text-blue-500 hover:bg-blue-500/10 p-1.5 rounded-md transition-colors shrink-0"
+                                  title="Editar pedido"
+                                >
+                                  <Pencil className="w-4 h-4" />
+                                </button>
+                              )}
+                              <button
+                                onClick={(e) => { e.stopPropagation(); setOrderToCoupon(order); }}
+                                className="text-muted-foreground/40 hover:text-amber-500 hover:bg-amber-500/10 p-1.5 rounded-md transition-colors shrink-0"
+                                title="Emitir cupom não fiscal"
+                              >
+                                <Receipt className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); setOrderToDelete(order); }}
+                                className="text-muted-foreground/40 hover:text-red-500 hover:bg-red-500/10 p-1.5 rounded-md transition-colors shrink-0"
+                                title="Excluir"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
                           </div>
 
                           <div className="mb-3">
@@ -507,6 +530,13 @@ const AdminPedidos = () => {
         )}
         </div>
       </div>
+
+      {orderToCoupon && (
+        <OrderCouponModal
+          order={orderToCoupon}
+          onClose={() => setOrderToCoupon(null)}
+        />
+      )}
 
       {orderToDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-foreground/30 backdrop-blur-sm">
