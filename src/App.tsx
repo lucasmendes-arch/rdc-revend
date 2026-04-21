@@ -27,6 +27,7 @@ import AdminFinanceiro from "./pages/admin/Financeiro";
 import AdminCrmDebug from "./pages/admin/CrmDebug";
 import RedefinirSenha from "./pages/RedefinirSenha";
 import AdminNewOrder from "./pages/admin/NewOrder";
+import AdminEditOrder from "./pages/admin/EditOrder";
 import AdminMarketing from "./pages/admin/Marketing";
 import AdminVendedores from "./pages/admin/Vendedores";
 import AdminSyncHistory from "./pages/admin/SyncHistory";
@@ -52,7 +53,7 @@ const queryClient = new QueryClient({
 });
 
 const App = () => (
-  <ThemeProvider attribute="class" storageKey="rdc-theme" defaultTheme="system" enableSystem disableTransitionOnChange>
+  <ThemeProvider attribute="class" storageKey="rdc-theme" defaultTheme="light" disableTransitionOnChange>
   <ErrorBoundary>
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
@@ -77,6 +78,7 @@ const App = () => (
                     <Route path="/admin/catalogo" element={<AdminCatalogo />} />
                     <Route path="/admin/pedidos" element={<AdminPedidos />} />
                     <Route path="/admin/pedidos/novo" element={<AdminNewOrder />} />
+                    <Route path="/admin/pedidos/:id/editar" element={<AdminEditOrder />} />
                     <Route path="/admin/clientes" element={<AdminClientes />} />
                     <Route path="/admin/estoque" element={<AdminEstoque />} />
                     <Route path="/admin/usuarios" element={<AdminUsuarios />} />

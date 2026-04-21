@@ -10,11 +10,16 @@ interface AuthContextType {
   loading: boolean
   role: UserRole
   isPartner: boolean
+  permissions: Record<string, boolean>
+  hasPermission: (key: string) => boolean
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-async function fetchAccountMetadata(userId: string): Promise<{role: UserRole, is_partner: boolean}> {
+async function fetchAccountMetadata(userId: string): Promise<{role: UserRole, is_partner: boolean, permissions: Record<string, boolean>}> {
+  // Role fetch — crítico: qualquer erro mantém role='user'
+  let role: UserRole = 'user'
+  let is_partner = false
   try {
     const { data, error } = await supabase
       .from('profiles')
@@ -22,18 +27,32 @@ async function fetchAccountMetadata(userId: string): Promise<{role: UserRole, is
       .eq('id', userId)
       .maybeSingle()
 
-    if (error) {
+    if (!error && data) {
+      role = data.role as UserRole
+      is_partner = !!data.is_partner || data.customer_segment === 'network_partner'
+    } else if (error) {
       console.warn('fetchRole error:', error.message)
-      return { role: 'user', is_partner: false }
     }
-    if (!data) return { role: 'user', is_partner: false }
-    // isPartner = true if legacy boolean OR new segment field
-    const is_partner = !!data.is_partner || data.customer_segment === 'network_partner'
-    return { role: data.role as UserRole, is_partner }
   } catch (e) {
     console.warn('[AUTH] fetchRole exception:', e)
-    return { role: 'user', is_partner: false }
   }
+
+  // Permissions fetch — não-crítico: falha silenciosa se coluna ainda não existe
+  let permissions: Record<string, boolean> = {}
+  try {
+    const { data } = await supabase
+      .from('profiles')
+      .select('permissions')
+      .eq('id', userId)
+      .maybeSingle()
+    if (data?.permissions) {
+      permissions = data.permissions as Record<string, boolean>
+    }
+  } catch {
+    // migration não aplicada ainda — ignora
+  }
+
+  return { role, is_partner, permissions }
 }
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
@@ -42,6 +61,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true)
   const [role, setRole] = useState<UserRole>(null)
   const [isPartner, setIsPartner] = useState(false)
+  const [permissions, setPermissions] = useState<Record<string, boolean>>({})
   const initialized = useRef(false)
   // Garante que loading=true só acontece UMA VEZ (na carga inicial).
   // Após o role ser conhecido, nenhum evento de auth (inclusive SIGNED_IN
@@ -61,10 +81,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           fetchAccountMetadata(session.user.id).then(meta => {
             setRole(meta.role)
             setIsPartner(meta.is_partner)
+            setPermissions(meta.permissions)
             roleLoadedRef.current = true
           }).catch(() => {
             setRole('user')
             setIsPartner(false)
+            setPermissions({})
             roleLoadedRef.current = true
           }).finally(() => {
             setLoading(false)
@@ -76,6 +98,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         roleLoadedRef.current = false
         setRole(null)
         setIsPartner(false)
+        setPermissions({})
         setLoading(false)
       }
     })
@@ -95,8 +118,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }, [])
 
+  const hasPermission = (key: string) => !!permissions[key]
+
   return (
-    <AuthContext.Provider value={{ user, session, loading, role, isPartner }}>
+    <AuthContext.Provider value={{ user, session, loading, role, isPartner, permissions, hasPermission }}>
       {children}
     </AuthContext.Provider>
   )

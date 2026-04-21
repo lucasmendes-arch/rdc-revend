@@ -19,6 +19,7 @@ interface SystemUser {
   email: string
   created_at: string
   last_sign_in_at: string | null
+  permissions: Record<string, boolean> | null
 }
 
 /** Tipo unificado — retornado por get_network_partners e get_all_client_stats */
@@ -63,8 +64,8 @@ interface ClientOrder {
 
 const ROLE_LABELS: Record<string, string> = { admin: 'Admin', salao: 'Salão' }
 const ROLE_STYLES: Record<string, string> = {
-  admin: 'bg-purple-100 text-purple-700',
-  salao: 'bg-amber-100 text-amber-700',
+  admin: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
+  salao: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
 }
 const ROLE_ICONS: Record<string, React.ReactNode> = {
   admin: <ShieldCheck className="w-3.5 h-3.5" />,
@@ -77,9 +78,9 @@ const SEGMENT_OPTIONS = [
   { value: 'wholesale_buyer', label: 'Comprador Atacado' },
 ]
 const segmentBadge = (v: string | null) => {
-  if (v === 'network_partner') return 'bg-amber-100 text-amber-700'
-  if (v === 'wholesale_buyer') return 'bg-teal-100 text-teal-700'
-  return 'bg-gray-100 text-gray-500'
+  if (v === 'network_partner') return 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+  if (v === 'wholesale_buyer') return 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400'
+  return 'bg-muted text-muted-foreground'
 }
 const segmentLabel = (v: string | null) =>
   SEGMENT_OPTIONS.find(o => o.value === (v || ''))?.label ?? 'Não classificado'
@@ -104,15 +105,15 @@ const revenueLabels: Record<string, string> = {
   'acima_50k': 'Mais de R$ 50.000/mês',
 }
 const orderStatusLabels: Record<string, { label: string; color: string }> = {
-  recebido:             { label: 'Recebido',        color: 'bg-blue-100 text-blue-700' },
-  aguardando_pagamento: { label: 'Aguardando Pgto', color: 'bg-orange-100 text-orange-700' },
-  pago:                 { label: 'Pago',            color: 'bg-emerald-100 text-emerald-700' },
-  separacao:            { label: 'Separação',       color: 'bg-yellow-100 text-yellow-700' },
-  enviado:              { label: 'Enviado',         color: 'bg-purple-100 text-purple-700' },
-  entregue:             { label: 'Entregue',        color: 'bg-teal-100 text-teal-700' },
-  concluido:            { label: 'Concluído',       color: 'bg-green-100 text-green-700' },
-  cancelado:            { label: 'Cancelado',       color: 'bg-red-100 text-red-700' },
-  expirado:             { label: 'Expirado',        color: 'bg-gray-100 text-gray-500' },
+  recebido:             { label: 'Recebido',        color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' },
+  aguardando_pagamento: { label: 'Aguardando Pgto', color: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' },
+  pago:                 { label: 'Pago',            color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' },
+  separacao:            { label: 'Separação',       color: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' },
+  enviado:              { label: 'Enviado',         color: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400' },
+  entregue:             { label: 'Entregue',        color: 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400' },
+  concluido:            { label: 'Concluído',       color: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' },
+  cancelado:            { label: 'Cancelado',       color: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' },
+  expirado:             { label: 'Expirado',        color: 'bg-muted text-muted-foreground' },
 }
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
@@ -154,6 +155,22 @@ export default function AdminUsuarios() {
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin-system-users'] }),
     onError: (err) => alert(`Erro: ${err instanceof Error ? err.message : 'Desconhecido'}`),
+  })
+
+  const updatePermissionMutation = useMutation({
+    mutationFn: async ({ id, key, value }: { id: string; key: string; value: boolean }) => {
+      const { error } = await supabase.rpc('admin_set_user_permission', {
+        p_user_id: id,
+        p_key: key,
+        p_value: value,
+      })
+      if (error) throw error
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-system-users'] })
+      toast.success('Permissão atualizada')
+    },
+    onError: (err: any) => toast.error('Erro: ' + (err?.message || 'desconhecido')),
   })
 
   const handleCreate = () => {
@@ -205,7 +222,7 @@ export default function AdminUsuarios() {
 
   return (
     <AdminLayout>
-      <div className="bg-white border-b border-border sticky top-0 z-30">
+      <div className="bg-card border-b border-border sticky top-0 z-30">
         <div className="px-4 sm:px-6 py-4 flex items-center justify-between gap-4">
           <div>
             <h1 className="text-xl sm:text-2xl font-bold text-foreground">Usuários</h1>
@@ -213,14 +230,14 @@ export default function AdminUsuarios() {
           </div>
           {activeTab === 'sistema' && (
             <button onClick={() => setCreating(true)}
-              className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg bg-green-600 hover:bg-green-700 text-white text-sm font-medium transition-colors">
+              className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg btn-action text-sm font-medium transition-colors">
               <Plus className="w-4 h-4" />
               <span className="hidden sm:inline">Novo Usuário</span>
             </button>
           )}
           {activeTab === 'parceiros' && (
             <button onClick={() => setCreatingPartner(true)}
-              className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg bg-green-600 hover:bg-green-700 text-white text-sm font-medium transition-colors">
+              className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg btn-action text-sm font-medium transition-colors">
               <Plus className="w-4 h-4" />
               <span className="hidden sm:inline">Novo Parceiro</span>
             </button>
@@ -244,7 +261,12 @@ export default function AdminUsuarios() {
         {activeTab === 'sistema' && (
           isLoading
             ? <LoadingState label="Carregando..." />
-            : <SystemTab users={users} onRoleChange={(id, role) => updateRoleMutation.mutate({ id, role })} isPending={updateRoleMutation.isPending} />
+            : <SystemTab
+                users={users}
+                onRoleChange={(id, role) => updateRoleMutation.mutate({ id, role })}
+                onPermissionChange={(id, key, value) => updatePermissionMutation.mutate({ id, key, value })}
+                isPending={updateRoleMutation.isPending || updatePermissionMutation.isPending}
+              />
         )}
         {activeTab === 'parceiros' && <ClientStatsTab rpc="get_network_partners" queryKey="network-partners" emptyLabel="Nenhum parceiro da rede cadastrado." showSegment={false} />}
         {activeTab === 'clientes'  && <ClientStatsTab rpc="get_all_client_stats"  queryKey="all-client-stats"  emptyLabel="Nenhum cliente cadastrado."           showSegment />}
@@ -253,7 +275,7 @@ export default function AdminUsuarios() {
       {creatingPartner && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-foreground/40 backdrop-blur-sm" onClick={() => setCreatingPartner(false)} />
-          <div className="relative bg-white rounded-2xl shadow-lg p-6 w-full max-w-md">
+          <div className="relative bg-card border border-border rounded-2xl shadow-2xl p-6 w-full max-w-md">
             <div className="flex items-center gap-3 mb-5">
               <div className="w-10 h-10 rounded-xl gradient-gold flex items-center justify-center">
                 <TrendingUp className="w-5 h-5 text-white" />
@@ -267,7 +289,7 @@ export default function AdminUsuarios() {
                   type="text"
                   value={partnerForm.full_name}
                   onChange={e => setPartnerForm({ ...partnerForm, full_name: e.target.value })}
-                  className="w-full px-3 py-2 rounded-lg border border-border bg-white focus:outline-none focus:ring-2 focus:ring-gold"
+                  className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                   placeholder="Nome do parceiro"
                   autoFocus
                 />
@@ -278,7 +300,7 @@ export default function AdminUsuarios() {
                   type="tel"
                   value={partnerForm.phone}
                   onChange={e => setPartnerForm({ ...partnerForm, phone: e.target.value })}
-                  className="w-full px-3 py-2 rounded-lg border border-border bg-white focus:outline-none focus:ring-2 focus:ring-gold"
+                  className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                   placeholder="(11) 99999-9999"
                 />
               </div>
@@ -291,11 +313,11 @@ export default function AdminUsuarios() {
                   createPartnerMutation.mutate(partnerForm)
                 }}
                 disabled={createPartnerMutation.isPending}
-                className="flex-1 px-4 py-2.5 rounded-lg bg-green-600 hover:bg-green-700 text-white font-medium disabled:opacity-70 transition-colors">
+                className="flex-1 px-4 py-2.5 rounded-lg btn-action font-medium disabled:opacity-70 transition-colors">
                 {createPartnerMutation.isPending ? 'Criando...' : 'Criar Parceiro'}
               </button>
               <button onClick={() => setCreatingPartner(false)}
-                className="flex-1 px-4 py-2.5 rounded-lg border border-border bg-white text-foreground font-medium hover:bg-surface-alt">
+                className="flex-1 px-4 py-2.5 rounded-lg border border-border bg-card text-foreground font-medium hover:bg-accent">
                 Cancelar
               </button>
             </div>
@@ -306,7 +328,7 @@ export default function AdminUsuarios() {
       {creating && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-foreground/40 backdrop-blur-sm" onClick={() => setCreating(false)} />
-          <div className="relative bg-white rounded-2xl shadow-lg p-6 w-full max-w-md">
+          <div className="relative bg-card border border-border rounded-2xl shadow-2xl p-6 w-full max-w-md">
             <div className="flex items-center gap-3 mb-5">
               <div className="w-10 h-10 rounded-xl gradient-gold flex items-center justify-center">
                 <UserPlus className="w-5 h-5 text-white" />
@@ -321,8 +343,8 @@ export default function AdminUsuarios() {
                     <button key={r} type="button" onClick={() => setCreateForm({ ...createForm, role: r })}
                       className={`flex items-center justify-center gap-2 py-2.5 rounded-lg border text-sm font-semibold transition-all ${
                         createForm.role === r
-                          ? r === 'admin' ? 'bg-purple-100 text-purple-700 border-purple-300' : 'bg-amber-100 text-amber-700 border-amber-300'
-                          : 'bg-white text-muted-foreground border-border hover:bg-surface-alt'
+                          ? r === 'admin' ? 'bg-purple-100 text-purple-700 border-purple-300 dark:bg-purple-900/30 dark:text-purple-400 dark:border-purple-700/40' : 'bg-amber-100 text-amber-700 border-amber-300 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-700/40'
+                          : 'bg-background text-muted-foreground border-border hover:bg-accent'
                       }`}>
                       {ROLE_ICONS[r]}{ROLE_LABELS[r]}
                     </button>
@@ -332,23 +354,23 @@ export default function AdminUsuarios() {
               <div>
                 <label className="block text-sm font-medium text-foreground mb-1">E-mail *</label>
                 <input type="email" value={createForm.email} onChange={e => setCreateForm({ ...createForm, email: e.target.value })}
-                  className="w-full px-3 py-2 rounded-lg border border-border bg-white focus:outline-none focus:ring-2 focus:ring-gold"
+                  className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                   placeholder="usuario@email.com" autoFocus />
               </div>
               <div>
                 <label className="block text-sm font-medium text-foreground mb-1">Senha *</label>
                 <input type="password" value={createForm.password} onChange={e => setCreateForm({ ...createForm, password: e.target.value })}
-                  className="w-full px-3 py-2 rounded-lg border border-border bg-white focus:outline-none focus:ring-2 focus:ring-gold"
+                  className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                   placeholder="Mínimo 6 caracteres" />
               </div>
             </div>
             <div className="flex gap-3 mt-6">
               <button onClick={handleCreate} disabled={createUserMutation.isPending}
-                className="flex-1 px-4 py-2.5 rounded-lg bg-green-600 hover:bg-green-700 text-white font-medium disabled:opacity-70 transition-colors">
+                className="flex-1 px-4 py-2.5 rounded-lg btn-action font-medium disabled:opacity-70 transition-colors">
                 {createUserMutation.isPending ? 'Criando...' : 'Criar Usuário'}
               </button>
               <button onClick={() => setCreating(false)}
-                className="flex-1 px-4 py-2.5 rounded-lg border border-border bg-white text-foreground font-medium hover:bg-surface-alt">
+                className="flex-1 px-4 py-2.5 rounded-lg border border-border bg-card text-foreground font-medium hover:bg-accent">
                 Cancelar
               </button>
             </div>
@@ -410,17 +432,17 @@ function ClientStatsTab({
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <input type="text" placeholder="Buscar por nome, e-mail ou telefone..."
             value={search} onChange={e => setSearch(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 rounded-xl border border-border bg-white text-sm focus:outline-none focus:ring-2 focus:ring-gold" />
+            className="w-full pl-9 pr-4 py-2 rounded-xl border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
         </div>
 
         <p className="text-xs text-muted-foreground">
           {filtered.length} {showSegment ? 'cliente' : 'parceiro'}{filtered.length !== 1 ? 's' : ''}
         </p>
 
-        <div className="bg-white rounded-xl border border-border shadow-card overflow-x-auto">
+        <div className="bg-card rounded-xl border border-border shadow-[var(--shadow-card)] overflow-x-auto">
           <table className="w-full min-w-[720px]">
             <thead>
-              <tr className="border-b border-border bg-surface-alt">
+              <tr className="border-b border-border bg-muted/50">
                 <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                   {showSegment ? 'Cliente' : 'Parceiro'}
                 </th>
@@ -442,7 +464,7 @@ function ClientStatsTab({
                   </td>
                 </tr>
               ) : filtered.map((row, i) => (
-                <tr key={row.id} className={`border-b border-border/50 last:border-0 ${i % 2 === 0 ? '' : 'bg-surface-alt/30'}`}>
+                <tr key={row.id} className={`border-b border-border/50 last:border-0 ${i % 2 === 0 ? '' : 'bg-muted/30'}`}>
                   <td className="px-4 py-3">
                     <p className="font-semibold text-sm text-foreground">{row.full_name || '—'}</p>
                     <p className="text-xs text-muted-foreground">{row.email || row.phone || '—'}</p>
@@ -477,7 +499,7 @@ function ClientStatsTab({
                   </td>
                   <td className="px-4 py-3 text-right">
                     <button onClick={() => setSelectedId(row.id)}
-                      className="text-xs font-medium text-foreground px-3 py-1.5 rounded-lg border border-border hover:bg-surface-alt transition-colors">
+                      className="text-xs font-medium text-foreground px-3 py-1.5 rounded-lg border border-border hover:bg-accent transition-colors">
                       Editar
                     </button>
                   </td>
@@ -594,17 +616,17 @@ function ClientSidePanel({
 
   return (
     <>
-      <div className="fixed inset-0 bg-zinc-900/40 z-40 backdrop-blur-sm" onClick={onClose} />
-      <div className="fixed right-0 top-0 bottom-0 w-full max-w-lg bg-white z-50 shadow-2xl flex flex-col">
+      <div className="fixed inset-0 bg-foreground/40 z-40 backdrop-blur-sm" onClick={onClose} />
+      <div className="fixed right-0 top-0 bottom-0 w-full max-w-lg bg-card z-50 shadow-2xl flex flex-col border-l border-border">
 
         {/* Header */}
-        <div className="border-b border-zinc-200 px-5 py-4 flex items-start gap-3.5 flex-shrink-0">
-          <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-sm flex-shrink-0 ${isPartner ? 'bg-amber-700' : 'bg-zinc-700'}`}>
+        <div className="border-b border-border px-5 py-4 flex items-start gap-3.5 flex-shrink-0">
+          <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-sm flex-shrink-0 ${isPartner ? 'bg-amber-700' : 'bg-muted-foreground/40'}`}>
             {initials}
           </div>
           <div className="flex-1 min-w-0">
-            <h2 className="text-base font-bold text-zinc-900 truncate">{client.full_name || 'Cliente'}</h2>
-            <p className="text-xs text-zinc-500 mt-0.5">{client.email || client.phone || '—'}</p>
+            <h2 className="text-base font-bold text-foreground truncate">{client.full_name || 'Cliente'}</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">{client.email || client.phone || '—'}</p>
             <div className="flex items-center gap-2 mt-1.5">
               <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md ring-1 ring-inset ${segmentBadge(client.customer_segment)}`}>
                 {segmentLabel(client.customer_segment)}
@@ -612,7 +634,7 @@ function ClientSidePanel({
               <AccessBadge status={client.access_status} />
             </div>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-zinc-100 transition-colors text-zinc-400 hover:text-zinc-600 flex-shrink-0">
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-accent transition-colors text-muted-foreground hover:text-foreground flex-shrink-0">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -622,20 +644,20 @@ function ClientSidePanel({
 
           {/* Stats strip */}
           {(client.total_purchased > 0 || client.last_sign_in_at) && (
-            <div className="px-5 py-3 border-b border-zinc-100 flex gap-6">
+            <div className="px-5 py-3 border-b border-border flex gap-6">
               {client.total_purchased > 0 && (
                 <div>
-                  <p className="text-[10px] text-zinc-400 uppercase tracking-wider">Total comprado</p>
-                  <p className="text-sm font-bold text-zinc-900">
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Total comprado</p>
+                  <p className="text-sm font-bold text-foreground">
                     R$ {Number(client.total_purchased).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                    <span className="text-[11px] font-normal text-zinc-400 ml-1">({client.order_count} pedidos)</span>
+                    <span className="text-[11px] font-normal text-muted-foreground ml-1">({client.order_count} pedidos)</span>
                   </p>
                 </div>
               )}
               {client.last_sign_in_at && (
                 <div>
-                  <p className="text-[10px] text-zinc-400 uppercase tracking-wider">Último acesso</p>
-                  <p className="text-sm font-medium text-zinc-700">
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Último acesso</p>
+                  <p className="text-sm font-medium text-foreground">
                     {new Date(client.last_sign_in_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}
                   </p>
                 </div>
@@ -1007,10 +1029,12 @@ function PartnerAccessPanel({ client, queryKey }: { client: ClientStats; queryKe
 function SystemTab({
   users,
   onRoleChange,
+  onPermissionChange,
   isPending,
 }: {
   users: SystemUser[]
   onRoleChange: (id: string, role: string) => void
+  onPermissionChange: (id: string, key: string, value: boolean) => void
   isPending: boolean
 }) {
   const [search, setSearch] = useState('')
@@ -1093,6 +1117,7 @@ function SystemTab({
         <SystemUserSidePanel
           user={selected}
           onRoleChange={onRoleChange}
+          onPermissionChange={onPermissionChange}
           isPending={isPending}
           onClose={() => setSelectedId(null)}
         />
@@ -1104,11 +1129,13 @@ function SystemTab({
 function SystemUserSidePanel({
   user,
   onRoleChange,
+  onPermissionChange,
   isPending,
   onClose,
 }: {
   user: SystemUser
   onRoleChange: (id: string, role: string) => void
+  onPermissionChange: (id: string, key: string, value: boolean) => void
   isPending: boolean
   onClose: () => void
 }) {
@@ -1224,6 +1251,37 @@ function SystemUserSidePanel({
                   {ROLE_ICONS[r]}{ROLE_LABELS[r]}
                 </button>
               ))}
+            </div>
+          </div>
+
+          {/* Permissões granulares */}
+          <div className="px-5 py-4 border-b border-zinc-200">
+            <h3 className="text-[11px] font-bold text-zinc-400 uppercase tracking-widest mb-3">Permissões</h3>
+            <div className="space-y-3">
+              {[
+                { key: 'can_edit_orders', label: 'Editar pedidos', description: 'Permite alterar itens, vendedor e pagamento de pedidos criados' },
+              ].map(({ key, label, description }) => {
+                const enabled = !!(user.permissions?.[key])
+                return (
+                  <div key={key} className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-zinc-800">{label}</p>
+                      <p className="text-[11px] text-zinc-400 leading-snug mt-0.5">{description}</p>
+                    </div>
+                    <button
+                      onClick={() => onPermissionChange(user.id, key, !enabled)}
+                      disabled={isPending}
+                      className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none disabled:opacity-50 mt-0.5 ${
+                        enabled ? 'bg-green-500' : 'bg-zinc-200'
+                      }`}
+                    >
+                      <span className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow transform transition-transform duration-200 ${
+                        enabled ? 'translate-x-4' : 'translate-x-0'
+                      }`} />
+                    </button>
+                  </div>
+                )
+              })}
             </div>
           </div>
         </div>
