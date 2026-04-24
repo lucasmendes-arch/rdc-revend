@@ -10,6 +10,8 @@ import { CartProvider } from "@/contexts/CartContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { AdminRoute } from "@/components/AdminRoute";
 import { SalaoRoute } from "@/components/SalaoRoute";
+import { PortalRoute } from "@/components/portal/PortalRoute";
+import Portal from "./pages/portal/Portal";
 import Login from "./pages/Login";
 import Catalogo from "./pages/Catalogo";
 import Cadastro from "./pages/Cadastro";
@@ -40,7 +42,7 @@ import { useLocation } from "react-router-dom";
 
 function ConditionalWhatsApp() {
   const { pathname } = useLocation();
-  if (pathname.startsWith('/admin') || pathname.startsWith('/salao') || pathname === '/cadastro' || pathname === '/login' || pathname === '/redefinir-senha') return null;
+  if (pathname.startsWith('/admin') || pathname.startsWith('/salao') || pathname.startsWith('/portal') || pathname === '/cadastro' || pathname === '/login' || pathname === '/redefinir-senha') return null;
   return <WhatsAppButton />;
 }
 
@@ -90,6 +92,9 @@ const App = () => (
                     <Route path="/admin/sync-history" element={<AdminSyncHistory />} />
                     <Route path="/admin/crm" element={<AdminCrmDebug />} />
                     <Route path="/admin/tabelas-preco" element={<AdminTabelasPreco />} />
+                  </Route>
+                  <Route element={<PortalRoute />}>
+                    <Route path="/portal" element={<Portal />} />
                   </Route>
                   <Route element={<SalaoRoute />}>
                     <Route path="/salao" element={<Navigate to="/salao/pedido" replace />} />
