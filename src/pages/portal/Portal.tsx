@@ -60,18 +60,18 @@ function isThisMonth(dateStr: string): boolean {
 // FUTURAMENTE: evoluir para gamificação com níveis (Bronze/Prata/Ouro) baseados
 // em volume de compras mensal. Por ora, usa apenas os campos de perfil existentes.
 function resolveCommercialLabel(profile: Profile | null | undefined): { label: string; description: string } {
-  if (!profile) return { label: 'Parceiro', description: 'Bem-vindo ao Portal do Parceiro' }
+  if (!profile) return { label: 'Parceiro', description: 'Acesse seu catálogo exclusivo e acompanhe seus pedidos' }
   if (profile.customer_segment === 'network_partner')
-    return { label: 'Parceiro de Rede', description: 'Preços exclusivos e condições especiais de entrega' }
+    return { label: 'Parceiro de Rede', description: 'Preços de rede, entrega exclusiva e suporte dedicado' }
   if (profile.is_partner)
-    return { label: 'Parceiro', description: 'Acesso a preços e condições de parceiro' }
+    return { label: 'Parceiro', description: 'Preços e condições especiais para parceiros Rei dos Cachos' }
   if (profile.business_type === 'salao')
-    return { label: 'Salão Parceiro', description: 'Parceiro profissional do segmento de beleza' }
+    return { label: 'Salão Parceiro', description: 'Produtos profissionais com preços para salão' }
   if (profile.business_type === 'revenda')
-    return { label: 'Revendedor', description: 'Acesso ao catálogo de revenda' }
+    return { label: 'Revendedor', description: 'Tabela de preços e catálogo completo para revenda' }
   if (profile.business_type === 'loja')
-    return { label: 'Loja Parceira', description: 'Parceiro do canal loja' }
-  return { label: 'Parceiro', description: 'Bem-vindo ao Portal do Parceiro' }
+    return { label: 'Loja Parceira', description: 'Condições especiais para lojistas parceiros' }
+  return { label: 'Parceiro', description: 'Acesse seu catálogo exclusivo e acompanhe seus pedidos' }
 }
 
 // ─── Skeleton ──────────────────────────────────────────────────────────────────
@@ -210,7 +210,7 @@ export default function Portal() {
                   {greeting}, {displayName} 👋
                 </h1>
                 <p className="text-sm text-gray-500 mt-0.5">
-                  Seu portal de revenda Rei dos Cachos
+                  Gerencie pedidos, reabastecimento e compras do seu negócio
                 </p>
               </>
             )}
@@ -251,8 +251,8 @@ export default function Portal() {
                 <ShoppingBag className="w-5 h-5 text-amber-500" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-[13px] font-semibold text-gray-800">Comprar agora</p>
-                <p className="text-[11px] text-gray-400">Catálogo completo</p>
+                <p className="text-[13px] font-semibold text-gray-800">Repor estoque</p>
+                <p className="text-[11px] text-gray-400">Catálogo completo B2B</p>
               </div>
               <ArrowRight className="w-4 h-4 text-gray-300 group-hover:text-amber-400 transition-colors flex-shrink-0" />
             </Link>
@@ -265,8 +265,8 @@ export default function Portal() {
                 <Package className="w-5 h-5 text-emerald-500" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-[13px] font-semibold text-gray-800">Ver o que já comprei</p>
-                <p className="text-[11px] text-gray-400">Histórico completo</p>
+                <p className="text-[13px] font-semibold text-gray-800">Histórico de compras</p>
+                <p className="text-[11px] text-gray-400">Todos os seus pedidos</p>
               </div>
               <ArrowRight className="w-4 h-4 text-gray-300 group-hover:text-amber-400 transition-colors flex-shrink-0" />
             </Link>
@@ -285,15 +285,19 @@ export default function Portal() {
             </div>
           ) : orders.length === 0 ? (
             <div className="bg-white rounded-2xl border border-gray-100 p-8 text-center">
-              <Package className="w-10 h-10 text-gray-200 mx-auto mb-3" />
-              <p className="text-sm font-semibold text-gray-700 mb-1">Nenhum pedido ainda</p>
-              <p className="text-xs text-gray-400 mb-4">Que tal fazer sua primeira compra?</p>
+              <div className="w-12 h-12 rounded-2xl bg-amber-50 border border-amber-100 flex items-center justify-center mx-auto mb-3">
+                <ShoppingBag className="w-6 h-6 text-amber-400" />
+              </div>
+              <p className="text-sm font-semibold text-gray-800 mb-1">Ainda sem compras registradas</p>
+              <p className="text-xs text-gray-400 mb-5 max-w-xs mx-auto">
+                Quando você fizer um pedido, seu resumo do mês, movimentação e histórico aparecem aqui.
+              </p>
               <Link
                 to="/catalogo"
-                className="inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-sm font-semibold transition-colors"
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-sm font-semibold transition-colors"
               >
                 <ShoppingBag className="w-4 h-4" />
-                Ver catálogo
+                Fazer primeiro pedido
               </Link>
             </div>
           ) : (
@@ -380,10 +384,10 @@ export default function Portal() {
           <section>
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide">
-                Seus produtos mais pedidos
+                Reabastecimento rápido
               </h2>
               <Link to="/catalogo" className="text-xs text-amber-600 font-semibold hover:underline">
-                Ir ao catálogo
+                Ver catálogo
               </Link>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -398,7 +402,7 @@ export default function Portal() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-[12px] font-semibold text-gray-800 truncate">{name}</p>
-                    <p className="text-[10px] text-gray-400">{qty} un. compradas</p>
+                    <p className="text-[10px] text-gray-400">Pedido {qty}x · pedir novamente</p>
                   </div>
                   <ArrowRight className="w-3.5 h-3.5 text-gray-300 group-hover:text-amber-400 transition-colors flex-shrink-0" />
                 </Link>
@@ -412,7 +416,7 @@ export default function Portal() {
           <section>
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide">
-                {hasHistory ? 'Destaques do catálogo' : 'Conheça nossos produtos'}
+                {hasHistory ? 'Produtos para seu estoque' : 'Produtos para seu negócio'}
               </h2>
               <Link to="/catalogo" className="text-xs text-amber-600 font-semibold hover:underline">
                 Ver tudo
@@ -433,8 +437,13 @@ export default function Portal() {
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                       />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <Package className="w-8 h-8 text-gray-200" />
+                      <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-amber-50 to-orange-50 gap-1">
+                        <span className="text-2xl font-black text-amber-300 select-none leading-none">
+                          {product.name.charAt(0).toUpperCase()}
+                        </span>
+                        <span className="text-[9px] text-amber-300 font-semibold uppercase tracking-widest">
+                          RDC
+                        </span>
                       </div>
                     )}
                   </div>
@@ -470,7 +479,7 @@ export default function Portal() {
                 className="flex-shrink-0 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-[12px] font-semibold transition-colors"
               >
                 <ShoppingBag className="w-3.5 h-3.5" />
-                Comprar agora
+                Fazer novo pedido
               </Link>
             </div>
           </section>
