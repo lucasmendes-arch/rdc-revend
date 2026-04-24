@@ -78,7 +78,7 @@ const MeusPedidos = () => {
       <header className="bg-white border-b border-border sticky top-0 z-40">
         <div className="container mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
           <button
-            onClick={() => navigate('/catalogo')}
+            onClick={() => navigate(-1)}
             className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />

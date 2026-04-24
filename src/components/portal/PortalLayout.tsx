@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { LayoutDashboard, ShoppingBag, Package, Menu, X, LogOut } from 'lucide-react'
+import { LayoutDashboard, ShoppingBag, Package, Menu, X, LogOut, MessageCircle } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
 import logo from '@/assets/logo-rei-dos-cachos.png'
@@ -83,6 +83,15 @@ function SidebarContent({ profile, onNavClick }: { profile: { name?: string }; o
           <p className="text-[12px] font-semibold text-gray-800 truncate">{displayName}</p>
           <p className="text-[10px] text-gray-400 truncate">{user?.email}</p>
         </div>
+        <a
+          href="https://wa.me/5527996865366?text=Ol%C3%A1%2C%20preciso%20de%20ajuda%20com%20meu%20pedido"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-[13px] text-gray-400 hover:text-green-600 hover:bg-green-50 transition-all duration-150"
+        >
+          <MessageCircle className="w-4 h-4 flex-shrink-0" />
+          <span>Falar com Vendedor</span>
+        </a>
         <button
           onClick={handleLogout}
           className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-[13px] text-gray-400 hover:text-red-500 hover:bg-red-50 transition-all duration-150"
