@@ -300,7 +300,9 @@ export default function Portal() {
                 <ShoppingBag className="w-5 h-5 text-amber-500" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-[13px] font-semibold text-gray-800">Repor estoque</p>
+                <p className="text-[13px] font-semibold text-gray-800">
+                  {orders.length === 0 && !loadingOrders ? 'Comprar agora' : 'Repor estoque'}
+                </p>
                 <p className="text-[11px] text-gray-400">Catálogo completo B2B</p>
               </div>
               <ArrowRight className="w-4 h-4 text-gray-300 group-hover:text-amber-400 group-hover:translate-x-0.5 transition-all flex-shrink-0" />
