@@ -2,7 +2,7 @@ import { useMemo, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import {
-  Package, ShoppingBag, ClipboardList, ArrowRight, Star,
+  Package, ShoppingBag, ShoppingCart, ClipboardList, ArrowRight, Star,
   ChevronLeft, ChevronRight, TrendingUp,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
@@ -139,70 +139,100 @@ function ProductCarousel({ title, products, loading, badge }: {
         >
           <div className="flex gap-2.5 px-4 sm:px-6">
             {products.map(product => {
-              const cost = getCostPrice(product.price, product.partner_price)
+              const cost   = getCostPrice(product.price, product.partner_price)
               const resale = product.price != null
                 ? getSuggestedPrice(product.price, product.compare_at_price)
                 : null
+              // Margem: ((preço_sugerido - custo) / custo) × 100
+              const margin = cost > 0 && resale != null
+                ? Math.round(((resale - cost) / cost) * 100)
+                : null
 
               return (
-                <Link
+                /*
+                 * Card com duas zonas interativas separadas (HTML válido):
+                 * 1. Link na área da imagem + info → abre catálogo
+                 * 2. Link CTA "Adicionar ao Carrinho" → abre catálogo
+                 * Não usar <Link> único em volta de tudo pois impede botão interno.
+                 */
+                <div
                   key={product.key}
-                  to="/catalogo"
                   style={{ scrollSnapAlign: 'start' }}
-                  className="flex-shrink-0 w-[152px] bg-white rounded-xl border border-gray-200 overflow-hidden hover:border-amber-300 hover:shadow-md transition-all group"
+                  className="flex-shrink-0 w-[152px] bg-white rounded-xl border border-gray-200 overflow-hidden hover:border-amber-300 hover:shadow-md transition-all group flex flex-col"
                 >
-                  {/* Imagem — lazy loading nativo (HTML5) */}
-                  <div className="relative h-[120px] bg-gray-50 overflow-hidden">
-                    {product.main_image ? (
-                      <img
-                        src={product.main_image}
-                        alt={product.name}
-                        loading="lazy"
-                        decoding="async"
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-amber-50 to-orange-50">
-                        <span className="text-3xl font-black text-amber-200 select-none leading-none">
-                          {product.name.charAt(0).toUpperCase()}
-                        </span>
-                        <span className="text-[8px] text-amber-300 font-bold uppercase tracking-widest mt-1">RDC</span>
-                      </div>
-                    )}
-                    {/* overlay de CTA no hover — desktop */}
-                    <div className="absolute inset-0 bg-amber-500/0 group-hover:bg-amber-500/10 transition-colors duration-200 hidden sm:block" />
-                  </div>
-
-                  {/* Info */}
-                  <div className="p-2.5">
-                    <p className="text-[12px] font-semibold text-gray-800 line-clamp-2 leading-snug min-h-[32px]">
-                      {product.name}
-                    </p>
-
-                    {product.price != null && (
-                      <div className="mt-1.5 pt-1.5 border-t border-gray-100">
-                        {/* custo — menor, secundário */}
-                        <p className="text-[10px] text-gray-500 leading-none">
-                          Custo: <span className="font-semibold text-gray-700">
-                            R$ {cost.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  {/* ── Zona clicável: imagem + info ── */}
+                  <Link to="/catalogo" className="block flex-1">
+                    {/* Imagem — lazy loading nativo HTML5 */}
+                    <div className="relative h-[120px] bg-gray-50 overflow-hidden">
+                      {product.main_image ? (
+                        <img
+                          src={product.main_image}
+                          alt={product.name}
+                          loading="lazy"
+                          decoding="async"
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-amber-50 to-orange-50">
+                          <span className="text-3xl font-black text-amber-200 select-none leading-none">
+                            {product.name.charAt(0).toUpperCase()}
                           </span>
-                        </p>
-                        {/* revenda — destaque principal */}
-                        {resale != null && (
-                          <p className="text-[14px] font-bold text-emerald-700 leading-tight mt-0.5">
-                            R$ {resale.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                            <span className="text-[9px] font-normal text-emerald-600 ml-1">revenda</span>
-                          </p>
-                        )}
-                      </div>
-                    )}
-
-                    {/* CTA mobile — sempre visível, pequeno */}
-                    <div className="mt-2 flex items-center justify-between">
-                      <span className="text-[10px] text-amber-600 font-semibold">Pedir →</span>
+                          <span className="text-[8px] text-amber-300 font-bold uppercase tracking-widest mt-1">RDC</span>
+                        </div>
+                      )}
                     </div>
+
+                    {/* Info */}
+                    <div className="p-2.5 pb-2">
+                      <p className="text-[12px] font-semibold text-gray-800 line-clamp-2 leading-snug min-h-[32px]">
+                        {product.name}
+                      </p>
+
+                      {product.price != null && (
+                        <div className="mt-2 space-y-1">
+                          {/* Custo — linha secundária, menor */}
+                          <p className="text-[10px] text-gray-400 leading-none">
+                            Custo:{' '}
+                            <span className="font-semibold text-gray-600">
+                              R$ {cost.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                            </span>
+                          </p>
+
+                          {/* Margem — destaque em verde, comunica lucro */}
+                          {margin != null && (
+                            <p className="text-[12px] font-bold text-emerald-600 leading-none flex items-center gap-0.5">
+                              <span className="text-emerald-500">↑</span>
+                              {margin}% margem
+                            </p>
+                          )}
+
+                          {/* Preço Sugerido — principal */}
+                          {resale != null && (
+                            <div className="pt-1 border-t border-gray-100">
+                              <p className="text-[9px] text-gray-400 uppercase tracking-wide leading-none mb-0.5">
+                                Preço Sugerido
+                              </p>
+                              <p className="text-[15px] font-bold text-gray-900 leading-tight">
+                                R$ {resale.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </Link>
+
+                  {/* ── CTA ── */}
+                  <div className="px-2.5 pb-2.5">
+                    <Link
+                      to="/catalogo"
+                      className="flex items-center justify-center gap-1.5 w-full py-2 rounded-lg bg-amber-500 hover:bg-amber-600 active:bg-amber-700 text-white text-[11px] font-bold transition-colors"
+                    >
+                      <ShoppingCart className="w-3 h-3" />
+                      Pedir agora
+                    </Link>
                   </div>
-                </Link>
+                </div>
               )
             })}
             {/* spacer — garante visibilidade do último card */}
