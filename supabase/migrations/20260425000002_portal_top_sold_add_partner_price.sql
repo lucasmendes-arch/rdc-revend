@@ -1,7 +1,9 @@
 -- Adiciona partner_price ao retorno de get_top_sold_products
--- para exibição no portal do parceiro (custo vs. preço de revenda)
+-- DROP + CREATE necessário pois PostgreSQL não permite alterar tipo de retorno com OR REPLACE
 
-CREATE OR REPLACE FUNCTION public.get_top_sold_products(limit_n integer DEFAULT 6)
+DROP FUNCTION IF EXISTS public.get_top_sold_products(integer);
+
+CREATE FUNCTION public.get_top_sold_products(limit_n integer DEFAULT 6)
 RETURNS TABLE (
   product_name  text,
   total_qty     bigint,
