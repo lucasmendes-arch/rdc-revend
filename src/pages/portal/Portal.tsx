@@ -279,20 +279,6 @@ export default function Portal() {
         <section>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <Link
-              to="/meus-pedidos"
-              className="flex items-center gap-3.5 p-5 bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md hover:border-amber-200 transition-all group"
-            >
-              <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center flex-shrink-0">
-                <ClipboardList className="w-5 h-5 text-indigo-500" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-[13px] font-semibold text-gray-800">Acompanhar pedidos</p>
-                <p className="text-[11px] text-gray-400">Status em tempo real</p>
-              </div>
-              <ArrowRight className="w-4 h-4 text-gray-300 group-hover:text-amber-400 group-hover:translate-x-0.5 transition-all flex-shrink-0" />
-            </Link>
-
-            <Link
               to="/catalogo"
               className="flex items-center gap-3.5 p-5 bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md hover:border-amber-200 transition-all group"
             >
@@ -304,6 +290,20 @@ export default function Portal() {
                   {orders.length === 0 && !loadingOrders ? 'Comprar agora' : 'Repor estoque'}
                 </p>
                 <p className="text-[11px] text-gray-400">Catálogo completo B2B</p>
+              </div>
+              <ArrowRight className="w-4 h-4 text-gray-300 group-hover:text-amber-400 group-hover:translate-x-0.5 transition-all flex-shrink-0" />
+            </Link>
+
+            <Link
+              to="/meus-pedidos"
+              className="flex items-center gap-3.5 p-5 bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md hover:border-amber-200 transition-all group"
+            >
+              <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center flex-shrink-0">
+                <ClipboardList className="w-5 h-5 text-indigo-500" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[13px] font-semibold text-gray-800">Acompanhar pedidos</p>
+                <p className="text-[11px] text-gray-400">Status em tempo real</p>
               </div>
               <ArrowRight className="w-4 h-4 text-gray-300 group-hover:text-amber-400 group-hover:translate-x-0.5 transition-all flex-shrink-0" />
             </Link>
