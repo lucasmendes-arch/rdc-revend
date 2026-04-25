@@ -119,10 +119,23 @@ export default function Portal() {
     retry: false,
   })
 
-  // Query: produtos em destaque (fallback quando não há histórico)
-  // FUTURAMENTE: substituir por RPC most_sold_products quando houver escala de dados
+  // Query: top produtos mais vendidos da loja (RPC agrega order_items com SECURITY DEFINER)
+  const { data: topSoldRaw = [] } = useQuery<Array<{
+    product_name: string; total_qty: number; total_revenue: number
+    product_id: string | null; main_image: string | null; price: number | null
+  }>>({
+    queryKey: ['portal-top-sold'],
+    queryFn: async () => {
+      const { data } = await supabase.rpc('get_top_sold_products', { limit_n: 6 })
+      return (data ?? []) as typeof topSoldRaw
+    },
+    staleTime: 15 * 60 * 1000,
+  })
+
+  // Fallback: produtos em destaque do catálogo (store sem vendas ainda)
   const { data: highlightProducts = [] } = useQuery<CatalogProduct[]>({
     queryKey: ['portal-highlights'],
+    enabled: topSoldRaw.length === 0,
     queryFn: async () => {
       const { data } = await supabase
         .from('catalog_products')
@@ -178,6 +191,24 @@ export default function Portal() {
   }, [orders])
 
   const hasHistory = topBoughtProducts.length > 0
+
+  // Produtos a exibir: top vendidos da loja (RPC) ou highlights como fallback
+  const displayProducts = useMemo(() => {
+    if (topSoldRaw.length > 0) {
+      return topSoldRaw.map(p => ({
+        key: p.product_name,
+        name: p.product_name,
+        main_image: p.main_image,
+        price: p.price,
+      }))
+    }
+    return highlightProducts.map(p => ({
+      key: p.id,
+      name: p.name,
+      main_image: p.main_image,
+      price: p.price,
+    }))
+  }, [topSoldRaw, highlightProducts])
 
   const commercial = resolveCommercialLabel(profile)
   const displayName = profile?.full_name ?? user?.email?.split('@')[0] ?? 'Parceiro'
@@ -284,22 +315,9 @@ export default function Portal() {
               {[1, 2, 3].map(i => <Skeleton key={i} className="h-24" />)}
             </div>
           ) : orders.length === 0 ? (
-            <div className="bg-white rounded-2xl border border-gray-100 p-10 text-center">
-              <div className="w-12 h-12 rounded-2xl bg-amber-50 border border-amber-100 flex items-center justify-center mx-auto mb-3">
-                <ShoppingBag className="w-6 h-6 text-amber-400" />
-              </div>
-              <p className="text-sm font-semibold text-gray-800 mb-1">Ainda sem compras registradas</p>
-              <p className="text-xs text-gray-400 mb-5 max-w-xs mx-auto">
-                Quando você fizer um pedido, seu resumo do mês, movimentação e histórico aparecem aqui.
-              </p>
-              <Link
-                to="/catalogo"
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-sm font-semibold transition-colors"
-              >
-                <ShoppingBag className="w-4 h-4" />
-                Fazer primeiro pedido
-              </Link>
-            </div>
+            <p className="text-[12px] text-gray-400 py-1">
+              Nenhum pedido ainda — os dados aparecem após a primeira compra.
+            </p>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="bg-white rounded-2xl border border-gray-100 border-t-2 border-t-indigo-200 shadow-sm p-5">
@@ -411,21 +429,26 @@ export default function Portal() {
           </section>
         )}
 
-        {/* ── 5. Produtos populares ─────────────────────────────────────── */}
-        {highlightProducts.length > 0 && (
+        {/* ── 5. Produtos mais vendidos / para seu negócio ─────────────── */}
+        {displayProducts.length > 0 && (
           <section>
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide">
-                {hasHistory ? 'Produtos para seu estoque' : 'Produtos para seu negócio'}
-              </h2>
-              <Link to="/catalogo" className="text-xs text-amber-600 font-semibold hover:underline">
+              <div>
+                <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">
+                  {topSoldRaw.length > 0 ? 'Mais vendidos' : 'Produtos para seu negócio'}
+                </h2>
+                {topSoldRaw.length > 0 && (
+                  <p className="text-[11px] text-gray-400 mt-0.5">Os produtos mais pedidos pelos parceiros</p>
+                )}
+              </div>
+              <Link to="/catalogo" className="text-xs text-amber-600 font-semibold hover:underline flex-shrink-0">
                 Ver tudo
               </Link>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              {highlightProducts.map(product => (
+              {displayProducts.map(product => (
                 <Link
-                  key={product.id}
+                  key={product.key}
                   to="/catalogo"
                   className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden hover:shadow-md hover:border-amber-200 transition-all group"
                 >
@@ -451,9 +474,11 @@ export default function Portal() {
                     <p className="text-[13px] font-semibold text-gray-800 line-clamp-2 leading-snug">
                       {product.name}
                     </p>
-                    <p className="text-[11px] text-amber-600 font-bold mt-1">
-                      R$ {product.price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                    </p>
+                    {product.price != null && (
+                      <p className="text-[11px] text-amber-600 font-bold mt-1">
+                        R$ {product.price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      </p>
+                    )}
                   </div>
                 </Link>
               ))}
