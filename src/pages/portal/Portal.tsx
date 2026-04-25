@@ -194,7 +194,7 @@ export default function Portal() {
 
   return (
     <PortalLayout profile={{ name: profile?.full_name ?? undefined }}>
-      <div className="px-4 sm:px-6 py-6 max-w-4xl mx-auto space-y-8">
+      <div className="px-4 sm:px-6 py-8 max-w-4xl mx-auto space-y-10">
 
         {/* ── 1. Header de boas-vindas ──────────────────────────────────── */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -231,7 +231,7 @@ export default function Portal() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <Link
               to="/meus-pedidos"
-              className="flex items-center gap-4 p-4 bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:border-amber-200 transition-all group"
+              className="flex items-center gap-3.5 p-5 bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:border-amber-200 transition-all group"
             >
               <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center flex-shrink-0">
                 <ClipboardList className="w-5 h-5 text-indigo-500" />
@@ -240,12 +240,12 @@ export default function Portal() {
                 <p className="text-[13px] font-semibold text-gray-800">Acompanhar pedidos</p>
                 <p className="text-[11px] text-gray-400">Status em tempo real</p>
               </div>
-              <ArrowRight className="w-4 h-4 text-gray-300 group-hover:text-amber-400 transition-colors flex-shrink-0" />
+              <ArrowRight className="w-4 h-4 text-gray-300 group-hover:text-amber-400 group-hover:translate-x-0.5 transition-all flex-shrink-0" />
             </Link>
 
             <Link
               to="/catalogo"
-              className="flex items-center gap-4 p-4 bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:border-amber-200 transition-all group"
+              className="flex items-center gap-3.5 p-5 bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:border-amber-200 transition-all group"
             >
               <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center flex-shrink-0">
                 <ShoppingBag className="w-5 h-5 text-amber-500" />
@@ -254,12 +254,12 @@ export default function Portal() {
                 <p className="text-[13px] font-semibold text-gray-800">Repor estoque</p>
                 <p className="text-[11px] text-gray-400">Catálogo completo B2B</p>
               </div>
-              <ArrowRight className="w-4 h-4 text-gray-300 group-hover:text-amber-400 transition-colors flex-shrink-0" />
+              <ArrowRight className="w-4 h-4 text-gray-300 group-hover:text-amber-400 group-hover:translate-x-0.5 transition-all flex-shrink-0" />
             </Link>
 
             <Link
               to="/meus-pedidos"
-              className="flex items-center gap-4 p-4 bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:border-amber-200 transition-all group"
+              className="flex items-center gap-3.5 p-5 bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:border-amber-200 transition-all group"
             >
               <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center flex-shrink-0">
                 <Package className="w-5 h-5 text-emerald-500" />
@@ -268,14 +268,14 @@ export default function Portal() {
                 <p className="text-[13px] font-semibold text-gray-800">Histórico de compras</p>
                 <p className="text-[11px] text-gray-400">Todos os seus pedidos</p>
               </div>
-              <ArrowRight className="w-4 h-4 text-gray-300 group-hover:text-amber-400 transition-colors flex-shrink-0" />
+              <ArrowRight className="w-4 h-4 text-gray-300 group-hover:text-amber-400 group-hover:translate-x-0.5 transition-all flex-shrink-0" />
             </Link>
           </div>
         </section>
 
         {/* ── 3. Resumo operacional ─────────────────────────────────────── */}
         <section>
-          <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-3">
+          <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-4">
             Resumo do mês
           </h2>
 
@@ -284,7 +284,7 @@ export default function Portal() {
               {[1, 2, 3].map(i => <Skeleton key={i} className="h-24" />)}
             </div>
           ) : orders.length === 0 ? (
-            <div className="bg-white rounded-2xl border border-gray-100 p-8 text-center">
+            <div className="bg-white rounded-2xl border border-gray-100 p-10 text-center">
               <div className="w-12 h-12 rounded-2xl bg-amber-50 border border-amber-100 flex items-center justify-center mx-auto mb-3">
                 <ShoppingBag className="w-6 h-6 text-amber-400" />
               </div>
@@ -302,9 +302,9 @@ export default function Portal() {
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+              <div className="bg-white rounded-2xl border border-gray-100 border-t-2 border-t-indigo-200 shadow-sm p-5">
                 <p className="text-[11px] text-gray-400 uppercase tracking-wide mb-1">Pedidos este mês</p>
-                <p className="text-2xl font-black text-gray-900">{thisMonthOrders.length}</p>
+                <p className="text-2xl font-bold text-gray-900">{thisMonthOrders.length}</p>
                 {activeOrders.length > 0 && (
                   <p className="text-[11px] text-indigo-600 font-medium mt-1">
                     {activeOrders.length} em andamento
@@ -312,15 +312,15 @@ export default function Portal() {
                 )}
               </div>
 
-              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+              <div className="bg-white rounded-2xl border border-gray-100 border-t-2 border-t-amber-200 shadow-sm p-5">
                 <p className="text-[11px] text-gray-400 uppercase tracking-wide mb-1">Investido este mês</p>
-                <p className="text-2xl font-black text-gray-900">
+                <p className="text-2xl font-bold text-gray-900">
                   R$ {thisMonthTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                 </p>
                 <p className="text-[11px] text-gray-400 mt-1">em {thisMonthOrders.length} pedido{thisMonthOrders.length !== 1 ? 's' : ''}</p>
               </div>
 
-              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+              <div className="bg-white rounded-2xl border border-gray-100 border-t-2 border-t-emerald-200 shadow-sm p-5">
                 <p className="text-[11px] text-gray-400 uppercase tracking-wide mb-1">Último pedido</p>
                 {lastOrder ? (
                   <>
@@ -342,7 +342,7 @@ export default function Portal() {
         {/* ── Pedidos recentes ─────────────────────────────────────────── */}
         {!loadingOrders && recentOrders.length > 0 && (
           <section>
-            <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center justify-between mb-4">
               <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide">
                 Pedidos recentes
               </h2>
@@ -350,7 +350,7 @@ export default function Portal() {
                 Ver todos
               </Link>
             </div>
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm divide-y divide-gray-50">
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm divide-y divide-gray-100">
               {recentOrders.map(order => {
                 const status = statusConfig[order.status] ?? { label: order.status, color: 'bg-gray-100 text-gray-600' }
                 const date = new Date(order.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' })
@@ -358,7 +358,7 @@ export default function Portal() {
                   <Link
                     key={order.id}
                     to="/meus-pedidos"
-                    className="flex items-center gap-4 px-4 py-3 hover:bg-gray-50 transition-colors"
+                    className="flex items-center gap-4 px-5 py-3.5 hover:bg-gray-50 transition-colors"
                   >
                     <div className="flex-1 min-w-0">
                       <p className="text-[13px] font-semibold text-gray-800">
@@ -382,7 +382,7 @@ export default function Portal() {
         {/* ── 4. Recompra rápida ────────────────────────────────────────── */}
         {hasHistory && (
           <section>
-            <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center justify-between mb-4">
               <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide">
                 Reabastecimento rápido
               </h2>
@@ -395,9 +395,9 @@ export default function Portal() {
                 <Link
                   key={name}
                   to="/catalogo"
-                  className="flex items-center gap-3 px-4 py-3 bg-white rounded-xl border border-gray-100 shadow-sm hover:border-amber-200 hover:shadow-md transition-all group"
+                  className="flex items-center gap-3 px-4 py-4 bg-white rounded-xl border border-gray-100 shadow-sm hover:border-amber-200 hover:shadow-md transition-all group"
                 >
-                  <div className="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center flex-shrink-0">
+                  <div className="w-9 h-9 rounded-lg bg-amber-50 flex items-center justify-center flex-shrink-0">
                     <Package className="w-4 h-4 text-amber-400" />
                   </div>
                   <div className="flex-1 min-w-0">
@@ -414,7 +414,7 @@ export default function Portal() {
         {/* ── 5. Produtos populares ─────────────────────────────────────── */}
         {highlightProducts.length > 0 && (
           <section>
-            <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center justify-between mb-4">
               <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide">
                 {hasHistory ? 'Produtos para seu estoque' : 'Produtos para seu negócio'}
               </h2>
@@ -447,8 +447,8 @@ export default function Portal() {
                       </div>
                     )}
                   </div>
-                  <div className="p-3">
-                    <p className="text-[12px] font-semibold text-gray-800 line-clamp-2 leading-snug">
+                  <div className="p-3.5">
+                    <p className="text-[13px] font-semibold text-gray-800 line-clamp-2 leading-snug">
                       {product.name}
                     </p>
                     <p className="text-[11px] text-amber-600 font-bold mt-1">
@@ -464,7 +464,7 @@ export default function Portal() {
         {/* ── 6. Status comercial ───────────────────────────────────────── */}
         {!loadingProfile && (
           <section className="pb-8">
-            <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl border border-amber-100 p-5 flex flex-col sm:flex-row sm:items-center gap-4">
+            <div className="bg-amber-50 rounded-2xl border border-amber-100 p-6 flex flex-col sm:flex-row sm:items-center gap-4">
               <div className="w-12 h-12 rounded-xl bg-amber-100 flex items-center justify-center flex-shrink-0">
                 <Star className="w-6 h-6 text-amber-500 fill-amber-400" />
               </div>
