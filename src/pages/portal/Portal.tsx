@@ -34,6 +34,7 @@ interface CatalogProduct {
   main_image: string | null
   price: number
   partner_price: number | null
+  compare_at_price: number | null
 }
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
@@ -73,6 +74,13 @@ function resolveCommercialLabel(profile: Profile | null | undefined): { label: s
   if (profile.business_type === 'loja')
     return { label: 'Loja Parceira', description: 'Condições especiais para lojistas parceiros' }
   return { label: 'Parceiro', description: 'Acesse seu catálogo exclusivo e acompanhe seus pedidos' }
+}
+
+// Preço sugerido de revenda — mesmo cálculo do Catalogo.tsx
+// Se compare_at_price estiver definido usa ele; caso contrário 2x o custo
+function getSuggestedPrice(price: number, compareAt: number | null): number {
+  if (compareAt != null && compareAt > 0) return compareAt
+  return Math.round(price * 2 * 100) / 100
 }
 
 // ─── Skeleton ──────────────────────────────────────────────────────────────────
@@ -123,7 +131,8 @@ export default function Portal() {
   // Query: top produtos mais vendidos da loja (RPC agrega order_items com SECURITY DEFINER)
   const { data: topSoldRaw = [] } = useQuery<Array<{
     product_name: string; total_qty: number; total_revenue: number
-    product_id: string | null; main_image: string | null; price: number | null; partner_price: number | null
+    product_id: string | null; main_image: string | null
+    price: number | null; partner_price: number | null; compare_at_price: number | null
   }>>({
     queryKey: ['portal-top-sold'],
     queryFn: async () => {
@@ -140,14 +149,14 @@ export default function Portal() {
     queryFn: async () => {
       const { data } = await supabase
         .from('catalog_products')
-        .select('id, name, main_image, price, partner_price')
+        .select('id, name, main_image, price, partner_price, compare_at_price')
         .eq('is_highlight', true)
         .eq('is_active', true)
         .limit(6)
       if (!data || data.length === 0) {
         const { data: fallback } = await supabase
           .from('catalog_products')
-          .select('id, name, main_image, price, partner_price')
+          .select('id, name, main_image, price, partner_price, compare_at_price')
           .eq('is_active', true)
           .order('updated_at', { ascending: false })
           .limit(6)
@@ -202,6 +211,7 @@ export default function Portal() {
         main_image: p.main_image,
         price: p.price,
         partner_price: p.partner_price,
+        compare_at_price: p.compare_at_price,
       }))
     }
     return highlightProducts.map(p => ({
@@ -210,6 +220,7 @@ export default function Portal() {
       main_image: p.main_image,
       price: p.price,
       partner_price: p.partner_price,
+      compare_at_price: p.compare_at_price,
     }))
   }, [topSoldRaw, highlightProducts])
 
@@ -481,23 +492,18 @@ export default function Portal() {
                     <p className="text-[13px] font-semibold text-gray-800 line-clamp-2 leading-snug">
                       {product.name}
                     </p>
-                    {product.partner_price != null ? (
+                    {product.price != null && (
                       <div className="mt-1.5 space-y-0.5">
-                        <p className="text-[12px] text-amber-600 font-bold leading-none">
-                          R$ {product.partner_price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                          <span className="text-[10px] font-medium text-gray-400 ml-1">seu preço</span>
+                        <p className="text-[10px] text-gray-400 leading-none">
+                          Custo: <span className="font-semibold text-amber-600">
+                            R$ {(product.partner_price ?? product.price).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                          </span>
                         </p>
-                        {product.price != null && (
-                          <p className="text-[10px] text-gray-400">
-                            Revenda: R$ {product.price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                          </p>
-                        )}
+                        <p className="text-[10px] text-emerald-600 font-semibold leading-none">
+                          Revenda: R$ {getSuggestedPrice(product.price, product.compare_at_price).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                        </p>
                       </div>
-                    ) : product.price != null ? (
-                      <p className="text-[12px] text-amber-600 font-bold mt-1">
-                        R$ {product.price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                      </p>
-                    ) : null}
+                    )}
                   </div>
                 </Link>
               ))}
