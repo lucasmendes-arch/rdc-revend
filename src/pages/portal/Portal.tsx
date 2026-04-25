@@ -1,7 +1,7 @@
-import { useMemo } from 'react'
+import { useMemo, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Loader, Package, ShoppingBag, ClipboardList, ArrowRight, Star } from 'lucide-react'
+import { Package, ShoppingBag, ClipboardList, ArrowRight, Star, ChevronLeft, ChevronRight } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import PortalLayout from '@/components/portal/PortalLayout'
@@ -37,6 +37,15 @@ interface CatalogProduct {
   compare_at_price: number | null
 }
 
+interface CarouselProduct {
+  key: string
+  name: string
+  main_image: string | null
+  price: number | null
+  partner_price: number | null
+  compare_at_price: number | null
+}
+
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 
 const statusConfig: Record<string, { label: string; color: string }> = {
@@ -58,7 +67,6 @@ function isThisMonth(dateStr: string): boolean {
   return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
 }
 
-// Determina a classificação comercial do parceiro a partir dos campos do perfil.
 // FUTURAMENTE: evoluir para gamificação com níveis (Bronze/Prata/Ouro) baseados
 // em volume de compras mensal. Por ora, usa apenas os campos de perfil existentes.
 function resolveCommercialLabel(profile: Profile | null | undefined): { label: string; description: string } {
@@ -77,7 +85,6 @@ function resolveCommercialLabel(profile: Profile | null | undefined): { label: s
 }
 
 // Preço sugerido de revenda — mesmo cálculo do Catalogo.tsx
-// Se compare_at_price estiver definido usa ele; caso contrário 2x o custo
 function getSuggestedPrice(price: number, compareAt: number | null): number {
   if (compareAt != null && compareAt > 0) return compareAt
   return Math.round(price * 2 * 100) / 100
@@ -87,6 +94,125 @@ function getSuggestedPrice(price: number, compareAt: number | null): number {
 
 function Skeleton({ className }: { className?: string }) {
   return <div className={`animate-pulse bg-gray-100 rounded-lg ${className ?? ''}`} />
+}
+
+// ─── ProductCarousel ───────────────────────────────────────────────────────────
+
+function ProductCarousel({
+  title,
+  products,
+  loading,
+}: {
+  title: string
+  products: CarouselProduct[]
+  loading?: boolean
+}) {
+  const ref = useRef<HTMLDivElement>(null)
+  const scroll = (dir: -1 | 1) =>
+    ref.current?.scrollBy({ left: dir * 176, behavior: 'smooth' })
+
+  return (
+    <section>
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="text-[11px] font-semibold text-gray-500 uppercase tracking-[0.14em]">
+          {title}
+        </h2>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => scroll(-1)}
+            className="p-1 rounded-lg hover:bg-gray-100 text-gray-300 hover:text-gray-600 transition-colors"
+            aria-label="Anterior"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => scroll(1)}
+            className="p-1 rounded-lg hover:bg-gray-100 text-gray-300 hover:text-gray-600 transition-colors"
+            aria-label="Próximo"
+          >
+            <ChevronRight className="w-4 h-4" />
+          </button>
+          <Link
+            to="/catalogo"
+            className="text-xs text-amber-600 font-semibold hover:underline ml-1"
+          >
+            Ver tudo
+          </Link>
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="flex gap-3 overflow-hidden">
+          {[1, 2, 3, 4].map(i => (
+            <Skeleton key={i} className="flex-shrink-0 w-40 h-56" />
+          ))}
+        </div>
+      ) : products.length === 0 ? (
+        <p className="text-[12px] text-gray-400 py-1">
+          Nenhum produto disponível nesta seção.
+        </p>
+      ) : (
+        <div
+          ref={ref}
+          className="flex gap-3 overflow-x-auto pb-2 scrollbar-none"
+          style={{ scrollSnapType: 'x mandatory' }}
+        >
+          {products.map(product => (
+            <Link
+              key={product.key}
+              to="/catalogo"
+              style={{ scrollSnapAlign: 'start' }}
+              className="flex-shrink-0 w-40 bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden hover:shadow-md hover:border-amber-200 transition-all group"
+            >
+              <div className="aspect-square bg-gray-50 overflow-hidden">
+                {product.main_image ? (
+                  <img
+                    src={product.main_image}
+                    alt={product.name}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                  />
+                ) : (
+                  <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-amber-50 to-orange-50 gap-1">
+                    <span className="text-2xl font-black text-amber-300 select-none leading-none">
+                      {product.name.charAt(0).toUpperCase()}
+                    </span>
+                    <span className="text-[9px] text-amber-300 font-semibold uppercase tracking-widest">
+                      RDC
+                    </span>
+                  </div>
+                )}
+              </div>
+              <div className="p-3">
+                <p className="text-[12px] font-semibold text-gray-800 line-clamp-2 leading-snug mb-2">
+                  {product.name}
+                </p>
+                {product.price != null && (
+                  <div className="space-y-0.5">
+                    <p className="text-[11px] text-gray-400 leading-none">
+                      Custo:{' '}
+                      <span className="font-bold text-amber-600 text-[13px]">
+                        R${' '}
+                        {(product.partner_price ?? product.price).toLocaleString('pt-BR', {
+                          minimumFractionDigits: 2,
+                        })}
+                      </span>
+                    </p>
+                    <p className="text-[13px] text-emerald-600 font-bold leading-none">
+                      Rev: R${' '}
+                      {getSuggestedPrice(
+                        product.price,
+                        product.compare_at_price
+                      ).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </Link>
+          ))}
+        </div>
+      )}
+    </section>
+  )
 }
 
 // ─── Componente principal ──────────────────────────────────────────────────────
@@ -110,7 +236,7 @@ export default function Portal() {
     staleTime: 5 * 60 * 1000,
   })
 
-  // Query: pedidos do usuário (mesma query de MeusPedidos.tsx — sem nova lógica)
+  // Query: pedidos do usuário
   const { data: orders = [], isLoading: loadingOrders } = useQuery<Order[]>({
     queryKey: ['my-orders', user?.id],
     queryFn: async () => {
@@ -128,41 +254,47 @@ export default function Portal() {
     retry: false,
   })
 
-  // Query: top produtos mais vendidos da loja (RPC agrega order_items com SECURITY DEFINER)
-  const { data: topSoldRaw = [] } = useQuery<Array<{
+  // Query: top produtos mais vendidos da loja (RPC com SECURITY DEFINER)
+  const { data: topSoldRaw = [], isLoading: loadingTopSold } = useQuery<Array<{
     product_name: string; total_qty: number; total_revenue: number
     product_id: string | null; main_image: string | null
     price: number | null; partner_price: number | null; compare_at_price: number | null
   }>>({
     queryKey: ['portal-top-sold'],
     queryFn: async () => {
-      const { data } = await supabase.rpc('get_top_sold_products', { limit_n: 6 })
+      const { data } = await supabase.rpc('get_top_sold_products', { limit_n: 10 })
       return (data ?? []) as typeof topSoldRaw
     },
     staleTime: 15 * 60 * 1000,
   })
 
-  // Fallback: produtos em destaque do catálogo (store sem vendas ainda)
-  const { data: highlightProducts = [] } = useQuery<CatalogProduct[]>({
-    queryKey: ['portal-highlights'],
-    enabled: topSoldRaw.length === 0,
+  // Query: lançamentos
+  const { data: newArrivals = [], isLoading: loadingNewArrivals } = useQuery<CatalogProduct[]>({
+    queryKey: ['portal-new-arrivals'],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('catalog_products')
+        .select('id, name, main_image, price, partner_price, compare_at_price')
+        .eq('is_new_arrival', true)
+        .eq('is_active', true)
+        .order('created_at', { ascending: false })
+        .limit(10)
+      return (data ?? []) as CatalogProduct[]
+    },
+    staleTime: 10 * 60 * 1000,
+  })
+
+  // Query: produtos em destaque para "Você precisa conhecer"
+  const { data: mustKnow = [], isLoading: loadingMustKnow } = useQuery<CatalogProduct[]>({
+    queryKey: ['portal-must-know'],
     queryFn: async () => {
       const { data } = await supabase
         .from('catalog_products')
         .select('id, name, main_image, price, partner_price, compare_at_price')
         .eq('is_highlight', true)
         .eq('is_active', true)
-        .limit(6)
-      if (!data || data.length === 0) {
-        const { data: fallback } = await supabase
-          .from('catalog_products')
-          .select('id, name, main_image, price, partner_price, compare_at_price')
-          .eq('is_active', true)
-          .order('updated_at', { ascending: false })
-          .limit(6)
-        return (fallback ?? []) as CatalogProduct[]
-      }
-      return data as CatalogProduct[]
+        .limit(10)
+      return (data ?? []) as CatalogProduct[]
     },
     staleTime: 10 * 60 * 1000,
   })
@@ -186,7 +318,6 @@ export default function Portal() {
 
   const lastOrder = orders[0] ?? null
 
-  // Top produtos comprados pelo usuário (derivado dos order_items existentes)
   const topBoughtProducts = useMemo(() => {
     const map = new Map<string, number>()
     for (const order of orders) {
@@ -202,27 +333,28 @@ export default function Portal() {
 
   const hasHistory = topBoughtProducts.length > 0
 
-  // Produtos a exibir: top vendidos da loja (RPC) ou highlights como fallback
-  const displayProducts = useMemo(() => {
-    if (topSoldRaw.length > 0) {
-      return topSoldRaw.map(p => ({
-        key: p.product_name,
-        name: p.product_name,
-        main_image: p.main_image,
-        price: p.price,
-        partner_price: p.partner_price,
-        compare_at_price: p.compare_at_price,
-      }))
-    }
-    return highlightProducts.map(p => ({
-      key: p.id,
-      name: p.name,
+  // Reshape top vendidos para CarouselProduct
+  const topSoldProducts = useMemo<CarouselProduct[]>(
+    () => topSoldRaw.map(p => ({
+      key: p.product_name,
+      name: p.product_name,
       main_image: p.main_image,
       price: p.price,
       partner_price: p.partner_price,
       compare_at_price: p.compare_at_price,
-    }))
-  }, [topSoldRaw, highlightProducts])
+    })),
+    [topSoldRaw]
+  )
+
+  const newArrivalsCarousel = useMemo<CarouselProduct[]>(
+    () => newArrivals.map(p => ({ key: p.id, name: p.name, main_image: p.main_image, price: p.price, partner_price: p.partner_price, compare_at_price: p.compare_at_price })),
+    [newArrivals]
+  )
+
+  const mustKnowCarousel = useMemo<CarouselProduct[]>(
+    () => mustKnow.map(p => ({ key: p.id, name: p.name, main_image: p.main_image, price: p.price, partner_price: p.partner_price, compare_at_price: p.compare_at_price })),
+    [mustKnow]
+  )
 
   const commercial = resolveCommercialLabel(profile)
   const displayName = profile?.full_name ?? user?.email?.split('@')[0] ?? 'Parceiro'
@@ -377,6 +509,27 @@ export default function Portal() {
           )}
         </section>
 
+        {/* ── 4. Lançamentos ───────────────────────────────────────────── */}
+        <ProductCarousel
+          title="Lançamentos"
+          products={newArrivalsCarousel}
+          loading={loadingNewArrivals}
+        />
+
+        {/* ── 5. Mais vendidos ─────────────────────────────────────────── */}
+        <ProductCarousel
+          title="Mais Vendidos"
+          products={topSoldProducts}
+          loading={loadingTopSold}
+        />
+
+        {/* ── 6. Você precisa conhecer ─────────────────────────────────── */}
+        <ProductCarousel
+          title="Você precisa conhecer..."
+          products={mustKnowCarousel}
+          loading={loadingMustKnow}
+        />
+
         {/* ── Pedidos recentes ─────────────────────────────────────────── */}
         {!loadingOrders && recentOrders.length > 0 && (
           <section>
@@ -417,7 +570,7 @@ export default function Portal() {
           </section>
         )}
 
-        {/* ── 4. Recompra rápida ────────────────────────────────────────── */}
+        {/* ── 7. Recompra rápida ────────────────────────────────────────── */}
         {hasHistory && (
           <section>
             <div className="flex items-center justify-between mb-4">
@@ -449,66 +602,7 @@ export default function Portal() {
           </section>
         )}
 
-        {/* ── 5. Produtos mais vendidos / para seu negócio ─────────────── */}
-        {displayProducts.length > 0 && (
-          <section>
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-[11px] font-semibold text-gray-500 uppercase tracking-[0.14em]">
-                {topSoldRaw.length > 0 ? 'Mais vendidos' : 'Produtos para seu negócio'}
-              </h2>
-              <Link to="/catalogo" className="text-xs text-amber-600 font-semibold hover:underline flex-shrink-0">
-                Ver tudo
-              </Link>
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              {displayProducts.map(product => (
-                <Link
-                  key={product.key}
-                  to="/catalogo"
-                  className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden hover:shadow-md hover:border-amber-200 transition-all group"
-                >
-                  <div className="aspect-square bg-gray-50 overflow-hidden">
-                    {product.main_image ? (
-                      <img
-                        src={product.main_image}
-                        alt={product.name}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-amber-50 to-orange-50 gap-1">
-                        <span className="text-2xl font-black text-amber-300 select-none leading-none">
-                          {product.name.charAt(0).toUpperCase()}
-                        </span>
-                        <span className="text-[9px] text-amber-300 font-semibold uppercase tracking-widest">
-                          RDC
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                  <div className="p-3.5">
-                    <p className="text-[13px] font-semibold text-gray-800 line-clamp-2 leading-snug">
-                      {product.name}
-                    </p>
-                    {product.price != null && (
-                      <div className="mt-1.5 space-y-0.5">
-                        <p className="text-[10px] text-gray-400 leading-none">
-                          Custo: <span className="font-semibold text-amber-600">
-                            R$ {(product.partner_price ?? product.price).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                          </span>
-                        </p>
-                        <p className="text-[10px] text-emerald-600 font-semibold leading-none">
-                          Revenda: R$ {getSuggestedPrice(product.price, product.compare_at_price).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                </Link>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {/* ── 6. Status comercial ───────────────────────────────────────── */}
+        {/* ── 8. Status comercial ───────────────────────────────────────── */}
         {!loadingProfile && (
           <section className="pb-8">
             <div className="bg-amber-50 rounded-xl border border-amber-200 p-6 flex flex-col sm:flex-row sm:items-center gap-4">
@@ -519,7 +613,7 @@ export default function Portal() {
                 <p className="text-[13px] font-bold text-amber-900">{commercial.label}</p>
                 <p className="text-[12px] text-amber-700 mt-0.5">{commercial.description}</p>
                 {/* FUTURAMENTE: barra de progresso para próximo nível (Bronze/Prata/Ouro)
-                    baseada em volume de compras mensal. Por ora, exibe apenas a classificação atual. */}
+                    baseada em volume de compras mensal. */}
               </div>
               <Link
                 to="/catalogo"
