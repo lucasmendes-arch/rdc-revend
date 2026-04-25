@@ -248,7 +248,16 @@ export default function Portal() {
       <div className="px-4 sm:px-6 py-8 max-w-4xl mx-auto space-y-10">
 
         {/* ── 1. Header de boas-vindas ──────────────────────────────────── */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3">
+          {/* Badge — first in DOM = acima da saudação no mobile; order-last no desktop */}
+          {!loadingProfile && (
+            <div className="flex-shrink-0 order-first sm:order-last">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-50 border border-amber-200 text-amber-700 text-[12px] font-semibold">
+                <Star className="w-3 h-3 fill-amber-500 text-amber-500" />
+                {commercial.label}
+              </span>
+            </div>
+          )}
           <div>
             {loadingProfile ? (
               <>
@@ -264,15 +273,6 @@ export default function Portal() {
               </>
             )}
           </div>
-          {/* Status comercial — badge inline no header */}
-          {!loadingProfile && (
-            <div className="flex-shrink-0">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-50 border border-amber-200 text-amber-700 text-[12px] font-semibold">
-                <Star className="w-3 h-3 fill-amber-500 text-amber-500" />
-                {commercial.label}
-              </span>
-            </div>
-          )}
         </div>
 
         {/* ── 2. Atalhos rápidos ────────────────────────────────────────── */}
