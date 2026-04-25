@@ -33,6 +33,7 @@ interface CatalogProduct {
   name: string
   main_image: string | null
   price: number
+  partner_price: number | null
 }
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
@@ -122,7 +123,7 @@ export default function Portal() {
   // Query: top produtos mais vendidos da loja (RPC agrega order_items com SECURITY DEFINER)
   const { data: topSoldRaw = [] } = useQuery<Array<{
     product_name: string; total_qty: number; total_revenue: number
-    product_id: string | null; main_image: string | null; price: number | null
+    product_id: string | null; main_image: string | null; price: number | null; partner_price: number | null
   }>>({
     queryKey: ['portal-top-sold'],
     queryFn: async () => {
@@ -139,14 +140,14 @@ export default function Portal() {
     queryFn: async () => {
       const { data } = await supabase
         .from('catalog_products')
-        .select('id, name, main_image, price')
+        .select('id, name, main_image, price, partner_price')
         .eq('is_highlight', true)
         .eq('is_active', true)
         .limit(6)
       if (!data || data.length === 0) {
         const { data: fallback } = await supabase
           .from('catalog_products')
-          .select('id, name, main_image, price')
+          .select('id, name, main_image, price, partner_price')
           .eq('is_active', true)
           .order('updated_at', { ascending: false })
           .limit(6)
@@ -200,6 +201,7 @@ export default function Portal() {
         name: p.product_name,
         main_image: p.main_image,
         price: p.price,
+        partner_price: p.partner_price,
       }))
     }
     return highlightProducts.map(p => ({
@@ -207,11 +209,18 @@ export default function Portal() {
       name: p.name,
       main_image: p.main_image,
       price: p.price,
+      partner_price: p.partner_price,
     }))
   }, [topSoldRaw, highlightProducts])
 
   const commercial = resolveCommercialLabel(profile)
   const displayName = profile?.full_name ?? user?.email?.split('@')[0] ?? 'Parceiro'
+  const subtitle = (() => {
+    if (profile?.business_type === 'salao') return 'Reabasteça seu salão e acompanhe seus pedidos'
+    if (profile?.business_type === 'revenda') return 'Gerencie seu estoque de revenda e pedidos'
+    if (profile?.business_type === 'loja') return 'Gerencie o estoque da sua loja e pedidos'
+    return 'Gerencie pedidos, reposição de estoque e compras'
+  })()
   const greeting = (() => {
     const h = new Date().getHours()
     if (h < 12) return 'Bom dia'
@@ -240,9 +249,7 @@ export default function Portal() {
                 <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
                   {greeting}, {displayName} 👋
                 </h1>
-                <p className="text-sm text-gray-500 mt-0.5">
-                  Gerencie pedidos, reabastecimento e compras do seu negócio
-                </p>
+                <p className="text-sm text-gray-500 mt-0.5">{subtitle}</p>
               </>
             )}
           </div>
@@ -306,7 +313,7 @@ export default function Portal() {
 
         {/* ── 3. Resumo operacional ─────────────────────────────────────── */}
         <section>
-          <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-4">
+          <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-4">
             Resumo do mês
           </h2>
 
@@ -361,7 +368,7 @@ export default function Portal() {
         {!loadingOrders && recentOrders.length > 0 && (
           <section>
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide">
+              <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">
                 Pedidos recentes
               </h2>
               <Link to="/meus-pedidos" className="text-xs text-amber-600 font-semibold hover:underline">
@@ -401,7 +408,7 @@ export default function Portal() {
         {hasHistory && (
           <section>
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide">
+              <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">
                 Reabastecimento rápido
               </h2>
               <Link to="/catalogo" className="text-xs text-amber-600 font-semibold hover:underline">
@@ -474,11 +481,23 @@ export default function Portal() {
                     <p className="text-[13px] font-semibold text-gray-800 line-clamp-2 leading-snug">
                       {product.name}
                     </p>
-                    {product.price != null && (
-                      <p className="text-[11px] text-amber-600 font-bold mt-1">
+                    {product.partner_price != null ? (
+                      <div className="mt-1.5 space-y-0.5">
+                        <p className="text-[12px] text-amber-600 font-bold leading-none">
+                          R$ {product.partner_price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                          <span className="text-[10px] font-medium text-gray-400 ml-1">seu preço</span>
+                        </p>
+                        {product.price != null && (
+                          <p className="text-[10px] text-gray-400">
+                            Revenda: R$ {product.price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                          </p>
+                        )}
+                      </div>
+                    ) : product.price != null ? (
+                      <p className="text-[12px] text-amber-600 font-bold mt-1">
                         R$ {product.price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                       </p>
-                    )}
+                    ) : null}
                   </div>
                 </Link>
               ))}
