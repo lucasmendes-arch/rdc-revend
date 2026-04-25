@@ -107,9 +107,10 @@ function ProductCarousel({
   products: CarouselProduct[]
   loading?: boolean
 }) {
+  // ref fica no div com overflow-x-auto (o scroll container real)
   const ref = useRef<HTMLDivElement>(null)
   const scroll = (dir: -1 | 1) =>
-    ref.current?.scrollBy({ left: dir * 176, behavior: 'smooth' })
+    ref.current?.scrollBy({ left: dir * 172, behavior: 'smooth' })
 
   return (
     <section>
@@ -142,6 +143,7 @@ function ProductCarousel({
       </div>
 
       {loading ? (
+        /* Skeletons ficam dentro do padding normal — sem scroll */
         <div className="flex gap-3 overflow-hidden">
           {[1, 2, 3, 4].map(i => (
             <Skeleton key={i} className="flex-shrink-0 w-40 h-56" />
@@ -152,64 +154,77 @@ function ProductCarousel({
           Nenhum produto disponível nesta seção.
         </p>
       ) : (
+        /*
+         * Padrão full-bleed para mobile:
+         * - -mx-4 sm:-mx-6 quebra o padding do pai → scroll container tem largura
+         *   de viewport, evitando que o browser escale o scroll ao nível da página
+         * - overflow-x-auto no container de largura total é reconhecido como scroll
+         *   container pelo iOS Safari (confiável)
+         * - px-4 sm:px-6 no inner flex alinha o primeiro card com o conteúdo do pai
+         * - spacer final garante que o último card seja completamente visível
+         */
         <div
           ref={ref}
-          className="flex gap-3 overflow-x-auto pb-2 scrollbar-none"
-          style={{ scrollSnapType: 'x mandatory' }}
+          className="-mx-4 sm:-mx-6 overflow-x-auto scrollbar-none pb-3"
+          style={{ scrollSnapType: 'x mandatory', scrollPaddingInlineStart: '1rem' }}
         >
-          {products.map(product => (
-            <Link
-              key={product.key}
-              to="/catalogo"
-              style={{ scrollSnapAlign: 'start' }}
-              className="flex-shrink-0 w-40 bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden hover:shadow-md hover:border-amber-200 transition-all group"
-            >
-              <div className="aspect-square bg-gray-50 overflow-hidden">
-                {product.main_image ? (
-                  <img
-                    src={product.main_image}
-                    alt={product.name}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                  />
-                ) : (
-                  <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-amber-50 to-orange-50 gap-1">
-                    <span className="text-2xl font-black text-amber-300 select-none leading-none">
-                      {product.name.charAt(0).toUpperCase()}
-                    </span>
-                    <span className="text-[9px] text-amber-300 font-semibold uppercase tracking-widest">
-                      RDC
-                    </span>
-                  </div>
-                )}
-              </div>
-              <div className="p-3">
-                <p className="text-[12px] font-semibold text-gray-800 line-clamp-2 leading-snug mb-2">
-                  {product.name}
-                </p>
-                {product.price != null && (
-                  <div className="space-y-0.5">
-                    <p className="text-[11px] text-gray-400 leading-none">
-                      Custo:{' '}
-                      <span className="font-bold text-amber-600 text-[13px]">
-                        R${' '}
-                        {(product.partner_price != null && product.partner_price > 0
-                          ? product.partner_price
-                          : product.price ?? 0
-                        ).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+          <div className="flex gap-3 px-4 sm:px-6">
+            {products.map(product => (
+              <Link
+                key={product.key}
+                to="/catalogo"
+                style={{ scrollSnapAlign: 'start' }}
+                className="flex-shrink-0 w-40 bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden hover:shadow-md hover:border-amber-200 transition-all group"
+              >
+                <div className="aspect-square bg-gray-50 overflow-hidden">
+                  {product.main_image ? (
+                    <img
+                      src={product.main_image}
+                      alt={product.name}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-amber-50 to-orange-50 gap-1">
+                      <span className="text-2xl font-black text-amber-300 select-none leading-none">
+                        {product.name.charAt(0).toUpperCase()}
                       </span>
-                    </p>
-                    <p className="text-[13px] text-emerald-600 font-bold leading-none">
-                      Rev: R${' '}
-                      {getSuggestedPrice(
-                        product.price,
-                        product.compare_at_price
-                      ).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                    </p>
-                  </div>
-                )}
-              </div>
-            </Link>
-          ))}
+                      <span className="text-[9px] text-amber-300 font-semibold uppercase tracking-widest">
+                        RDC
+                      </span>
+                    </div>
+                  )}
+                </div>
+                <div className="p-3">
+                  <p className="text-[12px] font-semibold text-gray-800 line-clamp-2 leading-snug mb-2">
+                    {product.name}
+                  </p>
+                  {product.price != null && (
+                    <div className="space-y-0.5">
+                      <p className="text-[11px] text-gray-400 leading-none">
+                        Custo:{' '}
+                        <span className="font-bold text-amber-600 text-[13px]">
+                          R${' '}
+                          {(product.partner_price != null && product.partner_price > 0
+                            ? product.partner_price
+                            : product.price ?? 0
+                          ).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                        </span>
+                      </p>
+                      <p className="text-[13px] text-emerald-600 font-bold leading-none">
+                        Rev: R${' '}
+                        {getSuggestedPrice(
+                          product.price,
+                          product.compare_at_price
+                        ).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </Link>
+            ))}
+            {/* spacer para o último card não ficar colado na borda */}
+            <div className="flex-shrink-0 w-4 sm:w-6" aria-hidden />
+          </div>
         </div>
       )}
     </section>
@@ -378,6 +393,9 @@ export default function Portal() {
 
   return (
     <PortalLayout profile={{ name: profile?.full_name ?? undefined }}>
+      {/* overflow-x:clip clipa overflow horizontal sem criar scroll container
+          (overflow-x:hidden criaria scroll container e afetaria overflow-y) */}
+      <div className="[overflow-x:clip]">
       <div className="px-4 sm:px-6 py-8 max-w-4xl mx-auto space-y-10">
 
         {/* ── 1. Header de boas-vindas ──────────────────────────────────── */}
@@ -610,7 +628,7 @@ export default function Portal() {
               <div className="w-12 h-12 rounded-xl bg-amber-100 flex items-center justify-center flex-shrink-0">
                 <Star className="w-6 h-6 text-amber-500 fill-amber-400" />
               </div>
-              <div className="flex-1">
+              <div className="flex-1 min-w-0">
                 <p className="text-[13px] font-bold text-amber-900">{commercial.label}</p>
                 <p className="text-[12px] text-amber-700 mt-0.5">{commercial.description}</p>
                 {/* FUTURAMENTE: barra de progresso para próximo nível (Bronze/Prata/Ouro)
@@ -618,7 +636,7 @@ export default function Portal() {
               </div>
               <Link
                 to="/catalogo"
-                className="flex-shrink-0 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-[12px] font-semibold transition-colors"
+                className="self-start sm:self-auto flex-shrink-0 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-[12px] font-semibold transition-colors"
               >
                 <ShoppingBag className="w-3.5 h-3.5" />
                 Fazer novo pedido
@@ -627,6 +645,7 @@ export default function Portal() {
           </section>
         )}
 
+      </div>
       </div>
     </PortalLayout>
   )
