@@ -192,9 +192,10 @@ function ProductCarousel({
                       Custo:{' '}
                       <span className="font-bold text-amber-600 text-[13px]">
                         R${' '}
-                        {(product.partner_price ?? product.price).toLocaleString('pt-BR', {
-                          minimumFractionDigits: 2,
-                        })}
+                        {(product.partner_price != null && product.partner_price > 0
+                          ? product.partner_price
+                          : product.price ?? 0
+                        ).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                       </span>
                     </p>
                     <p className="text-[13px] text-emerald-600 font-bold leading-none">
