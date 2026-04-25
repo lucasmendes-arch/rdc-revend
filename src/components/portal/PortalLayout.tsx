@@ -149,8 +149,11 @@ export default function PortalLayout({ children, profile = {} }: PortalLayoutPro
         </>
       )}
 
-      {/* Main Content */}
-      <main className="flex-1 lg:ml-60 pt-14 lg:pt-0">
+      {/* Main Content
+          min-w-0: flex items podem ter min-width:auto o que impede shrink correto
+          overflow-x-hidden: clipa overflow horizontal sem criar scroll container
+          (main nunca tem altura fixa, então overflow-y:auto é seguro) */}
+      <main className="flex-1 min-w-0 lg:ml-60 pt-14 lg:pt-0 overflow-x-hidden">
         {children}
       </main>
     </div>

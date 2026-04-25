@@ -331,11 +331,8 @@ export default function Portal() {
 
   return (
     <PortalLayout profile={{ name: profile?.full_name ?? undefined }}>
-      {/* overflow-x:clip clipa page-level overflow sem criar scroll container */}
-      <div className="[overflow-x:clip]">
-
-        {/* padding-bottom extra no mobile para não cobrir conteúdo com o CTA fixo */}
-        <div className="px-4 sm:px-6 pt-5 pb-24 sm:pb-10 max-w-4xl mx-auto space-y-6">
+      {/* overflow-x-hidden já está no <main> do PortalLayout — sem wrapper extra aqui */}
+      <div className="px-4 sm:px-6 pt-5 pb-24 sm:pb-10 max-w-4xl mx-auto space-y-6">
 
           {/* ── 1. Header ──────────────────────────────────────────────── */}
           <div className="flex items-start justify-between gap-3">
@@ -359,34 +356,53 @@ export default function Portal() {
             )}
           </div>
 
-          {/* ── 2. Atalhos — 3 colunas compactas no mobile ─────────────── */}
+          {/* ── 2. Atalhos ─────────────────────────────────────────────────
+               Mobile  : linhas full-width (flex-row) — garante zero overflow
+               sm+     : 3 colunas compactas (flex-col, ícone + label)       */}
           <section>
-            <div className="grid grid-cols-3 gap-2">
-              {/* Comprar */}
-              <Link to="/catalogo" className="flex flex-col items-center gap-1.5 p-3 sm:p-4 bg-white rounded-xl border border-gray-200 hover:border-amber-200 hover:shadow-sm transition-all group">
-                <div className="w-9 h-9 rounded-xl bg-amber-50 flex items-center justify-center group-hover:bg-amber-100 transition-colors">
+            <div className="flex flex-col sm:grid sm:grid-cols-3 gap-2">
+
+              <Link to="/catalogo"
+                className="flex items-center gap-3 p-3.5 sm:flex-col sm:items-center sm:gap-1.5 sm:p-3 bg-white rounded-xl border border-gray-200 hover:border-amber-200 hover:shadow-sm transition-all group"
+              >
+                <div className="w-9 h-9 rounded-xl bg-amber-50 flex items-center justify-center flex-shrink-0 group-hover:bg-amber-100 transition-colors">
                   <ShoppingBag className="w-4 h-4 text-amber-500" />
                 </div>
-                <span className="text-[11px] sm:text-[12px] font-semibold text-gray-700 text-center leading-tight">
-                  {orders.length === 0 && !loadingOrders ? 'Comprar' : 'Repor'}
-                </span>
+                <div className="flex-1 min-w-0 sm:text-center">
+                  <p className="text-[13px] sm:text-[11px] font-semibold text-gray-800 leading-tight">
+                    {orders.length === 0 && !loadingOrders ? 'Comprar agora' : 'Repor estoque'}
+                  </p>
+                  <p className="text-[11px] text-gray-500 sm:hidden">Catálogo completo B2B</p>
+                </div>
+                <ArrowRight className="w-4 h-4 text-gray-300 group-hover:text-amber-400 flex-shrink-0 sm:hidden" />
               </Link>
 
-              {/* Acompanhar */}
-              <Link to="/meus-pedidos" className="flex flex-col items-center gap-1.5 p-3 sm:p-4 bg-white rounded-xl border border-gray-200 hover:border-indigo-200 hover:shadow-sm transition-all group">
-                <div className="w-9 h-9 rounded-xl bg-indigo-50 flex items-center justify-center group-hover:bg-indigo-100 transition-colors">
+              <Link to="/meus-pedidos"
+                className="flex items-center gap-3 p-3.5 sm:flex-col sm:items-center sm:gap-1.5 sm:p-3 bg-white rounded-xl border border-gray-200 hover:border-indigo-200 hover:shadow-sm transition-all group"
+              >
+                <div className="w-9 h-9 rounded-xl bg-indigo-50 flex items-center justify-center flex-shrink-0 group-hover:bg-indigo-100 transition-colors">
                   <ClipboardList className="w-4 h-4 text-indigo-500" />
                 </div>
-                <span className="text-[11px] sm:text-[12px] font-semibold text-gray-700 text-center leading-tight">Pedidos</span>
+                <div className="flex-1 min-w-0 sm:text-center">
+                  <p className="text-[13px] sm:text-[11px] font-semibold text-gray-800 leading-tight">Acompanhar pedidos</p>
+                  <p className="text-[11px] text-gray-500 sm:hidden">Status em tempo real</p>
+                </div>
+                <ArrowRight className="w-4 h-4 text-gray-300 group-hover:text-amber-400 flex-shrink-0 sm:hidden" />
               </Link>
 
-              {/* Histórico */}
-              <Link to="/meus-pedidos" className="flex flex-col items-center gap-1.5 p-3 sm:p-4 bg-white rounded-xl border border-gray-200 hover:border-emerald-200 hover:shadow-sm transition-all group">
-                <div className="w-9 h-9 rounded-xl bg-emerald-50 flex items-center justify-center group-hover:bg-emerald-100 transition-colors">
+              <Link to="/meus-pedidos"
+                className="flex items-center gap-3 p-3.5 sm:flex-col sm:items-center sm:gap-1.5 sm:p-3 bg-white rounded-xl border border-gray-200 hover:border-emerald-200 hover:shadow-sm transition-all group"
+              >
+                <div className="w-9 h-9 rounded-xl bg-emerald-50 flex items-center justify-center flex-shrink-0 group-hover:bg-emerald-100 transition-colors">
                   <Package className="w-4 h-4 text-emerald-500" />
                 </div>
-                <span className="text-[11px] sm:text-[12px] font-semibold text-gray-700 text-center leading-tight">Histórico</span>
+                <div className="flex-1 min-w-0 sm:text-center">
+                  <p className="text-[13px] sm:text-[11px] font-semibold text-gray-800 leading-tight">Histórico de compras</p>
+                  <p className="text-[11px] text-gray-500 sm:hidden">Todos os seus pedidos</p>
+                </div>
+                <ArrowRight className="w-4 h-4 text-gray-300 group-hover:text-amber-400 flex-shrink-0 sm:hidden" />
               </Link>
+
             </div>
           </section>
 
@@ -544,8 +560,7 @@ export default function Portal() {
             </section>
           )}
 
-        </div>{/* fim conteúdo */}
-      </div>{/* fim clip wrapper */}
+      </div>{/* fim conteúdo */}
 
       {/* ── FAB — CTA fixo no mobile ──────────────────────────────────────
            lg:hidden — no desktop o CTA está na sidebar e nos atalhos
