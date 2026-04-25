@@ -280,7 +280,7 @@ export default function Portal() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <Link
               to="/meus-pedidos"
-              className="flex items-center gap-3.5 p-5 bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:border-amber-200 transition-all group"
+              className="flex items-center gap-3.5 p-5 bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md hover:border-amber-200 transition-all group"
             >
               <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center flex-shrink-0">
                 <ClipboardList className="w-5 h-5 text-indigo-500" />
@@ -294,7 +294,7 @@ export default function Portal() {
 
             <Link
               to="/catalogo"
-              className="flex items-center gap-3.5 p-5 bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:border-amber-200 transition-all group"
+              className="flex items-center gap-3.5 p-5 bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md hover:border-amber-200 transition-all group"
             >
               <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center flex-shrink-0">
                 <ShoppingBag className="w-5 h-5 text-amber-500" />
@@ -308,7 +308,7 @@ export default function Portal() {
 
             <Link
               to="/meus-pedidos"
-              className="flex items-center gap-3.5 p-5 bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:border-amber-200 transition-all group"
+              className="flex items-center gap-3.5 p-5 bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md hover:border-amber-200 transition-all group"
             >
               <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center flex-shrink-0">
                 <Package className="w-5 h-5 text-emerald-500" />
@@ -324,7 +324,7 @@ export default function Portal() {
 
         {/* ── 3. Resumo operacional ─────────────────────────────────────── */}
         <section>
-          <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-4">
+          <h2 className="text-[11px] font-semibold text-gray-500 uppercase tracking-[0.14em] mb-4">
             Resumo do mês
           </h2>
 
@@ -338,7 +338,7 @@ export default function Portal() {
             </p>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div className="bg-white rounded-2xl border border-gray-100 border-t-2 border-t-indigo-200 shadow-sm p-5">
+              <div className="bg-white rounded-xl border border-gray-200 border-t-2 border-t-indigo-200 shadow-sm p-5">
                 <p className="text-[11px] text-gray-400 uppercase tracking-wide mb-1">Pedidos este mês</p>
                 <p className="text-2xl font-bold text-gray-900">{thisMonthOrders.length}</p>
                 {activeOrders.length > 0 && (
@@ -348,7 +348,7 @@ export default function Portal() {
                 )}
               </div>
 
-              <div className="bg-white rounded-2xl border border-gray-100 border-t-2 border-t-amber-200 shadow-sm p-5">
+              <div className="bg-white rounded-xl border border-gray-200 border-t-2 border-t-amber-200 shadow-sm p-5">
                 <p className="text-[11px] text-gray-400 uppercase tracking-wide mb-1">Investido este mês</p>
                 <p className="text-2xl font-bold text-gray-900">
                   R$ {thisMonthTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
@@ -356,7 +356,7 @@ export default function Portal() {
                 <p className="text-[11px] text-gray-400 mt-1">em {thisMonthOrders.length} pedido{thisMonthOrders.length !== 1 ? 's' : ''}</p>
               </div>
 
-              <div className="bg-white rounded-2xl border border-gray-100 border-t-2 border-t-emerald-200 shadow-sm p-5">
+              <div className="bg-white rounded-xl border border-gray-200 border-t-2 border-t-emerald-200 shadow-sm p-5">
                 <p className="text-[11px] text-gray-400 uppercase tracking-wide mb-1">Último pedido</p>
                 {lastOrder ? (
                   <>
@@ -379,14 +379,14 @@ export default function Portal() {
         {!loadingOrders && recentOrders.length > 0 && (
           <section>
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">
+              <h2 className="text-[11px] font-semibold text-gray-500 uppercase tracking-[0.14em]">
                 Pedidos recentes
               </h2>
               <Link to="/meus-pedidos" className="text-xs text-amber-600 font-semibold hover:underline">
                 Ver todos
               </Link>
             </div>
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm divide-y divide-gray-100">
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm divide-y divide-gray-200">
               {recentOrders.map(order => {
                 const status = statusConfig[order.status] ?? { label: order.status, color: 'bg-gray-100 text-gray-600' }
                 const date = new Date(order.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' })
@@ -419,7 +419,7 @@ export default function Portal() {
         {hasHistory && (
           <section>
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">
+              <h2 className="text-[11px] font-semibold text-gray-500 uppercase tracking-[0.14em]">
                 Reabastecimento rápido
               </h2>
               <Link to="/catalogo" className="text-xs text-amber-600 font-semibold hover:underline">
@@ -431,7 +431,7 @@ export default function Portal() {
                 <Link
                   key={name}
                   to="/catalogo"
-                  className="flex items-center gap-3 px-4 py-4 bg-white rounded-xl border border-gray-100 shadow-sm hover:border-amber-200 hover:shadow-md transition-all group"
+                  className="flex items-center gap-3 px-4 py-4 bg-white rounded-xl border border-gray-200 shadow-sm hover:border-amber-200 hover:shadow-md transition-all group"
                 >
                   <div className="w-9 h-9 rounded-lg bg-amber-50 flex items-center justify-center flex-shrink-0">
                     <Package className="w-4 h-4 text-amber-400" />
@@ -451,14 +451,9 @@ export default function Portal() {
         {displayProducts.length > 0 && (
           <section>
             <div className="flex items-center justify-between mb-4">
-              <div>
-                <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">
-                  {topSoldRaw.length > 0 ? 'Mais vendidos' : 'Produtos para seu negócio'}
-                </h2>
-                {topSoldRaw.length > 0 && (
-                  <p className="text-[11px] text-gray-400 mt-0.5">Os produtos mais pedidos pelos parceiros</p>
-                )}
-              </div>
+              <h2 className="text-[11px] font-semibold text-gray-500 uppercase tracking-[0.14em]">
+                {topSoldRaw.length > 0 ? 'Mais vendidos' : 'Produtos para seu negócio'}
+              </h2>
               <Link to="/catalogo" className="text-xs text-amber-600 font-semibold hover:underline flex-shrink-0">
                 Ver tudo
               </Link>
@@ -468,7 +463,7 @@ export default function Portal() {
                 <Link
                   key={product.key}
                   to="/catalogo"
-                  className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden hover:shadow-md hover:border-amber-200 transition-all group"
+                  className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden hover:shadow-md hover:border-amber-200 transition-all group"
                 >
                   <div className="aspect-square bg-gray-50 overflow-hidden">
                     {product.main_image ? (
@@ -514,7 +509,7 @@ export default function Portal() {
         {/* ── 6. Status comercial ───────────────────────────────────────── */}
         {!loadingProfile && (
           <section className="pb-8">
-            <div className="bg-amber-50 rounded-2xl border border-amber-100 p-6 flex flex-col sm:flex-row sm:items-center gap-4">
+            <div className="bg-amber-50 rounded-xl border border-amber-200 p-6 flex flex-col sm:flex-row sm:items-center gap-4">
               <div className="w-12 h-12 rounded-xl bg-amber-100 flex items-center justify-center flex-shrink-0">
                 <Star className="w-6 h-6 text-amber-500 fill-amber-400" />
               </div>

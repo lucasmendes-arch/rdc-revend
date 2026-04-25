@@ -19,18 +19,18 @@ function NavLink({ item, isActive, onClick }: { item: NavItem; isActive: boolean
     <Link
       to={item.path}
       onClick={onClick}
-      className={`relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] font-medium transition-all duration-150 ${
+      className={`relative flex items-center gap-3 px-3 py-2 rounded-md text-[13px] transition-all duration-150 ${
         isActive
-          ? 'bg-amber-50 text-amber-700'
-          : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'
+          ? 'bg-amber-50 text-amber-700 font-medium'
+          : 'text-gray-400 hover:text-gray-700 hover:bg-gray-100/60 font-normal'
       }`}
     >
       {isActive && (
-        <span className="absolute left-0 inset-y-0 flex items-center pl-px">
-          <span className="w-[3px] h-[18px] bg-amber-400 rounded-r-full" />
+        <span className="absolute left-0 inset-y-0 flex items-center">
+          <span className="w-[2px] h-4 bg-amber-500 rounded-r-full" />
         </span>
       )}
-      <Icon className={`w-[15px] h-[15px] flex-shrink-0 ${isActive ? 'text-amber-500' : 'text-gray-400'}`} />
+      <Icon className={`w-[15px] h-[15px] flex-shrink-0 ${isActive ? 'text-amber-500' : 'text-gray-300'}`} />
       <span>{item.label}</span>
     </Link>
   )
@@ -51,14 +51,14 @@ function SidebarContent({ profile, onNavClick }: { profile: { name?: string }; o
   return (
     <div className="flex flex-col h-full">
       {/* Brand */}
-      <div className="px-4 pt-6 pb-5 border-b border-gray-100">
+      <div className="px-4 pt-4 pb-3.5 border-b border-gray-200">
         <Link to="/portal" onClick={onNavClick} className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-amber-50 border border-amber-100 flex items-center justify-center flex-shrink-0 shadow-sm">
-            <img src={logo} alt="Rei dos Cachos" className="h-5 w-auto" />
+          <div className="w-8 h-8 rounded-lg bg-amber-50 border border-amber-100 flex items-center justify-center flex-shrink-0">
+            <img src={logo} alt="Rei dos Cachos" className="h-4 w-auto" />
           </div>
           <div>
-            <p className="text-[13px] font-bold text-gray-900 leading-tight">Rei dos Cachos</p>
-            <p className="text-[10px] text-amber-600 font-semibold tracking-[0.12em] uppercase leading-tight mt-[2px]">
+            <p className="text-[13px] font-semibold text-gray-900 leading-tight">Rei dos Cachos</p>
+            <p className="text-[10px] text-amber-600 font-medium tracking-[0.15em] uppercase leading-tight mt-[2px]">
               Portal do Parceiro
             </p>
           </div>
@@ -66,7 +66,7 @@ function SidebarContent({ profile, onNavClick }: { profile: { name?: string }; o
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 px-3 py-5 space-y-0.5">
+      <nav className="flex-1 px-2 py-3 space-y-0.5">
         {navItems.map(item => (
           <NavLink
             key={item.path}
@@ -78,8 +78,8 @@ function SidebarContent({ profile, onNavClick }: { profile: { name?: string }; o
       </nav>
 
       {/* Footer — user + logout */}
-      <div className="px-3 pb-5 pt-3 border-t border-gray-100 space-y-0.5">
-        <div className="px-3 py-2.5 mb-1 bg-gray-50 rounded-lg">
+      <div className="px-2 pb-4 pt-2 border-t border-gray-200 space-y-0.5">
+        <div className="px-3 py-2 mb-1.5 rounded-md border border-gray-100">
           <p className="text-[12px] font-semibold text-gray-800 truncate leading-tight">{displayName}</p>
           <p className="text-[10px] text-gray-400 truncate mt-[2px]">{user?.email}</p>
         </div>
@@ -87,14 +87,14 @@ function SidebarContent({ profile, onNavClick }: { profile: { name?: string }; o
           href="https://wa.me/5527996865366?text=Ol%C3%A1%2C%20preciso%20de%20ajuda%20com%20meu%20pedido"
           target="_blank"
           rel="noopener noreferrer"
-          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] text-gray-400 hover:text-green-600 hover:bg-green-50 transition-all duration-150"
+          className="w-full flex items-center gap-3 px-3 py-2 rounded-md text-[13px] text-gray-400 hover:text-green-600 hover:bg-green-50 transition-all duration-150"
         >
           <MessageCircle className="w-[15px] h-[15px] flex-shrink-0" />
           <span>Falar com Vendedor</span>
         </a>
         <button
           onClick={handleLogout}
-          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] text-gray-400 hover:text-red-500 hover:bg-red-50 transition-all duration-150"
+          className="w-full flex items-center gap-3 px-3 py-2 rounded-md text-[13px] text-gray-400 hover:text-red-500 hover:bg-red-50 transition-all duration-150"
         >
           <LogOut className="w-[15px] h-[15px] flex-shrink-0" />
           <span>Sair</span>
@@ -113,19 +113,19 @@ export default function PortalLayout({ children, profile = {} }: PortalLayoutPro
   const [mobileOpen, setMobileOpen] = useState(false)
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="min-h-screen bg-gray-100 flex">
       {/* Desktop Sidebar */}
-      <aside className="hidden lg:flex flex-col w-60 bg-white fixed inset-y-0 left-0 z-40 border-r border-gray-100 shadow-sm">
+      <aside className="hidden lg:flex flex-col w-60 bg-white fixed inset-y-0 left-0 z-40 border-r border-gray-200">
         <SidebarContent profile={profile} />
       </aside>
 
       {/* Mobile Header */}
-      <header className="lg:hidden fixed top-0 inset-x-0 z-40 bg-white h-14 flex items-center justify-between px-4 border-b border-gray-100 shadow-sm">
+      <header className="lg:hidden fixed top-0 inset-x-0 z-40 bg-white h-14 flex items-center justify-between px-4 border-b border-gray-200">
         <Link to="/portal" className="flex items-center gap-2.5">
           <div className="w-7 h-7 rounded-lg bg-amber-50 border border-amber-100 flex items-center justify-center">
             <img src={logo} alt="Rei dos Cachos" className="h-4 w-auto" />
           </div>
-          <span className="text-[13px] font-bold text-gray-800">Portal do Parceiro</span>
+          <span className="text-[13px] font-semibold text-gray-800">Portal do Parceiro</span>
         </Link>
         <button
           onClick={() => setMobileOpen(!mobileOpen)}
@@ -140,10 +140,10 @@ export default function PortalLayout({ children, profile = {} }: PortalLayoutPro
       {mobileOpen && (
         <>
           <div
-            className="lg:hidden fixed inset-0 z-40 bg-black/40 backdrop-blur-sm"
+            className="lg:hidden fixed inset-0 z-40 bg-black/60 backdrop-blur-sm"
             onClick={() => setMobileOpen(false)}
           />
-          <div className="lg:hidden fixed top-14 left-0 bottom-0 z-50 bg-white w-64 flex flex-col border-r border-gray-100 shadow-xl">
+          <div className="lg:hidden fixed top-14 left-0 bottom-0 z-50 bg-white w-64 flex flex-col border-r border-gray-200">
             <SidebarContent profile={profile} onNavClick={() => setMobileOpen(false)} />
           </div>
         </>
