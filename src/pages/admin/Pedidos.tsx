@@ -1,9 +1,7 @@
 import { useState, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Loader, ChevronDown, Plus, Globe, Tag, Hand, MessageSquare, UserCheck, Trash2, AlertTriangle, Package, Calendar, Truck, CheckCircle2, Receipt, Pencil, FileText } from 'lucide-react';
+import { Loader, ChevronDown, Plus, Globe, Tag, Hand, MessageSquare, UserCheck, Trash2, AlertTriangle, Package, Calendar, Truck, CheckCircle2, Receipt, Pencil, ImagePlus, Image, X } from 'lucide-react';
 import OrderCouponModal from '@/components/admin/OrderCouponModal';
-import SalesOrderModal from '@/components/admin/SalesOrderModal';
-import type { SalesOrderData } from '@/components/admin/SalesOrderModal';
 import { useAuth } from '@/contexts/AuthContext';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
@@ -33,6 +31,7 @@ interface Order {
   discount_amount?: number;
   origin?: string;
   notes?: string | null;
+  payment_proof_url?: string | null;
   coupon_id?: string | null;
   seller_id?: string | null;
   sellers?: { name: string; code: string | null } | null;
@@ -68,7 +67,9 @@ const AdminPedidos = () => {
   const [filterSeller, setFilterSeller] = useState<string>('');
   const [orderToDelete, setOrderToDelete] = useState<Order | null>(null);
   const [orderToCoupon, setOrderToCoupon] = useState<Order | null>(null);
-  const [orderToSalesDoc, setOrderToSalesDoc] = useState<Order | null>(null);
+  const [orderToProof, setOrderToProof] = useState<Order | null>(null);
+  const [proofFile, setProofFile] = useState<File | null>(null);
+  const [uploadingProof, setUploadingProof] = useState(false);
 
   // Date Filter State
   const [dateFilterType, setDateFilterType] = useState<PeriodPresetKey>('esteMes');
@@ -192,6 +193,42 @@ const AdminPedidos = () => {
       toast.error('Falha ao excluir');
     }
   });
+
+  const updateProofMutation = useMutation({
+    mutationFn: async ({ orderId, url }: { orderId: string; url: string | null }) => {
+      const { error } = await supabase.from('orders').update({ payment_proof_url: url }).eq('id', orderId);
+      if (error) throw error;
+    },
+    onSuccess: (_, { orderId, url }) => {
+      queryClient.setQueryData<Order[]>(
+        ['admin-orders', dateRange.start.toISOString(), dateRange.end.toISOString()],
+        old => old?.map(o => o.id === orderId ? { ...o, payment_proof_url: url } : o)
+      );
+      toast.success(url ? 'Comprovante salvo' : 'Comprovante removido');
+      setOrderToProof(prev => prev?.id === orderId ? { ...prev, payment_proof_url: url } : prev);
+      if (!url) setOrderToProof(null);
+    },
+    onError: () => toast.error('Erro ao salvar comprovante'),
+  });
+
+  const handleProofUpload = async (order: Order) => {
+    if (!proofFile) return;
+    setUploadingProof(true);
+    try {
+      const fileName = `${order.id}-${Date.now()}.jpg`;
+      const { error } = await supabase.storage
+        .from('product-images')
+        .upload(`payment-proofs/${fileName}`, proofFile, { contentType: proofFile.type || 'image/jpeg', upsert: false });
+      if (error) throw error;
+      const { data } = supabase.storage.from('product-images').getPublicUrl(`payment-proofs/${fileName}`);
+      await updateProofMutation.mutateAsync({ orderId: order.id, url: data.publicUrl });
+      setProofFile(null);
+    } catch {
+      toast.error('Erro ao fazer upload');
+    } finally {
+      setUploadingProof(false);
+    }
+  };
 
   const handleDragStart = (e: React.DragEvent, orderId: string) => {
     e.dataTransfer.setData('orderId', orderId);
@@ -404,11 +441,11 @@ const AdminPedidos = () => {
                                 </button>
                               )}
                               <button
-                                onClick={(e) => { e.stopPropagation(); setOrderToSalesDoc(order); }}
-                                className="text-muted-foreground/40 hover:text-amber-600 hover:bg-amber-500/10 p-1.5 rounded-md transition-colors shrink-0"
-                                title="Gerar pedido de venda"
+                                onClick={(e) => { e.stopPropagation(); setOrderToProof(order); setProofFile(null); }}
+                                className={`p-1.5 rounded-md transition-colors shrink-0 ${order.payment_proof_url ? 'text-emerald-500 hover:text-emerald-600 hover:bg-emerald-500/10' : 'text-muted-foreground/40 hover:text-blue-500 hover:bg-blue-500/10'}`}
+                                title={order.payment_proof_url ? 'Ver comprovante' : 'Anexar comprovante'}
                               >
-                                <FileText className="w-4 h-4" />
+                                {order.payment_proof_url ? <Image className="w-4 h-4" /> : <ImagePlus className="w-4 h-4" />}
                               </button>
                               <button
                                 onClick={(e) => { e.stopPropagation(); setOrderToCoupon(order); }}
@@ -548,28 +585,71 @@ const AdminPedidos = () => {
         />
       )}
 
-      {orderToSalesDoc && (() => {
-        const o = orderToSalesDoc;
-        const sub = o.subtotal ?? o.total;
-        const salesData: SalesOrderData = {
-          customer_name: o.customer_name,
-          customer_phone: o.customer_whatsapp,
-          items: o.order_items.map(item => ({
-            product_name: item.product_name_snapshot,
-            quantity: item.qty,
-            unit_price: item.qty > 0 ? item.line_total / item.qty : 0,
-            line_total: item.line_total,
-            main_image: item.catalog_products?.main_image ?? null,
-          })),
-          subtotal: sub,
-          discount_amount: o.discount_amount,
-          total: o.total,
-          notes: o.notes ?? undefined,
-          date: o.created_at,
-          order_number: o.id.slice(0, 8).toUpperCase(),
-        };
-        return <SalesOrderModal data={salesData} onClose={() => setOrderToSalesDoc(null)} />;
-      })()}
+      {orderToProof && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-foreground/30 backdrop-blur-sm">
+          <div className="bg-card rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl border border-border">
+            <div className="p-5">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-bold text-foreground">
+                  Comprovante #{orderToProof.id.slice(0, 8).toUpperCase()}
+                </h3>
+                <button onClick={() => { setOrderToProof(null); setProofFile(null); }} className="text-muted-foreground hover:text-foreground p-1 rounded-lg hover:bg-muted transition-colors">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {orderToProof.payment_proof_url && (
+                <div className="mb-4">
+                  <a href={orderToProof.payment_proof_url} target="_blank" rel="noopener noreferrer">
+                    <img
+                      src={orderToProof.payment_proof_url}
+                      alt="Comprovante"
+                      className="w-full rounded-xl border border-border object-contain max-h-52 bg-muted"
+                    />
+                  </a>
+                  <button
+                    onClick={() => updateProofMutation.mutate({ orderId: orderToProof.id, url: null })}
+                    disabled={updateProofMutation.isPending}
+                    className="mt-2 w-full text-[11px] text-red-500 hover:text-red-600 font-medium disabled:opacity-50"
+                  >
+                    Remover comprovante
+                  </button>
+                </div>
+              )}
+
+              <label className="block cursor-pointer">
+                <div className={`w-full py-3 px-4 rounded-xl border-2 border-dashed transition-colors ${proofFile ? 'border-emerald-400 bg-emerald-50 dark:bg-emerald-950/20' : 'border-border hover:border-muted-foreground/40'}`}>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => setProofFile(e.target.files?.[0] ?? null)}
+                  />
+                  <p className="text-[12px] font-medium text-center text-muted-foreground">
+                    {proofFile ? proofFile.name : orderToProof.payment_proof_url ? 'Substituir imagem' : 'Selecionar comprovante'}
+                  </p>
+                </div>
+              </label>
+
+              <div className="flex gap-2 mt-3">
+                <button
+                  onClick={() => { setOrderToProof(null); setProofFile(null); }}
+                  className="flex-1 py-2.5 bg-card border border-border hover:bg-muted text-foreground rounded-xl text-sm font-bold transition-colors"
+                >
+                  Fechar
+                </button>
+                <button
+                  onClick={() => handleProofUpload(orderToProof)}
+                  disabled={!proofFile || uploadingProof}
+                  className="flex-1 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-bold transition-colors disabled:opacity-40 flex items-center justify-center gap-1.5"
+                >
+                  {uploadingProof ? <Loader className="w-4 h-4 animate-spin" /> : 'Salvar'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {orderToDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-foreground/30 backdrop-blur-sm">
