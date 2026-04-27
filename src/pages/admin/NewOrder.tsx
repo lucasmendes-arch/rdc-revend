@@ -103,6 +103,7 @@ const NewOrder = () => {
   const [deliveryMethod, setDeliveryMethod]       = useState<'shipping' | 'pickup'>('shipping');
   const [pickupUnitSlug, setPickupUnitSlug]       = useState<string | null>(null);
   const [selectedSellerId, setSelectedSellerId]   = useState<string>('');
+  const [shippingValue, setShippingValue]         = useState('');
 
   // -- Modal Criar Cliente --
   const [isCreatingClient, setIsCreatingClient] = useState(false);
@@ -256,13 +257,15 @@ const NewOrder = () => {
     return Math.min(v, subtotal);
   }, [discountValue, discountType, subtotal]);
 
+  const shippingAmount = useMemo(
+    () => deliveryMethod === 'shipping' ? (parseFloat(shippingValue) || 0) : 0,
+    [deliveryMethod, shippingValue]
+  );
+
   const total = useMemo(() => {
-    const baseTotal = Math.max(subtotal - discountAmount, 0);
     const couponDisc = appliedCoupon?.discount_amount || 0;
-    // Note: Manual orders don't have a separate shipping field in this UI, 
-    // but the total should still reflect the coupon discount.
-    return Math.max(baseTotal - couponDisc, 0);
-  }, [subtotal, discountAmount, appliedCoupon]);
+    return Math.max(subtotal + shippingAmount - discountAmount - couponDisc, 0);
+  }, [subtotal, shippingAmount, discountAmount, appliedCoupon]);
 
   // ── Handlers ─────────────────────────────────────────────────────────────────
 
@@ -534,6 +537,7 @@ const NewOrder = () => {
       p_coupon_id:      appliedCoupon?.id || null,
       p_created_at:     createdAt ? new Date(createdAt).toISOString() : null,
       p_seller_id:      selectedSellerId || null,
+      p_shipping:       shippingAmount,
     };
 
     setIsSaving(true);
@@ -936,6 +940,12 @@ const NewOrder = () => {
                 <span>Subtotal</span>
                 <span>R$ {subtotal.toFixed(2)}</span>
               </div>
+              {shippingAmount > 0 && (
+                <div className="flex justify-between items-center text-sm text-muted-foreground">
+                  <span>Frete</span>
+                  <span>+ R$ {shippingAmount.toFixed(2)}</span>
+                </div>
+              )}
               {discountAmount > 0 && (
                 <div className="flex justify-between items-center text-sm text-emerald-600">
                   <span>Desconto Manual</span>
@@ -1088,6 +1098,21 @@ const NewOrder = () => {
                 <span className="font-semibold text-sm">Retirar na Loja</span>
               </label>
             </div>
+
+            {deliveryMethod === 'shipping' && (
+              <div className="flex items-center gap-2">
+                <label className="text-xs font-semibold text-foreground shrink-0">Frete (R$)</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={shippingValue}
+                  onChange={e => setShippingValue(e.target.value)}
+                  placeholder="0,00"
+                  className="w-32 px-3 py-2 rounded-xl border border-input text-sm focus:ring-2 focus:ring-amber-400 focus:outline-none"
+                />
+              </div>
+            )}
 
             {deliveryMethod === 'pickup' && (
               <div className="p-3 bg-surface-alt rounded-xl border border-border space-y-2">
