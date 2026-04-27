@@ -117,11 +117,6 @@ export function useTrackPageView(pageName?: string) {
       event_type: 'visitou', // custom string for page visits if not explicitly in enum
       metadata: { page: pageName || window.location.pathname }
     })
-
-    window.fbq?.('track', 'ViewContent', {
-      content_name: pageName || window.location.pathname,
-      content_type: 'product_group',
-    })
   }, [pageName, user, role])
 }
 

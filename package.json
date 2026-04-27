@@ -10,6 +10,7 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest run",
+    "test:facebook-conversion": "tsx scripts/test-facebook-conversion.ts",
     "test:watch": "vitest",
     "nuvemshop:setup": "node scripts/setup-nuvemshop.js",
     "nuvemshop:token": "node scripts/get-nuvemshop-token.js"
@@ -48,6 +49,7 @@
     "@radix-ui/react-tooltip": "^1.2.7",
     "@supabase/supabase-js": "^2.97.0",
     "@tanstack/react-query": "^5.83.0",
+    "axios": "^1.15.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
@@ -91,6 +93,7 @@
     "postcss": "^8.5.6",
     "supabase": "^2.76.12",
     "tailwindcss": "^3.4.17",
+    "tsx": "^4.21.0",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.38.0",
     "vite": "^5.4.19",

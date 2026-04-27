@@ -9,6 +9,8 @@ Executar no **Supabase Dashboard > SQL Editor**, bloco por bloco.
 |---|---|---|
 | `test_partner_order_webhook.sql` | Disparo do webhook n8n em pedidos de parceiros, payload com kits expandidos e separation_list por categoria | `build_partner_order_payload`, `send_pending_partner_order_webhooks` |
 | `test_webhook_revoke_execute.sql` | Valida que PUBLIC/anon/authenticated não têm EXECUTE nas funções de webhook; confirma owner e SECURITY DEFINER intactos | `build_partner_order_payload`, `send_pending_partner_order_webhooks` |
+| `test_create_order.sh` | Versão manual da edge function create-order (requer JWT e product IDs preenchidos à mão) | `create-order` (edge function) |
+| `test_create_order_auto.js` | Versão automatizada: lê .env.local, busca produtos reais, cria usuário temporário, roda 6 casos e limpa tudo. Detecta verify_jwt bloqueando ES256 e orienta sobre deploy. | `create-order` (edge function) |
 
 ## Convenções
 

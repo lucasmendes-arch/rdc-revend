@@ -2,12 +2,13 @@ import { useMemo, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import {
-  Package, ShoppingBag, ShoppingCart, ClipboardList, ArrowRight, Star,
-  ChevronLeft, ChevronRight, TrendingUp,
+  Package, ShoppingBag, ShoppingCart, ArrowRight,
+  ChevronLeft, ChevronRight, MessageCircle,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import PortalLayout from '@/components/portal/PortalLayout'
+import { PortalPageHeader } from '@/components/portal/PortalPageHeader'
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -33,6 +34,11 @@ interface CarouselProduct {
   price: number | null; partner_price: number | null; compare_at_price: number | null
 }
 
+interface PortalBanner {
+  id: string; title: string; badge_text: string
+  image_url: string | null; redirect_url: string
+}
+
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 
 const statusConfig: Record<string, { label: string; color: string }> = {
@@ -53,17 +59,6 @@ function isThisMonth(dateStr: string): boolean {
   return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
 }
 
-// FUTURAMENTE: gamificação com níveis Bronze/Prata/Ouro por volume mensal.
-function resolveCommercialLabel(p: Profile | null | undefined): { label: string; description: string } {
-  if (!p) return { label: 'Parceiro', description: 'Acesse seu catálogo exclusivo' }
-  if (p.customer_segment === 'network_partner') return { label: 'Parceiro de Rede', description: 'Preços de rede e entrega exclusiva' }
-  if (p.is_partner)             return { label: 'Parceiro',       description: 'Preços e condições especiais' }
-  if (p.business_type === 'salao')  return { label: 'Salão Parceiro', description: 'Produtos profissionais para salão' }
-  if (p.business_type === 'revenda') return { label: 'Revendedor',    description: 'Catálogo completo para revenda' }
-  if (p.business_type === 'loja')    return { label: 'Loja Parceira', description: 'Condições para lojistas parceiros' }
-  return { label: 'Parceiro', description: 'Acesse seu catálogo exclusivo' }
-}
-
 // Preço de revenda sugerido — mesmo cálculo do Catalogo.tsx
 function getSuggestedPrice(price: number, compareAt: number | null): number {
   if (compareAt != null && compareAt > 0) return compareAt
@@ -82,6 +77,97 @@ function Skeleton({ className }: { className?: string }) {
   return <div className={`animate-pulse bg-gray-100 rounded-lg ${className ?? ''}`} />
 }
 
+// ─── EditorialBanner — Lançamentos ────────────────────────────────────────────
+// Estilo magazine/story: foto full-bleed + gradiente + texto overlay, sem preço.
+
+const UNSPLASH_FALLBACKS = [
+  'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=600&fit=crop&auto=format',
+  'https://images.unsplash.com/photo-1571781926291-c477ebfd024b?w=600&fit=crop&auto=format',
+  'https://images.unsplash.com/photo-1607748862156-7c548e7e98f4?w=600&fit=crop&auto=format',
+  'https://images.unsplash.com/photo-1616394584738-fc6e612e71b9?w=600&fit=crop&auto=format',
+  'https://images.unsplash.com/photo-1527799820374-dcf8d9d4a388?w=600&fit=crop&auto=format',
+  'https://images.unsplash.com/photo-1585751119414-ef2636f8aede?w=600&fit=crop&auto=format',
+]
+
+function EditorialBanner({ banners, loading }: { banners: PortalBanner[]; loading?: boolean }) {
+  const ref = useRef<HTMLDivElement>(null)
+
+  if (!loading && banners.length === 0) return null
+
+  return (
+    <section>
+      <div className="px-4 sm:px-6 flex items-center justify-between mb-2.5">
+        <div className="flex items-center gap-2">
+          <h2 className="text-[11px] font-semibold text-gray-500 uppercase tracking-[0.14em]">Lançamentos</h2>
+          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 uppercase tracking-wide">Novo</span>
+        </div>
+        <Link to="/catalogo" className="text-[11px] text-amber-600 font-semibold hover:underline">Ver tudo</Link>
+      </div>
+
+      {loading ? (
+        <div className="flex gap-3 overflow-hidden px-4 sm:px-6">
+          {[1, 2, 3].map(i => <Skeleton key={i} className="flex-shrink-0 w-[82vw] sm:w-80 h-52 rounded-2xl" />)}
+        </div>
+      ) : (
+        <div
+          ref={ref}
+          className="overflow-x-auto scrollbar-none pb-2"
+          style={{ scrollSnapType: 'x mandatory', scrollPaddingInlineStart: '1rem' }}
+        >
+          <div className="flex gap-3 px-4 sm:px-6">
+            {banners.map((banner, i) => {
+              const photo = banner.image_url || UNSPLASH_FALLBACKS[i % UNSPLASH_FALLBACKS.length]
+              const isExternal = banner.redirect_url.startsWith('http')
+              const cardClass = "relative flex-shrink-0 w-[82vw] sm:w-80 h-52 sm:h-56 rounded-2xl overflow-hidden group"
+              const cardContent = (
+                <>
+                  <img
+                    src={photo}
+                    alt={banner.title}
+                    loading="lazy"
+                    decoding="async"
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
+                  <div className="absolute bottom-0 left-0 right-0 p-4">
+                    <span className="inline-block text-[9px] font-bold px-2 py-0.5 rounded-full bg-amber-400/90 text-white uppercase tracking-widest mb-2">
+                      ✦ {banner.badge_text}
+                    </span>
+                    <p className="text-white font-bold text-[15px] leading-snug line-clamp-2 mb-2">
+                      {banner.title}
+                    </p>
+                    <p className="text-amber-300 text-[12px] font-semibold flex items-center gap-1">
+                      Descobrir <ArrowRight className="w-3 h-3" />
+                    </p>
+                  </div>
+                </>
+              )
+              return isExternal ? (
+                <a
+                  key={banner.id}
+                  href={banner.redirect_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ scrollSnapAlign: 'start' }}
+                  className={cardClass}
+                >{cardContent}</a>
+              ) : (
+                <Link
+                  key={banner.id}
+                  to={banner.redirect_url}
+                  style={{ scrollSnapAlign: 'start' }}
+                  className={cardClass}
+                >{cardContent}</Link>
+              )
+            })}
+            <div className="flex-shrink-0 w-4 sm:w-6" aria-hidden />
+          </div>
+        </div>
+      )}
+    </section>
+  )
+}
+
 // ─── ProductCarousel ───────────────────────────────────────────────────────────
 // Full-bleed mobile pattern:
 // -mx-4 sm:-mx-6 → scroll container = viewport width → iOS Safari reconhece
@@ -96,12 +182,12 @@ function ProductCarousel({ title, products, loading, badge }: {
 }) {
   const ref = useRef<HTMLDivElement>(null)
   const scroll = (dir: -1 | 1) =>
-    ref.current?.scrollBy({ left: dir * 176, behavior: 'smooth' })
+    ref.current?.scrollBy({ left: dir * 216, behavior: 'smooth' })
 
   return (
     <section>
       {/* cabeçalho da seção */}
-      <div className="flex items-center justify-between mb-2.5">
+      <div className="px-4 sm:px-6 flex items-center justify-between mb-2.5">
         <div className="flex items-center gap-2">
           <h2 className="text-[11px] font-semibold text-gray-500 uppercase tracking-[0.14em]">
             {title}
@@ -113,64 +199,58 @@ function ProductCarousel({ title, products, loading, badge }: {
           )}
         </div>
         <div className="flex items-center gap-0.5">
-          <button onClick={() => scroll(-1)} className="p-1 rounded-md text-gray-300 hover:text-gray-500 hover:bg-gray-100 transition-colors" aria-label="Anterior">
-            <ChevronLeft className="w-4 h-4" />
-          </button>
-          <button onClick={() => scroll(1)} className="p-1 rounded-md text-gray-300 hover:text-gray-500 hover:bg-gray-100 transition-colors" aria-label="Próximo">
-            <ChevronRight className="w-4 h-4" />
-          </button>
-          <Link to="/catalogo" className="text-[11px] text-amber-600 font-semibold hover:underline ml-1">
+          <span className="hidden sm:inline-flex items-center gap-0.5">
+            <button onClick={() => scroll(-1)} className="p-1 rounded-md text-gray-300 hover:text-gray-500 hover:bg-gray-100 transition-colors" aria-label="Anterior">
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <button onClick={() => scroll(1)} className="p-1 rounded-md text-gray-300 hover:text-gray-500 hover:bg-gray-100 transition-colors" aria-label="Próximo">
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </span>
+          <Link to="/catalogo" className="text-[11px] text-amber-600 font-semibold hover:underline sm:ml-1">
             Ver tudo
           </Link>
         </div>
       </div>
 
       {loading ? (
-        <div className="flex gap-2.5 overflow-hidden">
-          {[1, 2, 3].map(i => <Skeleton key={i} className="flex-shrink-0 w-40 h-52" />)}
+        <div className="flex gap-4 overflow-hidden px-4 sm:px-6">
+          {[1, 2, 3].map(i => <Skeleton key={i} className="flex-shrink-0 w-[280px] h-[300px]" />)}
         </div>
       ) : products.length === 0 ? (
-        <p className="text-[12px] text-gray-400 py-1">Nenhum produto disponível.</p>
+        <p className="px-4 sm:px-6 text-[12px] text-gray-400 py-1">Nenhum produto disponível.</p>
       ) : (
         <div
           ref={ref}
-          className="-mx-4 sm:-mx-6 overflow-x-auto scrollbar-none pb-2"
+          className="overflow-x-auto scrollbar-none pb-2"
           style={{ scrollSnapType: 'x mandatory', scrollPaddingInlineStart: '1rem' }}
         >
-          <div className="flex gap-2.5 px-4 sm:px-6">
+          <div className="flex gap-4 px-4 sm:px-6">
             {products.map(product => {
               const cost   = getCostPrice(product.price, product.partner_price)
               const resale = product.price != null
                 ? getSuggestedPrice(product.price, product.compare_at_price)
                 : null
-              // Margem: ((preço_sugerido - custo) / custo) × 100
               const margin = cost > 0 && resale != null
                 ? Math.round(((resale - cost) / cost) * 100)
                 : null
 
               return (
-                /*
-                 * Card com duas zonas interativas separadas (HTML válido):
-                 * 1. Link na área da imagem + info → abre catálogo
-                 * 2. Link CTA "Adicionar ao Carrinho" → abre catálogo
-                 * Não usar <Link> único em volta de tudo pois impede botão interno.
-                 */
                 <div
                   key={product.key}
                   style={{ scrollSnapAlign: 'start' }}
-                  className="flex-shrink-0 w-[152px] bg-white rounded-xl border border-gray-200 overflow-hidden hover:border-amber-300 hover:shadow-md transition-all group flex flex-col"
+                  className="flex-shrink-0 w-[200px] bg-gray-50 rounded-xl border border-gray-200 overflow-hidden hover:border-amber-300 hover:shadow-md transition-all group flex flex-col"
                 >
                   {/* ── Zona clicável: imagem + info ── */}
                   <Link to="/catalogo" className="block flex-1">
-                    {/* Imagem — lazy loading nativo HTML5 */}
-                    <div className="relative h-[120px] bg-gray-50 overflow-hidden">
+                    <div className="h-[130px] bg-gray-50 flex items-center justify-center overflow-hidden">
                       {product.main_image ? (
                         <img
                           src={product.main_image}
                           alt={product.name}
                           loading="lazy"
                           decoding="async"
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          className="w-full h-full object-contain p-2"
                         />
                       ) : (
                         <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-amber-50 to-orange-50">
@@ -182,40 +262,25 @@ function ProductCarousel({ title, products, loading, badge }: {
                       )}
                     </div>
 
-                    {/* Info */}
-                    <div className="p-2.5 pb-2">
+                    <div className="p-3 pb-2">
                       <p className="text-[12px] font-semibold text-gray-800 line-clamp-2 leading-snug min-h-[32px]">
                         {product.name}
                       </p>
 
                       {product.price != null && (
-                        <div className="mt-2 space-y-1">
-                          {/* Custo — linha secundária, menor */}
-                          <p className="text-[10px] text-gray-400 leading-none">
-                            Custo:{' '}
-                            <span className="font-semibold text-gray-600">
-                              R$ {cost.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                            </span>
+                        <div className="mt-2 space-y-0.5">
+                          <p className="text-[17px] font-bold text-gray-900 leading-none">
+                            R$ {cost.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                           </p>
-
-                          {/* Margem — destaque em verde, comunica lucro */}
                           {margin != null && (
-                            <p className="text-[12px] font-bold text-emerald-600 leading-none flex items-center gap-0.5">
-                              <span className="text-emerald-500">↑</span>
-                              {margin}% margem
+                            <p className="text-[11px] font-bold text-emerald-600 leading-none flex items-center gap-0.5">
+                              <span>↑</span>{margin}% margem
                             </p>
                           )}
-
-                          {/* Preço Sugerido — principal */}
                           {resale != null && (
-                            <div className="pt-1 border-t border-gray-100">
-                              <p className="text-[9px] text-gray-400 uppercase tracking-wide leading-none mb-0.5">
-                                Preço Sugerido
-                              </p>
-                              <p className="text-[15px] font-bold text-gray-900 leading-tight">
-                                R$ {resale.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                              </p>
-                            </div>
+                            <p className="text-[10px] text-gray-400 leading-none">
+                              Venda: R$ {resale.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                            </p>
                           )}
                         </div>
                       )}
@@ -223,10 +288,10 @@ function ProductCarousel({ title, products, loading, badge }: {
                   </Link>
 
                   {/* ── CTA ── */}
-                  <div className="px-2.5 pb-2.5">
+                  <div className="px-3 pb-3">
                     <Link
                       to="/catalogo"
-                      className="flex items-center justify-center gap-1.5 w-full py-2 rounded-lg bg-amber-500 hover:bg-amber-600 active:bg-amber-700 text-white text-[11px] font-bold transition-colors"
+                      className="flex items-center justify-center gap-1.5 w-full py-2.5 rounded-lg bg-amber-500 hover:bg-amber-600 active:bg-amber-700 text-white text-[11px] font-bold transition-colors"
                     >
                       <ShoppingCart className="w-3 h-3" />
                       Pedir agora
@@ -235,8 +300,8 @@ function ProductCarousel({ title, products, loading, badge }: {
                 </div>
               )
             })}
-            {/* spacer — garante visibilidade do último card */}
-            <div className="flex-shrink-0 w-4 sm:w-6" aria-hidden />
+            {/* spacer — garante visibilidade total do último card ao scrollar */}
+            <div className="flex-shrink-0 w-4 sm:w-8" aria-hidden />
           </div>
         </div>
       )}
@@ -294,17 +359,16 @@ export default function Portal() {
     staleTime: 15 * 60 * 1000,
   })
 
-  const { data: newArrivals = [], isLoading: loadingNewArrivals } = useQuery<CatalogProduct[]>({
-    queryKey: ['portal-new-arrivals'],
+  const { data: banners = [], isLoading: loadingBanners } = useQuery<PortalBanner[]>({
+    queryKey: ['portal-banners'],
     queryFn: async () => {
       const { data } = await supabase
-        .from('catalog_products')
-        .select('id, name, main_image, price, partner_price, compare_at_price')
-        .eq('is_new_arrival', true)
+        .from('portal_banners')
+        .select('id, title, badge_text, image_url, redirect_url')
         .eq('is_active', true)
-        .order('created_at', { ascending: false })
+        .order('sort_order', { ascending: true })
         .limit(10)
-      return (data ?? []) as CatalogProduct[]
+      return (data ?? []) as PortalBanner[]
     },
     staleTime: 10 * 60 * 1000,
   })
@@ -344,16 +408,8 @@ export default function Portal() {
   })
 
   const topSoldProducts    = useMemo<CarouselProduct[]>(() => topSoldRaw.map(p => ({ key: p.product_name, name: p.product_name, main_image: p.main_image, price: p.price, partner_price: p.partner_price, compare_at_price: p.compare_at_price })), [topSoldRaw])
-  const newArrivalsCarousel = useMemo<CarouselProduct[]>(() => newArrivals.map(toCarousel), [newArrivals])
   const recommendedCarousel = useMemo<CarouselProduct[]>(() => recommended.map(toCarousel), [recommended])
 
-  const commercial  = resolveCommercialLabel(profile)
-  const displayName = profile?.full_name ?? user?.email?.split('@')[0] ?? 'Parceiro'
-  const subtitle    = profile?.business_type === 'salao'   ? 'Reabasteça seu salão e pedidos'
-                    : profile?.business_type === 'revenda' ? 'Gerencie seu estoque de revenda'
-                    : profile?.business_type === 'loja'    ? 'Gerencie o estoque da sua loja'
-                    : 'Pedidos, reposição e catálogo B2B'
-  const greeting    = new Date().getHours() < 12 ? 'Bom dia' : new Date().getHours() < 18 ? 'Boa tarde' : 'Boa noite'
   const recentOrders = orders.slice(0, 3)
   const hasOrders    = !loadingOrders && orders.length > 0
 
@@ -361,113 +417,52 @@ export default function Portal() {
 
   return (
     <PortalLayout profile={{ name: profile?.full_name ?? undefined }}>
-      {/* overflow-x-hidden já está no <main> do PortalLayout — sem wrapper extra aqui */}
-      <div className="px-4 sm:px-6 pt-5 pb-24 sm:pb-10 max-w-4xl mx-auto space-y-6">
+      {/* Sem padding horizontal no container raiz — cada seção define o próprio px-4 sm:px-6.
+          Carrosséis ficam naturalmente full-width sem math de negative margin. */}
+      <div className="pt-5 pb-28 sm:pb-10 space-y-5 sm:space-y-6">
 
-          {/* ── 1. Header ──────────────────────────────────────────────── */}
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex-1 min-w-0">
-              {loadingProfile ? (
-                <><Skeleton className="h-6 w-40 mb-1.5" /><Skeleton className="h-3.5 w-28" /></>
-              ) : (
-                <>
-                  <h1 className="text-lg sm:text-xl font-bold text-gray-900 leading-tight">
-                    {greeting}, {displayName} 👋
-                  </h1>
-                  <p className="text-[12px] text-gray-500 mt-0.5">{subtitle}</p>
-                </>
-              )}
-            </div>
-            {!loadingProfile && (
-              <span className="flex-shrink-0 inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-700 text-[11px] font-semibold whitespace-nowrap">
-                <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
-                {commercial.label}
-              </span>
-            )}
+          {/* ── 1 + 2. Header + atalhos ─────────────────────────────────── */}
+          <div className="px-4 sm:px-6">
+            <PortalPageHeader
+              profile={profile}
+              loadingProfile={loadingProfile}
+              orders={orders}
+              loadingOrders={loadingOrders}
+            />
           </div>
-
-          {/* ── 2. Atalhos ─────────────────────────────────────────────────
-               Mobile  : linhas full-width (flex-row) — garante zero overflow
-               sm+     : 3 colunas compactas (flex-col, ícone + label)       */}
-          <section>
-            <div className="flex flex-col sm:grid sm:grid-cols-3 gap-2">
-
-              <Link to="/catalogo"
-                className="flex items-center gap-3 p-3.5 sm:flex-col sm:items-center sm:gap-1.5 sm:p-3 bg-white rounded-xl border border-gray-200 hover:border-amber-200 hover:shadow-sm transition-all group"
-              >
-                <div className="w-9 h-9 rounded-xl bg-amber-50 flex items-center justify-center flex-shrink-0 group-hover:bg-amber-100 transition-colors">
-                  <ShoppingBag className="w-4 h-4 text-amber-500" />
-                </div>
-                <div className="flex-1 min-w-0 sm:text-center">
-                  <p className="text-[13px] sm:text-[11px] font-semibold text-gray-800 leading-tight">
-                    {orders.length === 0 && !loadingOrders ? 'Comprar agora' : 'Repor estoque'}
-                  </p>
-                  <p className="text-[11px] text-gray-500 sm:hidden">Catálogo completo B2B</p>
-                </div>
-                <ArrowRight className="w-4 h-4 text-gray-300 group-hover:text-amber-400 flex-shrink-0 sm:hidden" />
-              </Link>
-
-              <Link to="/meus-pedidos"
-                className="flex items-center gap-3 p-3.5 sm:flex-col sm:items-center sm:gap-1.5 sm:p-3 bg-white rounded-xl border border-gray-200 hover:border-indigo-200 hover:shadow-sm transition-all group"
-              >
-                <div className="w-9 h-9 rounded-xl bg-indigo-50 flex items-center justify-center flex-shrink-0 group-hover:bg-indigo-100 transition-colors">
-                  <ClipboardList className="w-4 h-4 text-indigo-500" />
-                </div>
-                <div className="flex-1 min-w-0 sm:text-center">
-                  <p className="text-[13px] sm:text-[11px] font-semibold text-gray-800 leading-tight">Acompanhar pedidos</p>
-                  <p className="text-[11px] text-gray-500 sm:hidden">Status em tempo real</p>
-                </div>
-                <ArrowRight className="w-4 h-4 text-gray-300 group-hover:text-amber-400 flex-shrink-0 sm:hidden" />
-              </Link>
-
-              <Link to="/meus-pedidos"
-                className="flex items-center gap-3 p-3.5 sm:flex-col sm:items-center sm:gap-1.5 sm:p-3 bg-white rounded-xl border border-gray-200 hover:border-emerald-200 hover:shadow-sm transition-all group"
-              >
-                <div className="w-9 h-9 rounded-xl bg-emerald-50 flex items-center justify-center flex-shrink-0 group-hover:bg-emerald-100 transition-colors">
-                  <Package className="w-4 h-4 text-emerald-500" />
-                </div>
-                <div className="flex-1 min-w-0 sm:text-center">
-                  <p className="text-[13px] sm:text-[11px] font-semibold text-gray-800 leading-tight">Histórico de compras</p>
-                  <p className="text-[11px] text-gray-500 sm:hidden">Todos os seus pedidos</p>
-                </div>
-                <ArrowRight className="w-4 h-4 text-gray-300 group-hover:text-amber-400 flex-shrink-0 sm:hidden" />
-              </Link>
-
-            </div>
-          </section>
 
           {/* ── 3. Resumo do mês — omitido quando vazio ─────────────────── */}
           {loadingOrders ? (
-            <section>
+            <section className="px-4 sm:px-6">
               <Skeleton className="h-3 w-24 mb-3" />
               <div className="grid grid-cols-3 gap-2">
                 {[1, 2, 3].map(i => <Skeleton key={i} className="h-16" />)}
               </div>
             </section>
           ) : hasOrders && (
-            <section>
+            <section className="px-4 sm:px-6">
               <h2 className="text-[11px] font-semibold text-gray-500 uppercase tracking-[0.14em] mb-2.5">
                 Resumo do mês
               </h2>
               {/* 3 colunas sempre — cards compactos no mobile */}
               <div className="grid grid-cols-3 gap-2">
                 <div className="bg-white rounded-xl border border-gray-200 border-t-2 border-t-indigo-300 p-3">
-                  <p className="text-[9px] text-gray-500 uppercase tracking-wide leading-none mb-1">Pedidos</p>
+                  <p className="text-[10px] text-gray-500 uppercase tracking-wide leading-none mb-1">Pedidos</p>
                   <p className="text-xl font-bold text-gray-900 leading-none">{thisMonthOrders.length}</p>
                   {activeOrders.length > 0 && (
-                    <p className="text-[9px] text-indigo-600 font-medium mt-1 leading-none">{activeOrders.length} em aberto</p>
+                    <p className="text-[10px] text-indigo-600 font-medium mt-1 leading-none">{activeOrders.length} em aberto</p>
                   )}
                 </div>
 
                 <div className="bg-white rounded-xl border border-gray-200 border-t-2 border-t-amber-300 p-3">
-                  <p className="text-[9px] text-gray-500 uppercase tracking-wide leading-none mb-1">Investido</p>
+                  <p className="text-[10px] text-gray-500 uppercase tracking-wide leading-none mb-1">Investido</p>
                   <p className="text-sm font-bold text-gray-900 leading-tight">
                     R$ {thisMonthTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                   </p>
                 </div>
 
                 <div className="bg-white rounded-xl border border-gray-200 border-t-2 border-t-emerald-300 p-3">
-                  <p className="text-[9px] text-gray-500 uppercase tracking-wide leading-none mb-1">Último</p>
+                  <p className="text-[10px] text-gray-500 uppercase tracking-wide leading-none mb-1">Último</p>
                   {lastOrder ? (
                     <>
                       <p className="text-[11px] font-bold text-gray-800 leading-none">
@@ -483,13 +478,8 @@ export default function Portal() {
             </section>
           )}
 
-          {/* ── 4. Lançamentos ─────────────────────────────────────────── */}
-          <ProductCarousel
-            title="Lançamentos"
-            products={newArrivalsCarousel}
-            loading={loadingNewArrivals}
-            badge="Novo"
-          />
+          {/* ── 4. Lançamentos — editorial/magazine, sem preço ─────────── */}
+          <EditorialBanner banners={banners} loading={loadingBanners} />
 
           {/* ── 5. Mais Vendidos ───────────────────────────────────────── */}
           <ProductCarousel
@@ -508,7 +498,7 @@ export default function Portal() {
 
           {/* ── 7. Pedidos recentes ────────────────────────────────────── */}
           {!loadingOrders && recentOrders.length > 0 && (
-            <section>
+            <section className="px-4 sm:px-6">
               <div className="flex items-center justify-between mb-2.5">
                 <h2 className="text-[11px] font-semibold text-gray-500 uppercase tracking-[0.14em]">
                   Pedidos recentes
@@ -546,7 +536,7 @@ export default function Portal() {
 
           {/* ── 8. Reabastecimento rápido ──────────────────────────────── */}
           {topBoughtProducts.length > 0 && (
-            <section>
+            <section className="px-4 sm:px-6">
               <div className="flex items-center justify-between mb-2.5">
                 <h2 className="text-[11px] font-semibold text-gray-500 uppercase tracking-[0.14em]">
                   Reabastecimento rápido
@@ -574,30 +564,33 @@ export default function Portal() {
             </section>
           )}
 
-          {/* ── 9. Nível comercial — compacto, sem CTA (está no FAB) ──── */}
-          {!loadingProfile && (
-            <section>
-              <div className="flex items-center gap-3 p-4 bg-amber-50 rounded-xl border border-amber-200">
-                <div className="w-9 h-9 rounded-xl bg-amber-100 flex items-center justify-center flex-shrink-0">
-                  <TrendingUp className="w-4 h-4 text-amber-600" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-[13px] font-bold text-amber-900">{commercial.label}</p>
-                  <p className="text-[11px] text-amber-700 mt-px">{commercial.description}</p>
-                  {/* FUTURAMENTE: barra de progresso Bronze/Prata/Ouro por volume mensal */}
-                </div>
+          {/* ── 9. Falar com Vendedor — WhatsApp ──────────────────────── */}
+          <section className="px-4 sm:px-6">
+            <a
+              href="https://wa.me/5527996865366?text=Ol%C3%A1%2C%20preciso%20de%20ajuda%20com%20meu%20pedido"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-3 p-4 bg-green-500 hover:bg-green-600 active:bg-green-700 rounded-xl transition-colors group"
+            >
+              <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center flex-shrink-0">
+                <MessageCircle className="w-4 h-4 text-white" />
               </div>
-            </section>
-          )}
+              <div className="flex-1 min-w-0">
+                <p className="text-[13px] font-bold text-white leading-tight">Falar com Vendedor</p>
+                <p className="text-[11px] text-green-100 mt-px">Tire dúvidas ou faça seu pedido pelo WhatsApp</p>
+              </div>
+              <ArrowRight className="w-4 h-4 text-white/70 group-hover:text-white flex-shrink-0 transition-colors" />
+            </a>
+          </section>
 
       </div>{/* fim conteúdo */}
 
       {/* ── FAB — CTA fixo no mobile ──────────────────────────────────────
            lg:hidden — no desktop o CTA está na sidebar e nos atalhos
            shadow-amber garante destaque sobre o conteúdo                */}
-      <div className="fixed bottom-0 inset-x-0 px-4 pb-4 pt-2 z-50 lg:hidden bg-gradient-to-t from-gray-100 via-gray-100/95 to-transparent pointer-events-none">
+      <div className="fixed bottom-0 inset-x-0 px-4 pb-6 pt-2 z-50 lg:hidden bg-gradient-to-t from-gray-100 via-gray-100/95 to-transparent pointer-events-none">
         <Link
-          to="/catalogo"
+          to="/portal/comprar"
           className="pointer-events-auto flex items-center justify-center gap-2 w-full py-3.5 rounded-2xl bg-amber-500 active:bg-amber-600 text-white font-bold text-[14px] shadow-lg shadow-amber-500/40 active:scale-[0.98] transition-all"
         >
           <ShoppingBag className="w-4 h-4" />

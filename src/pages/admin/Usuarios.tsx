@@ -666,19 +666,19 @@ function ClientSidePanel({
           )}
 
           {/* Dados do Cadastro */}
-          <div className="px-5 py-4 border-b border-zinc-200">
+          <div className="px-5 py-4 border-b border-border">
             <div className="flex items-center justify-between mb-3.5">
-              <h3 className="text-[11px] font-bold text-zinc-400 uppercase tracking-widest">Dados do Cadastro</h3>
+              <h3 className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest">Dados do Cadastro</h3>
               {!editingProfile ? (
                 <button onClick={() => {
                   setProfileForm({ full_name: client.full_name ?? '', phone: client.phone ?? '', document_type: client.document_type ?? '', document: client.document ?? '', business_type: client.business_type ?? '', employees: client.employees ?? '', revenue: client.revenue ?? '' })
                   setEditingProfile(true)
-                }} className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium text-zinc-600 hover:bg-zinc-100 border border-zinc-200 transition-colors">
+                }} className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium text-foreground/70 hover:bg-accent border border-border transition-colors">
                   <Edit2 className="w-3.5 h-3.5" />Editar
                 </button>
               ) : (
                 <button onClick={() => setEditingProfile(false)}
-                  className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium text-zinc-400 hover:bg-zinc-50 transition-colors">
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium text-muted-foreground hover:bg-accent transition-colors">
                   <X className="w-3.5 h-3.5" />Cancelar
                 </button>
               )}
@@ -688,18 +688,18 @@ function ClientSidePanel({
               <div className="space-y-3">
                 <FormField label="Nome completo">
                   <input type="text" value={profileForm.full_name} onChange={e => setProfileForm(p => ({ ...p, full_name: e.target.value }))}
-                    className="w-full px-3 py-2 text-sm rounded-lg border border-zinc-200 bg-white focus:outline-none focus:ring-2 focus:ring-zinc-400" autoFocus />
+                    className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring" autoFocus />
                 </FormField>
                 <FormField label="WhatsApp / Telefone">
                   <input type="text" value={profileForm.phone} onChange={e => setProfileForm(p => ({ ...p, phone: e.target.value }))}
-                    className="w-full px-3 py-2 text-sm rounded-lg border border-zinc-200 bg-white focus:outline-none focus:ring-2 focus:ring-zinc-400"
+                    className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                     placeholder="Ex: 5527999990000" />
                 </FormField>
                 <div className="flex gap-2">
                   <div className="w-24">
                     <FormField label="Tipo doc.">
                       <select value={profileForm.document_type} onChange={e => setProfileForm(p => ({ ...p, document_type: e.target.value }))}
-                        className="w-full px-2 py-2 text-sm rounded-lg border border-zinc-200 bg-white focus:outline-none focus:ring-2 focus:ring-zinc-400">
+                        className="w-full px-2 py-2 text-sm rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring">
                         <option value="">—</option><option value="CPF">CPF</option><option value="CNPJ">CNPJ</option>
                       </select>
                     </FormField>
@@ -707,34 +707,34 @@ function ClientSidePanel({
                   <div className="flex-1">
                     <FormField label="Número">
                       <input type="text" value={profileForm.document} onChange={e => setProfileForm(p => ({ ...p, document: e.target.value }))}
-                        className="w-full px-3 py-2 text-sm rounded-lg border border-zinc-200 bg-white focus:outline-none focus:ring-2 focus:ring-zinc-400"
+                        className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                         placeholder="000.000.000-00" />
                     </FormField>
                   </div>
                 </div>
                 <FormField label="Tipo de atuação">
                   <select value={profileForm.business_type} onChange={e => setProfileForm(p => ({ ...p, business_type: e.target.value }))}
-                    className="w-full px-3 py-2 text-sm rounded-lg border border-zinc-200 bg-white focus:outline-none focus:ring-2 focus:ring-zinc-400">
+                    className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring">
                     <option value="">Não informado</option>
                     {Object.entries(businessTypeLabels).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                   </select>
                 </FormField>
                 <FormField label="Funcionários">
                   <select value={profileForm.employees} onChange={e => setProfileForm(p => ({ ...p, employees: e.target.value }))}
-                    className="w-full px-3 py-2 text-sm rounded-lg border border-zinc-200 bg-white focus:outline-none focus:ring-2 focus:ring-zinc-400">
+                    className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring">
                     <option value="">Não informado</option>
                     {Object.entries(employeesLabels).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                   </select>
                 </FormField>
                 <FormField label="Faturamento estimado">
                   <select value={profileForm.revenue} onChange={e => setProfileForm(p => ({ ...p, revenue: e.target.value }))}
-                    className="w-full px-3 py-2 text-sm rounded-lg border border-zinc-200 bg-white focus:outline-none focus:ring-2 focus:ring-zinc-400">
+                    className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring">
                     <option value="">Não informado</option>
                     {Object.entries(revenueLabels).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                   </select>
                 </FormField>
                 <button onClick={() => profileMutation.mutate(profileForm)} disabled={profileMutation.isPending}
-                  className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-zinc-900 text-white text-sm font-medium disabled:opacity-50 hover:bg-zinc-700 transition-colors">
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-lg btn-action text-sm font-medium disabled:opacity-50 transition-colors">
                   {profileMutation.isPending ? <Loader className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
                   Salvar alterações
                 </button>
@@ -749,7 +749,7 @@ function ClientSidePanel({
                 {client.employees  && <InfoRow icon={Users}     label="Funcionários"        value={employeesLabels[client.employees] || client.employees} />}
                 {client.revenue    && <InfoRow icon={DollarSign} label="Faturamento"        value={revenueLabels[client.revenue] || client.revenue} />}
                 {!client.full_name && !client.phone && (
-                  <div className="bg-amber-50 ring-1 ring-inset ring-amber-200 text-amber-700 p-3 rounded-lg text-xs flex items-center gap-2">
+                  <div className="bg-amber-50 ring-1 ring-inset ring-amber-200 text-amber-700 dark:bg-amber-900/20 dark:ring-amber-700/40 dark:text-amber-400 p-3 rounded-lg text-xs flex items-center gap-2">
                     <AlertTriangle className="w-4 h-4 flex-shrink-0" />
                     Perfil incompleto — clique em Editar para preencher.
                   </div>
@@ -759,15 +759,15 @@ function ClientSidePanel({
           </div>
 
           {/* Segmento Comercial */}
-          <div className="px-5 py-4 border-b border-zinc-200">
-            <h3 className="text-[11px] font-bold text-zinc-400 uppercase tracking-widest mb-3">Segmento Comercial</h3>
+          <div className="px-5 py-4 border-b border-border">
+            <h3 className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest mb-3">Segmento Comercial</h3>
             <div className="flex items-center gap-3">
               <select value={client.customer_segment || ''} onChange={e => segmentMutation.mutate(e.target.value || null)}
                 disabled={segmentMutation.isPending}
-                className="appearance-none px-3 py-1.5 text-sm font-medium border border-zinc-200 rounded-lg bg-white focus:ring-2 focus:ring-zinc-400 focus:outline-none">
+                className="appearance-none px-3 py-1.5 text-sm font-medium border border-border rounded-lg bg-background text-foreground focus:ring-2 focus:ring-ring focus:outline-none">
                 {SEGMENT_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
               </select>
-              {segmentMutation.isPending && <Loader className="w-4 h-4 animate-spin text-zinc-400" />}
+              {segmentMutation.isPending && <Loader className="w-4 h-4 animate-spin text-muted-foreground" />}
             </div>
           </div>
 
@@ -775,42 +775,42 @@ function ClientSidePanel({
           {isPartner && <PartnerAccessPanel client={client} queryKey={queryKey} />}
 
           {/* Tabela de Preço */}
-          <div className="px-5 py-4 border-b border-zinc-200">
-            <h3 className="text-[11px] font-bold text-zinc-400 uppercase tracking-widest mb-3">Tabela de Preço</h3>
+          <div className="px-5 py-4 border-b border-border">
+            <h3 className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest mb-3">Tabela de Preço</h3>
             <div className="flex items-center gap-3">
               <select value={client.price_list_id || ''} onChange={e => priceListMutation.mutate(e.target.value || null)}
                 disabled={priceListMutation.isPending}
-                className="px-3 py-1.5 text-sm border border-zinc-200 rounded-lg bg-white focus:ring-2 focus:ring-zinc-400 focus:outline-none">
+                className="px-3 py-1.5 text-sm border border-border rounded-lg bg-background text-foreground focus:ring-2 focus:ring-ring focus:outline-none">
                 <option value="">Preço padrão do catálogo</option>
                 {priceLists.map(pl => <option key={pl.id} value={pl.id}>{pl.name}</option>)}
               </select>
-              {priceListMutation.isPending && <Loader className="w-4 h-4 animate-spin text-zinc-400" />}
+              {priceListMutation.isPending && <Loader className="w-4 h-4 animate-spin text-muted-foreground" />}
             </div>
           </div>
 
           {/* Pedidos */}
-          <div className="px-5 py-4 border-b border-zinc-200">
-            <h3 className="text-[11px] font-bold text-zinc-400 uppercase tracking-widest mb-3.5">
+          <div className="px-5 py-4 border-b border-border">
+            <h3 className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest mb-3.5">
               Pedidos {!loadingOrders && orders.length > 0 && `(${orders.length})`}
             </h3>
             {loadingOrders ? (
-              <div className="py-4 flex justify-center"><Loader className="w-5 h-5 animate-spin text-zinc-400" /></div>
+              <div className="py-4 flex justify-center"><Loader className="w-5 h-5 animate-spin text-muted-foreground" /></div>
             ) : orders.length === 0 ? (
-              <p className="text-sm text-zinc-400 italic">Nenhum pedido registrado.</p>
+              <p className="text-sm text-muted-foreground italic">Nenhum pedido registrado.</p>
             ) : (
               <div className="space-y-3">
                 {orders.map(order => {
-                  const si = orderStatusLabels[order.status] || { label: order.status, color: 'bg-gray-100 text-gray-600' }
+                  const si = orderStatusLabels[order.status] || { label: order.status, color: 'bg-muted text-muted-foreground' }
                   return (
-                    <div key={order.id} className="bg-zinc-50 rounded-xl border border-zinc-200/80 overflow-hidden">
-                      <div className="px-3.5 py-2.5 flex items-center justify-between border-b border-zinc-200/60 bg-white">
+                    <div key={order.id} className="bg-muted/40 rounded-xl border border-border overflow-hidden">
+                      <div className="px-3.5 py-2.5 flex items-center justify-between border-b border-border/60 bg-card">
                         <div className="flex items-center gap-2.5">
-                          <span className="text-[13px] font-bold text-zinc-900">#{order.id.slice(0, 8).toUpperCase()}</span>
+                          <span className="text-[13px] font-bold text-foreground">#{order.id.slice(0, 8).toUpperCase()}</span>
                           <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md ${si.color}`}>{si.label}</span>
                         </div>
                         <div className="text-right">
-                          <p className="text-[13px] font-extrabold text-zinc-900">R$ {Number(order.total).toFixed(2)}</p>
-                          <p className="text-[10px] text-zinc-400">{new Date(order.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}</p>
+                          <p className="text-[13px] font-extrabold text-foreground">R$ {Number(order.total).toFixed(2)}</p>
+                          <p className="text-[10px] text-muted-foreground">{new Date(order.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}</p>
                         </div>
                       </div>
                       <div className="p-2.5 space-y-1.5">
@@ -819,20 +819,20 @@ function ClientSidePanel({
                             ? (item.catalog_products as any)[0]?.main_image
                             : item.catalog_products?.main_image || null
                           return (
-                            <div key={item.id} className="flex items-center gap-2.5 bg-white rounded-lg p-2 border border-zinc-100">
+                            <div key={item.id} className="flex items-center gap-2.5 bg-card rounded-lg p-2 border border-border/60">
                               {imgUrl
                                 ? <img src={imgUrl} alt="" className="w-9 h-9 rounded-lg object-cover flex-shrink-0" />
-                                : <div className="w-9 h-9 rounded-lg bg-zinc-100 flex items-center justify-center flex-shrink-0"><Package className="w-4 h-4 text-zinc-400" /></div>}
+                                : <div className="w-9 h-9 rounded-lg bg-muted flex items-center justify-center flex-shrink-0"><Package className="w-4 h-4 text-muted-foreground" /></div>}
                               <div className="flex-1 min-w-0">
-                                <p className="text-[13px] font-medium text-zinc-800 truncate">{item.product_name_snapshot}</p>
-                                <p className="text-[11px] text-zinc-400">{item.qty}× R$ {Number(item.unit_price_snapshot).toFixed(2)}</p>
+                                <p className="text-[13px] font-medium text-foreground truncate">{item.product_name_snapshot}</p>
+                                <p className="text-[11px] text-muted-foreground">{item.qty}× R$ {Number(item.unit_price_snapshot).toFixed(2)}</p>
                               </div>
-                              <span className="text-[13px] font-bold text-zinc-800">R$ {Number(item.line_total).toFixed(2)}</span>
+                              <span className="text-[13px] font-bold text-foreground">R$ {Number(item.line_total).toFixed(2)}</span>
                             </div>
                           )
                         })}
                         {order.order_items.length > 3 && (
-                          <p className="text-[11px] text-zinc-400 text-center">+{order.order_items.length - 3} item(s)</p>
+                          <p className="text-[11px] text-muted-foreground text-center">+{order.order_items.length - 3} item(s)</p>
                         )}
                       </div>
                     </div>
@@ -903,9 +903,9 @@ function PartnerAccessPanel({ client, queryKey }: { client: ClientStats; queryKe
   const isLoading = createMutation.isPending || resetMutation.isPending || blockMutation.isPending || unblockMutation.isPending
 
   const statusConfig = {
-    not_created: { label: 'Sem acesso', classes: 'bg-zinc-100 text-zinc-500 ring-zinc-200' },
-    active:      { label: 'Ativo',      classes: 'bg-emerald-100 text-emerald-700 ring-emerald-200' },
-    blocked:     { label: 'Bloqueado',  classes: 'bg-red-100 text-red-600 ring-red-200' },
+    not_created: { label: 'Sem acesso', classes: 'bg-muted text-muted-foreground ring-border' },
+    active:      { label: 'Ativo',      classes: 'bg-emerald-100 text-emerald-700 ring-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:ring-emerald-700/40' },
+    blocked:     { label: 'Bloqueado',  classes: 'bg-red-100 text-red-600 ring-red-200 dark:bg-red-900/30 dark:text-red-400 dark:ring-red-700/40' },
   }
   const statusInfo = statusConfig[accessStatus as keyof typeof statusConfig] ?? statusConfig.not_created
 
@@ -918,22 +918,22 @@ function PartnerAccessPanel({ client, queryKey }: { client: ClientStats; queryKe
   }
 
   return (
-    <div className="px-5 py-4 border-b border-zinc-200">
+    <div className="px-5 py-4 border-b border-border">
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-[11px] font-bold text-zinc-400 uppercase tracking-widest">Acesso ao Portal</h3>
+        <h3 className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest">Acesso ao Portal</h3>
         <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md ring-1 ring-inset ${statusInfo.classes}`}>
           {statusInfo.label}
         </span>
       </div>
 
       {client.credentials_created_at && (
-        <p className="text-[11px] text-zinc-400 mb-1">
+        <p className="text-[11px] text-muted-foreground mb-1">
           Criado em {new Date(client.credentials_created_at).toLocaleDateString('pt-BR')}
-          {client.auth_phone && <> · Login: <span className="font-medium text-zinc-600">{client.auth_phone}</span></>}
+          {client.auth_phone && <> · Login: <span className="font-medium text-foreground">{client.auth_phone}</span></>}
         </p>
       )}
       {client.last_password_reset_at && (
-        <p className="text-[11px] text-zinc-400 mb-3">
+        <p className="text-[11px] text-muted-foreground mb-3">
           Senha resetada em {new Date(client.last_password_reset_at).toLocaleDateString('pt-BR')}
         </p>
       )}
@@ -942,8 +942,8 @@ function PartnerAccessPanel({ client, queryKey }: { client: ClientStats; queryKe
         <div className="flex items-center gap-2 mb-3">
           <input type="text" placeholder="Senha personalizada (opcional)" value={manualPassword}
             onChange={e => setManualPassword(e.target.value)}
-            className="flex-1 px-3 py-1.5 text-sm border border-zinc-200 rounded-lg focus:ring-2 focus:ring-zinc-400 focus:outline-none bg-white" />
-          <button onClick={() => { setShowPasswordInput(false); setManualPassword('') }} className="text-zinc-400 hover:text-zinc-600 p-1">
+            className="flex-1 px-3 py-1.5 text-sm border border-border rounded-lg focus:ring-2 focus:ring-ring focus:outline-none bg-background text-foreground" />
+          <button onClick={() => { setShowPasswordInput(false); setManualPassword('') }} className="text-muted-foreground hover:text-foreground p-1">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -953,12 +953,12 @@ function PartnerAccessPanel({ client, queryKey }: { client: ClientStats; queryKe
         {accessStatus === 'not_created' && (
           <>
             <button onClick={() => createMutation.mutate()} disabled={isLoading}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold bg-zinc-900 text-white rounded-lg hover:bg-zinc-700 disabled:opacity-50 transition-colors">
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold btn-action rounded-lg disabled:opacity-50 transition-colors">
               {isLoading ? <Loader className="w-3.5 h-3.5 animate-spin" /> : <KeyRound className="w-3.5 h-3.5" />}
               Criar Acesso
             </button>
             <button onClick={() => setShowPasswordInput(v => !v)}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-zinc-200 rounded-lg hover:border-zinc-300 text-zinc-600 transition-colors">
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-border rounded-lg hover:bg-accent text-foreground/70 transition-colors">
               Definir senha
             </button>
           </>
@@ -966,16 +966,16 @@ function PartnerAccessPanel({ client, queryKey }: { client: ClientStats; queryKe
         {accessStatus === 'active' && (
           <>
             <button onClick={() => resetMutation.mutate()} disabled={isLoading}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold bg-zinc-900 text-white rounded-lg hover:bg-zinc-700 disabled:opacity-50 transition-colors">
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold btn-action rounded-lg disabled:opacity-50 transition-colors">
               {resetMutation.isPending ? <Loader className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
               Resetar Senha
             </button>
             <button onClick={() => setShowPasswordInput(v => !v)}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-zinc-200 rounded-lg hover:border-zinc-300 text-zinc-600 transition-colors">
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-border rounded-lg hover:bg-accent text-foreground/70 transition-colors">
               Definir senha
             </button>
             <button onClick={() => blockMutation.mutate()} disabled={isLoading}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold border border-red-200 text-red-600 bg-red-50 rounded-lg hover:bg-red-100 disabled:opacity-50 transition-colors">
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold border border-red-200 text-red-600 bg-red-50 rounded-lg hover:bg-red-100 dark:border-red-700/40 dark:text-red-400 dark:bg-red-900/20 dark:hover:bg-red-900/30 disabled:opacity-50 transition-colors">
               {blockMutation.isPending ? <Loader className="w-3.5 h-3.5 animate-spin" /> : <Lock className="w-3.5 h-3.5" />}
               Bloquear
             </button>
@@ -983,7 +983,7 @@ function PartnerAccessPanel({ client, queryKey }: { client: ClientStats; queryKe
         )}
         {accessStatus === 'blocked' && (
           <button onClick={() => unblockMutation.mutate()} disabled={isLoading}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold bg-zinc-900 text-white rounded-lg hover:bg-zinc-700 disabled:opacity-50 transition-colors">
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold btn-action rounded-lg disabled:opacity-50 transition-colors">
             {unblockMutation.isPending ? <Loader className="w-3.5 h-3.5 animate-spin" /> : <Unlock className="w-3.5 h-3.5" />}
             Desbloquear
           </button>
@@ -1015,7 +1015,7 @@ function PartnerAccessPanel({ client, queryKey }: { client: ClientStats; queryKe
               <Phone className="w-3.5 h-3.5" />Abrir WhatsApp
             </a>
           </div>
-          <button onClick={() => setCredResult(null)} className="w-full text-[10px] text-zinc-600 hover:text-zinc-400 transition-colors pt-1">
+          <button onClick={() => setCredResult(null)} className="w-full text-[10px] text-zinc-500 hover:text-zinc-300 transition-colors pt-1">
             Fechar
           </button>
         </div>
@@ -1058,15 +1058,15 @@ function SystemTab({
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <input type="text" placeholder="Buscar por nome ou e-mail..."
             value={search} onChange={e => setSearch(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 rounded-xl border border-border bg-white text-sm focus:outline-none focus:ring-2 focus:ring-gold" />
+            className="w-full pl-9 pr-4 py-2 rounded-xl border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
         </div>
 
         <p className="text-xs text-muted-foreground">{filtered.length} usuário{filtered.length !== 1 ? 's' : ''}</p>
 
-        <div className="bg-white rounded-xl border border-border shadow-card overflow-x-auto">
+        <div className="bg-card rounded-xl border border-border shadow-[var(--shadow-card)] overflow-x-auto">
           <table className="w-full min-w-[640px]">
             <thead>
-              <tr className="border-b border-border bg-surface-alt">
+              <tr className="border-b border-border bg-muted/50">
                 <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Nome / E-mail</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Acesso</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Último Acesso</th>
