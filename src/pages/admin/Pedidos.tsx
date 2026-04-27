@@ -45,6 +45,16 @@ interface Order {
   }>;
 }
 
+const originConfig: Record<string, { label: string; bg: string; text: string; ring: string }> = {
+  whatsapp:   { label: 'WhatsApp',  bg: 'bg-green-500/10',  text: 'text-green-700 dark:text-green-400',  ring: 'ring-green-600/20' },
+  site:       { label: 'Site',      bg: 'bg-blue-500/10',   text: 'text-blue-700 dark:text-blue-400',    ring: 'ring-blue-600/20' },
+  portal:     { label: 'Portal',    bg: 'bg-amber-500/10',  text: 'text-amber-700 dark:text-amber-400',  ring: 'ring-amber-600/20' },
+  salao:      { label: 'Salão',     bg: 'bg-violet-500/10', text: 'text-violet-700 dark:text-violet-400',ring: 'ring-violet-600/20' },
+  loja_fisica:{ label: 'Loja',      bg: 'bg-orange-500/10', text: 'text-orange-700 dark:text-orange-400',ring: 'ring-orange-600/20' },
+  manual:     { label: 'Manual',    bg: 'bg-muted',         text: 'text-muted-foreground',               ring: 'ring-muted-foreground/20' },
+  outro:      { label: 'Outro',     bg: 'bg-muted',         text: 'text-muted-foreground',               ring: 'ring-muted-foreground/20' },
+};
+
 const statusConfig: Record<string, { label: string; bg: string; text: string; ring: string; indicator: string }> = {
   recebido: { label: 'Recebido', bg: 'bg-blue-500/10', text: 'text-blue-600 dark:text-blue-400', ring: 'ring-blue-600/20', indicator: 'bg-blue-400' },
   aguardando_pagamento: { label: 'Aguard. Pgto', bg: 'bg-amber-500/10', text: 'text-amber-600 dark:text-amber-400', ring: 'ring-amber-600/20', indicator: 'bg-amber-400' },
@@ -476,6 +486,14 @@ const AdminPedidos = () => {
                           </div>
 
                           <div className="flex flex-wrap items-center gap-1.5 mb-3.5">
+                            {order.origin && (() => {
+                              const o = originConfig[order.origin] ?? originConfig.outro;
+                              return (
+                                <span className={`inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-bold ring-1 ring-inset ${o.ring} ${o.bg} ${o.text}`}>
+                                  {o.label}
+                                </span>
+                              );
+                            })()}
                             {order.sellers && (
                               <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-bold ring-1 ring-inset ${style.ring} ${style.bg} ${style.text}`}>
                                 <UserCheck className="w-3 h-3" />
