@@ -10,6 +10,9 @@ import { CartProvider } from "@/contexts/CartContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { AdminRoute } from "@/components/AdminRoute";
 import { SalaoRoute } from "@/components/SalaoRoute";
+import { PortalRoute } from "@/components/portal/PortalRoute";
+import Portal from "./pages/portal/Portal";
+import PortalComprar from "./pages/portal/PortalComprar";
 import Login from "./pages/Login";
 import Catalogo from "./pages/Catalogo";
 import Cadastro from "./pages/Cadastro";
@@ -32,6 +35,7 @@ import AdminMarketing from "./pages/admin/Marketing";
 import AdminVendedores from "./pages/admin/Vendedores";
 import AdminSyncHistory from "./pages/admin/SyncHistory";
 import AdminTabelasPreco from "./pages/admin/TabelasPreco";
+import AdminPortalBanners from "./pages/admin/PortalBanners";
 import SalaoNovoPedido from "./pages/salao/NovoPedido";
 import NotFound from "./pages/NotFound";
 import WhatsAppButton from "./components/landing/WhatsAppButton";
@@ -40,7 +44,7 @@ import { useLocation } from "react-router-dom";
 
 function ConditionalWhatsApp() {
   const { pathname } = useLocation();
-  if (pathname.startsWith('/admin') || pathname.startsWith('/salao') || pathname === '/cadastro' || pathname === '/login' || pathname === '/redefinir-senha') return null;
+  if (pathname.startsWith('/admin') || pathname.startsWith('/salao') || pathname.startsWith('/portal') || pathname === '/cadastro' || pathname === '/login' || pathname === '/redefinir-senha') return null;
   return <WhatsAppButton />;
 }
 
@@ -90,6 +94,11 @@ const App = () => (
                     <Route path="/admin/sync-history" element={<AdminSyncHistory />} />
                     <Route path="/admin/crm" element={<AdminCrmDebug />} />
                     <Route path="/admin/tabelas-preco" element={<AdminTabelasPreco />} />
+                    <Route path="/admin/portal-banners" element={<AdminPortalBanners />} />
+                  </Route>
+                  <Route element={<PortalRoute />}>
+                    <Route path="/portal" element={<Portal />} />
+                    <Route path="/portal/comprar" element={<PortalComprar />} />
                   </Route>
                   <Route element={<SalaoRoute />}>
                     <Route path="/salao" element={<Navigate to="/salao/pedido" replace />} />

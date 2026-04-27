@@ -80,6 +80,7 @@ export default function AdminCatalogo() {
     category_type: null as string | null,
     is_professional: false,
     is_highlight: false,
+    is_new_arrival: false,
     category_id: null as string | null,
   })
   const [searchTerm, setSearchTerm] = useState('')
@@ -182,6 +183,7 @@ export default function AdminCatalogo() {
         category_type: editForm.category_type,
         is_professional: editForm.is_professional,
         is_highlight: editForm.is_highlight,
+        is_new_arrival: editForm.is_new_arrival,
         category_id: editForm.category_id,
       })
       setEditingId(null)
@@ -239,10 +241,11 @@ export default function AdminCatalogo() {
         category_type: createForm.category_type as CatalogProduct['category_type'],
         is_professional: createForm.is_professional,
         is_highlight: createForm.is_highlight,
+        is_new_arrival: createForm.is_new_arrival,
         category_id: createForm.category_id,
       })
       setCreating(false)
-      setCreateForm({ name: '', price: 0, partner_price: 0, compare_at_price: null, main_image: '', is_active: true, category_type: null, is_professional: false, is_highlight: false, category_id: null })
+      setCreateForm({ name: '', price: 0, partner_price: 0, compare_at_price: null, main_image: '', is_active: true, category_type: null, is_professional: false, is_highlight: false, is_new_arrival: false, category_id: null })
     } catch (err) {
       alert(`Erro ao criar: ${err instanceof Error ? err.message : 'Desconhecido'}`)
     }
@@ -612,6 +615,11 @@ export default function AdminCatalogo() {
                               Destaque
                             </span>
                           )}
+                          {product.is_new_arrival && (
+                            <span className="inline-block mt-1 px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-[10px] font-bold">
+                              Lançamento
+                            </span>
+                          )}
                         </td>
                         <td className="px-4 py-3 text-sm text-right space-x-2">
                           <button
@@ -849,6 +857,30 @@ export default function AdminCatalogo() {
               </div>
 
               <div>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={createForm.is_highlight}
+                    onChange={(e) => setCreateForm({ ...createForm, is_highlight: e.target.checked })}
+                    className="w-4 h-4 rounded border-border"
+                  />
+                  <span className="text-sm font-medium text-foreground">Destaque (Você precisa conhecer)</span>
+                </label>
+              </div>
+
+              <div>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={createForm.is_new_arrival}
+                    onChange={(e) => setCreateForm({ ...createForm, is_new_arrival: e.target.checked })}
+                    className="w-4 h-4 rounded border-border"
+                  />
+                  <span className="text-sm font-medium text-foreground">Lançamento</span>
+                </label>
+              </div>
+
+              <div>
                 <label className="block text-sm font-medium text-foreground mb-1">Categoria</label>
                 <select
                   value={createForm.category_id || ''}
@@ -1022,6 +1054,30 @@ export default function AdminCatalogo() {
                     className="w-4 h-4 rounded border-border"
                   />
                   <span className="text-sm font-medium text-foreground">Uso Profissional (Lavatório)</span>
+                </label>
+              </div>
+
+              <div>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={editForm.is_highlight || false}
+                    onChange={(e) => setEditForm({ ...editForm, is_highlight: e.target.checked })}
+                    className="w-4 h-4 rounded border-border"
+                  />
+                  <span className="text-sm font-medium text-foreground">Destaque (Você precisa conhecer)</span>
+                </label>
+              </div>
+
+              <div>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={editForm.is_new_arrival || false}
+                    onChange={(e) => setEditForm({ ...editForm, is_new_arrival: e.target.checked })}
+                    className="w-4 h-4 rounded border-border"
+                  />
+                  <span className="text-sm font-medium text-foreground">Lançamento</span>
                 </label>
               </div>
 

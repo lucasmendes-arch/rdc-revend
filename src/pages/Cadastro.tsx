@@ -5,11 +5,26 @@ import logo from "@/assets/logo-rei-dos-cachos.png";
 import { supabase } from "@/lib/supabase";
 import { crmService } from '@/services/crm';
 import { CrmEventCode } from '@/types/crm';
+import { useTrackConversion } from '@/lib/hooks/useFacebookConversion';
 
 type BusinessType = 'salao' | 'revenda' | 'loja' | '';
 
+function splitFullName(name: string): { firstName?: string; lastName?: string } {
+    const parts = name.trim().split(/\s+/).filter(Boolean);
+
+    if (parts.length === 0) {
+        return {};
+    }
+
+    return {
+        firstName: parts[0],
+        lastName: parts.slice(1).join(' ') || undefined,
+    };
+}
+
 export default function Cadastro() {
     const navigate = useNavigate();
+    const trackConversion = useTrackConversion();
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const errorRef = useRef<HTMLDivElement>(null);
@@ -76,6 +91,8 @@ export default function Cadastro() {
 
             // 2. Save profile (only fields collected at registration)
             if (user) {
+                const { firstName, lastName } = splitFullName(formData.name);
+
                 const { error: profileError } = await supabase.from('profiles').update({
                     full_name: formData.name,
                     phone: formData.phone,
@@ -96,6 +113,19 @@ export default function Cadastro() {
                         email: formData.email,
                         business_type: formData.businessType,
                     },
+                });
+
+                trackConversion({
+                    eventName: 'Lead',
+                    email: formData.email,
+                    phone: formData.phone,
+                    firstName,
+                    lastName,
+                    country: 'br',
+                    contentName: 'Cadastro atacado',
+                    contentType: 'lead_form',
+                    externalId: user.id,
+                    eventId: `lead_${user.id}`,
                 });
             }
 

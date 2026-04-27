@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { useTheme } from 'next-themes'
+import { useAdminTheme } from '@/contexts/AdminThemeContext'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import {
@@ -190,7 +190,7 @@ function computePeriodBounds(preset: PeriodPreset, customFrom: string, customTo:
 function VariationBadge({ current, previous, invert }: { current: number; previous: number; invert?: boolean }) {
   if (previous === 0 && current === 0) return <span className="text-xs text-muted-foreground">--</span>
   if (previous === 0) return (
-    <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-600">
+    <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
       <ArrowUpRight className="w-3.5 h-3.5" /> novo
     </span>
   )
@@ -206,7 +206,7 @@ function VariationBadge({ current, previous, invert }: { current: number; previo
   )
 
   return (
-    <span className={`inline-flex items-center gap-1 text-xs font-semibold ${isPositive ? 'text-emerald-600' : 'text-red-500'}`}>
+    <span className={`inline-flex items-center gap-1 text-xs font-semibold ${isPositive ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500 dark:text-red-400'}`}>
       {pct > 0
         ? <ArrowUpRight className="w-3.5 h-3.5" />
         : <ArrowDownRight className="w-3.5 h-3.5" />
@@ -219,8 +219,7 @@ function VariationBadge({ current, previous, invert }: { current: number; previo
 
 
 export default function AdminFinanceiro() {
-  const { resolvedTheme } = useTheme()
-  const isDark = resolvedTheme === 'dark'
+  const { isDark } = useAdminTheme()
 
   // Chart colors adapt to theme
   const ch = {
@@ -485,7 +484,7 @@ export default function AdminFinanceiro() {
   return (
     <AdminLayout>
       {/* ── HEADER ── */}
-      <div className="bg-card border-b border-border sticky top-0 lg:top-0 z-30">
+      <div className="bg-card border-b border-border sticky top-0 z-30">
         <AdminHeader 
           title="Financeiro"
           subtitle={`${bounds.periodLabel} — comparando com ${bounds.compLabel}`}
@@ -512,26 +511,25 @@ export default function AdminFinanceiro() {
           <div className="grid grid-cols-2 lg:grid-cols-[1fr_0.7fr_0.7fr_1fr] gap-2 sm:gap-3 lg:gap-4">
 
             {/* 1 — Faturamento (hero) */}
-            <div className="col-span-2 lg:col-span-1 bg-gradient-to-br from-gray-900 via-[#2a1a05] to-amber-950 rounded-xl p-3 lg:p-4 shadow-lg text-white relative overflow-hidden border border-amber-900/30 flex flex-col justify-between">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/10 rounded-full -translate-y-10 translate-x-10 blur-2xl" />
-              <div className="absolute bottom-0 left-0 w-20 h-20 bg-amber-500/8 rounded-full translate-y-6 -translate-x-6 blur-xl" />
+            <div className="col-span-2 lg:col-span-1 bg-card rounded-xl p-3 lg:p-4 border border-[hsl(var(--gold-border)/0.35)] shadow-[var(--shadow-card)] relative overflow-hidden flex flex-col justify-between">
+              <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[hsl(var(--gold-border))] to-transparent" />
               <div className="relative">
                 <div className="flex items-center gap-2 mb-1.5">
-                  <div className="w-6 h-6 rounded-md bg-amber-500/20 flex items-center justify-center">
-                    <DollarSign className="w-3.5 h-3.5 text-amber-400" />
+                  <div className="w-6 h-6 rounded-md bg-[hsl(var(--gold-light))] flex items-center justify-center">
+                    <DollarSign className="w-3.5 h-3.5 text-gold-text" />
                   </div>
-                  <span className="text-[10px] lg:text-[11px] font-semibold uppercase tracking-widest text-amber-300/70">Faturamento</span>
+                  <span className="text-[10px] lg:text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Faturamento</span>
                 </div>
-                <p className="text-xl sm:text-2xl lg:text-2xl font-black tracking-tight">R$ {fmt(stats.periodRevenue)}</p>
+                <p className="text-xl sm:text-2xl lg:text-2xl font-black tracking-tight text-foreground">R$ {fmt(stats.periodRevenue)}</p>
                 <div className="flex items-center gap-1.5 mt-1.5">
                   <VariationBadge current={stats.periodRevenue} previous={stats.compRevenue} />
-                  <span className="text-[10px] text-white/50">vs {bounds.compLabel}</span>
+                  <span className="text-[10px] text-muted-foreground">vs {bounds.compLabel}</span>
                 </div>
               </div>
             </div>
 
             {/* 2 — Pedidos Pagos (compact) */}
-            <div className="bg-white rounded-xl border border-border p-3 shadow-sm h-full flex flex-col justify-between">
+            <div className="bg-card rounded-xl border border-border p-3 shadow-[var(--shadow-card)] h-full flex flex-col justify-between">
               <div className="flex items-center gap-1.5 mb-1">
                 <ShoppingCart className="w-3.5 h-3.5 text-muted-foreground" />
                 <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Pagos</span>
@@ -544,7 +542,7 @@ export default function AdminFinanceiro() {
             </div>
 
             {/* 3 — Ticket Médio (compact) */}
-            <div className="bg-white rounded-xl border border-border p-3 shadow-sm h-full flex flex-col justify-between">
+            <div className="bg-card rounded-xl border border-border p-3 shadow-[var(--shadow-card)] h-full flex flex-col justify-between">
               <div className="flex items-center gap-1.5 mb-1">
                 <BarChart3 className="w-3.5 h-3.5 text-muted-foreground" />
                 <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Ticket</span>
@@ -557,7 +555,7 @@ export default function AdminFinanceiro() {
             </div>
 
             {/* 4 — Meta Mensal (same size as Faturamento) */}
-            <div className="col-span-2 lg:col-span-1 bg-white rounded-xl border border-border p-3 lg:p-4 shadow-sm h-full flex flex-col justify-between">
+            <div className="col-span-2 lg:col-span-1 bg-card rounded-xl border border-border p-3 lg:p-4 shadow-[var(--shadow-card)] h-full flex flex-col justify-between">
               <div className="flex items-center justify-between mb-1">
                 <div className="flex items-center gap-1.5">
                   <Target className="w-3.5 h-3.5 text-gold-text" />
@@ -655,7 +653,7 @@ export default function AdminFinanceiro() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4 lg:gap-6">
 
             {/* Chart: always current month vs previous month */}
-            <div className="lg:col-span-2 bg-white rounded-xl border border-border p-4 lg:p-5 shadow-sm">
+            <div className="lg:col-span-2 bg-card rounded-xl border border-border p-4 lg:p-5 shadow-[var(--shadow-card)]">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="text-xs lg:text-sm font-bold text-foreground">
                   {stats.chartCurrentMonthName.charAt(0).toUpperCase() + stats.chartCurrentMonthName.slice(1)} vs {stats.chartPrevMonthName}
@@ -726,7 +724,7 @@ export default function AdminFinanceiro() {
             </div>
 
             {/* Seller Breakdown */}
-            <div className="bg-white rounded-xl border border-border p-4 lg:p-6 shadow-sm">
+            <div className="bg-card rounded-xl border border-border p-4 lg:p-6 shadow-[var(--shadow-card)]">
               <div className="flex items-center gap-2 mb-3 lg:mb-5">
                 <UserCheck className="w-4 h-4 text-gold-text" />
                 <h3 className="text-sm lg:text-base font-bold text-foreground">Vendas por vendedor</h3>
@@ -776,7 +774,7 @@ export default function AdminFinanceiro() {
 
             {/* Seller Monthly Goals */}
             {stats.sellerBreakdown.some(s => s.monthly_goal > 0) && (
-              <div className="bg-white rounded-xl border border-border p-4 lg:p-6 shadow-sm">
+              <div className="bg-card rounded-xl border border-border p-4 lg:p-6 shadow-[var(--shadow-card)]">
                 <div className="flex items-center gap-2 mb-3 lg:mb-5">
                   <Target className="w-4 h-4 text-gold-text" />
                   <h3 className="text-sm lg:text-base font-bold text-foreground">Metas individuais</h3>
@@ -836,7 +834,7 @@ export default function AdminFinanceiro() {
             )}
 
             {/* Top Products */}
-            <div className="bg-white rounded-xl border border-border p-4 lg:p-6 shadow-sm">
+            <div className="bg-card rounded-xl border border-border p-4 lg:p-6 shadow-[var(--shadow-card)]">
               <div className="flex items-center gap-2 mb-3 lg:mb-5">
                 <Package className="w-4 h-4 text-gold-text" />
                 <h3 className="text-sm lg:text-base font-bold text-foreground">Top 5 produtos</h3>
@@ -874,7 +872,7 @@ export default function AdminFinanceiro() {
             </div>
 
             {/* Origin Breakdown */}
-            <div className="bg-white rounded-xl border border-border p-4 lg:p-6 shadow-sm">
+            <div className="bg-card rounded-xl border border-border p-4 lg:p-6 shadow-[var(--shadow-card)]">
               <div className="flex items-center gap-2 mb-3 lg:mb-5">
                 <TrendingUp className="w-4 h-4 text-gold-text" />
                 <h3 className="text-sm lg:text-base font-bold text-foreground">Vendas por canal</h3>

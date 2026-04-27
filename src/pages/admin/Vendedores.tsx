@@ -192,7 +192,7 @@ export default function AdminVendedores() {
   return (
     <AdminLayout>
       {/* Header */}
-      <div className="bg-white border-b border-border sticky top-0 lg:top-0 z-30">
+      <div className="bg-card border-b border-border sticky top-0 z-30">
         <div className="px-4 sm:px-6 py-4 flex items-center justify-between gap-4">
           <div>
             <h1 className="text-xl sm:text-2xl font-bold text-foreground">Vendedores</h1>
@@ -200,7 +200,7 @@ export default function AdminVendedores() {
           </div>
           <button
             onClick={openCreate}
-            className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg bg-green-600 hover:bg-green-700 text-white text-sm font-medium transition-colors"
+            className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg btn-action text-sm font-medium transition-colors"
           >
             <Plus className="w-4 h-4" />
             <span className="hidden sm:inline">Novo Vendedor</span>
@@ -222,11 +222,11 @@ export default function AdminVendedores() {
             <p className="text-sm text-muted-foreground mt-1">Clique em "Novo Vendedor" para começar.</p>
           </div>
         ) : (
-          <div className="bg-white rounded-xl border border-border shadow-card overflow-hidden">
+          <div className="bg-card rounded-xl border border-border shadow-[var(--shadow-card)] overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="border-b border-border bg-surface-alt">
+                  <tr className="border-b border-border bg-muted/50">
                     <th className="px-4 py-3 text-left text-sm font-semibold text-foreground">Nome</th>
                     <th className="px-4 py-3 text-left text-sm font-semibold text-foreground">Código</th>
                     <th className="px-4 py-3 text-left text-sm font-semibold text-foreground hidden md:table-cell">Telefone</th>
@@ -240,7 +240,7 @@ export default function AdminVendedores() {
                 </thead>
                 <tbody>
                   {sellers.map((seller, index) => (
-                    <tr key={seller.id} className={index % 2 === 0 ? '' : 'bg-surface-alt/50'}>
+                    <tr key={seller.id} className={`border-b border-border/40 last:border-0 ${index % 2 === 0 ? '' : 'bg-muted/30'}`}>
                       <td className="px-4 py-3 text-sm font-medium text-foreground">{seller.name}</td>
                       <td className="px-4 py-3 text-sm text-muted-foreground">
                         {seller.code ? (
@@ -268,7 +268,7 @@ export default function AdminVendedores() {
                         <button
                           onClick={() => toggleActiveMutation.mutate({ id: seller.id, active: !seller.active })}
                           className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none ${
-                            seller.active ? 'bg-green-500' : 'bg-gray-300'
+                            seller.active ? 'bg-emerald-500' : 'bg-muted-foreground/30'
                           }`}
                           title={seller.active ? 'Desativar' : 'Ativar'}
                         >
@@ -281,8 +281,8 @@ export default function AdminVendedores() {
                       </td>
                       <td className="px-4 py-3 text-center">
                         {seller.is_default ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-xs font-semibold">
-                            <Star className="w-3 h-3 fill-amber-500 text-amber-500" />
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-xs font-semibold dark:bg-amber-900/30 dark:text-amber-400">
+                            <Star className="w-3 h-3 fill-amber-500 text-amber-500 dark:fill-amber-400 dark:text-amber-400" />
                             Padrão
                           </span>
                         ) : (
@@ -297,7 +297,7 @@ export default function AdminVendedores() {
                       </td>
                       <td className="px-4 py-3 hidden lg:table-cell">
                         {seller.user_id ? (
-                          <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+                          <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-700/40">
                             <Link2 className="w-3 h-3" />
                             {systemUsers.find(u => u.id === seller.user_id)?.full_name ||
                              systemUsers.find(u => u.id === seller.user_id)?.email ||
@@ -338,7 +338,7 @@ export default function AdminVendedores() {
       {modalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-foreground/40 backdrop-blur-sm" onClick={closeModal} />
-          <div className="relative bg-white rounded-2xl shadow-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
+          <div className="relative bg-card rounded-2xl shadow-2xl border border-border p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
             <div className="flex items-center gap-3 mb-5">
               <div className="w-10 h-10 rounded-xl gradient-gold flex items-center justify-center flex-shrink-0">
                 <UserCheck className="w-5 h-5 text-white" />
@@ -355,7 +355,7 @@ export default function AdminVendedores() {
                   type="text"
                   value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  className="w-full px-3 py-2 rounded-lg border border-border bg-white focus:outline-none focus:ring-2 focus:ring-gold"
+                  className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                   placeholder="Ex: Rebeca Silva"
                 />
               </div>
@@ -369,7 +369,7 @@ export default function AdminVendedores() {
                   type="text"
                   value={form.code}
                   onChange={(e) => setForm({ ...form, code: e.target.value.toUpperCase() })}
-                  className="w-full px-3 py-2 rounded-lg border border-border bg-white focus:outline-none focus:ring-2 focus:ring-gold font-mono"
+                  className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring font-mono"
                   placeholder="Ex: REBECA"
                 />
               </div>
@@ -380,7 +380,7 @@ export default function AdminVendedores() {
                   type="text"
                   value={form.phone}
                   onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                  className="w-full px-3 py-2 rounded-lg border border-border bg-white focus:outline-none focus:ring-2 focus:ring-gold"
+                  className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                   placeholder="(11) 99999-9999"
                 />
               </div>
@@ -395,7 +395,7 @@ export default function AdminVendedores() {
                     step="0.5"
                     value={form.commission_pct}
                     onChange={(e) => setForm({ ...form, commission_pct: parseFloat(e.target.value) || 0 })}
-                    className="w-full px-3 py-2 rounded-lg border border-border bg-white focus:outline-none focus:ring-2 focus:ring-gold"
+                    className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                   />
                 </div>
                 <div>
@@ -406,7 +406,7 @@ export default function AdminVendedores() {
                     step="100"
                     value={form.monthly_goal}
                     onChange={(e) => setForm({ ...form, monthly_goal: parseFloat(e.target.value) || 0 })}
-                    className="w-full px-3 py-2 rounded-lg border border-border bg-white focus:outline-none focus:ring-2 focus:ring-gold"
+                    className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                     placeholder="0 = sem meta"
                   />
                 </div>
@@ -418,7 +418,7 @@ export default function AdminVendedores() {
                   type="email"
                   value={form.email}
                   onChange={(e) => setForm({ ...form, email: e.target.value })}
-                  className="w-full px-3 py-2 rounded-lg border border-border bg-white focus:outline-none focus:ring-2 focus:ring-gold"
+                  className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                   placeholder="vendedor@email.com"
                 />
               </div>
@@ -432,7 +432,7 @@ export default function AdminVendedores() {
                 <select
                   value={form.linked_user_id}
                   onChange={e => setForm({ ...form, linked_user_id: e.target.value })}
-                  className="w-full px-3 py-2 rounded-lg border border-border bg-white focus:outline-none focus:ring-2 focus:ring-gold text-sm"
+                  className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm"
                 >
                   <option value="">— Sem usuário vinculado —</option>
                   {systemUsers.map(u => (
@@ -474,7 +474,7 @@ export default function AdminVendedores() {
               </div>
 
               {form.is_default && (
-                <p className="text-xs text-amber-700 bg-amber-50 rounded-lg px-3 py-2">
+                <p className="text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 rounded-lg px-3 py-2">
                   Definir como padrão removerá o padrão do vendedor atual automaticamente.
                 </p>
               )}
@@ -484,13 +484,13 @@ export default function AdminVendedores() {
               <button
                 onClick={handleSave}
                 disabled={saveMutation.isPending}
-                className="flex-1 px-4 py-2.5 rounded-lg bg-green-600 hover:bg-green-700 text-white font-medium disabled:opacity-70 transition-colors"
+                className="flex-1 px-4 py-2.5 rounded-lg btn-action font-medium disabled:opacity-70 transition-colors"
               >
                 {saveMutation.isPending ? 'Salvando...' : editingId ? 'Salvar alterações' : 'Criar Vendedor'}
               </button>
               <button
                 onClick={closeModal}
-                className="flex-1 px-4 py-2.5 rounded-lg border border-border bg-white text-foreground font-medium hover:bg-surface-alt"
+                className="flex-1 px-4 py-2.5 rounded-lg border border-border bg-card text-foreground font-medium hover:bg-accent"
               >
                 Cancelar
               </button>
@@ -503,7 +503,7 @@ export default function AdminVendedores() {
       {deleteConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-foreground/40 backdrop-blur-sm" onClick={() => setDeleteConfirm(null)} />
-          <div className="relative bg-white rounded-2xl shadow-lg p-6 w-full max-w-sm">
+          <div className="relative bg-card border border-border rounded-2xl shadow-2xl p-6 w-full max-w-sm">
             <h2 className="text-lg font-bold text-foreground mb-2">Confirmar exclusão</h2>
             <p className="text-sm text-muted-foreground mb-5">
               O vendedor será removido. Pedidos existentes associados a ele ficarão com vendedor em branco (não serão deletados).
@@ -518,7 +518,7 @@ export default function AdminVendedores() {
               </button>
               <button
                 onClick={() => setDeleteConfirm(null)}
-                className="flex-1 px-4 py-2.5 rounded-lg border border-border bg-white text-foreground font-medium hover:bg-surface-alt"
+                className="flex-1 px-4 py-2.5 rounded-lg border border-border bg-card text-foreground font-medium hover:bg-accent"
               >
                 Cancelar
               </button>

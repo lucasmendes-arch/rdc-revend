@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowRight, CheckCircle, Loader, ShoppingCart } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { useTrackConversion } from '@/lib/hooks/useFacebookConversion';
 
 interface Order {
   id: string;
@@ -35,9 +36,23 @@ const statusConfig: Record<string, { label: string; color: string; bgColor: stri
   expirado:             { label: 'Expirado',             color: 'bg-gray-100 text-gray-500',    bgColor: 'bg-gray-50' },
 };
 
+function splitFullName(name: string): { firstName?: string; lastName?: string } {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+
+  if (parts.length === 0) {
+    return {};
+  }
+
+  return {
+    firstName: parts[0],
+    lastName: parts.slice(1).join(' ') || undefined,
+  };
+}
+
 const PedidoSucesso = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const trackConversion = useTrackConversion();
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>('');
@@ -73,16 +88,21 @@ const PedidoSucesso = () => {
         }
 
         setOrder(data as Order);
+        const { firstName, lastName } = splitFullName(data.customer_name);
 
-        // Track Purchase event
-        if (window.fbq) {
-          window.fbq('track', 'Purchase', {
-            value: data.total,
-            currency: 'BRL',
-            content_ids: data.order_items.map((i: any) => i.id || i.product_id),
-            content_type: 'product'
-          });
-        }
+        trackConversion({
+          eventName: 'Purchase',
+          email: data.customer_email,
+          phone: data.customer_whatsapp,
+          firstName,
+          lastName,
+          country: 'br',
+          value: data.total,
+          currency: 'BRL',
+          contentName: `Pedido ${data.id.slice(0, 8).toUpperCase()}`,
+          contentType: 'product',
+          eventId: `purchase_${data.id}`,
+        });
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Erro ao carregar pedido';
         setError(message);
@@ -92,7 +112,7 @@ const PedidoSucesso = () => {
     };
 
     fetchOrder();
-  }, [id]);
+  }, [id, trackConversion]);
 
   if (loading) {
     return (

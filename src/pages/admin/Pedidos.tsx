@@ -1,7 +1,9 @@
 import { useState, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Loader, ChevronDown, Plus, Globe, Tag, Hand, MessageSquare, UserCheck, Trash2, AlertTriangle, Package, Calendar, Truck, CheckCircle2, Receipt, Pencil } from 'lucide-react';
+import { Loader, ChevronDown, Plus, Globe, Tag, Hand, MessageSquare, UserCheck, Trash2, AlertTriangle, Package, Calendar, Truck, CheckCircle2, Receipt, Pencil, FileText } from 'lucide-react';
 import OrderCouponModal from '@/components/admin/OrderCouponModal';
+import SalesOrderModal from '@/components/admin/SalesOrderModal';
+import type { SalesOrderData } from '@/components/admin/SalesOrderModal';
 import { useAuth } from '@/contexts/AuthContext';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
@@ -66,6 +68,7 @@ const AdminPedidos = () => {
   const [filterSeller, setFilterSeller] = useState<string>('');
   const [orderToDelete, setOrderToDelete] = useState<Order | null>(null);
   const [orderToCoupon, setOrderToCoupon] = useState<Order | null>(null);
+  const [orderToSalesDoc, setOrderToSalesDoc] = useState<Order | null>(null);
 
   // Date Filter State
   const [dateFilterType, setDateFilterType] = useState<PeriodPresetKey>('esteMes');
@@ -401,6 +404,13 @@ const AdminPedidos = () => {
                                 </button>
                               )}
                               <button
+                                onClick={(e) => { e.stopPropagation(); setOrderToSalesDoc(order); }}
+                                className="text-muted-foreground/40 hover:text-amber-600 hover:bg-amber-500/10 p-1.5 rounded-md transition-colors shrink-0"
+                                title="Gerar pedido de venda"
+                              >
+                                <FileText className="w-4 h-4" />
+                              </button>
+                              <button
                                 onClick={(e) => { e.stopPropagation(); setOrderToCoupon(order); }}
                                 className="text-muted-foreground/40 hover:text-amber-500 hover:bg-amber-500/10 p-1.5 rounded-md transition-colors shrink-0"
                                 title="Emitir cupom não fiscal"
@@ -537,6 +547,29 @@ const AdminPedidos = () => {
           onClose={() => setOrderToCoupon(null)}
         />
       )}
+
+      {orderToSalesDoc && (() => {
+        const o = orderToSalesDoc;
+        const sub = o.subtotal ?? o.total;
+        const salesData: SalesOrderData = {
+          customer_name: o.customer_name,
+          customer_phone: o.customer_whatsapp,
+          items: o.order_items.map(item => ({
+            product_name: item.product_name_snapshot,
+            quantity: item.qty,
+            unit_price: item.qty > 0 ? item.line_total / item.qty : 0,
+            line_total: item.line_total,
+            main_image: item.catalog_products?.main_image ?? null,
+          })),
+          subtotal: sub,
+          discount_amount: o.discount_amount,
+          total: o.total,
+          notes: o.notes ?? undefined,
+          date: o.created_at,
+          order_number: o.id.slice(0, 8).toUpperCase(),
+        };
+        return <SalesOrderModal data={salesData} onClose={() => setOrderToSalesDoc(null)} />;
+      })()}
 
       {orderToDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-foreground/30 backdrop-blur-sm">

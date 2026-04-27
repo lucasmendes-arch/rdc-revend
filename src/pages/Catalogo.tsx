@@ -19,6 +19,7 @@ import { extractVolume } from "@/utils/product";
 import B2BHero from "@/components/catalog/B2BHero";
 import HowItWorks from "@/components/catalog/HowItWorks";
 import WhatsAppCTA from "@/components/catalog/WhatsAppCTA";
+import CartDrawer from "@/components/CartDrawer";
 
 // ============================================================================
 // TYPES & CONSTANTS
@@ -128,7 +129,7 @@ const RotatingTrustBanner = () => {
   );
 };
 
-const Catalogo = () => {
+const Catalogo = ({ portalMode = false }: { portalMode?: boolean }) => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const viewAll = searchParams.get('view') === 'todos';
@@ -446,9 +447,9 @@ const Catalogo = () => {
 
   return (
     <>
-    <div className="min-h-screen bg-surface-alt overflow-x-hidden">
+    <div className={`min-h-screen ${portalMode ? 'bg-gray-100' : 'bg-surface-alt'} overflow-x-hidden`}>
       {/* Header */}
-      {/* Sticky Header Wrapper */}
+      {!portalMode && (
       <div className="sticky top-0 z-40 w-full overflow-visible">
         <header className="bg-gold border-b border-amber-600 shadow-sm transition-all duration-300">
           <div className="container mx-auto px-3 sm:px-4 lg:px-6 py-2 sm:h-16 flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4">
@@ -638,9 +639,10 @@ const Catalogo = () => {
         <RotatingTrustBanner />
       </div>
     </div>
+      )}
 
       {/* Mobile sticky category chips — below header, above content */}
-      {!debouncedSearch && !viewAll && categoriesToDisplay.length > 0 && (
+      {!portalMode && !debouncedSearch && !viewAll && categoriesToDisplay.length > 0 && (
         <div className="sm:hidden sticky top-36 z-20 bg-surface-alt border-b border-border/30 shadow-sm py-2">
           <CategoryBubbles
             categories={categoriesToDisplay}
@@ -651,7 +653,7 @@ const Catalogo = () => {
       )}
 
       {/* Hero B2B Section - Visible before anything else */}
-      {!debouncedSearch && !viewAll && (
+      {!portalMode && !debouncedSearch && !viewAll && (
         <B2BHero
           onScrollToKits={scrollToKits}
           onScrollToProducts={scrollToProducts}
@@ -660,8 +662,8 @@ const Catalogo = () => {
 
       <div className="flex flex-col lg:flex-row lg:gap-6 w-full max-w-full">
         {/* Sidebar Filters (Desktop) */}
-        <aside className="hidden lg:block w-64 px-3 pt-4 pb-6">
-          <div className="sticky top-24 bg-white rounded-2xl p-1 shadow-sm border border-border">
+        <aside className={`${portalMode ? 'hidden' : 'hidden lg:block'} w-64 px-3 pt-4 pb-6`}>
+          <div className={`sticky ${portalMode ? 'top-4' : 'top-24'} bg-white rounded-2xl p-1 shadow-sm border border-border`}>
             <div className="p-3 border-b border-border mb-1">
               <h3 className="font-bold text-foreground">Filtros</h3>
             </div>
@@ -825,8 +827,40 @@ const Catalogo = () => {
             </div>
           )}
 
+          {/* Portal mode: chips de categoria + carousel filtrado */}
+          {portalMode && !debouncedSearch && !viewAll && categoriesToDisplay.length > 0 && (
+            <div className="sm:hidden pt-2">
+              <div className="px-4 pb-1">
+                <CategoryBubbles
+                  categories={categoriesToDisplay}
+                  activeCategories={filterCategories}
+                  onToggleCategory={toggleCategory}
+                />
+              </div>
+              {!isLoading && !error && filtered.length > 0 && (
+                <CompactProductCarousel
+                  title={
+                    filterCategories.length === 1
+                      ? (categoriesToDisplay.find(c => c.id === filterCategories[0])?.name ?? 'Produtos')
+                      : filterCategories.length > 1 ? 'Filtrados' : 'Todos os Produtos'
+                  }
+                  products={filtered}
+                  cartAddedId={addedId}
+                  getQty={getQty}
+                  setQty={setQty}
+                  onAdd={handleAddItem}
+                  onSelect={handleSelectProduct}
+                  getSuggestedPrice={getSuggestedPrice}
+                  isGuest={isGuest}
+                  isPartner={isPartner}
+                  onViewAll={() => setViewAll(true)}
+                />
+              )}
+            </div>
+          )}
+
           {/* Mobile Only: Destaques & Rest — ocultar durante busca ou viewAll */}
-          {!debouncedSearch && !viewAll && (
+          {!portalMode && !debouncedSearch && !viewAll && (
             <div className="pt-0 sm:hidden">
               {/* Mobile Only: Compact Product Carousel for Featured Items */}
               {!isLoading && !error && filtered.length > 0 && (
@@ -867,7 +901,7 @@ const Catalogo = () => {
               </div>
             )}
 
-            {!debouncedSearch && !viewAll && (
+            {!portalMode && !debouncedSearch && !viewAll && (
               <HowItWorks />
             )}
 
@@ -1125,7 +1159,7 @@ const Catalogo = () => {
                   </>
                 )}
 
-                <WhatsAppCTA />
+                {!portalMode && <WhatsAppCTA />}
               </>
             )}
           </div>
@@ -1417,99 +1451,8 @@ const Catalogo = () => {
           </div>
         )}
 
-        {/* Cart Drawer */}
-        {cartOpen && (
-          <div className="fixed inset-0 z-50 flex justify-end">
-            <div className="absolute inset-0 bg-foreground/40 backdrop-blur-sm" onClick={() => setCartOpen(false)} />
-            <div className="relative bg-white w-full sm:max-w-sm h-full flex flex-col shadow-2xl">
-              {/* Cart Header */}
-              <div className="flex items-center justify-between p-4 border-b border-border flex-shrink-0">
-                <div className="flex items-center gap-2">
-                  <ShoppingCart className="w-5 h-5 text-gold-text" />
-                  <h2 className="font-bold text-foreground text-lg">Meu Pedido</h2>
-                  {cart.length > 0 && (
-                    <span className="text-xs text-muted-foreground">({cartCount} itens)</span>
-                  )}
-                </div>
-                <button onClick={() => setCartOpen(false)} className="text-muted-foreground hover:text-foreground p-1">
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              {/* Items */}
-              <div className="flex-1 overflow-y-auto p-3">
-                {cart.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center h-full">
-                    <ShoppingCart className="w-12 h-12 text-muted-foreground/30 mb-3" />
-                    <p className="text-muted-foreground text-sm">Nenhum item adicionado ainda.</p>
-                  </div>
-                ) : (
-                  <div className="flex flex-col gap-2">
-                    {cart.map((item) => (
-                      <div key={item.id} className="flex items-center gap-3 bg-surface-alt rounded-lg p-3">
-                        {item.image && (
-                          <img
-                            src={item.image}
-                            alt={item.name}
-                            className="w-12 h-12 rounded-lg object-cover flex-shrink-0"
-                          />
-                        )}
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-foreground leading-tight line-clamp-2">{item.name}</p>
-                          <div className="flex items-center gap-2 mt-1">
-                            <span className="text-xs text-muted-foreground">{item.quantity}x</span>
-                            <span className="text-sm font-semibold text-foreground">R$ {(item.price * item.quantity).toFixed(2)}</span>
-                          </div>
-                        </div>
-                        <button onClick={() => removeItem(item.id)} className="text-muted-foreground hover:text-red-500 transition-colors flex-shrink-0 p-1">
-                          <X className="w-4 h-4" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Footer */}
-              {cart.length > 0 && (
-                <div className="p-4 border-t border-border flex-shrink-0 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="font-semibold text-foreground text-base">Total</span>
-                    <span className="text-xl font-bold gradient-gold-text">R$ {cartTotal.toFixed(2)}</span>
-                  </div>
-
-                  {cartTotal < minOrderValue && (
-                    <p className="text-xs text-center text-amber-600 bg-amber-50 rounded-lg py-1.5 px-2">
-                      Mínimo: R$ {minOrderValue} (faltam R$ {(minOrderValue - cartTotal).toFixed(2)})
-                    </p>
-                  )}
-
-                  <button
-                    onClick={() => {
-                      setCartOpen(false);
-                      navigate('/checkout');
-                    }}
-                    className="w-full flex items-center justify-center gap-1.5 py-3 rounded-xl font-semibold text-sm btn-gold text-white"
-                  >
-                    Finalizar Pedido
-                    <ArrowRight className="w-4 h-4" />
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      clearCart();
-                      toast('Carrinho limpo');
-                    }}
-                    className="w-full flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium text-red-500 hover:bg-red-50 transition-colors border border-red-200"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                    Limpar Carrinho
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
+        {/* Cart Drawer — rendered here only in public mode; portal mode uses PortalLayout */}
+        {!portalMode && <CartDrawer />}
       </div>
     </div>
 

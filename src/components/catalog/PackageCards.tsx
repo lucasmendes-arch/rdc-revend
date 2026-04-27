@@ -164,7 +164,7 @@ export default function PackageCards({ products, isGuest = false, isPartner = fa
                           className="w-14 h-14 sm:w-10 sm:h-10 shrink-0 rounded-full border-2 border-white bg-white overflow-hidden shadow-sm relative hover:scale-110 transition-transform"
                           style={{ zIndex: i }}
                         >
-                          <img src={imgUrl} alt="Produto" className="w-full h-full object-cover" />
+                          <img src={imgUrl} alt="Produto" loading="lazy" className="w-full h-full object-cover" />
                         </div>
                       ))}
                       {remaining > 0 && (

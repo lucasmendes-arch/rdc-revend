@@ -3,10 +3,11 @@ import { Link, useLocation } from 'react-router-dom'
 import {
   Package, ShoppingCart, Users, Warehouse, UserCog,
   Menu, X, ExternalLink, Tag, DollarSign, GitBranch,
-  Megaphone, UserCheck, History, BadgeDollarSign, ChevronRight,
+  Megaphone, UserCheck, History, BadgeDollarSign, ChevronRight, LayoutTemplate,
 } from 'lucide-react'
 import logo from '@/assets/logo-rei-dos-cachos.png'
 import { ThemeToggle } from '@/components/ui/ThemeToggle'
+import { AdminThemeProvider } from '@/contexts/AdminThemeContext'
 
 type NavItem = { label: string; path: string; icon: React.ElementType }
 
@@ -34,6 +35,7 @@ const navGroups: { label: string; items: NavItem[] }[] = [
       { label: 'Estoque', path: '/admin/estoque', icon: Warehouse },
       { label: 'Categorias', path: '/admin/categorias', icon: Tag },
       { label: 'Marketing', path: '/admin/marketing', icon: Megaphone },
+      { label: 'Banners Portal', path: '/admin/portal-banners', icon: LayoutTemplate },
     ],
   },
   {
@@ -177,14 +179,14 @@ function SidebarContent({ onNavClick }: { onNavClick?: () => void }) {
   )
 }
 
-export default function AdminLayout({ children }: { children: React.ReactNode }) {
+function AdminLayoutInner({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false)
 
   const sidebarBg = 'bg-[hsl(218,18%,11%)]'
   const borderColor = 'border-white/[0.07]'
 
   return (
-    <div className="min-h-screen bg-surface-alt flex">
+    <div className="min-h-screen bg-background flex">
       {/* Desktop Sidebar */}
       <aside
         className={`hidden lg:flex flex-col w-60 ${sidebarBg} fixed inset-y-0 left-0 z-40 border-r ${borderColor}`}
@@ -232,5 +234,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         {children}
       </main>
     </div>
+  )
+}
+
+export default function AdminLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <AdminThemeProvider>
+      <AdminLayoutInner>{children}</AdminLayoutInner>
+    </AdminThemeProvider>
   )
 }

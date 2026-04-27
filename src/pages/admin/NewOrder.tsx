@@ -1,12 +1,14 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Loader, Search, Plus, Minus, Trash2, ArrowLeft, ShoppingCart, UserCheck } from 'lucide-react';
+import { Loader, Search, Plus, Minus, Trash2, ArrowLeft, ShoppingCart, UserCheck, FileText } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { PACKAGES, selectProductsForPackage } from '@/config/packages';
 import type { PublicProduct } from '@/hooks/useCatalogProducts';
+import SalesOrderModal from '@/components/admin/SalesOrderModal';
+import type { SalesOrderData } from '@/components/admin/SalesOrderModal';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -107,6 +109,9 @@ const NewOrder = () => {
   const [newClientName, setNewClientName]       = useState('');
   const [newClientPhone, setNewClientPhone]     = useState('');
   const [isCreating, setIsCreating]             = useState(false);
+
+  // -- Sales Order Modal --
+  const [showSalesOrder, setShowSalesOrder] = useState(false);
 
   // -- Coupon States --
   const [couponCode, setCouponCode] = useState('');
@@ -807,6 +812,13 @@ const NewOrder = () => {
               <h2 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground">
                 4. Resumo do Pedido
               </h2>
+              <button
+                onClick={() => setShowSalesOrder(true)}
+                className="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-amber-200 bg-amber-50 text-amber-700 text-xs font-semibold hover:bg-amber-100 transition-colors"
+              >
+                <FileText className="w-3.5 h-3.5" />
+                Pedido de Venda
+              </button>
             </div>
 
             <div className="divide-y divide-border">
@@ -1131,6 +1143,27 @@ const NewOrder = () => {
         </div>
 
       </div>
+      {/* Modal Pedido de Venda */}
+      {showSalesOrder && (() => {
+        const salesData: SalesOrderData = {
+          customer_name: selectedCustomer?.full_name ?? undefined,
+          customer_phone: selectedCustomer?.phone ?? undefined,
+          items: cartItems.map(item => ({
+            product_name: item.product_name,
+            quantity: item.quantity,
+            unit_price: item.price,
+            line_total: item.quantity * item.price,
+            main_image: item.main_image,
+          })),
+          subtotal,
+          discount_amount: discountAmount + (appliedCoupon?.discount_amount ?? 0),
+          total,
+          notes: notes || undefined,
+          date: new Date().toISOString(),
+        };
+        return <SalesOrderModal data={salesData} onClose={() => setShowSalesOrder(false)} />;
+      })()}
+
       {/* Modal Criar Cliente Rápido */}
       {isCreatingClient && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
