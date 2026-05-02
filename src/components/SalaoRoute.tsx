@@ -1,8 +1,17 @@
+import { useLayoutEffect } from 'react'
 import { Navigate, Outlet } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 
+const THEME_KEY = 'rdc-admin-theme'
+
 export const SalaoRoute = () => {
   const { role, loading } = useAuth()
+
+  useLayoutEffect(() => {
+    const isDark = (() => { try { return localStorage.getItem(THEME_KEY) === 'dark' } catch { return false } })()
+    if (isDark) document.documentElement.classList.add('dark')
+    else document.documentElement.classList.remove('dark')
+  }, [])
 
   if (loading) {
     return (

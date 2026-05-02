@@ -57,7 +57,7 @@ const queryClient = new QueryClient({
 });
 
 const App = () => (
-  <ThemeProvider attribute="class" storageKey="rdc-theme" defaultTheme="light" disableTransitionOnChange>
+  <ThemeProvider attribute="class" storageKey="rdc-theme" defaultTheme="light" enableSystem={false} disableTransitionOnChange>
   <ErrorBoundary>
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
