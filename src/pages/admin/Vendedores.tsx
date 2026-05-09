@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { supabase } from '@/lib/supabase'
-import { Loader, Plus, UserCheck, Pencil, Trash2, Star, Link2 } from 'lucide-react'
+import { supabase, callEdgeFunction } from '@/lib/supabase'
+import { Loader, Plus, UserCheck, Pencil, Trash2, Star, Link2, FileText, Send, CheckCircle2, AlertCircle } from 'lucide-react'
 import AdminLayout from '@/components/admin/AdminLayout'
 
 interface Seller {
@@ -45,6 +45,52 @@ export default function AdminVendedores() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState<SellerForm>(EMPTY_FORM)
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
+
+  // Commission report modal
+  const [reportSeller, setReportSeller] = useState<Seller | null>(null)
+  const today = new Date().toISOString().slice(0, 10)
+  const firstOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10)
+  const [reportStart, setReportStart] = useState(firstOfMonth)
+  const [reportEnd, setReportEnd] = useState(today)
+  const [reportLoading, setReportLoading] = useState(false)
+  const [reportResult, setReportResult] = useState<{ pdf_url: string; summary: { total_orders: number; total_value: number; commission_pct: number; commission_amount: number } } | null>(null)
+  const [reportError, setReportError] = useState<string | null>(null)
+
+  function openReport(seller: Seller) {
+    setReportSeller(seller)
+    setReportStart(firstOfMonth)
+    setReportEnd(today)
+    setReportResult(null)
+    setReportError(null)
+  }
+
+  function closeReport() {
+    setReportSeller(null)
+    setReportResult(null)
+    setReportError(null)
+  }
+
+  async function sendReport() {
+    if (!reportSeller) return
+    setReportLoading(true)
+    setReportError(null)
+    setReportResult(null)
+    try {
+      const data = await callEdgeFunction('send-seller-commission-report', {
+        seller_id: reportSeller.id,
+        start_date: reportStart,
+        end_date: reportEnd,
+      })
+      setReportResult(data)
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Erro desconhecido'
+      setReportError(msg.includes('404') || msg.includes('Nenhum pedido')
+        ? 'Nenhum pedido finalizado encontrado para este vendedor no período.'
+        : msg)
+    } finally {
+      setReportLoading(false)
+    }
+  }
 
   const { data: sellers = [], isLoading } = useQuery({
     queryKey: ['admin-sellers'],
@@ -317,6 +363,13 @@ export default function AdminVendedores() {
                             <Pencil className="w-4 h-4" />
                           </button>
                           <button
+                            onClick={() => openReport(seller)}
+                            className="p-1.5 rounded-lg hover:bg-emerald-50 transition-colors text-muted-foreground hover:text-emerald-600"
+                            title="Relatório de comissão"
+                          >
+                            <FileText className="w-4 h-4" />
+                          </button>
+                          <button
                             onClick={() => setDeleteConfirm(seller.id)}
                             className="p-1.5 rounded-lg hover:bg-red-50 transition-colors text-muted-foreground hover:text-red-600"
                             title="Deletar"
@@ -523,6 +576,126 @@ export default function AdminVendedores() {
                 Cancelar
               </button>
             </div>
+          </div>
+        </div>
+      )}
+      {/* Commission Report Modal */}
+      {reportSeller && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-foreground/40 backdrop-blur-sm" onClick={closeReport} />
+          <div className="relative bg-card rounded-2xl shadow-2xl border border-border p-6 w-full max-w-md">
+            <div className="flex items-center gap-3 mb-5">
+              <div className="w-10 h-10 rounded-xl bg-emerald-600 flex items-center justify-center flex-shrink-0">
+                <FileText className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-foreground">Relatório de Comissão</h2>
+                <p className="text-sm text-muted-foreground">{reportSeller.name}{reportSeller.code ? ` · ${reportSeller.code}` : ''} · {reportSeller.commission_pct}%</p>
+              </div>
+            </div>
+
+            {!reportResult ? (
+              <>
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-sm font-medium text-foreground mb-1">Data inicial</label>
+                      <input
+                        type="date"
+                        value={reportStart}
+                        onChange={e => setReportStart(e.target.value)}
+                        className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-foreground mb-1">Data final</label>
+                      <input
+                        type="date"
+                        value={reportEnd}
+                        onChange={e => setReportEnd(e.target.value)}
+                        className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm"
+                      />
+                    </div>
+                  </div>
+
+                  <p className="text-xs text-muted-foreground bg-muted/50 rounded-lg px-3 py-2">
+                    Será gerado um PDF com os pedidos finalizados (pago + concluído) e enviado via WhatsApp para o financeiro.
+                  </p>
+
+                  {reportError && (
+                    <div className="flex items-start gap-2 text-red-600 bg-red-50 dark:bg-red-900/20 rounded-lg px-3 py-2 text-sm">
+                      <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                      {reportError}
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex gap-3 mt-6">
+                  <button
+                    onClick={sendReport}
+                    disabled={reportLoading || !reportStart || !reportEnd}
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-medium disabled:opacity-60 transition-colors"
+                  >
+                    {reportLoading ? (
+                      <Loader className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Send className="w-4 h-4" />
+                    )}
+                    {reportLoading ? 'Gerando...' : 'Enviar via WhatsApp'}
+                  </button>
+                  <button
+                    onClick={closeReport}
+                    className="flex-1 px-4 py-2.5 rounded-lg border border-border bg-card text-foreground font-medium hover:bg-accent"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="flex items-center gap-2 text-emerald-600 mb-4">
+                  <CheckCircle2 className="w-5 h-5" />
+                  <span className="font-semibold">Relatório enviado!</span>
+                </div>
+
+                <div className="bg-muted/50 rounded-xl p-4 space-y-2 mb-5">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Pedidos finalizados</span>
+                    <span className="font-medium text-foreground">{reportResult.summary.total_orders}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Valor total</span>
+                    <span className="font-medium text-foreground">
+                      {reportResult.summary.total_value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-sm border-t border-border pt-2 mt-2">
+                    <span className="font-semibold text-emerald-700 dark:text-emerald-400">Comissão ({reportResult.summary.commission_pct}%)</span>
+                    <span className="font-bold text-emerald-700 dark:text-emerald-400">
+                      {reportResult.summary.commission_amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex gap-3">
+                  <a
+                    href={reportResult.pdf_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-emerald-600 text-emerald-700 dark:text-emerald-400 font-medium hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors text-sm"
+                  >
+                    <FileText className="w-4 h-4" />
+                    Ver PDF
+                  </a>
+                  <button
+                    onClick={closeReport}
+                    className="flex-1 px-4 py-2.5 rounded-lg border border-border bg-card text-foreground font-medium hover:bg-accent"
+                  >
+                    Fechar
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}

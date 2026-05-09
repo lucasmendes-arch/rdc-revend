@@ -1,20 +1,18 @@
-# Testes — Supabase
+# supabase/tests
 
-Scripts de validação para funções SQL, RPCs e comportamentos críticos.
-Executar no **Supabase Dashboard > SQL Editor**, bloco por bloco.
+Scripts de teste para RPCs, edge functions e comportamentos críticos do sistema.
+
+## Como executar
+
+- **`.sql`** → Supabase Dashboard → SQL Editor → rodar bloco por bloco
+- **`.sh`** → terminal local: `bash supabase/tests/<arquivo>.sh`
+
+---
 
 ## Índice
 
 | Arquivo | O que testa | Funções cobertas |
 |---|---|---|
-| `test_partner_order_webhook.sql` | Disparo do webhook n8n em pedidos de parceiros, payload com kits expandidos e separation_list por categoria | `build_partner_order_payload`, `send_pending_partner_order_webhooks` |
-| `test_webhook_revoke_execute.sql` | Valida que PUBLIC/anon/authenticated não têm EXECUTE nas funções de webhook; confirma owner e SECURITY DEFINER intactos | `build_partner_order_payload`, `send_pending_partner_order_webhooks` |
-| `test_create_order.sh` | Versão manual da edge function create-order (requer JWT e product IDs preenchidos à mão) | `create-order` (edge function) |
-| `test_create_order_auto.js` | Versão automatizada: lê .env.local, busca produtos reais, cria usuário temporário, roda 6 casos e limpa tudo. Detecta verify_jwt bloqueando ES256 e orienta sobre deploy. | `create-order` (edge function) |
-
-## Convenções
-
-- Cada bloco é independente — selecione e rode separadamente
-- Dados de teste são limpos ao final ou usam reset de flags (`partner_webhook_sent_at = NULL`)
-- Consulte `docs/SCHEMA.md` antes de escrever queries (armadilhas de nomenclatura documentadas lá)
-- Funções em feature freeze (`create-order`) não devem ser modificadas pelos scripts
+| [test_get_seller_commission_summary.sql](test_get_seller_commission_summary.sql) | RPC de resumo de comissão por vendedor e período | `get_seller_commission_summary` |
+| [test_send_seller_commission_report.sh](test_send_seller_commission_report.sh) | Edge function de geração de PDF + upload Storage + envio WhatsApp | `send-seller-commission-report` |
+| [test_cron_commission_reports.sh](test_cron_commission_reports.sh) | Cron mensal de comissão: disparo sem JWT, período automático, contadores processed/skipped/errors | `cron-commission-reports`, `get_seller_commission_summary_internal` |

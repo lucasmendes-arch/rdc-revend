@@ -28,7 +28,11 @@ export function AdminThemeProvider({ children }: { children: React.ReactNode }) 
   const toggle = () => {
     setIsDark(prev => {
       const next = !prev
-      try { localStorage.setItem(STORAGE_KEY, next ? 'dark' : 'light') } catch {}
+      const value = next ? 'dark' : 'light'
+      try {
+        localStorage.setItem(STORAGE_KEY, value)
+        localStorage.setItem('rdc-theme', value)
+      } catch {}
       return next
     })
   }

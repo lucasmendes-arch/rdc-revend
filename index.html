@@ -26,9 +26,7 @@
   <script>
     (function () {
       try {
-        var saved = localStorage.getItem('rdc-theme');
-        var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-        if (saved === 'dark' || (!saved && prefersDark)) {
+        if (localStorage.getItem('rdc-theme') === 'dark') {
           document.documentElement.classList.add('dark');
         }
       } catch (e) {}
