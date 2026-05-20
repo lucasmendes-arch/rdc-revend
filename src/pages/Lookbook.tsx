@@ -1,7 +1,14 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Printer, MessageCircle } from "lucide-react";
 import logo from "@/assets/logo-rei-dos-cachos.png";
 import { useCatalogProducts, type PublicProduct } from "@/hooks/useCatalogProducts";
+
+const PRINT_STYLES = `
+@media print {
+  .lb-card       { break-inside: avoid; page-break-inside: avoid; }
+  .lb-sec-header { break-after:  avoid; page-break-after:  avoid; }
+}
+`;
 
 const WA_URL =
   "https://wa.me/5527996865366?text=" +
@@ -65,7 +72,7 @@ function ProductCard({ product, large = false }: CardProps) {
       {/* Image */}
       <div
         className={`relative overflow-hidden bg-stone-100 ${
-          large ? "aspect-[3/4]" : "aspect-square"
+          large ? "aspect-[4/3] sm:aspect-[3/4]" : "aspect-square"
         }`}
       >
         {img ? (
@@ -73,7 +80,7 @@ function ProductCard({ product, large = false }: CardProps) {
             src={img}
             alt={product.name}
             className="w-full h-full object-cover"
-            loading="lazy"
+            loading="eager"
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center">
@@ -120,26 +127,26 @@ function CategorySection({ name, products }: SectionProps) {
   const hasMany = ordered.length >= 3;
 
   return (
-    <section className="mt-14 print:mt-10">
+    <section className="lb-section mt-14 print:mt-10">
       {/* Section header */}
-      <div className="flex items-center gap-4 mb-6">
-        <h2 className="font-display text-2xl print:text-xl font-light uppercase tracking-[0.2em] text-stone-900 whitespace-nowrap">
+      <div className="lb-sec-header flex items-center gap-3 mb-6 overflow-hidden">
+        <h2 className="font-display text-xl sm:text-2xl print:text-xl font-light uppercase tracking-[0.1em] sm:tracking-[0.2em] text-stone-900 shrink-0 max-w-[60%] sm:max-w-none leading-tight">
           {name}
         </h2>
-        <div className="flex-1 h-px bg-stone-300" />
-        <span className="font-sans text-[10px] uppercase tracking-widest text-stone-400">
-          {products.length} {products.length === 1 ? "produto" : "produtos"}
+        <div className="flex-1 h-px bg-stone-300 min-w-0" />
+        <span className="font-sans text-[10px] uppercase tracking-widest text-stone-400 shrink-0">
+          {ordered.length} {ordered.length === 1 ? "produto" : "produtos"}
         </span>
       </div>
 
-      {/* Grid */}
-      <div className="grid grid-cols-3 gap-4 print:gap-3 auto-rows-min">
+      {/* Grid — mobile: 2 colunas sem destaque / desktop: 3 colunas com destaque */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4 print:gap-3 auto-rows-min">
         {ordered.map((p, idx) => {
           const featured = hasMany && idx === 0;
           return (
             <div
               key={p.id}
-              className={featured ? "col-span-2 row-span-2" : "col-span-1"}
+              className={`lb-card ${featured ? "col-span-2 sm:row-span-2" : "col-span-1"}`}
             >
               <ProductCard product={p} large={featured} />
             </div>
@@ -152,7 +159,24 @@ function CategorySection({ name, products }: SectionProps) {
 
 // ─── Page ──────────────────────────────────────────────────────────────────────
 
+async function printAfterImages() {
+  const imgs = Array.from(document.querySelectorAll("img"));
+  await Promise.all(
+    imgs.map(
+      (img) =>
+        img.complete
+          ? Promise.resolve()
+          : new Promise((res) => {
+              img.onload = res;
+              img.onerror = res;
+            })
+    )
+  );
+  window.print();
+}
+
 export default function Lookbook() {
+  const [printing, setPrinting] = useState(false);
   const { data: products, isLoading, error } = useCatalogProducts();
 
   const grouped = useMemo(() => {
@@ -199,33 +223,41 @@ export default function Lookbook() {
 
   return (
     <div className="bg-[#F7F4EF] min-h-screen print:bg-white">
+      <style dangerouslySetInnerHTML={{ __html: PRINT_STYLES }} />
       {/* Top bar — hidden on print */}
-      <div className="print:hidden sticky top-0 z-10 bg-white border-b border-stone-200 px-6 py-3 flex items-center justify-between shadow-sm">
-        <span className="font-sans text-xs text-stone-400 uppercase tracking-widest">
-          Catálogo de Revenda
-        </span>
-        <div className="flex gap-3">
-          <a
-            href={WA_URL}
-            target="_blank"
-            rel="noreferrer"
-            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white text-xs font-sans rounded-full hover:bg-green-700 transition-colors"
-          >
-            <MessageCircle className="w-3.5 h-3.5" />
-            Fazer pedido
-          </a>
-          <button
-            onClick={() => window.print()}
-            className="flex items-center gap-2 px-4 py-2 bg-stone-800 text-white text-xs font-sans rounded-full hover:bg-stone-700 transition-colors"
-          >
-            <Printer className="w-3.5 h-3.5" />
-            Salvar PDF
-          </button>
+      <div className="print:hidden sticky top-0 z-10 bg-white border-b border-stone-200 shadow-sm">
+        <div className="flex flex-row items-center justify-between px-4 sm:px-6 py-3 sm:py-4 gap-2">
+          <span className="font-sans text-[10px] sm:text-xs text-stone-400 uppercase tracking-widest">
+            Catálogo de Revenda
+          </span>
+          <div className="flex gap-2">
+            <a
+              href={WA_URL}
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center gap-1.5 px-3 py-1.5 sm:px-4 sm:py-2 bg-green-600 text-white text-[10px] sm:text-xs font-sans rounded-full hover:bg-green-700 transition-colors"
+            >
+              <MessageCircle className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
+              Fazer pedido
+            </a>
+            <button
+              disabled={printing}
+              onClick={async () => {
+                setPrinting(true);
+                await printAfterImages();
+                setPrinting(false);
+              }}
+              className="flex items-center gap-1.5 px-3 py-1.5 sm:px-4 sm:py-2 bg-stone-800 text-white text-[10px] sm:text-xs font-sans rounded-full hover:bg-stone-700 transition-colors disabled:opacity-60"
+            >
+              <Printer className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
+              {printing ? "Aguarde…" : "Salvar PDF"}
+            </button>
+          </div>
         </div>
       </div>
 
       {/* Cover */}
-      <header className="max-w-4xl mx-auto px-8 pt-14 pb-8 print:pt-8 border-b-2 border-stone-900">
+      <header className="max-w-4xl mx-auto px-4 sm:px-8 pt-10 sm:pt-14 pb-8 print:pt-8 border-b-2 border-stone-900">
         <div className="flex items-end justify-between">
           <img src={logo} alt="Rei dos Cachos" className="h-10 print:h-9" />
           <div className="text-right">
@@ -242,7 +274,7 @@ export default function Lookbook() {
           <p className="font-sans text-[10px] uppercase tracking-[0.3em] text-stone-400 mb-2">
             Tabela de preços para revendedores
           </p>
-          <h1 className="font-display text-6xl print:text-5xl font-light text-stone-900 leading-none">
+          <h1 className="font-display text-5xl sm:text-6xl print:text-5xl font-light text-stone-900 leading-none">
             Catálogo
           </h1>
           <p className="font-display italic text-2xl print:text-xl text-stone-400 mt-1">
@@ -252,7 +284,7 @@ export default function Lookbook() {
       </header>
 
       {/* Product sections */}
-      <main className="max-w-4xl mx-auto px-8 pb-20">
+      <main className="max-w-4xl mx-auto px-4 sm:px-8 pb-20">
         {grouped.length === 0 ? (
           <p className="font-sans text-stone-400 text-sm text-center mt-16">
             Nenhum produto ativo encontrado. ({products?.length ?? 0} retornados da query)

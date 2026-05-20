@@ -22,7 +22,7 @@ const WhatsAppButton = () => {
   }
 
   return (
-    <div className="fixed z-50 bottom-24 right-4 sm:bottom-6 sm:right-6 md:bottom-8 md:right-8 flex items-end gap-3 pointer-events-none">
+    <div className="print:hidden fixed z-50 bottom-24 right-4 sm:bottom-6 sm:right-6 md:bottom-8 md:right-8 flex items-end gap-3 pointer-events-none">
 
       {/* Helper Popup */}
       <div
