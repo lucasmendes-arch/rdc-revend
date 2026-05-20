@@ -15,6 +15,7 @@ import Portal from "./pages/portal/Portal";
 import PortalComprar from "./pages/portal/PortalComprar";
 import Login from "./pages/Login";
 import Catalogo from "./pages/Catalogo";
+import Lookbook from "./pages/Lookbook";
 import Cadastro from "./pages/Cadastro";
 import Checkout from "./pages/Checkout";
 import PedidoSucesso from "./pages/PedidoSucesso";
@@ -73,6 +74,7 @@ const App = () => (
                 <Route path="/cadastro" element={<Cadastro />} />
                 <Route path="/redefinir-senha" element={<RedefinirSenha />} />
                 <Route path="/catalogo" element={<Catalogo />} />
+                <Route path="/lookbook" element={<Lookbook />} />
                 <Route element={<ProtectedRoute />}>
                   <Route path="/checkout" element={<Checkout />} />
                   <Route path="/pedido/sucesso/:id" element={<PedidoSucesso />} />
