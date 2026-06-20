@@ -34,21 +34,22 @@ export function useImageUpload() {
   const upload = async (file: File): Promise<string> => {
     setUploading(true)
     try {
+      await supabase.auth.refreshSession()
+
       const compressed = await compressImage(file)
       const fileName = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.jpg`
-      const filePath = `products/${fileName}`
 
-      const { error } = await supabase.storage
-        .from('product-images')
-        .upload(filePath, compressed, { cacheControl: '31536000', upsert: false, contentType: 'image/jpeg' })
+      const formData = new FormData()
+      formData.append('file', new File([compressed], fileName, { type: 'image/jpeg' }))
 
-      if (error) throw error
+      const { data, error } = await supabase.functions.invoke('upload-product-image', {
+        body: formData,
+      })
 
-      const { data: urlData } = supabase.storage
-        .from('product-images')
-        .getPublicUrl(filePath)
+      if (error) throw new Error(error.message || 'Upload falhou')
+      if (!data?.url) throw new Error('Edge function não retornou URL')
 
-      return urlData.publicUrl
+      return data.url as string
     } finally {
       setUploading(false)
     }
