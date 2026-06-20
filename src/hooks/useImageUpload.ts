@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { supabase } from '@/lib/supabase'
 
 const MAX_DIMENSION = 800
-const JPEG_QUALITY = 0.75
+const WEBP_QUALITY = 0.80
 
 async function compressImage(file: File): Promise<Blob> {
   return new Promise((resolve, reject) => {
@@ -19,8 +19,8 @@ async function compressImage(file: File): Promise<Blob> {
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
       canvas.toBlob(
         (blob) => (blob ? resolve(blob) : reject(new Error('canvas toBlob failed'))),
-        'image/jpeg',
-        JPEG_QUALITY,
+        'image/webp',
+        WEBP_QUALITY,
       )
     }
     img.onerror = reject
@@ -37,10 +37,10 @@ export function useImageUpload() {
       await supabase.auth.refreshSession()
 
       const compressed = await compressImage(file)
-      const fileName = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.jpg`
+      const fileName = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.webp`
 
       const formData = new FormData()
-      formData.append('file', new File([compressed], fileName, { type: 'image/jpeg' }))
+      formData.append('file', new File([compressed], fileName, { type: 'image/webp' }))
 
       const { data, error } = await supabase.functions.invoke('upload-product-image', {
         body: formData,
