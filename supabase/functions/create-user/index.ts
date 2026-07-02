@@ -81,11 +81,18 @@ Deno.serve(async (req) => {
       );
     }
 
-    const { data: profile } = await supabase
+    const { data: profile, error: profileFetchError } = await supabase
       .from('profiles')
       .select('role')
       .eq('id', caller.id)
       .single()
+
+    if (profileFetchError) {
+      return new Response(
+        JSON.stringify({ error: `Erro ao verificar permissões: ${profileFetchError.message}` }),
+        { status: 500, headers: { "Content-Type": "application/json", ...getCorsHeaders(req) } }
+      );
+    }
 
     if (profile?.role !== 'admin' && profile?.role !== 'salao') {
       return new Response(
