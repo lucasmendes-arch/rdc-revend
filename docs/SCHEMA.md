@@ -317,7 +317,7 @@ Lista de categorias de estoque físico (lookup), gerenciada pelo admin em `/esto
 | sort_order | int | NO | `0` | — |
 | color_index | int | NO | `0` | — |
 
-> UNIQUE `(name)`. RLS admin-only (leitura e escrita). **Sem FK** com `catalog_products.stock_category` (que continua texto livre) — esta tabela só alimenta o dropdown de seleção/criação na UI. Sem seed — tabela começa vazia, admin cadastra as categorias pela UI (`20260702000012` removeu o seed inicial de `20260702000011` a pedido do usuário).
+> UNIQUE `(name)`. RLS: escrita admin-only; SELECT também para colaborador de loja (`is_estoque()`, role=salao) — a tela de contagem lê `sort_order`/`color_index` (`20260703000003`). **Sem FK** com `catalog_products.stock_category` (que continua texto livre) — esta tabela só alimenta o dropdown de seleção/criação na UI. Sem seed — tabela começa vazia, admin cadastra as categorias pela UI (`20260702000012` removeu o seed inicial de `20260702000011` a pedido do usuário).
 > `sort_order`: ordem manual de exibição em `/estoque/contagem/:id` e `/estoque/config` (ex: seguir a ordem física dos corredores da loja) — reordenável pelo admin via setas cima/baixo em `/estoque/config`. Categorias novas entram com `0`. "Sem categoria" (produtos sem `stock_category`) sempre aparece por último, independente de `sort_order`.
 > `color_index`: índice na paleta pastel fixa `src/lib/stockCategoryColors.ts` (10 cores) — atribuído automaticamente (cíclico) na criação, editável via swatches em `/estoque/config`. Usado para colorir o badge da categoria em `/estoque/contagem/:id` e o `<select>` de categoria em `/estoque/config`. "Sem categoria" não usa a paleta — sempre neutro/cinza.
 
