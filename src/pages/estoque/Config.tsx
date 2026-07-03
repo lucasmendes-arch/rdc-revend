@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { Navigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Loader, Search, Package, Plus, Tags, Target as TargetIcon, ChevronUp, ChevronDown } from 'lucide-react'
+import { Loader, Search, Package, Plus, Tags, Target as TargetIcon, ChevronUp, ChevronDown, Pencil, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
@@ -39,10 +39,14 @@ interface StockCategory {
   color_index: number
 }
 
-function ClassificationRow({ product, categories, onSave }: { product: Product; categories: StockCategory[]; onSave: (id: string, updates: Partial<Product>) => void }) {
+function ClassificationRow({ product, categories, onSave, onDelete }: { product: Product; categories: StockCategory[]; onSave: (id: string, updates: Partial<Product>) => void; onDelete: (product: Product) => void }) {
   const [unitsPerBox, setUnitsPerBox] = useState(product.units_per_box ?? '')
   const [packageType, setPackageType] = useState(product.package_type ?? '')
   const [stockCategory, setStockCategory] = useState(product.stock_category ?? '')
+  // Nome só é editável em itens stock_only — produtos B2B têm nome/imagem
+  // vindos do sync Nuvemshop (seriam sobrescritos no próximo sync).
+  const [editingName, setEditingName] = useState(false)
+  const [name, setName] = useState(product.name)
   const timerRef = useRef<ReturnType<typeof setTimeout>>()
   const [dirty, setDirty] = useState(false)
 
@@ -50,8 +54,9 @@ function ClassificationRow({ product, categories, onSave }: { product: Product; 
     setUnitsPerBox(product.units_per_box ?? '')
     setPackageType(product.package_type ?? '')
     setStockCategory(product.stock_category ?? '')
+    setName(product.name)
     setDirty(false)
-  }, [product.units_per_box, product.package_type, product.stock_category])
+  }, [product.units_per_box, product.package_type, product.stock_category, product.name])
 
   const scheduleSave = (updates: Partial<Product>) => {
     setDirty(true)
@@ -60,6 +65,16 @@ function ClassificationRow({ product, categories, onSave }: { product: Product; 
       onSave(product.id, updates)
       setDirty(false)
     }, 800)
+  }
+
+  const commitName = () => {
+    setEditingName(false)
+    const trimmed = name.trim()
+    if (!trimmed || trimmed === product.name) {
+      setName(product.name)
+      return
+    }
+    scheduleSave({ name: trimmed })
   }
 
   return (
@@ -74,7 +89,33 @@ function ClassificationRow({ product, categories, onSave }: { product: Product; 
             )}
           </div>
           <div className="min-w-0">
-            <span className="font-medium text-foreground truncate max-w-[220px] block">{product.name}</span>
+            {editingName ? (
+              <input
+                type="text"
+                value={name}
+                autoFocus
+                onChange={(e) => setName(e.target.value)}
+                onBlur={commitName}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') commitName()
+                  if (e.key === 'Escape') { setName(product.name); setEditingName(false) }
+                }}
+                className="w-full max-w-[220px] h-7 rounded-lg border border-input text-sm bg-white px-2 focus:outline-none focus:ring-2 focus:ring-amber-400"
+              />
+            ) : (
+              <span className="font-medium text-foreground truncate max-w-[220px] block">
+                {product.name}
+                {product.stock_only && (
+                  <button
+                    onClick={() => setEditingName(true)}
+                    className="inline-flex align-middle ml-1.5 text-muted-foreground hover:text-foreground"
+                    title="Renomear item"
+                  >
+                    <Pencil className="w-3 h-3" />
+                  </button>
+                )}
+              </span>
+            )}
             {product.stock_only && (
               <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-teal-100 text-teal-700 uppercase">Só contagem</span>
             )}
@@ -140,6 +181,17 @@ function ClassificationRow({ product, categories, onSave }: { product: Product; 
         </select>
       </td>
       <td className="w-6">{dirty && <Loader className="w-3.5 h-3.5 animate-spin text-amber-500" />}</td>
+      <td className="w-10 px-2 text-center">
+        {product.stock_only && (
+          <button
+            onClick={() => onDelete(product)}
+            className="text-muted-foreground hover:text-red-600 transition-colors"
+            title="Excluir item"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+        )}
+      </td>
     </tr>
   )
 }
@@ -435,6 +487,36 @@ export default function EstoqueConfig() {
     [updateProduct]
   )
 
+  // Excluir item só-contagem. Item já citado em stock_count_items /
+  // replenishment_orders tem FK ON DELETE RESTRICT — não dá pra apagar sem
+  // destruir histórico. Fallback: desliga stock_only (is_active já é false),
+  // o que tira o item da view stock_countable_products preservando o histórico.
+  const deleteStockOnlyItem = useMutation({
+    mutationFn: async (product: Product) => {
+      const { error } = await supabase.from('catalog_products').delete().eq('id', product.id)
+      if (!error) return 'deleted' as const
+      if (error.code !== '23503') throw error
+      const { error: hideError } = await supabase.from('catalog_products').update({ stock_only: false }).eq('id', product.id)
+      if (hideError) throw hideError
+      return 'hidden' as const
+    },
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ['stock-products-config'] })
+      queryClient.invalidateQueries({ queryKey: ['stock-products'] })
+      toast.success(result === 'deleted' ? 'Item excluído' : 'Item removido da contagem (histórico de contagens preservado)')
+    },
+    onError: (err) => toast.error(`Erro ao excluir item: ${err instanceof Error ? err.message : 'desconhecido'}`),
+  })
+
+  const handleDeleteProduct = useCallback(
+    (product: Product) => {
+      if (!product.stock_only) return
+      if (!confirm(`Excluir "${product.name}" da contagem? Esta ação não pode ser desfeita.`)) return
+      deleteStockOnlyItem.mutate(product)
+    },
+    [deleteStockOnlyItem]
+  )
+
   const saveTarget = useMutation({
     mutationFn: async ({ productId, storeId, qty }: { productId: string; storeId: string; qty: number }) => {
       const { error } = await supabase
@@ -625,11 +707,12 @@ export default function EstoqueConfig() {
                       <th className="px-4 py-2.5 text-center text-xs font-semibold text-foreground">Embalagem</th>
                       <th className="px-4 py-2.5 text-center text-xs font-semibold text-foreground">Categoria de estoque</th>
                       <th className="w-6"></th>
+                      <th className="w-10"></th>
                     </tr>
                   </thead>
                   <tbody>
                     {filteredProducts.map((p) => (
-                      <ClassificationRow key={p.id} product={p} categories={categories} onSave={handleSaveProduct} />
+                      <ClassificationRow key={p.id} product={p} categories={categories} onSave={handleSaveProduct} onDelete={handleDeleteProduct} />
                     ))}
                   </tbody>
                 </table>

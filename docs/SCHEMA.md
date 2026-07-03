@@ -102,6 +102,7 @@ Produtos do catálogo B2B.
 > RLS: leitura pública, escrita admin-only (via RPC SECURITY DEFINER).
 > **Módulo de Estoque:** `units_per_box` (unidades por caixa fechada, usado na conciliação de contagem física), `package_type` (`'CX'`/`'UND'`), `stock_category` (agrupamento de estoque físico, texto livre sem CHECK — ex: Ativador, Shampoo, Máscara). Todas nullable, sem DEFAULT — `NULL` significa "não classificado ainda", não é seguro assumir `1`/`'UND'`. Independentes de `category_id`/`categories`, que servem à navegação do catálogo B2B.
 > `stock_only`: `true` = produto existe só para contagem física de estoque (ex: material de limpeza), nunca aparece no catálogo B2B. CHECK `catalog_products_stock_only_not_active` garante `NOT (stock_only AND is_active)`. Criado via `/estoque/config` (não vem do Nuvemshop). Ver view `stock_countable_products` e D-24 em `docs/decisions.md`.
+> **Exclusão de item stock_only** (`/estoque/config`): DELETE real quando o item nunca foi citado em contagem/reposição; se a FK `RESTRICT` (`stock_count_items.product_id` / `replenishment_orders.product_id`) barrar, o fallback é `UPDATE SET stock_only = false` — com `is_active` já `false`, o item sai da view `stock_countable_products` preservando o histórico. Ou seja: linha com `stock_only=false AND is_active=false AND source='stock_only'` = item só-contagem "excluído".
 
 ---
 
