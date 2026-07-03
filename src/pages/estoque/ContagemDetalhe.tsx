@@ -26,6 +26,7 @@ interface StockCountItem {
 
 interface StockCount {
   id: string
+  store_id: string
   status: 'draft' | 'confirmed'
   created_at: string
   confirmed_at: string | null
@@ -259,13 +260,44 @@ export default function EstoqueContagemDetalhe() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('stock_counts')
-        .select('id, status, created_at, confirmed_at')
+        .select('id, store_id, status, created_at, confirmed_at')
         .eq('id', id as string)
         .maybeSingle()
       if (error) throw error
       return data as StockCount | null
     },
     enabled: !!id,
+  })
+
+  // Sortimento por loja: a central (Linhares) conta o catálogo inteiro; as
+  // satélites contam só produtos com meta > 0 em store_stock_targets — a
+  // matriz de metas de /estoque/config é o cadastro de "quais produtos a
+  // loja trabalha" (meta vazia/0 = não trabalha). Ver docs/decisions.md.
+  const storeId = stockCount?.store_id
+
+  const { data: countStore, isLoading: storeLoading } = useQuery<{ id: string; type: 'central' | 'satellite' } | null>({
+    queryKey: ['store-type', storeId],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('stores').select('id, type').eq('id', storeId as string).maybeSingle()
+      if (error) throw error
+      return data as { id: string; type: 'central' | 'satellite' } | null
+    },
+    enabled: !!storeId,
+    staleTime: 5 * 60 * 1000,
+  })
+  const isSatellite = countStore?.type === 'satellite'
+
+  const { data: storeTargets = [], isLoading: targetsLoading } = useQuery<{ product_id: string; target_quantity: number }[]>({
+    queryKey: ['store-stock-targets', storeId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('store_stock_targets')
+        .select('product_id, target_quantity')
+        .eq('store_id', storeId as string)
+      if (error) throw error
+      return (data || []) as { product_id: string; target_quantity: number }[]
+    },
+    enabled: !!storeId && isSatellite,
   })
 
   const { data: stockCategories = [] } = useQuery<StockCategoryOption[]>({
@@ -338,11 +370,19 @@ export default function EstoqueContagemDetalhe() {
     [saveItem]
   )
 
+  const assortmentProducts = useMemo(() => {
+    if (!isSatellite) return products
+    const allowed = new Set(storeTargets.filter((t) => t.target_quantity > 0).map((t) => t.product_id))
+    // Item já contado neste rascunho nunca some da tela, mesmo que o admin
+    // tenha zerado a meta depois — não sumir com dado que o funcionário digitou.
+    return products.filter((p) => allowed.has(p.id) || itemsByProduct.has(p.id))
+  }, [products, isSatellite, storeTargets, itemsByProduct])
+
   const filteredProducts = useMemo(() => {
     const q = search.toLowerCase().trim()
-    if (!q) return products
-    return products.filter((p) => p.name.toLowerCase().includes(q))
-  }, [products, search])
+    if (!q) return assortmentProducts
+    return assortmentProducts.filter((p) => p.name.toLowerCase().includes(q))
+  }, [assortmentProducts, search])
 
   const categoryOrderByName = useMemo(() => {
     const orderMap = new Map<string, number>()
@@ -387,7 +427,9 @@ export default function EstoqueContagemDetalhe() {
   const itemsWithValue = items.filter((i) => i.closed_boxes > 0 || i.loose_units > 0).length
   const readOnly = stockCount?.status === 'confirmed'
 
-  if (countLoading || productsLoading) {
+  // Espera também o tipo da loja/metas pra não piscar a lista completa
+  // numa loja satélite antes do filtro de sortimento entrar.
+  if (countLoading || productsLoading || storeLoading || (isSatellite && targetsLoading)) {
     return (
       <EstoqueLayout>
         <div className="text-center py-16">
@@ -477,7 +519,11 @@ export default function EstoqueContagemDetalhe() {
 
         {groups.length === 0 && (
           <div className="text-center py-16">
-            <p className="text-muted-foreground">Nenhum produto encontrado.</p>
+            <p className="text-muted-foreground">
+              {isSatellite && assortmentProducts.length === 0
+                ? 'Nenhum produto cadastrado pra esta loja ainda — o sortimento é definido pelas metas de estoque (meta > 0) em Configurações.'
+                : 'Nenhum produto encontrado.'}
+            </p>
           </div>
         )}
       </div>

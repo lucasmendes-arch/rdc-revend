@@ -281,6 +281,7 @@ Estoque mínimo/ideal (em unidades) de um produto em uma loja.
 | updated_at | timestamptz | NO | `now()` | — |
 
 > UNIQUE `(product_id, store_id)`. Sem seed — cadastro é manual pelo admin (dado de negócio). RLS: admin gerencia tudo; colaborador com acesso ao módulo de estoque só lê a meta da própria loja.
+> **Dupla função (D-25):** além de alimentar a reposição (`confirm_stock_count`), a meta define o **sortimento da contagem** nas lojas satélite — produto só aparece em `/estoque/contagem/:id` se tiver meta > 0 pra loja (meta vazia/0 = loja não trabalha com o produto). Loja `type='central'` conta a view inteira, independente de meta. Filtro client-side em `ContagemDetalhe.tsx`.
 
 ---
 

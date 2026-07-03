@@ -22,6 +22,7 @@ interface StoreOption {
   id: string
   name: string
   slug: string
+  type: 'central' | 'satellite'
 }
 
 interface Target {
@@ -147,11 +148,15 @@ function TargetCell({
   productId,
   storeId,
   target,
+  dimZero,
   onSave,
 }: {
   productId: string
   storeId: string
   target: Target | undefined
+  // Loja satélite: meta 0 = "não trabalha com o produto" (fora do sortimento
+  // da contagem), então a célula zerada renderiza apagada de propósito.
+  dimZero: boolean
   onSave: (productId: string, storeId: string, qty: number) => void
 }) {
   const [qty, setQty] = useState(target?.target_quantity ?? 0)
@@ -179,7 +184,9 @@ function TargetCell({
             setDirty(false)
           }, 800)
         }}
-        className="w-16 h-8 rounded-lg border border-input text-center text-sm font-semibold bg-white focus:outline-none focus:ring-2 focus:ring-amber-400"
+        className={`w-16 h-8 rounded-lg border border-input text-center text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-amber-400 ${
+          dimZero && qty === 0 ? 'bg-surface-alt text-muted-foreground opacity-50' : 'bg-white'
+        }`}
       />
       {dirty && <Loader className="w-3 h-3 animate-spin text-amber-500 shrink-0" />}
     </div>
@@ -385,7 +392,7 @@ export default function EstoqueConfig() {
   const { data: stores = [] } = useQuery<StoreOption[]>({
     queryKey: ['stores-config'],
     queryFn: async () => {
-      const { data, error } = await supabase.from('stores').select('id, name, slug').order('name')
+      const { data, error } = await supabase.from('stores').select('id, name, slug, type').order('name')
       if (error) throw error
       return (data || []) as StoreOption[]
     },
@@ -636,6 +643,8 @@ export default function EstoqueConfig() {
         <section className="space-y-2 pb-8">
           <p className="text-xs text-muted-foreground px-1">
             Cada loja tem seu próprio porte — defina a meta ideal (em unidades) por loja, lado a lado.
+            Nas lojas satélite, meta vazia/0 = a loja não trabalha com o produto (ele não aparece na contagem dela).
+            A central conta o catálogo inteiro, independente de meta.
           </p>
           <div className="bg-white rounded-2xl border border-border shadow-card overflow-hidden">
             <div className="overflow-x-auto">
@@ -644,7 +653,10 @@ export default function EstoqueConfig() {
                   <tr className="border-b border-border bg-surface-alt">
                     <th className="px-4 py-2.5 text-left text-xs font-semibold text-foreground sticky left-0 bg-surface-alt">Produto</th>
                     {stores.map((s) => (
-                      <th key={s.id} className="px-4 py-2.5 text-center text-xs font-semibold text-foreground whitespace-nowrap">{s.name}</th>
+                      <th key={s.id} className="px-4 py-2.5 text-center text-xs font-semibold text-foreground whitespace-nowrap">
+                        {s.name}
+                        {s.type === 'central' && <span className="block text-[9px] font-medium text-muted-foreground normal-case">central — conta tudo</span>}
+                      </th>
                     ))}
                   </tr>
                 </thead>
@@ -658,6 +670,7 @@ export default function EstoqueConfig() {
                             productId={p.id}
                             storeId={s.id}
                             target={targetsByProductStore.get(`${p.id}:${s.id}`)}
+                            dimZero={s.type === 'satellite'}
                             onSave={handleSaveTarget}
                           />
                         </td>
