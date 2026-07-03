@@ -72,6 +72,7 @@ _Handoff detalhado: `docs/handoff_backlog_2026-04-08.md`_
 - [ ] Carrinho persistido no servidor (hoje é só localStorage)
 - [ ] Histórico de preços por produto
 - [ ] Produtos em destaque configuráveis pelo admin
+- [ ] Registro de kits: `kit_components` só é populada por migrations manuais (padrão de nome, 2025-03) — kit novo criado na Nuvemshop cai fora de todos os fluxos de kit (contagem, webhook parceiros, reserva de estoque) até alguém registrar. Ver fix `20260703000004`. Ideal: UI admin de kits ou alerta no sync quando produto "Kit %" não tem componentes
 
 ## Checkout
 
