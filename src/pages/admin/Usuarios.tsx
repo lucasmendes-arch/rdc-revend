@@ -20,6 +20,13 @@ interface SystemUser {
   created_at: string
   last_sign_in_at: string | null
   permissions: Record<string, boolean> | null
+  store_id: string | null
+  store_name: string | null
+}
+
+interface StoreOption {
+  id: string
+  name: string
 }
 
 /** Tipo unificado — retornado por get_network_partners e get_all_client_stats */
@@ -121,7 +128,7 @@ const orderStatusLabels: Record<string, { label: string; color: string }> = {
 export default function AdminUsuarios() {
   const queryClient = useQueryClient()
   const [creating, setCreating] = useState(false)
-  const [createForm, setCreateForm] = useState({ email: '', password: '', role: 'salao' })
+  const [createForm, setCreateForm] = useState({ email: '', password: '', role: 'salao', store_id: '' })
   const [activeTab, setActiveTab] = useState<'sistema' | 'parceiros' | 'clientes'>('sistema')
   const [creatingPartner, setCreatingPartner] = useState(false)
   const [partnerForm, setPartnerForm] = useState({ full_name: '', phone: '' })
@@ -136,21 +143,47 @@ export default function AdminUsuarios() {
     staleTime: 60 * 1000,
   })
 
+  const { data: stores = [] } = useQuery<StoreOption[]>({
+    queryKey: ['stores-admin-users'],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('stores').select('id, name').order('name')
+      if (error) throw error
+      return (data || []) as StoreOption[]
+    },
+    staleTime: 5 * 60 * 1000,
+  })
+
   const createUserMutation = useMutation({
-    mutationFn: async (form: { email: string; password: string; role: string }) =>
-      callEdgeFunction('create-user', form),
+    mutationFn: async (form: { email: string; password: string; role: string; store_id: string }) => {
+      const data = await callEdgeFunction('create-user', { email: form.email, password: form.password, role: form.role })
+      // create-user não recebe store_id — atribui a loja em seguida via RPC,
+      // só quando o salão criado também vai fazer contagem de estoque.
+      if (form.role === 'salao' && form.store_id && data?.user?.id) {
+        const { error } = await supabase.rpc('admin_set_user_role', {
+          p_user_id: data.user.id,
+          p_role: 'salao',
+          p_store_id: form.store_id,
+        })
+        if (error) throw error
+      }
+      return data
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-system-users'] })
       setCreating(false)
-      setCreateForm({ email: '', password: '', role: 'salao' })
+      setCreateForm({ email: '', password: '', role: 'salao', store_id: '' })
       alert('Usuário criado com sucesso!')
     },
     onError: (err) => alert(`Erro: ${err instanceof Error ? err.message : 'Desconhecido'}`),
   })
 
   const updateRoleMutation = useMutation({
-    mutationFn: async ({ id, role }: { id: string; role: string }) => {
-      const { error } = await supabase.from('profiles').update({ role }).eq('id', id)
+    mutationFn: async ({ id, role, storeId }: { id: string; role: string; storeId?: string | null }) => {
+      const { error } = await supabase.rpc('admin_set_user_role', {
+        p_user_id: id,
+        p_role: role,
+        p_store_id: storeId || null, // '' (Nenhuma) vira NULL, não string vazia
+      })
       if (error) throw error
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin-system-users'] }),
@@ -263,7 +296,8 @@ export default function AdminUsuarios() {
             ? <LoadingState label="Carregando..." />
             : <SystemTab
                 users={users}
-                onRoleChange={(id, role) => updateRoleMutation.mutate({ id, role })}
+                stores={stores}
+                onRoleChange={(id, role, storeId) => updateRoleMutation.mutate({ id, role, storeId })}
                 onPermissionChange={(id, key, value) => updatePermissionMutation.mutate({ id, key, value })}
                 isPending={updateRoleMutation.isPending || updatePermissionMutation.isPending}
               />
@@ -340,7 +374,7 @@ export default function AdminUsuarios() {
                 <label className="block text-sm font-medium text-foreground mb-1">Tipo de acesso</label>
                 <div className="grid grid-cols-2 gap-2">
                   {(['salao', 'admin'] as const).map(r => (
-                    <button key={r} type="button" onClick={() => setCreateForm({ ...createForm, role: r })}
+                    <button key={r} type="button" onClick={() => setCreateForm({ ...createForm, role: r, store_id: r === 'salao' ? createForm.store_id : '' })}
                       className={`flex items-center justify-center gap-2 py-2.5 rounded-lg border text-sm font-semibold transition-all ${
                         createForm.role === r
                           ? r === 'admin' ? 'bg-purple-100 text-purple-700 border-purple-300 dark:bg-purple-900/30 dark:text-purple-400 dark:border-purple-700/40' : 'bg-amber-100 text-amber-700 border-amber-300 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-700/40'
@@ -351,6 +385,20 @@ export default function AdminUsuarios() {
                   ))}
                 </div>
               </div>
+              {createForm.role === 'salao' && (
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-1">Loja vinculada (opcional)</label>
+                  <p className="text-xs text-muted-foreground mb-1.5">Sem loja, o colaborador só acessa o módulo de venda — não o de contagem de estoque.</p>
+                  <select
+                    value={createForm.store_id}
+                    onChange={e => setCreateForm({ ...createForm, store_id: e.target.value })}
+                    className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                  >
+                    <option value="">Nenhuma (só vendas)</option>
+                    {stores.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                  </select>
+                </div>
+              )}
               <div>
                 <label className="block text-sm font-medium text-foreground mb-1">E-mail *</label>
                 <input type="email" value={createForm.email} onChange={e => setCreateForm({ ...createForm, email: e.target.value })}
@@ -1028,12 +1076,14 @@ function PartnerAccessPanel({ client, queryKey }: { client: ClientStats; queryKe
 
 function SystemTab({
   users,
+  stores,
   onRoleChange,
   onPermissionChange,
   isPending,
 }: {
   users: SystemUser[]
-  onRoleChange: (id: string, role: string) => void
+  stores: StoreOption[]
+  onRoleChange: (id: string, role: string, storeId?: string | null) => void
   onPermissionChange: (id: string, key: string, value: boolean) => void
   isPending: boolean
 }) {
@@ -1091,6 +1141,9 @@ function SystemTab({
                     <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${ROLE_STYLES[user.role] ?? 'bg-gray-100 text-gray-700'}`}>
                       {ROLE_LABELS[user.role] ?? user.role}
                     </span>
+                    {user.role === 'salao' && user.store_name && (
+                      <p className="text-[11px] text-muted-foreground mt-1">{user.store_name}</p>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-sm text-muted-foreground">
                     {user.last_sign_in_at
@@ -1116,6 +1169,7 @@ function SystemTab({
       {selected && (
         <SystemUserSidePanel
           user={selected}
+          stores={stores}
           onRoleChange={onRoleChange}
           onPermissionChange={onPermissionChange}
           isPending={isPending}
@@ -1128,13 +1182,15 @@ function SystemTab({
 
 function SystemUserSidePanel({
   user,
+  stores,
   onRoleChange,
   onPermissionChange,
   isPending,
   onClose,
 }: {
   user: SystemUser
-  onRoleChange: (id: string, role: string) => void
+  stores: StoreOption[]
+  onRoleChange: (id: string, role: string, storeId?: string | null) => void
   onPermissionChange: (id: string, key: string, value: boolean) => void
   isPending: boolean
   onClose: () => void
@@ -1142,9 +1198,13 @@ function SystemUserSidePanel({
   const queryClient = useQueryClient()
   const [nameValue, setNameValue] = useState(user.full_name ?? '')
   const [editingName, setEditingName] = useState(false)
+  const [selectedRole, setSelectedRole] = useState(user.role)
+  const [selectedStoreId, setSelectedStoreId] = useState(user.store_id ?? '')
 
   const initials = (user.full_name || user.email).split(/[\s@]/).map(w => w[0]).join('').slice(0, 2).toUpperCase()
   const roleColor = user.role === 'admin' ? 'bg-purple-700' : 'bg-amber-700'
+
+  const hasRoleChange = selectedRole !== user.role || (selectedRole === 'salao' && selectedStoreId !== (user.store_id ?? ''))
 
   const nameMutation = useMutation({
     mutationFn: async (name: string) => {
@@ -1241,10 +1301,10 @@ function SystemUserSidePanel({
             <div className="grid grid-cols-2 gap-2">
               {(['salao', 'admin'] as const).map(r => (
                 <button key={r} type="button"
-                  onClick={() => { onRoleChange(user.id, r); onClose() }}
-                  disabled={isPending || user.role === r}
+                  onClick={() => setSelectedRole(r)}
+                  disabled={isPending}
                   className={`flex items-center justify-center gap-2 py-2.5 rounded-lg border text-sm font-semibold transition-all disabled:cursor-default ${
-                    user.role === r
+                    selectedRole === r
                       ? r === 'admin' ? 'bg-purple-100 text-purple-700 border-purple-300' : 'bg-amber-100 text-amber-700 border-amber-300'
                       : 'bg-white text-muted-foreground border-border hover:bg-surface-alt disabled:opacity-50'
                   }`}>
@@ -1252,6 +1312,33 @@ function SystemUserSidePanel({
                 </button>
               ))}
             </div>
+
+            {selectedRole === 'salao' && (
+              <div className="mt-3">
+                <label className="block text-[11px] text-zinc-500 mb-1">Loja vinculada (opcional)</label>
+                <p className="text-[11px] text-zinc-400 mb-1">Sem loja, acessa só o módulo de venda.</p>
+                <select
+                  value={selectedStoreId}
+                  onChange={e => setSelectedStoreId(e.target.value)}
+                  className="w-full px-3 py-2 text-sm rounded-lg border border-zinc-200 bg-white focus:outline-none focus:ring-2 focus:ring-zinc-400"
+                >
+                  <option value="">Nenhuma (só vendas)</option>
+                  {stores.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                </select>
+              </div>
+            )}
+
+            {hasRoleChange && (
+              <button
+                type="button"
+                onClick={() => { onRoleChange(user.id, selectedRole, selectedRole === 'salao' ? selectedStoreId : null); onClose() }}
+                disabled={isPending}
+                className="mt-3 w-full flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg btn-action text-sm font-medium disabled:opacity-50 transition-colors"
+              >
+                {isPending ? <Loader className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                Salvar acesso
+              </button>
+            )}
           </div>
 
           {/* Permissões granulares */}

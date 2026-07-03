@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Loader, Search, Plus, Minus, Trash2, ShoppingCart, UserCheck, LogOut, Clock, MapPin, Tag, Truck, Sun, Moon } from 'lucide-react';
+import { Loader, Search, Plus, Minus, Trash2, ShoppingCart, UserCheck, LogOut, Clock, MapPin, Tag, Truck, Sun, Moon, LayoutGrid } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 
@@ -1041,6 +1042,14 @@ function SalaoHeader({ onLogout, isDark, onToggleTheme }: { onLogout: () => void
           </div>
         </div>
         <div className="flex items-center gap-1">
+          <Link
+            to="/salao"
+            className="p-2 hover:bg-white/10 rounded-lg transition-colors text-white flex items-center gap-1.5 text-sm"
+            title="Trocar de módulo"
+          >
+            <LayoutGrid className="w-4 h-4" />
+            <span className="hidden sm:inline">Módulos</span>
+          </Link>
           <button
             onClick={onToggleTheme}
             className="p-2 hover:bg-white/10 rounded-lg transition-colors text-white"

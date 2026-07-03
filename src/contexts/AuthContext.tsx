@@ -9,6 +9,7 @@ interface AuthContextType {
   session: Session | null
   loading: boolean
   role: UserRole
+  storeId: string | null
   isPartner: boolean
   permissions: Record<string, boolean>
   hasPermission: (key: string) => boolean
@@ -16,20 +17,22 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-async function fetchAccountMetadata(userId: string): Promise<{role: UserRole, is_partner: boolean, permissions: Record<string, boolean>}> {
+async function fetchAccountMetadata(userId: string): Promise<{role: UserRole, is_partner: boolean, store_id: string | null, permissions: Record<string, boolean>}> {
   // Role fetch — crítico: qualquer erro mantém role='user'
   let role: UserRole = 'user'
   let is_partner = false
+  let store_id: string | null = null
   try {
     const { data, error } = await supabase
       .from('profiles')
-      .select('role, is_partner, customer_segment')
+      .select('role, is_partner, customer_segment, store_id')
       .eq('id', userId)
       .maybeSingle()
 
     if (!error && data) {
       role = data.role as UserRole
       is_partner = !!data.is_partner || data.customer_segment === 'network_partner'
+      store_id = data.store_id ?? null
     } else if (error) {
       console.warn('fetchRole error:', error.message)
     }
@@ -52,7 +55,7 @@ async function fetchAccountMetadata(userId: string): Promise<{role: UserRole, is
     // migration não aplicada ainda — ignora
   }
 
-  return { role, is_partner, permissions }
+  return { role, is_partner, store_id, permissions }
 }
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
@@ -60,6 +63,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
   const [role, setRole] = useState<UserRole>(null)
+  const [storeId, setStoreId] = useState<string | null>(null)
   const [isPartner, setIsPartner] = useState(false)
   const [permissions, setPermissions] = useState<Record<string, boolean>>({})
   const initialized = useRef(false)
@@ -81,11 +85,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           fetchAccountMetadata(session.user.id).then(meta => {
             setRole(meta.role)
             setIsPartner(meta.is_partner)
+            setStoreId(meta.store_id)
             setPermissions(meta.permissions)
             roleLoadedRef.current = true
           }).catch(() => {
             setRole('user')
             setIsPartner(false)
+            setStoreId(null)
             setPermissions({})
             roleLoadedRef.current = true
           }).finally(() => {
@@ -98,6 +104,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         roleLoadedRef.current = false
         setRole(null)
         setIsPartner(false)
+        setStoreId(null)
         setPermissions({})
         setLoading(false)
       }
@@ -121,7 +128,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const hasPermission = (key: string) => !!permissions[key]
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, role, isPartner, permissions, hasPermission }}>
+    <AuthContext.Provider value={{ user, session, loading, role, storeId, isPartner, permissions, hasPermission }}>
       {children}
     </AuthContext.Provider>
   )

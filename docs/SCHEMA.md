@@ -1,6 +1,6 @@
 # SCHEMA.md — Single Source of Truth · RDC Revend
-> Atualizado em: 2026-04-12
-> Gerado a partir das migrations `20250221000001` → `20260412000005`
+> Atualizado em: 2026-07-02
+> Gerado a partir das migrations `20250221000001` → `20260702000009`
 > **LEIA ESTE ARQUIVO antes de escrever qualquer query, RPC call ou type definition no frontend.**
 
 ---
@@ -56,6 +56,7 @@ Perfil do usuário. Criado automaticamente por trigger ao registrar em `auth.use
 | next_action | text | YES | NULL | — |
 | next_action_at | timestamptz | YES | NULL | — |
 | assigned_seller_id | uuid | YES | NULL | sellers.id |
+| store_id | uuid | YES | NULL | stores.id |
 
 > `customer_segment` válidos: `'network_partner'`, `'wholesale_buyer'`. NULL = não classificado (legado pendente de revisão). Source of truth da segmentação comercial do cliente.
 > `price_list_id` FK para `price_lists`. NULL = sem tabela especial, usa `catalog_products.price`. Quando preenchida e lista ativa, o sistema usa preços de `price_list_items` no catálogo e no checkout.
@@ -64,6 +65,7 @@ Perfil do usuário. Criado automaticamente por trigger ao registrar em `auth.use
 > Colunas de integração (Etapa 9): `clickup_task_id`, `lead_source`, `lead_status`, `assigned_seller`, `integration_notes`, `last_synced_at`, `updated_by` — todas nullable, usadas pelo fluxo n8n/ClickUp.
 > `assigned_seller_id` (CRM P1): FK para `sellers.id ON DELETE SET NULL`. Source of truth do owner comercial. A coluna legada `assigned_seller` (text) é mantida em paralelo e sincronizada pela RPC — usada pela integração n8n/ClickUp.
 > `next_action` (CRM P1): texto livre da próxima ação planejada pelo comercial. `next_action_at`: data/hora agendada (UTC). Ambos nullable. Editáveis via RPC `admin_set_profile_next_action`.
+> **Módulo de Estoque:** `store_id` (FK `stores.id`) vincula um colaborador `role='salao'` à sua loja física — opcional (NULL = só acessa o módulo de venda, não o de contagem de estoque). Unificado com o antigo role `'estoque'` em 2026-07-02 (D-23): não existe mais `role='estoque'`, colaborador de loja física é sempre `salao` + `store_id`. Ver função `is_estoque()` (nome mantido por compatibilidade, mas checa `role='salao'`) e `my_store_id()`.
 
 ---
 
@@ -91,9 +93,15 @@ Produtos do catálogo B2B.
 | is_highlight | boolean | NO | `false` | — |
 | category_id | uuid | YES | NULL | categories.id |
 | sort_order | int | NO | `0` | — |
+| units_per_box | int | YES | NULL | — |
+| package_type | text | YES | NULL | — |
+| stock_category | text | YES | NULL | — |
+| stock_only | boolean | NO | `false` | — |
 
 > `sort_order`: posição manual do produto dentro de sua categoria. Ordenação padrão do catálogo: `sort_order ASC, updated_at DESC`. Gerenciado via admin drag-and-drop (RPC `admin_update_product_sort_orders`). Índice em `(category_id, sort_order)`.
 > RLS: leitura pública, escrita admin-only (via RPC SECURITY DEFINER).
+> **Módulo de Estoque:** `units_per_box` (unidades por caixa fechada, usado na conciliação de contagem física), `package_type` (`'CX'`/`'UND'`), `stock_category` (agrupamento de estoque físico, texto livre sem CHECK — ex: Ativador, Shampoo, Máscara). Todas nullable, sem DEFAULT — `NULL` significa "não classificado ainda", não é seguro assumir `1`/`'UND'`. Independentes de `category_id`/`categories`, que servem à navegação do catálogo B2B.
+> `stock_only`: `true` = produto existe só para contagem física de estoque (ex: material de limpeza), nunca aparece no catálogo B2B. CHECK `catalog_products_stock_only_not_active` garante `NOT (stock_only AND is_active)`. Criado via `/estoque/config` (não vem do Nuvemshop). Ver view `stock_countable_products` e D-24 em `docs/decisions.md`.
 
 ---
 
@@ -202,6 +210,116 @@ Estoque por produto.
 | last_synced_at | timestamptz | NO | `now()` | — |
 | created_at | timestamptz | NO | `now()` | — |
 | updated_at | timestamptz | NO | `now()` | — |
+
+> Estoque global único por produto, sincronizado via Google Sheets (`sync-google-sheets`). **Fonte de verdade ativa do checkout**: `create-order` (feature freeze) lê `inventory.quantity` para validar disponibilidade e chama `decrement_stock()` a cada pedido — não é só uma tabela de exibição. **Não pode ser desligado/substituído** sem revisar `create-order` (ver D-21 em `docs/decisions.md`). Sem relação com o módulo de estoque por loja abaixo (`stores`/`stock_counts`/`replenishment_orders`), que é aditivo e desacoplado.
+
+---
+
+### `stores`
+Lojas físicas para o módulo de contagem/reposição (não confundir com `pickup_units`).
+
+| Coluna | Tipo | Nullable | Default | FK |
+|--------|------|----------|---------|-----|
+| id | uuid | NO | `gen_random_uuid()` | — |
+| slug | text | NO | — | — |
+| name | text | NO | — | — |
+| type | text | NO | — | — |
+| is_active | boolean | NO | `true` | — |
+| created_at | timestamptz | NO | `now()` | — |
+
+> `type` válidos: `'central'`, `'satellite'`. Slugs alinhados com `pickup_units` (mesmos valores: `linhares`, `serra`, `teixeira`, `colatina`, `sao-gabriel`), mas **sem FK física** entre as duas tabelas — `pickup_units` é pública/checkout, `stores` é autenticada/operacional. Ver D-20 em `docs/decisions.md`.
+> RLS: admin gerencia tudo; qualquer colaborador com acesso ao módulo de estoque (`is_estoque()`) lê todas as lojas (não só a própria).
+
+---
+
+### `stock_counts`
+Uma contagem física de estoque em uma loja.
+
+| Coluna | Tipo | Nullable | Default | FK |
+|--------|------|----------|---------|-----|
+| id | uuid | NO | `gen_random_uuid()` | — |
+| store_id | uuid | NO | — | stores.id |
+| employee_id | uuid | YES | NULL | auth.users.id |
+| status | text | NO | `'draft'` | — |
+| created_at | timestamptz | NO | `now()` | — |
+| confirmed_at | timestamptz | YES | NULL | — |
+
+> `status` válidos: `'draft'`, `'confirmed'`. Confirmação acontece via RPC `confirm_stock_count`, nunca por UPDATE direto (RLS trava `status='draft'` para o colaborador).
+> RLS: admin gerencia tudo; colaborador com acesso ao módulo de estoque só vê/edita contagens da própria loja (`store_id = my_store_id()`), e só pode editar enquanto `status='draft'`.
+
+---
+
+### `stock_count_items`
+Item de uma contagem: caixas fechadas + unidades soltas por produto.
+
+| Coluna | Tipo | Nullable | Default | FK |
+|--------|------|----------|---------|-----|
+| id | uuid | NO | `gen_random_uuid()` | — |
+| stock_count_id | uuid | NO | — | stock_counts.id |
+| product_id | uuid | NO | — | catalog_products.id |
+| closed_boxes | int | NO | `0` | — |
+| loose_units | int | NO | `0` | — |
+| total_units | int | YES | NULL | — |
+| created_at | timestamptz | NO | `now()` | — |
+| updated_at | timestamptz | NO | `now()` | — |
+
+> `total_units` é calculado por trigger (`trg_stock_count_item_total`): `closed_boxes * catalog_products.units_per_box + loose_units`, ou `NULL` se o produto não tiver `units_per_box` cadastrado. Revalidado server-side (não confiado) dentro de `confirm_stock_count`.
+> UNIQUE `(stock_count_id, product_id)`.
+
+---
+
+### `store_stock_targets`
+Estoque mínimo/ideal (em unidades) de um produto em uma loja.
+
+| Coluna | Tipo | Nullable | Default | FK |
+|--------|------|----------|---------|-----|
+| id | uuid | NO | `gen_random_uuid()` | — |
+| product_id | uuid | NO | — | catalog_products.id |
+| store_id | uuid | NO | — | stores.id |
+| target_quantity | int | NO | `0` | — |
+| created_at | timestamptz | NO | `now()` | — |
+| updated_at | timestamptz | NO | `now()` | — |
+
+> UNIQUE `(product_id, store_id)`. Sem seed — cadastro é manual pelo admin (dado de negócio). RLS: admin gerencia tudo; colaborador com acesso ao módulo de estoque só lê a meta da própria loja.
+
+---
+
+### `replenishment_orders`
+Pedido de reposição gerado pela conciliação de uma contagem confirmada.
+
+| Coluna | Tipo | Nullable | Default | FK |
+|--------|------|----------|---------|-----|
+| id | uuid | NO | `gen_random_uuid()` | — |
+| product_id | uuid | NO | — | catalog_products.id |
+| destination_store_id | uuid | NO | — | stores.id |
+| source_stock_count_id | uuid | YES | NULL | stock_counts.id |
+| suggested_quantity | int | NO | — | — |
+| shipped_quantity | int | YES | NULL | — |
+| status | text | NO | `'open'` | — |
+| generated_at | timestamptz | NO | `now()` | — |
+| picked_by | uuid | YES | NULL | auth.users.id |
+| shipped_at | timestamptz | YES | NULL | — |
+
+> `status` válidos: `'open'`, `'picking'`, `'shipped'` (terminal). Índice único parcial `(product_id, destination_store_id) WHERE status='open'` — só um pedido aberto por produto+loja; uma nova contagem confirmada **substitui** (não soma) o `suggested_quantity` de um pedido `open` existente, e não mexe em pedidos já `picking`/`shipped`. Escrita apenas via RPCs `confirm_stock_count` e `update_replenishment_order_status` (sem policy de INSERT/UPDATE para colaborador de estoque).
+> RLS de leitura: colaborador de loja satélite só vê pedidos com `destination_store_id = my_store_id()` (a própria loja); colaborador da loja central (`stores.type='central'`, Linhares) vê pedidos com destino a qualquer loja — é quem separa e despacha. Ver D-21 em `docs/decisions.md`.
+> **Decisão fechada:** nada aqui atualiza `inventory.quantity` — e não deve. `inventory` é a fonte de disponibilidade ativa do checkout (`create-order`, feature freeze) e não pode ser desligada/substituída sem revisar esse arquivo. Ver D-21 em `docs/decisions.md`.
+
+---
+
+### `stock_categories`
+Lista de categorias de estoque físico (lookup), gerenciada pelo admin em `/estoque/config`.
+
+| Coluna | Tipo | Nullable | Default | FK |
+|--------|------|----------|---------|-----|
+| id | uuid | NO | `gen_random_uuid()` | — |
+| name | text | NO | — | — |
+| created_at | timestamptz | NO | `now()` | — |
+| sort_order | int | NO | `0` | — |
+| color_index | int | NO | `0` | — |
+
+> UNIQUE `(name)`. RLS admin-only (leitura e escrita). **Sem FK** com `catalog_products.stock_category` (que continua texto livre) — esta tabela só alimenta o dropdown de seleção/criação na UI. Sem seed — tabela começa vazia, admin cadastra as categorias pela UI (`20260702000012` removeu o seed inicial de `20260702000011` a pedido do usuário).
+> `sort_order`: ordem manual de exibição em `/estoque/contagem/:id` e `/estoque/config` (ex: seguir a ordem física dos corredores da loja) — reordenável pelo admin via setas cima/baixo em `/estoque/config`. Categorias novas entram com `0`. "Sem categoria" (produtos sem `stock_category`) sempre aparece por último, independente de `sort_order`.
+> `color_index`: índice na paleta pastel fixa `src/lib/stockCategoryColors.ts` (10 cores) — atribuído automaticamente (cíclico) na criação, editável via swatches em `/estoque/config`. Usado para colorir o badge da categoria em `/estoque/contagem/:id` e o `<select>` de categoria em `/estoque/config`. "Sem categoria" não usa a paleta — sempre neutro/cinza.
 
 ---
 
@@ -567,6 +685,12 @@ Colunas: `id`, `name`, `description_html`, `price`, `compare_at_price`, `images`
 
 ### `last_sync_run`
 Último registro de `catalog_sync_runs` ordenado por `started_at DESC LIMIT 1`.
+
+### `stock_countable_products`
+Projeção de `catalog_products` para o módulo de estoque (contagem física e classificação em `/estoque/config`).
+`SELECT cp.* FROM catalog_products cp WHERE (cp.is_active = true OR cp.stock_only = true) AND NOT EXISTS (SELECT 1 FROM kit_components kc WHERE kc.kit_product_id = cp.id)`.
+Inclui: produtos ativos no catálogo B2B + produtos `stock_only`. **Exclui sempre**: kits (produtos que aparecem como `kit_product_id` em `kit_components`) — fisicamente não existe "o kit" pra contar, só os componentes.
+Usar esta view em vez de `catalog_products` diretamente nas telas de contagem/classificação (`ContagemDetalhe.tsx`, `Config.tsx`). Ver D-24 em `docs/decisions.md`.
 
 ---
 
@@ -982,6 +1106,58 @@ Retorno: contagem de pedidos liberados.
 
 ---
 
+### `is_estoque`
+```
+is_estoque() → boolean
+```
+Retorna true se o usuário autenticado pode acessar o módulo de estoque. Unificado com `salao` em 2026-07-02 (D-23) — checa `role = 'salao'` internamente. Nome mantido por compatibilidade com as policies/RPCs que já o referenciam.
+
+---
+
+### `my_store_id`
+```
+my_store_id() → uuid
+```
+Retorna `profiles.store_id` do usuário autenticado. SECURITY DEFINER — usada em RLS de `stock_counts`/`stock_count_items`/`store_stock_targets` para evitar subquery direta em `profiles` (regra D-01).
+
+---
+
+### `confirm_stock_count`
+```
+confirm_stock_count(p_stock_count_id uuid) → jsonb
+```
+Confirma uma contagem física e concilia cada item contra `store_stock_targets`, gerando/atualizando `replenishment_orders` quando o total contado fica abaixo da meta da loja. Revalida `total_units` no servidor. Não reexecutável sobre a mesma contagem (`RAISE EXCEPTION` se já `confirmed`).
+Retorno: `{ stock_count_id, store_id, confirmed_at, items_total, items_replenished, items_sufficient, items_skipped: [{product_id, reason}] }` — `reason` é `'no_units_per_box'` ou `'no_target_defined'`.
+Acessível por: `authenticated` (admin ou colaborador `salao` da própria loja, verificado internamente).
+
+---
+
+### `update_replenishment_order_status`
+```
+update_replenishment_order_status(p_order_id uuid, p_new_status text, p_shipped_quantity int DEFAULT NULL) → void
+```
+Avança o status de um pedido de reposição: `open→picking`, `open|picking→shipped` (exige `p_shipped_quantity > 0`). `shipped` é terminal.
+Acessível por: `authenticated` (admin ou colaborador `salao` da loja central, verificado internamente).
+
+---
+
+### `admin_set_user_role`
+```
+admin_set_user_role(p_user_id uuid, p_role text, p_store_id uuid DEFAULT NULL) → void
+```
+Define `role` (`user`/`admin`/`salao`) e, opcionalmente, `store_id` de um usuário `salao` (colaborador de loja física com acesso também ao módulo de estoque). Admin-only, verificado internamente. `store_id` é validado contra `stores` quando informado e sempre limpo (`NULL`) para roles diferentes de `salao`. `store_id` é **opcional** mesmo para `salao` — sem loja, o colaborador só acessa o módulo de venda.
+**Substitui** o update direto de `profiles.role` feito antes por `/admin/usuarios` — RLS de `profiles` só tem policies `self_select`/`self_update` (própria linha) desde `20250307000006_fix_catalog_rls_simple.sql`, sem policy admin-wide; um update direto do client não tinha efeito para linhas de terceiros. Ver D-22 em `docs/decisions.md`.
+
+---
+
+### `get_system_users`
+```
+get_system_users() → TABLE (id, role, full_name, email, created_at, last_sign_in_at, permissions, store_id, store_name)
+```
+Lista usuários com `role IN ('admin','salao')`, com o nome da loja (`stores.name`) quando o `salao` tem `store_id` vinculado. Usada por `/admin/usuarios`.
+
+---
+
 ## Constraints & CHECK values
 
 | Tabela | Coluna | Valores válidos |
@@ -1008,6 +1184,10 @@ Retorno: contagem de pedidos liberados.
 | crm_dispatch_queue | status | `'pending'`, `'processing'`, `'sent'`, `'failed'`, `'cancelled'` |
 | crm_automation_runs | status | `'pending'`, `'running'`, `'success'`, `'failed'`, `'skipped'` |
 | price_list_items | price | `>= 0` |
+| catalog_products | package_type | `'CX'`, `'UND'`, NULL |
+| stores | type | `'central'`, `'satellite'` |
+| stock_counts | status | `'draft'`, `'confirmed'` |
+| replenishment_orders | status | `'open'`, `'picking'`, `'shipped'` |
 
 ---
 
@@ -1028,3 +1208,5 @@ Retorno: contagem de pedidos liberados.
 | `pickup_store` / `store_pickup` | `delivery_method = 'pickup'` |
 | `pickup_unit_name` (orders) | Não existe — use `pickup_unit_slug` + `pickup_units.name` |
 | `pickup_unit_id` (orders) | Não existe — FK lógica por `pickup_unit_slug` |
+| `produtos`/`lojas`/`contagens` (nomes em português) | `catalog_products`/`stores`/`stock_counts` — tabelas técnicas são sempre em inglês |
+| `stores` = `pickup_units` | São tabelas diferentes — `stores` (módulo de estoque) não tem FK física com `pickup_units` (checkout), apenas mesmos `slug` |

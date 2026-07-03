@@ -10,6 +10,7 @@ import { CartProvider } from "@/contexts/CartContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { AdminRoute } from "@/components/AdminRoute";
 import { SalaoRoute } from "@/components/SalaoRoute";
+import { EstoqueRoute } from "@/components/EstoqueRoute";
 import { PortalRoute } from "@/components/portal/PortalRoute";
 import Portal from "./pages/portal/Portal";
 import PortalComprar from "./pages/portal/PortalComprar";
@@ -38,6 +39,14 @@ import AdminSyncHistory from "./pages/admin/SyncHistory";
 import AdminTabelasPreco from "./pages/admin/TabelasPreco";
 import AdminPortalBanners from "./pages/admin/PortalBanners";
 import SalaoNovoPedido from "./pages/salao/NovoPedido";
+import SalaoInicio from "./pages/salao/Inicio";
+import EstoqueContagem from "./pages/estoque/Contagem";
+import EstoqueContagemDetalhe from "./pages/estoque/ContagemDetalhe";
+import EstoqueConfirmacao from "./pages/estoque/Confirmacao";
+import EstoquePedidos from "./pages/estoque/Pedidos";
+import EstoqueConfig from "./pages/estoque/Config";
+import EstoqueHistorico from "./pages/estoque/Historico";
+import EstoqueRelatorio from "./pages/estoque/Relatorio";
 import NotFound from "./pages/NotFound";
 import WhatsAppButton from "./components/landing/WhatsAppButton";
 import PixelTracker from "./components/PixelTracker";
@@ -45,7 +54,7 @@ import { useLocation } from "react-router-dom";
 
 function ConditionalWhatsApp() {
   const { pathname } = useLocation();
-  if (pathname.startsWith('/admin') || pathname.startsWith('/salao') || pathname.startsWith('/portal') || pathname === '/cadastro' || pathname === '/login' || pathname === '/redefinir-senha') return null;
+  if (pathname.startsWith('/admin') || pathname.startsWith('/salao') || pathname.startsWith('/portal') || pathname.startsWith('/estoque') || pathname === '/cadastro' || pathname === '/login' || pathname === '/redefinir-senha') return null;
   return <WhatsAppButton />;
 }
 
@@ -103,8 +112,18 @@ const App = () => (
                     <Route path="/portal/comprar" element={<PortalComprar />} />
                   </Route>
                   <Route element={<SalaoRoute />}>
-                    <Route path="/salao" element={<Navigate to="/salao/pedido" replace />} />
+                    <Route path="/salao" element={<SalaoInicio />} />
                     <Route path="/salao/pedido" element={<SalaoNovoPedido />} />
+                  </Route>
+                  <Route element={<EstoqueRoute />}>
+                    <Route path="/estoque" element={<Navigate to="/estoque/contagem" replace />} />
+                    <Route path="/estoque/contagem" element={<EstoqueContagem />} />
+                    <Route path="/estoque/contagem/:id" element={<EstoqueContagemDetalhe />} />
+                    <Route path="/estoque/contagem/:id/confirmar" element={<EstoqueConfirmacao />} />
+                    <Route path="/estoque/pedidos" element={<EstoquePedidos />} />
+                    <Route path="/estoque/config" element={<EstoqueConfig />} />
+                    <Route path="/estoque/historico" element={<EstoqueHistorico />} />
+                    <Route path="/estoque/relatorio" element={<EstoqueRelatorio />} />
                   </Route>
                 </Route>
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

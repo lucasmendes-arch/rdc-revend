@@ -117,7 +117,9 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Resolve role: salao and admin allowed; only admin can create another admin
+    // Resolve role: salao and admin allowed; only admin can create another admin.
+    // Colaborador de loja física é sempre role='salao' (store_id, quando
+    // aplicável, é atribuído depois via admin_set_user_role).
     const CREATABLE_ROLES = ['admin', 'salao']
     const requestedRole = CREATABLE_ROLES.includes(role) ? role : 'user'
     const userRole = requestedRole === 'admin' && profile?.role !== 'admin' ? 'salao' : requestedRole

@@ -4,6 +4,7 @@ import {
   Package, ShoppingCart, Users, Warehouse, UserCog,
   Menu, X, ExternalLink, Tag, DollarSign, GitBranch,
   Megaphone, UserCheck, History, BadgeDollarSign, ChevronRight, LayoutTemplate,
+  ClipboardList,
 } from 'lucide-react'
 import logo from '@/assets/logo-rei-dos-cachos.png'
 import { ThemeToggle } from '@/components/ui/ThemeToggle'
@@ -33,6 +34,7 @@ const navGroups: { label: string; items: NavItem[] }[] = [
     items: [
       { label: 'Catálogo', path: '/admin/catalogo', icon: Package },
       { label: 'Estoque', path: '/admin/estoque', icon: Warehouse },
+      { label: 'Contagem de Estoque', path: '/estoque/relatorio', icon: ClipboardList },
       { label: 'Categorias', path: '/admin/categorias', icon: Tag },
       { label: 'Marketing', path: '/admin/marketing', icon: Megaphone },
       { label: 'Banners Portal', path: '/admin/portal-banners', icon: LayoutTemplate },

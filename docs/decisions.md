@@ -172,3 +172,54 @@ _Registro de decisões arquiteturais relevantes, com contexto e consequências._
 **Contexto:** Parceiros com `price_list_id` têm preços personalizados por produto via `price_list_items`.
 **Decisão:** `useCatalogProducts(fetchPriceList: true)` busca `get_my_price_list_items()` em paralelo e faz merge no `useMemo`: produtos com entry na price list têm `partner_price` sobrescrito. Produtos sem entry usam o preço padrão do catálogo.
 **Consequência:** Falha na RPC de price list não bloqueia o catálogo, mas exibe preço padrão. `priceListError` é exposto pelo hook para que o frontend possa alertar o usuário. Validação de NaN e price > 0 no merge garante que entradas corrompidas sejam ignoradas.
+
+---
+
+## [D-20] Módulo de Estoque — stores separada de pickup_units, reposição substitui (não soma)
+
+**Data:** 2026-07-02
+**Contexto:** Novo módulo de contagem física por loja (Linhares central + 4 lojas satélite) e geração automática de pedidos de reposição. Precisava decidir três pontos de design: (1) como representar as lojas, dado que `pickup_units` já tem os mesmos 5 nomes mas serve ao checkout; (2) se uma nova contagem confirmada deve substituir ou somar o `suggested_quantity` de um pedido de reposição já aberto; (3) se `units_per_box` de `catalog_products` deveria ter um DEFAULT.
+
+**Decisão:**
+1. Criada tabela nova `stores` (não reaproveitada/alterada `pickup_units`), com os mesmos `slug` mas **sem FK física** — `pickup_units` é de leitura pública (usada no checkout do site), `stores` é autenticada e operacional (metas de estoque, colaboradores vinculados). Segue o mesmo padrão de "FK lógica por slug" já usado em `orders.pickup_unit_slug`.
+2. `confirm_stock_count()` faz `UPSERT` em `replenishment_orders` com `ON CONFLICT (product_id, destination_store_id) WHERE status='open' DO UPDATE` — a nova contagem **substitui** o `suggested_quantity` do pedido aberto existente (a contagem física mais recente é sempre a verdade), sem tocar em pedidos já `picking`/`shipped`.
+3. `catalog_products.units_per_box` é nullable, **sem DEFAULT**. Um `DEFAULT 1` tornaria impossível distinguir "produto revisado e vendido em unidade solta" de "ninguém classificou ainda", e a tela de confirmação de contagem depende de destacar produtos não classificados.
+
+**Consequência:** Nenhuma integração automática com `inventory` foi implementada (ver [D-21] — motivo mudou de "pendência a decidir" para "não pode ser desligado"). Leitura de `stores` é ampla para qualquer `role='estoque'` (não só a própria loja) — dado não sensível (nome/slug das 5 lojas). Leitura de `replenishment_orders`, no entanto, **não** é mais ampla — ver [D-21], que restringe a própria loja de destino, com exceção para a loja central.
+
+---
+
+## [D-21] inventory não pode ser desligado — é a fonte de disponibilidade do checkout; leitura de replenishment_orders restrita por loja
+
+**Data:** 2026-07-02
+**Contexto:** Ao planejar desligar o sync `sync-google-sheets` → `inventory` (cogitado em [D-20] como possível simplificação), a investigação encontrou que `supabase/functions/create-order/index.ts` (checkout, **feature freeze**) lê `inventory.quantity` para validar disponibilidade de estoque no momento da compra e chama `decrement_stock()` a cada pedido confirmado. `inventory` não é uma tabela de exibição alimentada por uma planilha à parte — é a fonte de verdade ativa de disponibilidade do site B2B.
+**Decisão:** `inventory` e o sync do Google Sheets permanecem exatamente como estão, sem nenhuma alteração. O módulo de Estoque (contagem física por loja / `stock_counts` / `replenishment_orders`) continua **totalmente aditivo e desacoplado** — nenhuma leitura ou escrita cruzada com `inventory` nesta ou em entregas futuras, até que `create-order` seja revisado deliberadamente (fora do escopo deste módulo, e sujeito ao checklist de feature freeze em `docs/create-order-contract.md`).
+Adicionalmente, restringiu-se a leitura de `replenishment_orders`: colaborador de loja satélite (`role='estoque'`) só vê pedidos com `destination_store_id = my_store_id()` (a própria loja); colaborador da loja central (Linhares, `stores.type='central'`) mantém leitura ampla de todas as lojas de destino, pois é quem separa e despacha para as satélites.
+**Consequência:** Desligar o sync do Sheets ou reduzir `inventory.quantity` por qualquer caminho automático deste módulo geraria falsos "sem estoque" no checkout (o valor só decresce a cada venda via `decrement_stock`, nunca é realimentado sem o sync). Qualquer proposta futura de integração entre os dois sistemas precisa necessariamente revisar `create-order` junto — não pode ser feita só do lado do módulo de Estoque.
+
+---
+
+## [D-22] profiles sem policy admin-wide — updates administrativos exigem RPC própria
+
+**Data:** 2026-07-02
+**Contexto:** Ao estender `/admin/usuarios` para suportar o role `estoque` + atribuição de loja, foi descoberto que `profiles` não tem nenhuma policy de RLS admin-wide desde `20250307000006_fix_catalog_rls_simple.sql` (que dropou todas as policies e deixou só `self_select`/`self_update`, ambas restritas a `auth.uid() = id`). O botão de trocar role de OUTRO usuário em `Usuarios.tsx` (`updateRoleMutation`) fazia um `.from('profiles').update({role})` direto do client — sob essa RLS, isso não tem efeito em linhas de terceiros (silenciosamente, sem erro).
+**Decisão:** Nova RPC `admin_set_user_role(p_user_id, p_role, p_store_id)`, `SECURITY DEFINER` com checagem interna de `is_admin()` (mesmo padrão de `admin_update_profile`, `admin_set_profile_seller` etc.), substitui o update direto tanto para o fluxo existente (admin/salao) quanto para o novo (estoque + store_id).
+**Consequência:** Qualquer escrita administrativa em `profiles` a partir de agora deve passar por uma RPC própria — nunca por update direto do client, mesmo que pareça funcionar em teste manual editando o próprio usuário logado.
+
+---
+
+## [D-23] Unificação estoque → salao — um colaborador de loja física, dois módulos
+
+**Data:** 2026-07-02
+**Contexto:** O módulo de Estoque (D-20/D-21/D-22) tinha sido implementado com um role `'estoque'` separado do `'salao'` já existente. O usuário esclareceu que, na prática, o mesmo colaborador de loja física faz venda (`/salao/pedido`) E contagem de estoque (`/estoque/contagem`) — não faz sentido duas contas/roles separadas para a mesma pessoa.
+**Decisão:** `role='estoque'` foi migrado para `role='salao'` (linhas existentes preservam `store_id`). `is_estoque()` foi redefinida para checar `role='salao'` internamente — o **nome da função foi mantido** para não precisar tocar nas RLS policies e RPCs já aplicadas em produção que a referenciam (`stores`, `stock_counts`, `stock_count_items`, `store_stock_targets`, `replenishment_orders`, `confirm_stock_count`, `update_replenishment_order_status`). `profiles.store_id` passou a ser **opcional** para `salao` (antes era obrigatório para `estoque`): sem loja, o colaborador só acessa o módulo de venda; com loja, acessa os dois. `EstoqueRoute` passou a checar `role==='salao' || role==='admin'`. Nova tela `/salao` (antes redirecionava direto pra `/salao/pedido`) virou um picker de módulo (`SalaoInicio.tsx`), com link "Módulos" nos headers de ambas as áreas pra trocar sem precisar logar de novo.
+**Consequência:** `CREATABLE_ROLES` na edge function `create-user` voltou a ser só `['admin','salao']`. `admin_set_user_role`/`get_system_users` não aceitam mais `'estoque'` como valor de role — `store_id` agora é um parâmetro opcional associado a `role='salao'`. Qualquer leitura futura do código que encontrar `is_estoque()` deve lembrar que o nome é histórico (mantido só por compatibilidade de policy), não um role real.
+
+---
+
+## [D-24] Lista de contagem de estoque ≠ catálogo de venda no atacado
+
+**Data:** 2026-07-02
+**Contexto:** A tela de contagem física (`/estoque/contagem/:id`) e a de classificação (`/estoque/config`) reaproveitavam `catalog_products` diretamente (filtro `is_active = true`) — a mesma lista usada no catálogo de venda do site B2B. O usuário identificou dois problemas reais: (1) produtos "kit" (registrados em `kit_components`, já usados por `restore_order_stock`) não devem ser contados como item único — fisicamente não existe "o kit" na prateleira, só os componentes; (2) existem itens que só interessam à contagem física da loja (ex: material de limpeza) e nunca devem aparecer no catálogo de venda do atacado.
+**Decisão:** Nova coluna `catalog_products.stock_only boolean DEFAULT false` (com CHECK `NOT (stock_only AND is_active)` — nunca pode estar simultaneamente ativo no catálogo) para marcar itens que existem só para contagem. Nova view `stock_countable_products` — `catalog_products` ativos OU `stock_only`, **sempre excluindo** kits via `NOT EXISTS (... kit_components WHERE kit_product_id = cp.id)`. `ContagemDetalhe.tsx` e `Config.tsx` passaram a consultar essa view em vez de `catalog_products` diretamente. `/estoque/config` ganhou um formulário "Item só contagem" (nome + categoria + itens/caixa) que insere direto em `catalog_products` com `stock_only=true, is_active=false, price=0, source='stock_only'` — não passa pelo Nuvemshop nem pela tela de catálogo (`admin/Catalogo.tsx`).
+**Consequência:** Nenhuma mudança em `admin/Catalogo.tsx` nem no catálogo público — kits continuam existindo normalmente ali, só não entram mais na contagem/classificação de estoque. RLS de `catalog_products` já permite leitura ampla para qualquer usuário autenticado (histórico, `authenticated_write` é `FOR ALL`), então a view funciona sem GRANT/policy adicional.

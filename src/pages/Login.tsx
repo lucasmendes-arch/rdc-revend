@@ -49,7 +49,7 @@ const Login = () => {
       return;
     }
     if (role === "admin") navigate("/admin/financeiro", { replace: true });
-    else if (role === "salao") navigate("/salao/pedido", { replace: true });
+    else if (role === "salao") navigate("/salao", { replace: true });
     else navigate("/catalogo", { replace: true });
   }, [pendingNav, authLoading, user, role]);
 
