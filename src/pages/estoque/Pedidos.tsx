@@ -76,18 +76,18 @@ function RequestCard({
   }
 
   return (
-    <div className="bg-white rounded-2xl border border-border shadow-card p-3.5 space-y-2.5">
+    <div className="bg-white rounded-2xl border border-border shadow-card p-4 space-y-3">
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0">
           <Store className="w-4 h-4 text-muted-foreground shrink-0" />
-          <p className="text-sm font-bold text-foreground truncate">{request.stores?.name || 'Loja'}</p>
+          <p className="text-base font-bold text-foreground truncate">{request.stores?.name || 'Loja'}</p>
         </div>
-        <p className="text-[11px] text-muted-foreground shrink-0">
+        <p className="text-xs text-muted-foreground shrink-0">
           {new Date(request.generated_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
         </p>
       </div>
 
-      <p className="text-[11px] text-muted-foreground">
+      <p className="text-xs text-muted-foreground">
         {items.length} {items.length === 1 ? 'item' : 'itens'} ·{' '}
         {request.status === 'shipped' ? `${totalShipped} un. enviadas` : `${totalSuggested} un. sugeridas`}
         {request.status === 'shipped' && request.shipped_at && (
@@ -100,28 +100,28 @@ function RequestCard({
         )}
       </p>
 
-      <div className="space-y-1 max-h-56 overflow-y-auto pr-0.5">
+      <div className="space-y-2 max-h-96 overflow-y-auto pr-0.5">
         {items.map((item) => (
-          <div key={item.id} className="text-xs">
-          <div className="flex items-center gap-2">
+          <div key={item.id} className="text-sm">
+          <div className="flex items-center gap-2.5">
             {/* Checklist de separação — só em picking, persiste no banco */}
             {isPicking && !shipping && (
               <button
                 type="button"
                 onClick={() => onTogglePicked(item.id, item.picked_at === null)}
-                className={`w-6 h-6 rounded-md border flex items-center justify-center shrink-0 transition-colors ${
+                className={`w-8 h-8 rounded-lg border flex items-center justify-center shrink-0 transition-colors ${
                   item.picked_at ? 'bg-green-600 border-green-600 text-white' : 'bg-white border-border text-transparent hover:border-green-400'
                 }`}
                 title={item.picked_at ? 'Desmarcar separação' : 'Marcar como separado'}
               >
-                <Check className="w-3.5 h-3.5" />
+                <Check className="w-[18px] h-[18px]" />
               </button>
             )}
-            <div className="w-6 h-6 rounded overflow-hidden shrink-0 bg-surface-alt border border-border">
+            <div className="w-11 h-11 rounded-lg overflow-hidden shrink-0 bg-white border border-border">
               {item.catalog_products?.main_image ? (
-                <img src={item.catalog_products.main_image} alt="" className="w-full h-full object-cover" />
+                <img src={item.catalog_products.main_image} alt="" className="w-full h-full object-contain" />
               ) : (
-                <div className="w-full h-full flex items-center justify-center text-muted-foreground"><Package className="w-3 h-3" /></div>
+                <div className="w-full h-full flex items-center justify-center text-muted-foreground bg-surface-alt"><Package className="w-4 h-4" /></div>
               )}
             </div>
             <button
@@ -132,16 +132,16 @@ function RequestCard({
                 setDeclareItemId(item.id)
                 setDeclareQty(String(item.shipped_quantity ?? item.suggested_quantity))
               }}
-              className={`flex-1 min-w-0 truncate text-left ${isPicking && item.picked_at ? 'text-muted-foreground line-through' : 'text-foreground'}`}
+              className={`flex-1 min-w-0 text-left leading-snug line-clamp-2 ${isPicking && item.picked_at ? 'text-muted-foreground line-through' : 'text-foreground'}`}
               title={isPicking && !shipping ? 'Toque para declarar falta ou quantidade parcial' : undefined}
             >
               {item.catalog_products?.name || 'Produto removido'}
             </button>
             {isPicking && !shipping && item.shipped_quantity !== null && (
               item.shipped_quantity === 0 ? (
-                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-red-100 text-red-600 uppercase shrink-0">Em falta</span>
+                <span className="text-[10px] font-bold px-2 py-1 rounded-md bg-red-100 text-red-600 uppercase shrink-0">Em falta</span>
               ) : item.shipped_quantity < item.suggested_quantity ? (
-                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 shrink-0">
+                <span className="text-[10px] font-bold px-2 py-1 rounded-md bg-amber-100 text-amber-700 shrink-0">
                   {item.shipped_quantity} de {item.suggested_quantity}
                 </span>
               ) : null
@@ -153,17 +153,17 @@ function RequestCard({
                 min={0}
                 value={shipQty[item.id] ?? ''}
                 onChange={(e) => setShipQty((prev) => ({ ...prev, [item.id]: e.target.value }))}
-                className="w-14 h-7 rounded-lg border border-input text-center font-semibold bg-white focus:outline-none focus:ring-2 focus:ring-green-400 shrink-0"
+                className="w-16 h-9 rounded-lg border border-input text-center text-sm font-semibold bg-white focus:outline-none focus:ring-2 focus:ring-green-400 shrink-0"
               />
             ) : (
-              <span className="font-bold shrink-0 tabular-nums">
+              <span className="text-base font-bold shrink-0 tabular-nums">
                 {request.status === 'shipped' ? (item.shipped_quantity ?? item.suggested_quantity) : item.suggested_quantity}
               </span>
             )}
           </div>
 
           {declareItemId === item.id && isPicking && !shipping && (
-            <div className="mt-1.5 ml-8 mb-1 p-2 rounded-xl bg-surface-alt border border-border space-y-1.5">
+            <div className="mt-1.5 ml-10 mb-1 p-2.5 rounded-xl bg-surface-alt border border-border space-y-1.5">
               <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
                 Separação parcial — sugerido: {item.suggested_quantity}
               </p>
@@ -226,9 +226,9 @@ function RequestCard({
         <button
           onClick={() => onAdvance(request.id, 'picking')}
           disabled={isPending}
-          className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold transition-colors disabled:opacity-60"
+          className="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-sm font-semibold transition-colors disabled:opacity-60"
         >
-          <PlayCircle className="w-3.5 h-3.5" /> Iniciar separação
+          <PlayCircle className="w-4 h-4" /> Iniciar separação
         </button>
       )}
 
@@ -236,9 +236,9 @@ function RequestCard({
         <button
           onClick={startShipping}
           disabled={isPending}
-          className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl bg-green-600 hover:bg-green-700 text-white text-xs font-semibold transition-colors disabled:opacity-60"
+          className="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-green-600 hover:bg-green-700 text-white text-sm font-semibold transition-colors disabled:opacity-60"
         >
-          <Truck className="w-3.5 h-3.5" /> Confirmar envio
+          <Truck className="w-4 h-4" /> Confirmar envio
         </button>
       )}
 
@@ -247,9 +247,9 @@ function RequestCard({
           <button
             onClick={confirmShipping}
             disabled={isPending}
-            className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl bg-green-600 hover:bg-green-700 text-white text-xs font-bold transition-colors disabled:opacity-60"
+            className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-green-600 hover:bg-green-700 text-white text-sm font-bold transition-colors disabled:opacity-60"
           >
-            {isPending ? <Loader className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+            {isPending ? <Loader className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
             Enviar
           </button>
           <button
