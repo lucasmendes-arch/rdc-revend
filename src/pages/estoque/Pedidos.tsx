@@ -12,6 +12,7 @@ interface RequestItem {
   product_id: string
   suggested_quantity: number
   shipped_quantity: number | null
+  picked_at: string | null
   catalog_products: { name: string; main_image: string | null } | null
 }
 
@@ -34,10 +35,12 @@ const COLUMNS = [
 function RequestCard({
   request,
   onAdvance,
+  onTogglePicked,
   isPending,
 }: {
   request: ReplenishmentRequest
   onAdvance: (requestId: string, newStatus: 'picking' | 'shipped', shippedItems?: { item_id: string; shipped_quantity: number }[]) => void
+  onTogglePicked: (itemId: string, picked: boolean) => void
   isPending: boolean
 }) {
   // Modo "conferindo envio": mostra um input de quantidade por item,
@@ -48,6 +51,8 @@ function RequestCard({
   const items = request.replenishment_request_items
   const totalSuggested = items.reduce((sum, i) => sum + i.suggested_quantity, 0)
   const totalShipped = items.reduce((sum, i) => sum + (i.shipped_quantity ?? 0), 0)
+  const pickedCount = items.filter((i) => i.picked_at !== null).length
+  const isPicking = request.status === 'picking'
 
   const startShipping = () => {
     setShipQty(Object.fromEntries(items.map((i) => [i.id, String(i.suggested_quantity)])))
@@ -81,11 +86,29 @@ function RequestCard({
         {request.status === 'shipped' && request.shipped_at && (
           <> · {new Date(request.shipped_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}</>
         )}
+        {isPicking && (
+          <span className={`ml-1.5 font-bold ${pickedCount === items.length ? 'text-green-600' : 'text-blue-600'}`}>
+            · {pickedCount}/{items.length} separados
+          </span>
+        )}
       </p>
 
       <div className="space-y-1 max-h-56 overflow-y-auto pr-0.5">
         {items.map((item) => (
           <div key={item.id} className="flex items-center gap-2 text-xs">
+            {/* Checklist de separação — só em picking, persiste no banco */}
+            {isPicking && !shipping && (
+              <button
+                type="button"
+                onClick={() => onTogglePicked(item.id, item.picked_at === null)}
+                className={`w-6 h-6 rounded-md border flex items-center justify-center shrink-0 transition-colors ${
+                  item.picked_at ? 'bg-green-600 border-green-600 text-white' : 'bg-white border-border text-transparent hover:border-green-400'
+                }`}
+                title={item.picked_at ? 'Desmarcar separação' : 'Marcar como separado'}
+              >
+                <Check className="w-3.5 h-3.5" />
+              </button>
+            )}
             <div className="w-6 h-6 rounded overflow-hidden shrink-0 bg-surface-alt border border-border">
               {item.catalog_products?.main_image ? (
                 <img src={item.catalog_products.main_image} alt="" className="w-full h-full object-cover" />
@@ -93,7 +116,9 @@ function RequestCard({
                 <div className="w-full h-full flex items-center justify-center text-muted-foreground"><Package className="w-3 h-3" /></div>
               )}
             </div>
-            <span className="flex-1 min-w-0 truncate text-foreground">{item.catalog_products?.name || 'Produto removido'}</span>
+            <span className={`flex-1 min-w-0 truncate ${isPicking && item.picked_at ? 'text-muted-foreground line-through' : 'text-foreground'}`}>
+              {item.catalog_products?.name || 'Produto removido'}
+            </span>
             {shipping ? (
               <input
                 type="number"
@@ -166,7 +191,7 @@ export default function EstoquePedidos() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('replenishment_requests')
-        .select('id, destination_store_id, status, generated_at, shipped_at, stores(name), replenishment_request_items(id, product_id, suggested_quantity, shipped_quantity, catalog_products(name, main_image))')
+        .select('id, destination_store_id, status, generated_at, shipped_at, stores(name), replenishment_request_items(id, product_id, suggested_quantity, shipped_quantity, picked_at, catalog_products(name, main_image))')
         .order('generated_at', { ascending: false })
         .limit(60)
       if (error) throw error
@@ -174,6 +199,37 @@ export default function EstoquePedidos() {
     },
     enabled: canView,
     staleTime: 30 * 1000,
+  })
+
+  const togglePicked = useMutation({
+    mutationFn: async ({ itemId, picked }: { itemId: string; picked: boolean }) => {
+      const { error } = await supabase.rpc('set_replenishment_item_picked', {
+        p_item_id: itemId,
+        p_picked: picked,
+      })
+      if (error) throw error
+    },
+    // Otimista: o checkbox responde na hora; rollback se a RPC falhar.
+    onMutate: async ({ itemId, picked }) => {
+      await queryClient.cancelQueries({ queryKey: ['replenishment-requests'] })
+      const previous = queryClient.getQueryData<ReplenishmentRequest[]>(['replenishment-requests'])
+      queryClient.setQueryData<ReplenishmentRequest[]>(['replenishment-requests'], (old) =>
+        (old || []).map((r) => ({
+          ...r,
+          replenishment_request_items: r.replenishment_request_items.map((i) =>
+            i.id === itemId ? { ...i, picked_at: picked ? new Date().toISOString() : null } : i
+          ),
+        }))
+      )
+      return { previous }
+    },
+    onError: (err, _vars, context) => {
+      if (context?.previous) queryClient.setQueryData(['replenishment-requests'], context.previous)
+      toast.error(`Erro ao marcar item: ${err instanceof Error ? err.message : 'desconhecido'}`)
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['replenishment-requests'] })
+    },
   })
 
   const updateStatus = useMutation({
@@ -256,6 +312,7 @@ export default function EstoquePedidos() {
                       key={request.id}
                       request={request}
                       onAdvance={(requestId, newStatus, shippedItems) => updateStatus.mutate({ requestId, newStatus, shippedItems })}
+                      onTogglePicked={(itemId, picked) => togglePicked.mutate({ itemId, picked })}
                       isPending={updateStatus.isPending}
                     />
                   ))
