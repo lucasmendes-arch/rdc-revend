@@ -39,7 +39,7 @@ interface StockCategoryOption {
   color_index: number
 }
 
-// ─── Stepper — botões grandes pra toque, +/- e input direto ────────────────
+// ─── Stepper — linha compacta: label à esquerda, botões grandes à direita ───
 
 function Stepper({
   label,
@@ -53,14 +53,14 @@ function Stepper({
   disabled?: boolean
 }) {
   return (
-    <div>
-      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wide mb-1.5 text-center">{label}</p>
-      <div className="flex items-center justify-center gap-1.5">
+    <div className="flex items-center justify-between gap-2">
+      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wide">{label}</p>
+      <div className="flex items-center gap-1.5">
         <button
           type="button"
           onClick={() => onChange(Math.max(0, value - 1))}
           disabled={disabled || value === 0}
-          className="w-11 h-11 rounded-xl border border-border bg-surface-alt flex items-center justify-center active:scale-95 transition-transform disabled:opacity-30 shrink-0"
+          className="w-10 h-10 rounded-xl border border-border bg-surface-alt flex items-center justify-center active:scale-95 transition-transform disabled:opacity-30 shrink-0"
         >
           <Minus className="w-4 h-4" />
         </button>
@@ -71,13 +71,13 @@ function Stepper({
           disabled={disabled}
           value={value}
           onChange={(e) => onChange(Math.max(0, parseInt(e.target.value) || 0))}
-          className="w-16 h-11 rounded-xl border border-input text-center text-lg font-bold bg-white disabled:bg-surface-alt disabled:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-amber-400"
+          className="w-14 h-10 rounded-xl border border-input text-center text-lg font-bold bg-white disabled:bg-surface-alt disabled:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-amber-400"
         />
         <button
           type="button"
           onClick={() => onChange(value + 1)}
           disabled={disabled}
-          className="w-11 h-11 rounded-xl border border-border bg-surface-alt flex items-center justify-center active:scale-95 transition-transform disabled:opacity-30 shrink-0"
+          className="w-10 h-10 rounded-xl border border-border bg-surface-alt flex items-center justify-center active:scale-95 transition-transform disabled:opacity-30 shrink-0"
         >
           <Plus className="w-4 h-4" />
         </button>
@@ -140,72 +140,79 @@ function ProductCard({
   }
 
   return (
-    <div className={`rounded-2xl border p-4 transition-colors ${
+    <div className={`rounded-2xl border p-3 flex gap-3 transition-colors ${
       unclassified ? 'border-amber-200 bg-amber-50/40' : counted ? 'border-green-200 bg-green-50/30' : 'border-border bg-white'
     }`}>
-      <div className="flex items-start gap-3 mb-3">
-        <div className="w-11 h-11 rounded-xl overflow-hidden shrink-0 bg-surface-alt border border-border">
-          {product.main_image ? (
-            <img src={product.main_image} alt="" className="w-full h-full object-cover" />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center text-muted-foreground text-xs font-bold">
-              {product.name.charAt(0).toUpperCase()}
-            </div>
-          )}
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-foreground leading-snug">{product.name}</p>
-          {unclassified ? (
-            <p className="flex items-center gap-1 text-[11px] text-amber-700 font-medium mt-0.5">
-              <AlertTriangle className="w-3 h-3 shrink-0" /> não classificado
-            </p>
-          ) : (
-            <p className="text-[11px] text-muted-foreground mt-0.5">
-              {product.package_type === 'CX' ? `${product.units_per_box} un./caixa` : 'conta por unidade avulsa'}
-            </p>
-          )}
-        </div>
-        <div className="flex items-center gap-1.5 shrink-0">
-          {dirty && <Loader className="w-3.5 h-3.5 animate-spin text-amber-500" />}
-          {previewTotal != null && (
-            <div className="text-right">
-              <p className="text-xl font-black text-foreground leading-none">{previewTotal}</p>
-              <p className="text-[9px] uppercase text-muted-foreground tracking-wide mt-0.5">total</p>
-            </div>
-          )}
-        </div>
-      </div>
-      <div className={`grid gap-3 ${showBoxes ? 'grid-cols-2' : 'grid-cols-1'}`}>
-        {showBoxes && (
-          <Stepper
-            label="Caixas fechadas"
-            value={closedBoxes}
-            disabled={disabled}
-            onChange={(v) => { setClosedBoxes(v); schedule(v, looseUnits) }}
-          />
-        )}
-        <Stepper
-          label="Unidades avulsas"
-          value={looseUnits}
-          disabled={disabled}
-          onChange={(v) => { setLooseUnits(v); schedule(closedBoxes, v) }}
-        />
-      </div>
-      {!disabled && (
-        isZeroed ? (
-          <p className="mt-3 flex items-center justify-center gap-1.5 py-2 rounded-xl bg-teal-50 border border-teal-200 text-xs font-bold text-teal-700">
-            <CircleSlash className="w-3.5 h-3.5" /> Zerado — sem estoque
-          </p>
+      {/* Imagem grande à esquerda — identificação visual rápida do produto */}
+      <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-xl overflow-hidden shrink-0 bg-white border border-border self-start">
+        {product.main_image ? (
+          <img src={product.main_image} alt="" className="w-full h-full object-contain" />
         ) : (
-          <button
-            type="button"
-            onClick={markZero}
-            className="mt-3 w-full flex items-center justify-center gap-1.5 py-2 rounded-xl border border-border text-xs font-semibold text-muted-foreground hover:text-foreground hover:bg-surface-alt active:scale-[0.99] transition-all"
-          >
-            <CircleSlash className="w-3.5 h-3.5" /> Zerado — sem estoque
-          </button>
-        )
-      )}
+          <div className="w-full h-full flex items-center justify-center bg-surface-alt text-muted-foreground text-2xl font-bold">
+            {product.name.charAt(0).toUpperCase()}
+          </div>
+        )}
+      </div>
+
+      {/* Nome + controles orientados à direita */}
+      <div className="flex-1 min-w-0 space-y-2">
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-foreground leading-snug">{product.name}</p>
+            {unclassified ? (
+              <p className="flex items-center gap-1 text-[11px] text-amber-700 font-medium mt-0.5">
+                <AlertTriangle className="w-3 h-3 shrink-0" /> não classificado
+              </p>
+            ) : (
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                {product.package_type === 'CX' ? `${product.units_per_box} un./caixa` : 'conta por unidade avulsa'}
+              </p>
+            )}
+          </div>
+          <div className="flex items-center gap-1.5 shrink-0">
+            {dirty && <Loader className="w-3.5 h-3.5 animate-spin text-amber-500" />}
+            {previewTotal != null && (
+              <div className="text-right">
+                <p className="text-xl font-black text-foreground leading-none">{previewTotal}</p>
+                <p className="text-[9px] uppercase text-muted-foreground tracking-wide mt-0.5">total</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="space-y-1.5">
+          {showBoxes && (
+            <Stepper
+              label="Caixas"
+              value={closedBoxes}
+              disabled={disabled}
+              onChange={(v) => { setClosedBoxes(v); schedule(v, looseUnits) }}
+            />
+          )}
+          <Stepper
+            label="Avulsas"
+            value={looseUnits}
+            disabled={disabled}
+            onChange={(v) => { setLooseUnits(v); schedule(closedBoxes, v) }}
+          />
+        </div>
+
+        {!disabled && (
+          isZeroed ? (
+            <p className="flex items-center justify-center gap-1.5 py-1.5 rounded-xl bg-teal-50 border border-teal-200 text-xs font-bold text-teal-700">
+              <CircleSlash className="w-3.5 h-3.5" /> Zerado — sem estoque
+            </p>
+          ) : (
+            <button
+              type="button"
+              onClick={markZero}
+              className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-xl border border-border text-xs font-semibold text-muted-foreground hover:text-foreground hover:bg-surface-alt active:scale-[0.99] transition-all"
+            >
+              <CircleSlash className="w-3.5 h-3.5" /> Zerado — sem estoque
+            </button>
+          )
+        )}
+      </div>
     </div>
   )
 }
