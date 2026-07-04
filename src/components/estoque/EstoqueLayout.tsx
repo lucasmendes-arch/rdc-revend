@@ -70,7 +70,8 @@ export default function EstoqueLayout({ children }: EstoqueLayoutProps) {
               <ClipboardList className="w-4 h-4" />
               <span className="hidden sm:inline">Contagem</span>
             </NavLink>
-            {isCentral && (
+            {/* Central separa/envia; admin supervisiona independente da loja de teste */}
+            {(isCentral || isAdmin) && (
               <NavLink to="/estoque/pedidos" className={navLinkClass}>
                 <Truck className="w-4 h-4" />
                 <span className="hidden sm:inline">Pedidos</span>
