@@ -6,6 +6,7 @@ import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 import EstoqueLayout from '@/components/estoque/EstoqueLayout'
 import { getCategoryColor } from '@/lib/stockCategoryColors'
+import { naturalCompare } from '@/lib/naturalSort'
 
 interface Product {
   id: string
@@ -445,6 +446,8 @@ export default function EstoqueContagemDetalhe() {
       if (!map.has(key)) map.set(key, [])
       map.get(key)!.push(p)
     }
+    // Ordem natural dentro da categoria (Tonalizante 2 antes do 10, 7.1 antes do 7.12)
+    for (const arr of map.values()) arr.sort((a, b) => naturalCompare(a.name, b.name))
     return Array.from(map.entries()).sort(([a], [b]) => {
       // "Sem categoria" sempre por último; as demais seguem sort_order
       // manual (ex: ordem física dos corredores da loja), com nome como

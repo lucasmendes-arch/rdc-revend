@@ -5,6 +5,7 @@ import { Loader, AlertTriangle, CheckCircle2, ArrowLeft, PackageCheck } from 'lu
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 import EstoqueLayout from '@/components/estoque/EstoqueLayout'
+import { naturalCompare } from '@/lib/naturalSort'
 
 interface StockCount {
   id: string
@@ -184,7 +185,7 @@ export default function EstoqueConfirmacao() {
   // Todo registro conta — inclusive 0/0 (item zerado), que gera reposição da
   // meta cheia na confirmação e por isso precisa aparecer na revisão.
   const countedItems = [...items].sort((a, b) =>
-    (a.catalog_products?.name || '').localeCompare(b.catalog_products?.name || '')
+    naturalCompare(a.catalog_products?.name || '', b.catalog_products?.name || '')
   )
   const itemsUnclassified = items.filter((i) => i.catalog_products?.units_per_box == null)
 

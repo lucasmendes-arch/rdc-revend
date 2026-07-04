@@ -7,6 +7,7 @@ import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import EstoqueLayout from '@/components/estoque/EstoqueLayout'
 import { STOCK_CATEGORY_PALETTE, getCategoryColor } from '@/lib/stockCategoryColors'
+import { naturalCompare } from '@/lib/naturalSort'
 
 interface Product {
   id: string
@@ -767,7 +768,7 @@ export default function EstoqueConfig() {
       const orderA = a.stock_category ? categoryOrderByName.get(a.stock_category) ?? Infinity : Infinity
       const orderB = b.stock_category ? categoryOrderByName.get(b.stock_category) ?? Infinity : Infinity
       if (orderA !== orderB) return orderA - orderB
-      return a.name.localeCompare(b.name)
+      return naturalCompare(a.name, b.name)
     })
 
   return (

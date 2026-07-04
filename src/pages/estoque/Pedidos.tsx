@@ -6,6 +6,7 @@ import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 import { useMyStore } from '@/hooks/useMyStore'
 import EstoqueLayout from '@/components/estoque/EstoqueLayout'
+import { naturalCompare } from '@/lib/naturalSort'
 
 interface RequestItem {
   id: string
@@ -54,7 +55,9 @@ function RequestCard({
   const [declareItemId, setDeclareItemId] = useState<string | null>(null)
   const [declareQty, setDeclareQty] = useState('')
 
-  const items = request.replenishment_request_items
+  const items = [...request.replenishment_request_items].sort((a, b) =>
+    naturalCompare(a.catalog_products?.name || '', b.catalog_products?.name || '')
+  )
   const totalSuggested = items.reduce((sum, i) => sum + i.suggested_quantity, 0)
   const totalShipped = items.reduce((sum, i) => sum + (i.shipped_quantity ?? 0), 0)
   const pickedCount = items.filter((i) => i.picked_at !== null).length
