@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { Navigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Loader, Search, Package, Plus, Tags, Target as TargetIcon, ChevronUp, ChevronDown, Pencil, Trash2, ImagePlus } from 'lucide-react'
+import { Loader, Search, Package, Plus, Tags, Target as TargetIcon, ChevronUp, ChevronDown, Pencil, Trash2, ImagePlus, Copy, ArrowRight } from 'lucide-react'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
@@ -713,6 +713,43 @@ export default function EstoqueConfig() {
     [saveTarget]
   )
 
+  // Copia as metas preenchidas (> 0) de uma loja pra outra — metas zeradas na
+  // origem não zeram a loja destino (só sobrescreve o que existe na origem).
+  const [copyFromStore, setCopyFromStore] = useState('')
+  const [copyToStore, setCopyToStore] = useState('')
+
+  const copyTargets = useMutation({
+    mutationFn: async ({ fromStoreId, toStoreId }: { fromStoreId: string; toStoreId: string }) => {
+      const rows = products
+        .map((p) => targetsByProductStore.get(`${p.id}:${fromStoreId}`))
+        .filter((t): t is Target => !!t && t.target_quantity > 0)
+        .map((t) => ({ product_id: t.product_id, store_id: toStoreId, target_quantity: t.target_quantity }))
+      const { error } = await supabase
+        .from('store_stock_targets')
+        .upsert(rows, { onConflict: 'product_id,store_id' })
+      if (error) throw error
+      return rows.length
+    },
+    onSuccess: (count) => {
+      queryClient.invalidateQueries({ queryKey: ['store-stock-targets-all'] })
+      toast.success(`${count} metas copiadas`)
+    },
+    onError: (err) => toast.error(`Erro ao copiar metas: ${err instanceof Error ? err.message : 'desconhecido'}`),
+  })
+
+  const handleCopyTargets = () => {
+    const from = stores.find((s) => s.id === copyFromStore)
+    const to = stores.find((s) => s.id === copyToStore)
+    if (!from || !to || from.id === to.id) return
+    const count = products.filter((p) => (targetsByProductStore.get(`${p.id}:${from.id}`)?.target_quantity ?? 0) > 0).length
+    if (count === 0) {
+      toast.error(`"${from.name}" não tem metas preenchidas pra copiar`)
+      return
+    }
+    if (!confirm(`Copiar ${count} metas de "${from.name}" para "${to.name}"? Metas já preenchidas em "${to.name}" serão sobrescritas.`)) return
+    copyTargets.mutate({ fromStoreId: from.id, toStoreId: to.id })
+  }
+
   if (role !== 'admin') {
     return <Navigate to="/estoque/contagem" replace />
   }
@@ -908,6 +945,34 @@ export default function EstoqueConfig() {
             Nas lojas satélite, meta vazia/0 = a loja não trabalha com o produto (ele não aparece na contagem dela).
             A central conta o catálogo inteiro, independente de meta.
           </p>
+          <div className="flex items-center flex-wrap gap-1.5 px-1">
+            <span className="text-xs font-semibold text-foreground flex items-center gap-1"><Copy className="w-3.5 h-3.5" /> Copiar metas:</span>
+            <select
+              value={copyFromStore}
+              onChange={(e) => setCopyFromStore(e.target.value)}
+              className="h-8 rounded-lg border border-input text-xs bg-white px-1.5 focus:outline-none focus:ring-2 focus:ring-amber-400"
+            >
+              <option value="">Loja de origem</option>
+              {stores.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+            </select>
+            <ArrowRight className="w-3.5 h-3.5 text-muted-foreground" />
+            <select
+              value={copyToStore}
+              onChange={(e) => setCopyToStore(e.target.value)}
+              className="h-8 rounded-lg border border-input text-xs bg-white px-1.5 focus:outline-none focus:ring-2 focus:ring-amber-400"
+            >
+              <option value="">Loja de destino</option>
+              {stores.filter((s) => s.id !== copyFromStore).map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+            </select>
+            <button
+              onClick={handleCopyTargets}
+              disabled={!copyFromStore || !copyToStore || copyFromStore === copyToStore || copyTargets.isPending}
+              className="flex items-center gap-1 px-3 h-8 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              {copyTargets.isPending ? <Loader className="w-3.5 h-3.5 animate-spin" /> : <Copy className="w-3.5 h-3.5" />}
+              Copiar
+            </button>
+          </div>
           <div className="bg-white rounded-2xl border border-border shadow-card overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full">
