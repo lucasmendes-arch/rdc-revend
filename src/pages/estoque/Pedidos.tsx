@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Navigate } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { Navigate, useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Loader, Package, PlayCircle, Truck, X, Check, Store } from 'lucide-react'
 import { toast } from 'sonner'
@@ -39,12 +39,14 @@ function RequestCard({
   onTogglePicked,
   onDeclareQty,
   isPending,
+  highlighted,
 }: {
   request: ReplenishmentRequest
   onAdvance: (requestId: string, newStatus: 'picking' | 'shipped', shippedItems?: { item_id: string; shipped_quantity: number }[]) => void
   onTogglePicked: (itemId: string, picked: boolean) => void
   onDeclareQty: (itemId: string, qty: number | null) => void
   isPending: boolean
+  highlighted: boolean
 }) {
   // Modo "conferindo envio": mostra um input de quantidade por item,
   // pré-preenchido com o declarado/sugerido, antes de confirmar o envio.
@@ -79,7 +81,13 @@ function RequestCard({
   }
 
   return (
-    <div className="bg-white rounded-2xl border border-border shadow-card p-4 space-y-3">
+    // id usado pelo deep-link ?pedido=<id> (rolagem + destaque)
+    <div
+      id={`pedido-${request.id}`}
+      className={`bg-white rounded-2xl border shadow-card p-4 space-y-3 scroll-mt-24 transition-shadow ${
+        highlighted ? 'border-amber-400 ring-2 ring-amber-300' : 'border-border'
+      }`}
+    >
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0">
           <Store className="w-4 h-4 text-muted-foreground shrink-0" />
@@ -282,6 +290,9 @@ function RequestCard({
 export default function EstoquePedidos() {
   const queryClient = useQueryClient()
   const { isCentral, isAdmin, isLoading: storeLoading } = useMyStore()
+  // Deep-link vindo da notificação de WhatsApp: ?pedido=<request_id>
+  const [searchParams] = useSearchParams()
+  const focusRequestId = searchParams.get('pedido')
 
   const canView = isCentral || isAdmin
 
@@ -349,6 +360,17 @@ export default function EstoquePedidos() {
     },
     onError: (err) => toast.error(`Erro ao declarar: ${err instanceof Error ? err.message : 'desconhecido'}`),
   })
+
+  const requestsLoaded = requests.length > 0
+
+  useEffect(() => {
+    if (!focusRequestId || !requestsLoaded) return
+    // Espera o DOM montar os cards antes de rolar até o pedido destacado.
+    const timer = setTimeout(() => {
+      document.getElementById(`pedido-${focusRequestId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }, 150)
+    return () => clearTimeout(timer)
+  }, [focusRequestId, requestsLoaded])
 
   const updateStatus = useMutation({
     mutationFn: async ({ requestId, newStatus, shippedItems }: {
@@ -433,6 +455,7 @@ export default function EstoquePedidos() {
                       onTogglePicked={(itemId, picked) => togglePicked.mutate({ itemId, picked })}
                       onDeclareQty={(itemId, qty) => declareQty.mutate({ itemId, qty })}
                       isPending={updateStatus.isPending}
+                      highlighted={request.id === focusRequestId}
                     />
                   ))
                 )}

@@ -114,7 +114,8 @@ Contagem confirmada gerou reposição com *${items.length} ${items.length === 1 
 
 ${itemsText}${more}
 
-Acompanhe a separação em Estoque → Pedidos.`;
+👉 Abrir o pedido no kanban:
+https://rdc-revend.vercel.app/estoque/pedidos?pedido=${request.id}`;
 
     const uazapiEndpoint = `${uazapiUrl}/send/text?token=${encodeURIComponent(uazapiToken)}`;
     const waResp = await fetch(uazapiEndpoint, {
