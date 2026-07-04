@@ -1,7 +1,8 @@
 import { useState, useMemo, Fragment } from 'react'
 import { Navigate } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
-import { Loader, ChevronDown, ChevronRight, ClipboardList } from 'lucide-react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { Loader, ChevronDown, ChevronRight, ClipboardList, Trash2 } from 'lucide-react'
+import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import EstoqueLayout from '@/components/estoque/EstoqueLayout'
@@ -13,6 +14,7 @@ interface StockCountRow {
   status: 'draft' | 'confirmed'
   created_at: string
   confirmed_at: string | null
+  last_activity_at: string
 }
 
 interface StoreOption {
@@ -47,14 +49,14 @@ function ItemsExpansion({ stockCountId }: { stockCountId: string }) {
   })
 
   if (isLoading) {
-    return <tr><td colSpan={6} className="px-4 py-3 text-center"><Loader className="w-4 h-4 animate-spin text-muted-foreground mx-auto" /></td></tr>
+    return <tr><td colSpan={8} className="px-4 py-3 text-center"><Loader className="w-4 h-4 animate-spin text-muted-foreground mx-auto" /></td></tr>
   }
 
   const withValue = items.filter((i) => i.closed_boxes > 0 || i.loose_units > 0)
 
   return (
     <tr>
-      <td colSpan={6} className="px-4 py-3 bg-surface-alt">
+      <td colSpan={8} className="px-4 py-3 bg-surface-alt">
         {withValue.length === 0 ? (
           <p className="text-xs text-muted-foreground">Nenhum item preenchido nesta contagem.</p>
         ) : (
@@ -86,16 +88,43 @@ function ItemsExpansion({ stockCountId }: { stockCountId: string }) {
 
 export default function EstoqueHistorico() {
   const { role } = useAuth()
+  const queryClient = useQueryClient()
   const [storeFilter, setStoreFilter] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
   const [expandedId, setExpandedId] = useState<string | null>(null)
 
+  // Excluir contagem: itens caem junto (FK CASCADE); pedidos de reposição já
+  // gerados continuam existindo, só perdem o link de origem (FK SET NULL).
+  // Só admin tem policy de DELETE em stock_counts — e esta tela é admin-only.
+  const deleteCount = useMutation({
+    mutationFn: async (countId: string) => {
+      const { error } = await supabase.from('stock_counts').delete().eq('id', countId)
+      if (error) throw error
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['stock-counts-history'] })
+      queryClient.invalidateQueries({ queryKey: ['stock-counts-list'] })
+      toast.success('Contagem excluída')
+    },
+    onError: (err) => toast.error(`Erro ao excluir: ${err instanceof Error ? err.message : 'desconhecido'}`),
+  })
+
+  const handleDelete = (count: StockCountRow) => {
+    const label = count.status === 'confirmed'
+      ? 'Excluir esta contagem CONFIRMADA? Os itens contados serão apagados do histórico (pedidos de reposição já gerados são mantidos). Esta ação não pode ser desfeita.'
+      : 'Excluir este rascunho de contagem? Os itens preenchidos serão apagados. Esta ação não pode ser desfeita.'
+    if (!confirm(label)) return
+    deleteCount.mutate(count.id)
+  }
+
   const { data: counts = [], isLoading: countsLoading } = useQuery<StockCountRow[]>({
     queryKey: ['stock-counts-history'],
     queryFn: async () => {
+      // View stock_counts_history = stock_counts + last_activity_at (maior
+      // updated_at entre os itens da contagem).
       const { data, error } = await supabase
-        .from('stock_counts')
-        .select('id, store_id, employee_id, status, created_at, confirmed_at')
+        .from('stock_counts_history')
+        .select('id, store_id, employee_id, status, created_at, confirmed_at, last_activity_at')
         .order('created_at', { ascending: false })
         .limit(200)
       if (error) throw error
@@ -183,6 +212,8 @@ export default function EstoqueHistorico() {
                   <th className="px-4 py-2.5 text-center text-xs font-semibold text-foreground">Status</th>
                   <th className="px-4 py-2.5 text-left text-xs font-semibold text-foreground">Criada em</th>
                   <th className="px-4 py-2.5 text-left text-xs font-semibold text-foreground">Confirmada em</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-foreground">Última atualização</th>
+                  <th className="w-10"></th>
                 </tr>
               </thead>
               <tbody>
@@ -206,6 +237,17 @@ export default function EstoqueHistorico() {
                       </td>
                       <td className="px-4 py-2.5 text-sm text-muted-foreground">{new Date(count.created_at).toLocaleString('pt-BR')}</td>
                       <td className="px-4 py-2.5 text-sm text-muted-foreground">{count.confirmed_at ? new Date(count.confirmed_at).toLocaleString('pt-BR') : '—'}</td>
+                      <td className="px-4 py-2.5 text-sm text-muted-foreground">{new Date(count.last_activity_at).toLocaleString('pt-BR')}</td>
+                      <td className="px-2 text-center">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleDelete(count) }}
+                          disabled={deleteCount.isPending}
+                          className="text-muted-foreground hover:text-red-600 disabled:opacity-40 transition-colors"
+                          title="Excluir contagem"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </td>
                     </tr>
                     {expandedId === count.id && <ItemsExpansion stockCountId={count.id} />}
                   </Fragment>
