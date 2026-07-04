@@ -200,8 +200,10 @@ function ClassificationRow({ product, categories, onSave, onDelete }: { product:
                 )}
               </span>
             )}
-            {product.stock_only && (
+            {product.stock_only ? (
               <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-teal-100 text-teal-700 uppercase">Só contagem</span>
+            ) : (
+              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 uppercase">Catálogo atacado</span>
             )}
           </div>
         </div>
