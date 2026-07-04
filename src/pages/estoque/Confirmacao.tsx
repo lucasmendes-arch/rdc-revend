@@ -232,7 +232,7 @@ export default function EstoqueConfirmacao() {
                 <tr className="border-b border-border bg-surface-alt">
                   <th className="px-4 py-3 text-left text-sm font-semibold text-foreground">Produto</th>
                   <th className="px-4 py-3 text-center text-sm font-semibold text-foreground">Caixas</th>
-                  <th className="px-4 py-3 text-center text-sm font-semibold text-foreground">Soltas</th>
+                  <th className="px-4 py-3 text-center text-sm font-semibold text-foreground">Avulsas</th>
                   <th className="px-4 py-3 text-center text-sm font-semibold text-foreground">Total</th>
                 </tr>
               </thead>

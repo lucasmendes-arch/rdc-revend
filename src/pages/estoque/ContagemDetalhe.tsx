@@ -122,6 +122,10 @@ function ProductCard({
 
   const previewTotal = unclassified ? null : closedBoxes * (product.units_per_box as number) + looseUnits
   const hasValue = closedBoxes > 0 || looseUnits > 0
+  // Stepper de caixas só em item com embalagem CX — UND/sem embalagem conta
+  // só por unidade avulsa. Se um registro antigo já tiver caixas > 0, o
+  // stepper continua visível pra não esconder dado preenchido.
+  const showBoxes = product.package_type === 'CX' || closedBoxes > 0
   // "Contado" = existe registro na contagem (mesmo com 0/0 — item zerado é
   // uma contagem válida e gera reposição da meta cheia na confirmação).
   const counted = item !== undefined || hasValue
@@ -156,7 +160,9 @@ function ProductCard({
               <AlertTriangle className="w-3 h-3 shrink-0" /> não classificado
             </p>
           ) : (
-            <p className="text-[11px] text-muted-foreground mt-0.5">{product.units_per_box} un./caixa</p>
+            <p className="text-[11px] text-muted-foreground mt-0.5">
+              {product.package_type === 'CX' ? `${product.units_per_box} un./caixa` : 'conta por unidade avulsa'}
+            </p>
           )}
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
@@ -169,15 +175,17 @@ function ProductCard({
           )}
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-3">
+      <div className={`grid gap-3 ${showBoxes ? 'grid-cols-2' : 'grid-cols-1'}`}>
+        {showBoxes && (
+          <Stepper
+            label="Caixas fechadas"
+            value={closedBoxes}
+            disabled={disabled}
+            onChange={(v) => { setClosedBoxes(v); schedule(v, looseUnits) }}
+          />
+        )}
         <Stepper
-          label="Caixas fechadas"
-          value={closedBoxes}
-          disabled={disabled}
-          onChange={(v) => { setClosedBoxes(v); schedule(v, looseUnits) }}
-        />
-        <Stepper
-          label="Unidades soltas"
+          label="Unidades avulsas"
           value={looseUnits}
           disabled={disabled}
           onChange={(v) => { setLooseUnits(v); schedule(closedBoxes, v) }}
