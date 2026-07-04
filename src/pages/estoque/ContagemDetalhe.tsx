@@ -142,7 +142,14 @@ function ProductCard({
 
   return (
     <div className={`rounded-2xl border p-3 flex gap-3 transition-colors ${
-      unclassified ? 'border-amber-200 bg-amber-50/40' : counted ? 'border-green-200 bg-green-50/30' : 'border-border bg-white'
+      unclassified
+        ? 'border-amber-200 bg-amber-50/40'
+        : isZeroed
+          // Zerado = em falta: hover tinge de vermelho claro pra reforçar o estado
+          ? 'border-green-200 bg-green-50/30 hover:bg-red-50 hover:border-red-200'
+          : counted
+            ? 'border-green-200 bg-green-50/30'
+            : 'border-border bg-white'
     }`}>
       {/* Imagem grande à esquerda — identificação visual rápida do produto */}
       {/* Escalona pela largura real do aparelho — em telas ≤ 400px a imagem
