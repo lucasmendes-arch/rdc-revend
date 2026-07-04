@@ -100,19 +100,12 @@ serve(async (req) => {
       timeZone: 'America/Sao_Paulo',
     });
 
-    // Lista completa até 25 itens; acima disso resume pra não estourar a mensagem.
-    const shown = items.slice(0, 25);
-    const itemsText = shown
-      .map((i) => `  • ${i.catalog_products?.name || 'Produto'} — ${i.suggested_quantity} un.`)
-      .join('\n');
-    const more = items.length > shown.length ? `\n  … e mais ${items.length - shown.length} itens` : '';
-
+    // Só o resumo, sem listar itens — a separação acontece dentro do sistema,
+    // e a mensagem enxuta força abrir o kanban pra fazer o processo por lá.
     const message = `📦 *Pedido de Reposição — ${storeName}*
 📅 ${when}
 
-Contagem confirmada gerou reposição com *${items.length} ${items.length === 1 ? 'item' : 'itens'}* (${totalUnits} un. no total):
-
-${itemsText}${more}
+Contagem confirmada gerou reposição com *${items.length} ${items.length === 1 ? 'item' : 'itens'}* (${totalUnits} un. no total).
 
 👉 Abrir o pedido no kanban:
 https://rdc-revend.vercel.app/estoque/pedidos?pedido=${request.id}`;
