@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useCallback, useSyncExternalStore } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
@@ -12,16 +12,40 @@ export interface StoreInfo {
 
 const ADMIN_STORE_KEY = 'rdc_estoque_admin_store_slug'
 
+// Estado compartilhado entre TODAS as instâncias do hook — o seletor de loja
+// fica no EstoqueLayout e o conteúdo nas páginas; com useState local, trocar a
+// loja só re-renderizava o header e a página ficava com a loja antiga até F5.
+let adminSlugValue: string | null = null
+let adminSlugInitialized = false
+const adminSlugListeners = new Set<() => void>()
+
+function readAdminSlug(): string | null {
+  if (!adminSlugInitialized) {
+    adminSlugInitialized = true
+    try { adminSlugValue = localStorage.getItem(ADMIN_STORE_KEY) } catch { adminSlugValue = null }
+  }
+  return adminSlugValue
+}
+
+function subscribeAdminSlug(listener: () => void) {
+  adminSlugListeners.add(listener)
+  return () => { adminSlugListeners.delete(listener) }
+}
+
+function writeAdminSlug(slug: string) {
+  adminSlugValue = slug
+  try { localStorage.setItem(ADMIN_STORE_KEY, slug) } catch { /* ignore */ }
+  adminSlugListeners.forEach((l) => l())
+}
+
 export function useMyStore() {
   const { storeId, role } = useAuth()
   const isAdmin = role === 'admin'
 
   // Admin não tem store_id (não é colaborador de nenhuma loja) — para poder
   // supervisionar/testar o módulo, escolhe manualmente uma loja "de teste".
-  const [adminSlug, setAdminSlugState] = useState<string | null>(() => {
-    if (!isAdmin) return null
-    try { return localStorage.getItem(ADMIN_STORE_KEY) } catch { return null }
-  })
+  const sharedAdminSlug = useSyncExternalStore(subscribeAdminSlug, readAdminSlug)
+  const adminSlug = isAdmin ? sharedAdminSlug : null
 
   const { data: allStores = [], isLoading: allStoresLoading } = useQuery<StoreInfo[]>({
     queryKey: ['stores-all'],
@@ -50,8 +74,7 @@ export function useMyStore() {
   })
 
   const setAdminStore = useCallback((slug: string) => {
-    setAdminSlugState(slug)
-    try { localStorage.setItem(ADMIN_STORE_KEY, slug) } catch { /* ignore */ }
+    writeAdminSlug(slug)
   }, [])
 
   const store: StoreInfo | null = isAdmin
