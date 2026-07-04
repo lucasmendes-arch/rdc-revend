@@ -103,7 +103,11 @@ function ClassificationRow({ product, categories, onSave, onDelete }: { product:
                 className="w-full max-w-[220px] h-7 rounded-lg border border-input text-sm bg-white px-2 focus:outline-none focus:ring-2 focus:ring-amber-400"
               />
             ) : (
-              <span className="font-medium text-foreground truncate max-w-[220px] block">
+              <span
+                className={`font-medium text-foreground truncate max-w-[220px] block ${product.stock_only ? 'cursor-pointer hover:text-amber-700' : ''}`}
+                onClick={product.stock_only ? () => setEditingName(true) : undefined}
+                title={product.stock_only ? 'Clique para renomear' : 'Nome vem do sync da Nuvemshop — edite lá'}
+              >
                 {product.name}
                 {product.stock_only && (
                   <button
@@ -111,7 +115,7 @@ function ClassificationRow({ product, categories, onSave, onDelete }: { product:
                     className="inline-flex align-middle ml-1.5 text-muted-foreground hover:text-foreground"
                     title="Renomear item"
                   >
-                    <Pencil className="w-3 h-3" />
+                    <Pencil className="w-3.5 h-3.5" />
                   </button>
                 )}
               </span>
@@ -257,6 +261,7 @@ function CategoryChip({
   isPending,
   onReorder,
   onColorChange,
+  onRename,
 }: {
   category: StockCategory
   isFirst: boolean
@@ -264,9 +269,26 @@ function CategoryChip({
   isPending: boolean
   onReorder: (direction: 'up' | 'down') => void
   onColorChange: (colorIndex: number) => void
+  onRename: (newName: string) => void
 }) {
   const [showPicker, setShowPicker] = useState(false)
+  const [editing, setEditing] = useState(false)
+  const [name, setName] = useState(category.name)
   const color = getCategoryColor(category.color_index)
+
+  useEffect(() => {
+    setName(category.name)
+  }, [category.name])
+
+  const commitName = () => {
+    setEditing(false)
+    const trimmed = name.trim()
+    if (!trimmed || trimmed === category.name) {
+      setName(category.name)
+      return
+    }
+    onRename(trimmed)
+  }
 
   return (
     <div className="flex flex-col gap-1">
@@ -277,7 +299,30 @@ function CategoryChip({
           style={{ backgroundColor: color.text }}
           title="Trocar cor"
         />
-        <span className="text-xs font-medium mx-1.5" style={{ color: color.text }}>{category.name}</span>
+        {editing ? (
+          <input
+            type="text"
+            value={name}
+            autoFocus
+            onChange={(e) => setName(e.target.value)}
+            onBlur={commitName}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') commitName()
+              if (e.key === 'Escape') { setName(category.name); setEditing(false) }
+            }}
+            className="w-28 h-5 mx-1 rounded border-0 text-xs font-medium bg-white/80 px-1.5 focus:outline-none focus:ring-2 focus:ring-amber-400"
+            style={{ color: color.text }}
+          />
+        ) : (
+          <span
+            className="text-xs font-medium mx-1.5 cursor-pointer"
+            style={{ color: color.text }}
+            onClick={() => setEditing(true)}
+            title="Clique para renomear"
+          >
+            {category.name}
+          </span>
+        )}
         <button
           onClick={() => onReorder('up')}
           disabled={isFirst || isPending}
@@ -366,6 +411,33 @@ export default function EstoqueConfig() {
       toast.success('Categoria criada')
     },
     onError: (err) => toast.error(`Erro ao criar categoria: ${err instanceof Error ? err.message : 'desconhecido'}`),
+  })
+
+  // Renomear categoria propaga o novo nome pros produtos — stock_category em
+  // catalog_products é texto livre sem FK (ver migration 20260702000011).
+  const renameCategory = useMutation({
+    mutationFn: async ({ category, newName }: { category: StockCategory; newName: string }) => {
+      const { error } = await supabase.from('stock_categories').update({ name: newName }).eq('id', category.id)
+      if (error) {
+        if (error.code === '23505') throw new Error(`Já existe uma categoria chamada "${newName}"`)
+        throw error
+      }
+      const { error: propagateError } = await supabase
+        .from('catalog_products')
+        .update({ stock_category: newName })
+        .eq('stock_category', category.name)
+      if (propagateError) throw propagateError
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['stock-categories'] })
+      queryClient.invalidateQueries({ queryKey: ['stock-products-config'] })
+      queryClient.invalidateQueries({ queryKey: ['stock-products'] })
+      toast.success('Categoria renomeada')
+    },
+    onError: (err) => {
+      queryClient.invalidateQueries({ queryKey: ['stock-categories'] })
+      toast.error(`Erro ao renomear: ${err instanceof Error ? err.message : 'desconhecido'}`)
+    },
   })
 
   const setCategoryColor = useMutation({
@@ -623,7 +695,7 @@ export default function EstoqueConfig() {
           {categories.length > 0 && (
             <div className="bg-white rounded-2xl border border-border shadow-card p-3">
               <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide px-1 mb-2">
-                Ordem das categorias (contagem e classificação seguem esta ordem)
+                Ordem das categorias — clique no nome para renomear (contagem e classificação seguem esta ordem)
               </p>
               <div className="flex flex-wrap items-start gap-1.5">
                 {categories.map((cat, index) => (
@@ -635,6 +707,7 @@ export default function EstoqueConfig() {
                     isPending={reorderCategory.isPending}
                     onReorder={(direction) => reorderCategory.mutate({ category: cat, direction })}
                     onColorChange={(colorIndex) => setCategoryColor.mutate({ id: cat.id, colorIndex })}
+                    onRename={(newName) => renameCategory.mutate({ category: cat, newName })}
                   />
                 ))}
               </div>
