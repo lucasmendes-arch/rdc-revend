@@ -102,7 +102,17 @@ function RequestCard({
 
       <div className="space-y-2 max-h-96 overflow-y-auto pr-0.5">
         {items.map((item) => (
-          <div key={item.id} className="text-sm">
+          // Item com painel de declaração aberto ganha um "envelope" destacado
+          // (fundo + borda) cobrindo linha e painel juntos — deixa visível a
+          // qual produto a declaração pertence.
+          <div
+            key={item.id}
+            className={`text-sm transition-colors ${
+              declareItemId === item.id && isPicking && !shipping
+                ? 'rounded-xl border border-amber-300 bg-amber-50/70 p-2 -mx-1'
+                : ''
+            }`}
+          >
           <div className="flex items-center gap-2.5">
             {/* Checklist de separação — só em picking, persiste no banco */}
             {isPicking && !shipping && (
@@ -163,7 +173,7 @@ function RequestCard({
           </div>
 
           {declareItemId === item.id && isPicking && !shipping && (
-            <div className="mt-1.5 ml-10 mb-1 p-2.5 rounded-xl bg-surface-alt border border-border space-y-1.5">
+            <div className="mt-2 pt-2 border-t border-amber-200 space-y-1.5">
               <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
                 Separação parcial — sugerido: {item.suggested_quantity}
               </p>
