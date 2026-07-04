@@ -313,6 +313,7 @@ Pedido de reposição **consolidado**: UM pedido por loja destino, com os itens 
 | picked_at | timestamptz | YES | NULL | — |
 
 > `picked_at` = checklist de separação do kanban (NULL = ainda não separado); editável só com o pedido em `picking`, via RPC `set_replenishment_item_picked(p_item_id, p_picked)` (admin ou estoque da central).
+> Durante o picking, `shipped_quantity` também pode ser declarado antecipadamente via RPC `set_replenishment_item_shipped_qty(p_item_id, p_shipped_quantity)` — 0 = produto em falta, parcial = separação com menos unidades, NULL = limpa a declaração (0 ≤ qty ≤ sugerido; marca `picked_at`). O "Confirmar envio" pré-preenche com esse valor.
 
 > `status` válidos: `'open'`, `'picking'`, `'shipped'` (terminal). Índice único parcial `(destination_store_id) WHERE status='open'` — só um pedido aberto por loja; `confirm_stock_count` **apaga e recria** o pedido aberto da loja inteiro (a contagem mais recente é a verdade, D-20) e não toca em pedidos `picking`/`shipped`. Escrita apenas via RPCs `confirm_stock_count` e `update_replenishment_request_status`. RLS de leitura igual à tabela legada (satélite vê a própria loja; central e admin veem tudo). UI: kanban em `/estoque/pedidos`.
 

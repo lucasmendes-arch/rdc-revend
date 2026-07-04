@@ -36,17 +36,23 @@ function RequestCard({
   request,
   onAdvance,
   onTogglePicked,
+  onDeclareQty,
   isPending,
 }: {
   request: ReplenishmentRequest
   onAdvance: (requestId: string, newStatus: 'picking' | 'shipped', shippedItems?: { item_id: string; shipped_quantity: number }[]) => void
   onTogglePicked: (itemId: string, picked: boolean) => void
+  onDeclareQty: (itemId: string, qty: number | null) => void
   isPending: boolean
 }) {
   // Modo "conferindo envio": mostra um input de quantidade por item,
-  // pré-preenchido com o sugerido, antes de confirmar o envio.
+  // pré-preenchido com o declarado/sugerido, antes de confirmar o envio.
   const [shipping, setShipping] = useState(false)
   const [shipQty, setShipQty] = useState<Record<string, string>>({})
+  // Painel de declaração (tocar no nome do item durante a separação):
+  // "em falta" (0) ou quantidade parcial menor que a sugerida.
+  const [declareItemId, setDeclareItemId] = useState<string | null>(null)
+  const [declareQty, setDeclareQty] = useState('')
 
   const items = request.replenishment_request_items
   const totalSuggested = items.reduce((sum, i) => sum + i.suggested_quantity, 0)
@@ -55,8 +61,9 @@ function RequestCard({
   const isPicking = request.status === 'picking'
 
   const startShipping = () => {
-    setShipQty(Object.fromEntries(items.map((i) => [i.id, String(i.suggested_quantity)])))
+    setShipQty(Object.fromEntries(items.map((i) => [i.id, String(i.shipped_quantity ?? i.suggested_quantity)])))
     setShipping(true)
+    setDeclareItemId(null)
   }
 
   const confirmShipping = () => {
@@ -95,7 +102,8 @@ function RequestCard({
 
       <div className="space-y-1 max-h-56 overflow-y-auto pr-0.5">
         {items.map((item) => (
-          <div key={item.id} className="flex items-center gap-2 text-xs">
+          <div key={item.id} className="text-xs">
+          <div className="flex items-center gap-2">
             {/* Checklist de separação — só em picking, persiste no banco */}
             {isPicking && !shipping && (
               <button
@@ -116,9 +124,28 @@ function RequestCard({
                 <div className="w-full h-full flex items-center justify-center text-muted-foreground"><Package className="w-3 h-3" /></div>
               )}
             </div>
-            <span className={`flex-1 min-w-0 truncate ${isPicking && item.picked_at ? 'text-muted-foreground line-through' : 'text-foreground'}`}>
+            <button
+              type="button"
+              onClick={() => {
+                if (!isPicking || shipping) return
+                if (declareItemId === item.id) { setDeclareItemId(null); return }
+                setDeclareItemId(item.id)
+                setDeclareQty(String(item.shipped_quantity ?? item.suggested_quantity))
+              }}
+              className={`flex-1 min-w-0 truncate text-left ${isPicking && item.picked_at ? 'text-muted-foreground line-through' : 'text-foreground'}`}
+              title={isPicking && !shipping ? 'Toque para declarar falta ou quantidade parcial' : undefined}
+            >
               {item.catalog_products?.name || 'Produto removido'}
-            </span>
+            </button>
+            {isPicking && !shipping && item.shipped_quantity !== null && (
+              item.shipped_quantity === 0 ? (
+                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-red-100 text-red-600 uppercase shrink-0">Em falta</span>
+              ) : item.shipped_quantity < item.suggested_quantity ? (
+                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 shrink-0">
+                  {item.shipped_quantity} de {item.suggested_quantity}
+                </span>
+              ) : null
+            )}
             {shipping ? (
               <input
                 type="number"
@@ -133,6 +160,64 @@ function RequestCard({
                 {request.status === 'shipped' ? (item.shipped_quantity ?? item.suggested_quantity) : item.suggested_quantity}
               </span>
             )}
+          </div>
+
+          {declareItemId === item.id && isPicking && !shipping && (
+            <div className="mt-1.5 ml-8 mb-1 p-2 rounded-xl bg-surface-alt border border-border space-y-1.5">
+              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
+                Separação parcial — sugerido: {item.suggested_quantity}
+              </p>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  min={0}
+                  max={item.suggested_quantity}
+                  value={declareQty}
+                  onChange={(e) => setDeclareQty(e.target.value)}
+                  className="w-16 h-8 rounded-lg border border-input text-center font-semibold bg-white focus:outline-none focus:ring-2 focus:ring-amber-400"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    const parsed = parseInt(declareQty)
+                    if (Number.isNaN(parsed) || parsed < 0 || parsed > item.suggested_quantity) {
+                      toast.error(`Informe entre 0 e ${item.suggested_quantity}`)
+                      return
+                    }
+                    onDeclareQty(item.id, parsed)
+                    setDeclareItemId(null)
+                  }}
+                  className="px-2.5 h-8 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-[11px] font-bold transition-colors"
+                >
+                  Declarar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { onDeclareQty(item.id, 0); setDeclareItemId(null) }}
+                  className="px-2.5 h-8 rounded-lg bg-red-50 border border-red-200 text-red-600 hover:bg-red-100 text-[11px] font-bold transition-colors"
+                >
+                  Em falta
+                </button>
+                {item.shipped_quantity !== null && (
+                  <button
+                    type="button"
+                    onClick={() => { onDeclareQty(item.id, null); setDeclareItemId(null) }}
+                    className="px-2.5 h-8 rounded-lg border border-border text-muted-foreground hover:text-foreground text-[11px] font-semibold transition-colors"
+                  >
+                    Limpar
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setDeclareItemId(null)}
+                  className="px-2 h-8 text-muted-foreground hover:text-foreground text-[11px]"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          )}
           </div>
         ))}
       </div>
@@ -232,6 +317,25 @@ export default function EstoquePedidos() {
     },
   })
 
+  // Declaração durante a separação: em falta (0) ou quantidade parcial.
+  // Grava em shipped_quantity — o "Confirmar envio" herda o valor.
+  const declareQty = useMutation({
+    mutationFn: async ({ itemId, qty }: { itemId: string; qty: number | null }) => {
+      const { error } = await supabase.rpc('set_replenishment_item_shipped_qty', {
+        p_item_id: itemId,
+        p_shipped_quantity: qty,
+      })
+      if (error) throw error
+    },
+    onSuccess: (_, vars) => {
+      queryClient.invalidateQueries({ queryKey: ['replenishment-requests'] })
+      if (vars.qty === null) toast.success('Declaração removida')
+      else if (vars.qty === 0) toast.success('Item marcado como em falta')
+      else toast.success(`Declarado: ${vars.qty} un.`)
+    },
+    onError: (err) => toast.error(`Erro ao declarar: ${err instanceof Error ? err.message : 'desconhecido'}`),
+  })
+
   const updateStatus = useMutation({
     mutationFn: async ({ requestId, newStatus, shippedItems }: {
       requestId: string
@@ -313,6 +417,7 @@ export default function EstoquePedidos() {
                       request={request}
                       onAdvance={(requestId, newStatus, shippedItems) => updateStatus.mutate({ requestId, newStatus, shippedItems })}
                       onTogglePicked={(itemId, picked) => togglePicked.mutate({ itemId, picked })}
+                      onDeclareQty={(itemId, qty) => declareQty.mutate({ itemId, qty })}
                       isPending={updateStatus.isPending}
                     />
                   ))
