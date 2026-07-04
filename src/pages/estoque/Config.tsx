@@ -228,7 +228,13 @@ function ClassificationRow({ product, categories, onSave, onDelete }: { product:
           onChange={(e) => {
             const val = e.target.value || null
             setPackageType(val ?? '')
-            scheduleSave({ package_type: val })
+            // UND = item avulso, então itens/caixa é sempre 1.
+            if (val === 'UND') {
+              setUnitsPerBox(1)
+              scheduleSave({ package_type: val, units_per_box: 1 })
+            } else {
+              scheduleSave({ package_type: val })
+            }
           }}
           className="h-8 rounded-lg border border-input text-sm bg-white px-1.5 focus:outline-none focus:ring-2 focus:ring-amber-400"
         >
@@ -835,7 +841,7 @@ export default function EstoqueConfig() {
                 </select>
                 <select
                   value={newItem.package_type}
-                  onChange={(e) => setNewItem({ ...newItem, package_type: e.target.value })}
+                  onChange={(e) => setNewItem({ ...newItem, package_type: e.target.value, ...(e.target.value === 'UND' ? { units_per_box: '1' } : {}) })}
                   className="h-9 rounded-lg border border-input text-sm bg-white px-2 focus:outline-none focus:ring-2 focus:ring-amber-400"
                 >
                   <option value="">Embalagem</option>
