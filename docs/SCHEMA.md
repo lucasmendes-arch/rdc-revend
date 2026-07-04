@@ -286,8 +286,37 @@ Estoque mínimo/ideal (em unidades) de um produto em uma loja.
 
 ---
 
-### `replenishment_orders`
-Pedido de reposição gerado pela conciliação de uma contagem confirmada.
+### `replenishment_requests` + `replenishment_request_items`
+Pedido de reposição **consolidado**: UM pedido por loja destino, com os itens que precisam de reposição dentro (2026-07-04, substitui `replenishment_orders`).
+
+`replenishment_requests`:
+
+| Coluna | Tipo | Nullable | Default | FK |
+|--------|------|----------|---------|-----|
+| id | uuid | NO | `gen_random_uuid()` | — |
+| destination_store_id | uuid | NO | — | stores.id |
+| source_stock_count_id | uuid | YES | NULL | stock_counts.id |
+| status | text | NO | `'open'` | — |
+| generated_at | timestamptz | NO | `now()` | — |
+| picked_by | uuid | YES | NULL | auth.users.id |
+| shipped_at | timestamptz | YES | NULL | — |
+
+`replenishment_request_items`:
+
+| Coluna | Tipo | Nullable | Default | FK |
+|--------|------|----------|---------|-----|
+| id | uuid | NO | `gen_random_uuid()` | — |
+| request_id | uuid | NO | — | replenishment_requests.id (CASCADE) |
+| product_id | uuid | NO | — | catalog_products.id (RESTRICT) |
+| suggested_quantity | int | NO | — | — |
+| shipped_quantity | int | YES | NULL | — |
+
+> `status` válidos: `'open'`, `'picking'`, `'shipped'` (terminal). Índice único parcial `(destination_store_id) WHERE status='open'` — só um pedido aberto por loja; `confirm_stock_count` **apaga e recria** o pedido aberto da loja inteiro (a contagem mais recente é a verdade, D-20) e não toca em pedidos `picking`/`shipped`. Escrita apenas via RPCs `confirm_stock_count` e `update_replenishment_request_status`. RLS de leitura igual à tabela legada (satélite vê a própria loja; central e admin veem tudo). UI: kanban em `/estoque/pedidos`.
+
+---
+
+### `replenishment_orders` (LEGADA)
+Pedido de reposição por produto — **substituída por `replenishment_requests`** em 2026-07-04; mantida só como histórico, nada mais escreve nela.
 
 | Coluna | Tipo | Nullable | Default | FK |
 |--------|------|----------|---------|-----|
@@ -1128,18 +1157,26 @@ Retorna `profiles.store_id` do usuário autenticado. SECURITY DEFINER — usada 
 ```
 confirm_stock_count(p_stock_count_id uuid) → jsonb
 ```
-Confirma uma contagem física e concilia cada item contra `store_stock_targets`, gerando/atualizando `replenishment_orders` quando o total contado fica abaixo da meta da loja. Revalida `total_units` no servidor. Não reexecutável sobre a mesma contagem (`RAISE EXCEPTION` se já `confirmed`).
-Retorno: `{ stock_count_id, store_id, confirmed_at, items_total, items_replenished, items_sufficient, items_skipped: [{product_id, reason}] }` — `reason` é `'no_units_per_box'` ou `'no_target_defined'`.
+Confirma uma contagem física e concilia cada item contra `store_stock_targets`. **v2 (2026-07-04):** apaga o `replenishment_requests` aberto da loja e cria UM pedido consolidado novo com todos os itens abaixo da meta (nenhum item abaixo = nenhum pedido). Revalida `total_units` no servidor. Não reexecutável sobre a mesma contagem (`RAISE EXCEPTION` se já `confirmed`).
+Retorno: `{ stock_count_id, store_id, confirmed_at, items_total, items_replenished, items_sufficient, items_skipped: [{product_id, reason}], replenishment_request_id }` — `reason` é `'no_units_per_box'` ou `'no_target_defined'`; `replenishment_request_id` é `null` quando nada precisou de reposição.
 Acessível por: `authenticated` (admin ou colaborador `salao` da própria loja, verificado internamente).
 
 ---
 
-### `update_replenishment_order_status`
+### `update_replenishment_request_status`
+```
+update_replenishment_request_status(p_request_id uuid, p_new_status text, p_shipped_items jsonb DEFAULT NULL) → void
+```
+Avança o status de um pedido de reposição consolidado: `open→picking`, `open|picking→shipped`. `shipped` é terminal. `p_shipped_items` = `[{"item_id": uuid, "shipped_quantity": int}]` define quantidades enviadas por item; item ausente assume o sugerido.
+Acessível por: `authenticated` (admin ou colaborador `salao` da loja central, verificado internamente).
+
+---
+
+### `update_replenishment_order_status` (LEGADA)
 ```
 update_replenishment_order_status(p_order_id uuid, p_new_status text, p_shipped_quantity int DEFAULT NULL) → void
 ```
-Avança o status de um pedido de reposição: `open→picking`, `open|picking→shipped` (exige `p_shipped_quantity > 0`). `shipped` é terminal.
-Acessível por: `authenticated` (admin ou colaborador `salao` da loja central, verificado internamente).
+Operava a tabela legada `replenishment_orders` (um pedido por produto). Substituída por `update_replenishment_request_status` em 2026-07-04; mantida no banco mas sem uso no frontend.
 
 ---
 
@@ -1189,7 +1226,8 @@ Lista usuários com `role IN ('admin','salao')`, com o nome da loja (`stores.nam
 | catalog_products | package_type | `'CX'`, `'UND'`, NULL |
 | stores | type | `'central'`, `'satellite'` |
 | stock_counts | status | `'draft'`, `'confirmed'` |
-| replenishment_orders | status | `'open'`, `'picking'`, `'shipped'` |
+| replenishment_orders (legada) | status | `'open'`, `'picking'`, `'shipped'` |
+| replenishment_requests | status | `'open'`, `'picking'`, `'shipped'` |
 
 ---
 
