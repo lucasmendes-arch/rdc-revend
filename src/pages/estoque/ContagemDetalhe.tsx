@@ -60,7 +60,7 @@ function Stepper({
           type="button"
           onClick={() => onChange(Math.max(0, value - 1))}
           disabled={disabled || value === 0}
-          className="w-10 h-10 rounded-xl border border-border bg-surface-alt flex items-center justify-center active:scale-95 transition-transform disabled:opacity-30 shrink-0"
+          className="w-10 h-9 rounded-xl border border-border bg-surface-alt flex items-center justify-center active:scale-95 transition-transform disabled:opacity-30 shrink-0"
         >
           <Minus className="w-4 h-4" />
         </button>
@@ -71,13 +71,13 @@ function Stepper({
           disabled={disabled}
           value={value}
           onChange={(e) => onChange(Math.max(0, parseInt(e.target.value) || 0))}
-          className="w-14 h-10 rounded-xl border border-input text-center text-lg font-bold bg-white disabled:bg-surface-alt disabled:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-amber-400"
+          className="w-14 h-9 rounded-xl border border-input text-center text-base font-bold bg-white disabled:bg-surface-alt disabled:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-amber-400"
         />
         <button
           type="button"
           onClick={() => onChange(value + 1)}
           disabled={disabled}
-          className="w-10 h-10 rounded-xl border border-border bg-surface-alt flex items-center justify-center active:scale-95 transition-transform disabled:opacity-30 shrink-0"
+          className="w-10 h-9 rounded-xl border border-border bg-surface-alt flex items-center justify-center active:scale-95 transition-transform disabled:opacity-30 shrink-0"
         >
           <Plus className="w-4 h-4" />
         </button>
@@ -144,7 +144,7 @@ function ProductCard({
       unclassified ? 'border-amber-200 bg-amber-50/40' : counted ? 'border-green-200 bg-green-50/30' : 'border-border bg-white'
     }`}>
       {/* Imagem grande à esquerda — identificação visual rápida do produto */}
-      <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-xl overflow-hidden shrink-0 bg-white border border-border self-start">
+      <div className="w-28 h-28 sm:w-32 sm:h-32 rounded-xl overflow-hidden shrink-0 bg-white border border-border self-center">
         {product.main_image ? (
           <img src={product.main_image} alt="" className="w-full h-full object-contain" />
         ) : (
@@ -155,7 +155,7 @@ function ProductCard({
       </div>
 
       {/* Nome + controles orientados à direita */}
-      <div className="flex-1 min-w-0 space-y-2">
+      <div className="flex-1 min-w-0 space-y-1.5">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
             <p className="text-sm font-semibold text-foreground leading-snug">{product.name}</p>
@@ -180,7 +180,7 @@ function ProductCard({
           </div>
         </div>
 
-        <div className="space-y-1.5">
+        <div className="space-y-1">
           {showBoxes && (
             <Stepper
               label="Caixas"
@@ -199,14 +199,14 @@ function ProductCard({
 
         {!disabled && (
           isZeroed ? (
-            <p className="flex items-center justify-center gap-1.5 py-1.5 rounded-xl bg-red-50 border border-red-200 text-xs font-bold text-red-500">
+            <p className="flex items-center justify-center gap-1.5 py-1 rounded-xl bg-red-50 border border-red-200 text-xs font-bold text-red-500">
               <CircleSlash className="w-3.5 h-3.5" /> Zerado — sem estoque
             </p>
           ) : (
             <button
               type="button"
               onClick={markZero}
-              className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-xl bg-red-50 border border-red-100 text-xs font-semibold text-red-400 hover:text-red-600 hover:bg-red-100 active:scale-[0.99] transition-all"
+              className="w-full flex items-center justify-center gap-1.5 py-1 rounded-xl bg-red-50 border border-red-100 text-xs font-semibold text-red-400 hover:text-red-600 hover:bg-red-100 active:scale-[0.99] transition-all"
             >
               <CircleSlash className="w-3.5 h-3.5" /> Zerado — sem estoque
             </button>
