@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Loader, Search, AlertTriangle, ArrowLeft, ChevronDown, ChevronUp, Minus, Plus, PackageCheck, CheckCircle2 } from 'lucide-react'
+import { Loader, Search, AlertTriangle, ArrowLeft, ChevronDown, ChevronUp, Minus, Plus, PackageCheck, CheckCircle2, CircleSlash } from 'lucide-react'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 import EstoqueLayout from '@/components/estoque/EstoqueLayout'
@@ -122,10 +122,22 @@ function ProductCard({
 
   const previewTotal = unclassified ? null : closedBoxes * (product.units_per_box as number) + looseUnits
   const hasValue = closedBoxes > 0 || looseUnits > 0
+  // "Contado" = existe registro na contagem (mesmo com 0/0 — item zerado é
+  // uma contagem válida e gera reposição da meta cheia na confirmação).
+  const counted = item !== undefined || hasValue
+  const isZeroed = item !== undefined && item.closed_boxes === 0 && item.loose_units === 0 && !hasValue
+
+  const markZero = () => {
+    setClosedBoxes(0)
+    setLooseUnits(0)
+    setDirty(true)
+    clearTimeout(timerRef.current)
+    onSave(product.id, 0, 0).finally(() => setDirty(false))
+  }
 
   return (
     <div className={`rounded-2xl border p-4 transition-colors ${
-      unclassified ? 'border-amber-200 bg-amber-50/40' : hasValue ? 'border-green-200 bg-green-50/30' : 'border-border bg-white'
+      unclassified ? 'border-amber-200 bg-amber-50/40' : counted ? 'border-green-200 bg-green-50/30' : 'border-border bg-white'
     }`}>
       <div className="flex items-start gap-3 mb-3">
         <div className="w-11 h-11 rounded-xl overflow-hidden shrink-0 bg-surface-alt border border-border">
@@ -171,6 +183,21 @@ function ProductCard({
           onChange={(v) => { setLooseUnits(v); schedule(closedBoxes, v) }}
         />
       </div>
+      {!disabled && (
+        isZeroed ? (
+          <p className="mt-3 flex items-center justify-center gap-1.5 py-2 rounded-xl bg-teal-50 border border-teal-200 text-xs font-bold text-teal-700">
+            <CircleSlash className="w-3.5 h-3.5" /> Zerado — sem estoque
+          </p>
+        ) : (
+          <button
+            type="button"
+            onClick={markZero}
+            className="mt-3 w-full flex items-center justify-center gap-1.5 py-2 rounded-xl border border-border text-xs font-semibold text-muted-foreground hover:text-foreground hover:bg-surface-alt active:scale-[0.99] transition-all"
+          >
+            <CircleSlash className="w-3.5 h-3.5" /> Zerado — sem estoque
+          </button>
+        )
+      )}
     </div>
   )
 }
@@ -198,10 +225,8 @@ function CategorySection({
   onToggle: () => void
   onSave: (productId: string, closedBoxes: number, looseUnits: number) => Promise<void>
 }) {
-  const filledCount = products.filter((p) => {
-    const item = itemsByProduct.get(p.id)
-    return item && (item.closed_boxes > 0 || item.loose_units > 0)
-  }).length
+  // Item com registro (mesmo 0/0 = zerado) conta como preenchido.
+  const filledCount = products.filter((p) => itemsByProduct.has(p.id)).length
 
   // "Sem categoria" fica neutro (cinza) — não é uma categoria real com cor própria.
   const color = category === 'Sem categoria' ? { bg: '#F3F4F6', text: '#6B7280' } : getCategoryColor(colorIndex)
@@ -424,7 +449,13 @@ export default function EstoqueContagemDetalhe() {
     })
   }, [])
 
-  const itemsWithValue = items.filter((i) => i.closed_boxes > 0 || i.loose_units > 0).length
+  // Progresso: produto "contado" = tem registro na contagem (inclui zerados).
+  const totalProducts = assortmentProducts.length
+  const countedProducts = useMemo(
+    () => assortmentProducts.filter((p) => itemsByProduct.has(p.id)).length,
+    [assortmentProducts, itemsByProduct]
+  )
+  const progressPct = totalProducts > 0 ? Math.round((countedProducts / totalProducts) * 100) : 0
   const readOnly = stockCount?.status === 'confirmed'
 
   // Espera também o tipo da loja/metas pra não piscar a lista completa
@@ -463,9 +494,23 @@ export default function EstoqueContagemDetalhe() {
               <ArrowLeft className="w-3.5 h-3.5" /> Histórico
             </Link>
             <p className="text-xs text-muted-foreground">
-              {new Date(stockCount.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })} · {itemsWithValue} preenchido{itemsWithValue !== 1 ? 's' : ''}
+              {new Date(stockCount.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })} · {countedProducts}/{totalProducts} contado{countedProducts !== 1 ? 's' : ''}
             </p>
           </div>
+
+          {totalProducts > 0 && (
+            <div className="flex items-center gap-2">
+              <div className="flex-1 h-2 rounded-full bg-border/70 overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all duration-300 ${progressPct === 100 ? 'bg-green-500' : 'bg-amber-500'}`}
+                  style={{ width: `${progressPct}%` }}
+                />
+              </div>
+              <span className={`text-[11px] font-bold tabular-nums shrink-0 ${progressPct === 100 ? 'text-green-600' : 'text-muted-foreground'}`}>
+                {progressPct}%
+              </span>
+            </div>
+          )}
 
           {readOnly && (
             <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-xl px-3 py-2">
@@ -533,11 +578,11 @@ export default function EstoqueContagemDetalhe() {
         <div className="fixed bottom-0 left-0 right-0 z-30 bg-white border-t border-border px-4 sm:px-6 py-3 shadow-[0_-2px_10px_rgba(0,0,0,0.06)]">
           <button
             onClick={() => navigate(`/estoque/contagem/${id}/confirmar`)}
-            disabled={itemsWithValue === 0}
+            disabled={countedProducts === 0}
             className="w-full max-w-6xl mx-auto flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl btn-gold text-sm font-bold disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <PackageCheck className="w-4 h-4" />
-            Revisar e Confirmar {itemsWithValue > 0 ? `(${itemsWithValue})` : ''}
+            Revisar e Confirmar {countedProducts > 0 ? `(${countedProducts}/${totalProducts})` : ''}
           </button>
         </div>
       )}

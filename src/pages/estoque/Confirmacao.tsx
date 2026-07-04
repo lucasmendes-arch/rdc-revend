@@ -181,7 +181,11 @@ export default function EstoqueConfirmacao() {
   }
 
   // ── Rascunho: revisão antes de confirmar ───────────────────────────────────
-  const itemsWithValue = items.filter((i) => i.closed_boxes > 0 || i.loose_units > 0)
+  // Todo registro conta — inclusive 0/0 (item zerado), que gera reposição da
+  // meta cheia na confirmação e por isso precisa aparecer na revisão.
+  const countedItems = [...items].sort((a, b) =>
+    (a.catalog_products?.name || '').localeCompare(b.catalog_products?.name || '')
+  )
   const itemsUnclassified = items.filter((i) => i.catalog_products?.units_per_box == null)
 
   return (
@@ -191,7 +195,7 @@ export default function EstoqueConfirmacao() {
           <div>
             <h1 className="text-lg font-bold text-foreground">Revisar contagem</h1>
             <p className="text-xs text-muted-foreground">
-              {itemsWithValue.length} produto{itemsWithValue.length !== 1 ? 's' : ''} com quantidade informada
+              {countedItems.length} produto{countedItems.length !== 1 ? 's' : ''} contado{countedItems.length !== 1 ? 's' : ''}
             </p>
           </div>
           <button
@@ -216,7 +220,7 @@ export default function EstoqueConfirmacao() {
         <div className="text-center py-8">
           <Loader className="w-6 h-6 animate-spin text-gold-text mx-auto" />
         </div>
-      ) : itemsWithValue.length === 0 ? (
+      ) : countedItems.length === 0 ? (
         <div className="bg-white rounded-2xl border border-border shadow-card p-8 text-center">
           <p className="text-muted-foreground">Nenhum item preenchido ainda. Volte para a tela de contagem.</p>
         </div>
@@ -233,9 +237,14 @@ export default function EstoqueConfirmacao() {
                 </tr>
               </thead>
               <tbody>
-                {itemsWithValue.map((item, index) => (
+                {countedItems.map((item, index) => (
                   <tr key={item.id} className={index % 2 === 0 ? '' : 'bg-surface-alt/50'}>
-                    <td className="px-4 py-3 text-sm font-medium text-foreground">{item.catalog_products?.name || 'Produto'}</td>
+                    <td className="px-4 py-3 text-sm font-medium text-foreground">
+                      {item.catalog_products?.name || 'Produto'}
+                      {item.closed_boxes === 0 && item.loose_units === 0 && (
+                        <span className="ml-2 text-[9px] font-bold px-1.5 py-0.5 rounded bg-teal-100 text-teal-700 uppercase align-middle">Zerado</span>
+                      )}
+                    </td>
                     <td className="px-4 py-3 text-sm text-center">{item.closed_boxes}</td>
                     <td className="px-4 py-3 text-sm text-center">{item.loose_units}</td>
                     <td className="px-4 py-3 text-sm text-center font-bold">
@@ -252,7 +261,7 @@ export default function EstoqueConfirmacao() {
       <div className="pb-8">
         <button
           onClick={() => confirmMutation.mutate()}
-          disabled={confirmMutation.isPending || itemsWithValue.length === 0}
+          disabled={confirmMutation.isPending || countedItems.length === 0}
           className="w-full px-6 py-3.5 rounded-xl btn-gold text-sm font-bold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
           {confirmMutation.isPending ? (
