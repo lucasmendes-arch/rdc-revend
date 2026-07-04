@@ -35,6 +35,7 @@ interface ConfirmSummary {
   items_replenished: number
   items_sufficient: number
   items_skipped: { product_id: string; reason: string }[]
+  replenishment_request_id: string | null
 }
 
 const SKIP_REASON_LABEL: Record<string, string> = {
@@ -92,6 +93,13 @@ export default function EstoqueConfirmacao() {
       queryClient.invalidateQueries({ queryKey: ['stock-count-by-id', id] })
       queryClient.invalidateQueries({ queryKey: ['stock-counts-list'] })
       toast.success('Contagem confirmada com sucesso!')
+      // Notificação WhatsApp pro número do negócio quando a contagem gera
+      // reposição — fire-and-forget: falha de notificação não afeta o fluxo.
+      if (summary.replenishment_request_id) {
+        supabase.functions
+          .invoke('notify-replenishment', { body: { request_id: summary.replenishment_request_id } })
+          .catch((err) => console.warn('notify-replenishment falhou:', err))
+      }
     },
     onError: (err) => {
       toast.error(`Erro ao confirmar: ${err instanceof Error ? err.message : 'desconhecido'}`)
