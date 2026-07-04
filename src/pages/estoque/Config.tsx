@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { Navigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Loader, Search, Package, Plus, Tags, Target as TargetIcon, ChevronUp, ChevronDown, Pencil, Trash2 } from 'lucide-react'
+import { Loader, Search, Package, Plus, Tags, Target as TargetIcon, ChevronUp, ChevronDown, Pencil, Trash2, ImagePlus } from 'lucide-react'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
@@ -39,6 +39,23 @@ interface StockCategory {
   color_index: number
 }
 
+// Redimensiona a foto no cliente (máx 1000px, JPEG) — o bucket product-images
+// tem limite de 5MB e foto de celular passa disso fácil.
+async function compressImage(file: File): Promise<Blob> {
+  const bitmap = await createImageBitmap(file)
+  const maxDim = 1000
+  const scale = Math.min(1, maxDim / Math.max(bitmap.width, bitmap.height))
+  const canvas = document.createElement('canvas')
+  canvas.width = Math.round(bitmap.width * scale)
+  canvas.height = Math.round(bitmap.height * scale)
+  canvas.getContext('2d')!.drawImage(bitmap, 0, 0, canvas.width, canvas.height)
+  return new Promise((resolve, reject) => {
+    canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error('Falha ao processar imagem'))), 'image/jpeg', 0.85)
+  })
+}
+
+const BUCKET_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
+
 function ClassificationRow({ product, categories, onSave, onDelete }: { product: Product; categories: StockCategory[]; onSave: (id: string, updates: Partial<Product>) => void; onDelete: (product: Product) => void }) {
   const [unitsPerBox, setUnitsPerBox] = useState(product.units_per_box ?? '')
   const [packageType, setPackageType] = useState(product.package_type ?? '')
@@ -49,6 +66,39 @@ function ClassificationRow({ product, categories, onSave, onDelete }: { product:
   const [name, setName] = useState(product.name)
   const timerRef = useRef<ReturnType<typeof setTimeout>>()
   const [dirty, setDirty] = useState(false)
+  const [uploadingPhoto, setUploadingPhoto] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // Foto só em itens stock_only — em produtos B2B a main_image vem do sync
+  // da Nuvemshop e seria sobrescrita.
+  const handlePhotoSelect = async (file: File) => {
+    setUploadingPhoto(true)
+    try {
+      let blob: Blob
+      let ext = 'jpg'
+      try {
+        blob = await compressImage(file)
+      } catch {
+        // Formato que o navegador não decodifica — tenta subir o original.
+        if (!BUCKET_MIME_TYPES.includes(file.type)) throw new Error('Formato não suportado — use JPG, PNG ou WebP')
+        if (file.size > 5 * 1024 * 1024) throw new Error('Imagem maior que 5MB')
+        blob = file
+        ext = file.type.replace('image/', '').replace('jpeg', 'jpg')
+      }
+      const path = `stock-only/${product.id}-${Date.now()}.${ext}`
+      const { error } = await supabase.storage
+        .from('product-images')
+        .upload(path, blob, { contentType: blob.type || 'image/jpeg', cacheControl: '31536000', upsert: false })
+      if (error) throw error
+      const { data } = supabase.storage.from('product-images').getPublicUrl(path)
+      onSave(product.id, { main_image: data.publicUrl })
+      toast.success('Foto adicionada')
+    } catch (err) {
+      toast.error(`Erro ao enviar foto: ${err instanceof Error ? err.message : 'desconhecido'}`)
+    } finally {
+      setUploadingPhoto(false)
+    }
+  }
 
   useEffect(() => {
     setUnitsPerBox(product.units_per_box ?? '')
@@ -81,13 +131,43 @@ function ClassificationRow({ product, categories, onSave, onDelete }: { product:
     <tr className="border-b border-border last:border-b-0">
       <td className="px-4 py-2.5 text-sm">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg overflow-hidden shrink-0 bg-surface-alt border border-border">
-            {product.main_image ? (
-              <img src={product.main_image} alt="" className="w-full h-full object-cover" />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center"><Package className="w-3.5 h-3.5 text-muted-foreground" /></div>
-            )}
-          </div>
+          {product.stock_only ? (
+            <>
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploadingPhoto}
+                className="relative w-8 h-8 rounded-lg overflow-hidden shrink-0 bg-surface-alt border border-border hover:ring-2 hover:ring-amber-400 transition-shadow"
+                title={product.main_image ? 'Trocar foto' : 'Adicionar foto'}
+              >
+                {uploadingPhoto ? (
+                  <div className="w-full h-full flex items-center justify-center"><Loader className="w-3.5 h-3.5 animate-spin text-amber-500" /></div>
+                ) : product.main_image ? (
+                  <img src={product.main_image} alt="" className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center"><ImagePlus className="w-3.5 h-3.5 text-muted-foreground" /></div>
+                )}
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0]
+                  e.target.value = ''
+                  if (file) handlePhotoSelect(file)
+                }}
+              />
+            </>
+          ) : (
+            <div className="w-8 h-8 rounded-lg overflow-hidden shrink-0 bg-surface-alt border border-border">
+              {product.main_image ? (
+                <img src={product.main_image} alt="" className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center"><Package className="w-3.5 h-3.5 text-muted-foreground" /></div>
+              )}
+            </div>
+          )}
           <div className="min-w-0">
             {editingName ? (
               <input
@@ -461,9 +541,9 @@ export default function EstoqueConfig() {
   // no catálogo B2B (is_active fica sempre false, CHECK garante isso), só
   // existe pra ser contado fisicamente na loja (ex: material de limpeza).
   const createStockOnlyItem = useMutation({
-    mutationFn: async (input: { name: string; stock_category: string | null; units_per_box: number | null; package_type: string | null }) => {
-      const { error } = await supabase.from('catalog_products').insert({
-        name: input.name,
+    mutationFn: async (input: { names: string[]; stock_category: string | null; units_per_box: number | null; package_type: string | null }) => {
+      const rows = input.names.map((name) => ({
+        name,
         price: 0,
         is_active: false,
         stock_only: true,
@@ -471,27 +551,42 @@ export default function EstoqueConfig() {
         stock_category: input.stock_category,
         units_per_box: input.units_per_box,
         package_type: input.package_type,
-      })
+      }))
+      const { error } = await supabase.from('catalog_products').insert(rows)
       if (error) throw error
+      return rows.length
     },
-    onSuccess: () => {
+    onSuccess: (count) => {
       queryClient.invalidateQueries({ queryKey: ['stock-products-config'] })
       queryClient.invalidateQueries({ queryKey: ['stock-products'] })
       setNewItem({ name: '', stock_category: '', units_per_box: '', package_type: '' })
       setShowNewItemForm(false)
-      toast.success('Item criado')
+      toast.success(count === 1 ? 'Item criado' : `${count} itens criados`)
     },
-    onError: (err) => toast.error(`Erro ao criar item: ${err instanceof Error ? err.message : 'desconhecido'}`),
+    onError: (err) => toast.error(`Erro ao criar itens: ${err instanceof Error ? err.message : 'desconhecido'}`),
   })
 
+  // Cada linha do textarea vira um item — categoria/embalagem/itens-caixa
+  // escolhidos valem pra todos (dá pra ajustar depois, item a item, na tabela).
+  const parsedNewItemNames = useMemo(() => {
+    const seen = new Set<string>()
+    return newItem.name
+      .split('\n')
+      .map((n) => n.trim())
+      .filter((n) => {
+        if (!n || seen.has(n.toLowerCase())) return false
+        seen.add(n.toLowerCase())
+        return true
+      })
+  }, [newItem.name])
+
   const handleCreateStockOnlyItem = () => {
-    const name = newItem.name.trim()
-    if (!name) {
-      toast.error('Nome é obrigatório')
+    if (parsedNewItemNames.length === 0) {
+      toast.error('Informe pelo menos um nome')
       return
     }
     createStockOnlyItem.mutate({
-      name,
+      names: parsedNewItemNames,
       stock_category: newItem.stock_category || null,
       units_per_box: newItem.units_per_box ? Math.max(1, parseInt(newItem.units_per_box) || 1) : null,
       package_type: newItem.package_type || null,
@@ -717,16 +812,16 @@ export default function EstoqueConfig() {
           {showNewItemForm && (
             <div className="bg-white rounded-2xl border border-teal-200 shadow-card p-4 space-y-3">
               <div className="flex items-center justify-between">
-                <p className="text-xs font-semibold text-teal-700">Novo item — só pra contagem (não entra no catálogo de venda)</p>
+                <p className="text-xs font-semibold text-teal-700">Novos itens — só pra contagem (não entram no catálogo de venda)</p>
                 <button onClick={() => setShowNewItemForm(false)} className="text-xs text-muted-foreground hover:text-foreground">Cancelar</button>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-4 gap-2.5">
-                <input
-                  type="text"
+                <textarea
                   value={newItem.name}
                   onChange={(e) => setNewItem({ ...newItem, name: e.target.value })}
-                  placeholder="Nome (ex: Detergente 5L)"
-                  className="sm:col-span-2 h-9 rounded-lg border border-input text-sm bg-white px-2.5 focus:outline-none focus:ring-2 focus:ring-amber-400"
+                  placeholder={'Um nome por linha — cole uma lista pra criar vários de uma vez:\nDetergente 5L\nPapel toalha\nÁlcool 70%'}
+                  rows={4}
+                  className="sm:col-span-2 rounded-lg border border-input text-sm bg-white px-2.5 py-2 focus:outline-none focus:ring-2 focus:ring-amber-400 resize-y"
                 />
                 <select
                   value={newItem.stock_category}
@@ -757,12 +852,15 @@ export default function EstoqueConfig() {
                 />
                 <button
                   onClick={handleCreateStockOnlyItem}
-                  disabled={!newItem.name.trim() || createStockOnlyItem.isPending}
+                  disabled={parsedNewItemNames.length === 0 || createStockOnlyItem.isPending}
                   className="flex items-center gap-1.5 px-4 h-9 rounded-lg btn-gold text-xs font-bold disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {createStockOnlyItem.isPending ? <Loader className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
-                  Criar item
+                  {parsedNewItemNames.length > 1 ? `Criar ${parsedNewItemNames.length} itens` : 'Criar item'}
                 </button>
+                {parsedNewItemNames.length > 1 && (
+                  <span className="text-[11px] text-muted-foreground">Categoria e embalagem valem pra todos — dá pra ajustar item a item depois, na tabela.</span>
+                )}
               </div>
             </div>
           )}
