@@ -100,17 +100,18 @@ function RequestCard({
         )}
       </p>
 
-      <div className="space-y-2 max-h-96 overflow-y-auto pr-0.5">
+      <div className="space-y-1 max-h-96 overflow-y-auto">
         {items.map((item) => (
           // Item com painel de declaração aberto ganha um "envelope" destacado
-          // (fundo + borda) cobrindo linha e painel juntos — deixa visível a
-          // qual produto a declaração pertence.
+          // (fundo + borda) cobrindo linha e painel juntos. Todo item tem a
+          // mesma moldura (transparente quando fechado): o destaque acende no
+          // lugar, sem deslocar o conteúdo nem vazar do card.
           <div
             key={item.id}
-            className={`text-sm transition-colors ${
+            className={`text-sm rounded-xl border p-1.5 transition-colors ${
               declareItemId === item.id && isPicking && !shipping
-                ? 'rounded-xl border border-amber-300 bg-amber-50/70 p-2 -mx-1'
-                : ''
+                ? 'border-amber-300 bg-amber-50/70'
+                : 'border-transparent'
             }`}
           >
           <div className="flex items-center gap-2.5">
