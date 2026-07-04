@@ -145,8 +145,8 @@ function ProductCard({
       unclassified
         ? 'border-amber-200 bg-amber-50/40'
         : isZeroed
-          // Zerado = em falta: hover tinge de vermelho claro pra reforçar o estado
-          ? 'border-green-200 bg-green-50/30 hover:bg-red-50 hover:border-red-200'
+          // Zerado = em falta: o card inteiro fica permanentemente vermelho claro
+          ? 'border-red-200 bg-red-50/50 hover:bg-red-50'
           : counted
             ? 'border-green-200 bg-green-50/30'
             : 'border-border bg-white'
