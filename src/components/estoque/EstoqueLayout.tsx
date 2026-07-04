@@ -36,9 +36,11 @@ export default function EstoqueLayout({ children }: EstoqueLayoutProps) {
     }`
 
   return (
-    <div className="min-h-screen bg-surface-alt">
-      <header className="bg-gold border-b border-amber-600 px-4 sm:px-6 h-14 flex items-center sticky top-0 z-40">
-        <div className="w-full max-w-6xl mx-auto flex items-center justify-between gap-4">
+    // overflow-x-clip: nenhuma tela do módulo pode alargar a página no mobile —
+    // conteúdo largo (tabelas) rola dentro do próprio wrapper overflow-x-auto.
+    <div className="min-h-screen bg-surface-alt overflow-x-clip">
+      <header className="bg-gold border-b border-amber-600 px-3 sm:px-6 h-14 flex items-center sticky top-0 z-40">
+        <div className="w-full max-w-6xl mx-auto flex items-center justify-between gap-2 sm:gap-4">
           <div className="flex items-center gap-2.5 shrink-0">
             <Warehouse className="w-6 h-6 text-white" />
             <div className="flex flex-col">
@@ -62,7 +64,8 @@ export default function EstoqueLayout({ children }: EstoqueLayoutProps) {
             </div>
           </div>
 
-          <nav className="flex items-center gap-1">
+          {/* No mobile o nav rola horizontal em vez de empurrar a largura da página */}
+          <nav className="flex items-center gap-1 min-w-0 overflow-x-auto">
             <NavLink to="/estoque/contagem" className={navLinkClass}>
               <ClipboardList className="w-4 h-4" />
               <span className="hidden sm:inline">Contagem</span>

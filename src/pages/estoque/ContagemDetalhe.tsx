@@ -54,8 +54,8 @@ function Stepper({
 }) {
   return (
     <div className="flex items-center justify-between gap-2">
-      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wide">{label}</p>
-      <div className="flex items-center gap-1.5">
+      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wide min-w-0 truncate">{label}</p>
+      <div className="flex items-center gap-1.5 shrink-0">
         <button
           type="button"
           onClick={() => onChange(Math.max(0, value - 1))}
@@ -71,7 +71,7 @@ function Stepper({
           disabled={disabled}
           value={value}
           onChange={(e) => onChange(Math.max(0, parseInt(e.target.value) || 0))}
-          className="w-14 h-9 rounded-xl border border-input text-center text-base font-bold bg-white disabled:bg-surface-alt disabled:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-amber-400"
+          className="w-12 h-9 rounded-xl border border-input text-center text-base font-bold bg-white disabled:bg-surface-alt disabled:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-amber-400"
         />
         <button
           type="button"
@@ -144,7 +144,9 @@ function ProductCard({
       unclassified ? 'border-amber-200 bg-amber-50/40' : counted ? 'border-green-200 bg-green-50/30' : 'border-border bg-white'
     }`}>
       {/* Imagem grande à esquerda — identificação visual rápida do produto */}
-      <div className="w-28 h-28 sm:w-32 sm:h-32 rounded-xl overflow-hidden shrink-0 bg-white border border-border self-center">
+      {/* Escalona pela largura real do aparelho — em telas ≤ 400px a imagem
+          encolhe pra sobrar largura mínima pros steppers sem estourar a página */}
+      <div className="w-24 h-24 min-[420px]:w-28 min-[420px]:h-28 sm:w-32 sm:h-32 rounded-xl overflow-hidden shrink-0 bg-white border border-border self-center">
         {product.main_image ? (
           <img src={product.main_image} alt="" className="w-full h-full object-contain" />
         ) : (
