@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Navigate, useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Loader, Package, PlayCircle, Truck, X, Check, Store } from 'lucide-react'
@@ -14,7 +14,7 @@ interface RequestItem {
   suggested_quantity: number
   shipped_quantity: number | null
   picked_at: string | null
-  catalog_products: { name: string; main_image: string | null } | null
+  catalog_products: { name: string; main_image: string | null; stock_category: string | null } | null
 }
 
 interface ReplenishmentRequest {
@@ -35,6 +35,7 @@ const COLUMNS = [
 
 function RequestCard({
   request,
+  categoryOrderByName,
   onAdvance,
   onTogglePicked,
   onDeclareQty,
@@ -42,6 +43,7 @@ function RequestCard({
   highlighted,
 }: {
   request: ReplenishmentRequest
+  categoryOrderByName: Map<string, number>
   onAdvance: (requestId: string, newStatus: 'picking' | 'shipped', shippedItems?: { item_id: string; shipped_quantity: number }[]) => void
   onTogglePicked: (itemId: string, picked: boolean) => void
   onDeclareQty: (itemId: string, qty: number | null) => void
@@ -57,9 +59,23 @@ function RequestCard({
   const [declareItemId, setDeclareItemId] = useState<string | null>(null)
   const [declareQty, setDeclareQty] = useState('')
 
-  const items = [...request.replenishment_request_items].sort((a, b) =>
-    naturalCompare(a.catalog_products?.name || '', b.catalog_products?.name || '')
-  )
+  // Mesma ordem de categorias da tela de contagem (sort_order manual em
+  // stock_categories), com "Sem categoria" sempre por último; dentro da
+  // categoria, ordem natural pelo nome.
+  const items = [...request.replenishment_request_items].sort((a, b) => {
+    const categoryA = a.catalog_products?.stock_category || 'Sem categoria'
+    const categoryB = b.catalog_products?.stock_category || 'Sem categoria'
+    if (categoryA !== categoryB) {
+      if (categoryA === 'Sem categoria') return 1
+      if (categoryB === 'Sem categoria') return -1
+      const orderA = categoryOrderByName.get(categoryA) ?? Infinity
+      const orderB = categoryOrderByName.get(categoryB) ?? Infinity
+      if (orderA !== orderB) return orderA - orderB
+      const categoryCompare = categoryA.localeCompare(categoryB)
+      if (categoryCompare !== 0) return categoryCompare
+    }
+    return naturalCompare(a.catalog_products?.name || '', b.catalog_products?.name || '')
+  })
   const totalSuggested = items.reduce((sum, i) => sum + i.suggested_quantity, 0)
   const totalShipped = items.reduce((sum, i) => sum + (i.shipped_quantity ?? 0), 0)
   const pickedCount = items.filter((i) => i.picked_at !== null).length
@@ -301,7 +317,7 @@ export default function EstoquePedidos() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('replenishment_requests')
-        .select('id, destination_store_id, status, generated_at, shipped_at, stores(name), replenishment_request_items(id, product_id, suggested_quantity, shipped_quantity, picked_at, catalog_products(name, main_image))')
+        .select('id, destination_store_id, status, generated_at, shipped_at, stores(name), replenishment_request_items(id, product_id, suggested_quantity, shipped_quantity, picked_at, catalog_products(name, main_image, stock_category))')
         .order('generated_at', { ascending: false })
         .limit(60)
       if (error) throw error
@@ -310,6 +326,23 @@ export default function EstoquePedidos() {
     enabled: canView,
     staleTime: 30 * 1000,
   })
+
+  const { data: stockCategories = [] } = useQuery<{ name: string; sort_order: number }[]>({
+    queryKey: ['stock-categories'],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('stock_categories').select('name, sort_order')
+      if (error) throw error
+      return (data || []) as { name: string; sort_order: number }[]
+    },
+    enabled: canView,
+    staleTime: 5 * 60 * 1000,
+  })
+
+  const categoryOrderByName = useMemo(() => {
+    const orderMap = new Map<string, number>()
+    stockCategories.forEach((c) => orderMap.set(c.name, c.sort_order))
+    return orderMap
+  }, [stockCategories])
 
   const togglePicked = useMutation({
     mutationFn: async ({ itemId, picked }: { itemId: string; picked: boolean }) => {
@@ -451,6 +484,7 @@ export default function EstoquePedidos() {
                     <RequestCard
                       key={request.id}
                       request={request}
+                      categoryOrderByName={categoryOrderByName}
                       onAdvance={(requestId, newStatus, shippedItems) => updateStatus.mutate({ requestId, newStatus, shippedItems })}
                       onTogglePicked={(itemId, picked) => togglePicked.mutate({ itemId, picked })}
                       onDeclareQty={(itemId, qty) => declareQty.mutate({ itemId, qty })}
