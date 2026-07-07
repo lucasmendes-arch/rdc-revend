@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom'
 import {
   Package, ShoppingCart, Users, Warehouse, UserCog,
   Menu, X, ExternalLink, Tag, DollarSign, GitBranch,
-  Megaphone, UserCheck, History, BadgeDollarSign, ChevronRight, LayoutTemplate,
+  Megaphone, UserCheck, History, BadgeDollarSign, ChevronRight,
   ClipboardList,
 } from 'lucide-react'
 import logo from '@/assets/logo-rei-dos-cachos.png'
@@ -37,7 +37,6 @@ const navGroups: { label: string; items: NavItem[] }[] = [
       { label: 'Contagem de Estoque', path: '/estoque/relatorio', icon: ClipboardList },
       { label: 'Categorias', path: '/admin/categorias', icon: Tag },
       { label: 'Marketing', path: '/admin/marketing', icon: Megaphone },
-      { label: 'Banners Portal', path: '/admin/portal-banners', icon: LayoutTemplate },
     ],
   },
   {

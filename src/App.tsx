@@ -1,3 +1,5 @@
+import { lazy, Suspense } from "react";
+import { Loader2 } from "lucide-react";
 import { ThemeProvider } from "next-themes";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -14,47 +16,64 @@ import { EstoqueRoute } from "@/components/EstoqueRoute";
 import { PortalRoute } from "@/components/portal/PortalRoute";
 import Portal from "./pages/portal/Portal";
 import Login from "./pages/Login";
-import Catalogo from "./pages/Catalogo";
 import Lookbook from "./pages/Lookbook";
 import Cadastro from "./pages/Cadastro";
-import Checkout from "./pages/Checkout";
 import PedidoSucesso from "./pages/PedidoSucesso";
 import MeusPedidos from "./pages/MeusPedidos";
-import AdminCatalogo from "./pages/admin/Catalogo";
-import AdminPedidos from "./pages/admin/Pedidos";
-import AdminClientes from "./pages/admin/Clientes";
-import AdminEstoque from "./pages/admin/Estoque";
-import AdminUsuarios from "./pages/admin/Usuarios";
-import AdminCategorias from "./pages/admin/Categorias";
-import AdminUpsell from "./pages/admin/Upsell";
-import AdminFinanceiro from "./pages/admin/Financeiro";
-import AdminCrmDebug from "./pages/admin/CrmDebug";
 import RedefinirSenha from "./pages/RedefinirSenha";
-import AdminNewOrder from "./pages/admin/NewOrder";
-import AdminEditOrder from "./pages/admin/EditOrder";
-import AdminMarketing from "./pages/admin/Marketing";
-import AdminVendedores from "./pages/admin/Vendedores";
-import AdminSyncHistory from "./pages/admin/SyncHistory";
-import AdminTabelasPreco from "./pages/admin/TabelasPreco";
-import AdminPortalBanners from "./pages/admin/PortalBanners";
 import SalaoNovoPedido from "./pages/salao/NovoPedido";
 import SalaoInicio from "./pages/salao/Inicio";
-import EstoqueContagem from "./pages/estoque/Contagem";
-import EstoqueContagemDetalhe from "./pages/estoque/ContagemDetalhe";
-import EstoqueConfirmacao from "./pages/estoque/Confirmacao";
-import EstoquePedidos from "./pages/estoque/Pedidos";
-import EstoqueConfig from "./pages/estoque/Config";
-import EstoqueHistorico from "./pages/estoque/Historico";
-import EstoqueRelatorio from "./pages/estoque/Relatorio";
 import NotFound from "./pages/NotFound";
 import WhatsAppButton from "./components/landing/WhatsAppButton";
 import PixelTracker from "./components/PixelTracker";
 import { useLocation } from "react-router-dom";
 
+// módulo comercial-atacado (lazy — inclui vendors pesados: html2canvas, @dnd-kit)
+const Catalogo = lazy(() => import("./pages/comercial-atacado/Catalogo"));
+const Checkout = lazy(() => import("./pages/comercial-atacado/Checkout"));
+const AdminCatalogo = lazy(() => import("./pages/comercial-atacado/admin/Catalogo"));
+const AdminPedidos = lazy(() => import("./pages/comercial-atacado/admin/Pedidos"));
+const AdminClientes = lazy(() => import("./pages/comercial-atacado/admin/Clientes"));
+const AdminEstoque = lazy(() => import("./pages/comercial-atacado/admin/DisponibilidadeCatalogo"));
+const AdminCategorias = lazy(() => import("./pages/comercial-atacado/admin/Categorias"));
+const AdminUpsell = lazy(() => import("./pages/comercial-atacado/admin/Upsell"));
+const AdminCrmDebug = lazy(() => import("./pages/comercial-atacado/admin/CrmDebug"));
+const AdminNewOrder = lazy(() => import("./pages/comercial-atacado/admin/NewOrder"));
+const AdminEditOrder = lazy(() => import("./pages/comercial-atacado/admin/EditOrder"));
+const AdminVendedores = lazy(() => import("./pages/comercial-atacado/admin/Vendedores"));
+const AdminSyncHistory = lazy(() => import("./pages/comercial-atacado/admin/SyncHistory"));
+const AdminTabelasPreco = lazy(() => import("./pages/comercial-atacado/admin/TabelasPreco"));
+
+// módulo financeiro (lazy — inclui recharts)
+const AdminFinanceiro = lazy(() => import("./pages/financeiro/Financeiro"));
+
+// módulo marketing (lazy)
+const AdminMarketing = lazy(() => import("./pages/marketing/Marketing"));
+
+// módulo sistema (lazy)
+const AdminUsuarios = lazy(() => import("./pages/sistema/Usuarios"));
+
+// módulo estoque (lazy)
+const EstoqueContagem = lazy(() => import("./pages/estoque/Contagem"));
+const EstoqueContagemDetalhe = lazy(() => import("./pages/estoque/ContagemDetalhe"));
+const EstoqueConfirmacao = lazy(() => import("./pages/estoque/Confirmacao"));
+const EstoquePedidos = lazy(() => import("./pages/estoque/Pedidos"));
+const EstoqueConfig = lazy(() => import("./pages/estoque/Config"));
+const EstoqueHistorico = lazy(() => import("./pages/estoque/Historico"));
+const EstoqueRelatorio = lazy(() => import("./pages/estoque/Relatorio"));
+
 function ConditionalWhatsApp() {
   const { pathname } = useLocation();
   if (pathname.startsWith('/admin') || pathname.startsWith('/salao') || pathname.startsWith('/portal') || pathname.startsWith('/estoque') || pathname === '/cadastro' || pathname === '/login' || pathname === '/redefinir-senha') return null;
   return <WhatsAppButton />;
+}
+
+function RouteFallback() {
+  return (
+    <div className="flex items-center justify-center min-h-screen">
+      <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+    </div>
+  );
 }
 
 const queryClient = new QueryClient({
@@ -76,6 +95,7 @@ const App = () => (
           <PixelTracker />
           <AuthProvider>
             <CartProvider>
+              <Suspense fallback={<RouteFallback />}>
               <Routes>
                 <Route path="/" element={<Navigate to="/login" replace />} />
                 <Route path="/login" element={<Login />} />
@@ -104,7 +124,6 @@ const App = () => (
                     <Route path="/admin/sync-history" element={<AdminSyncHistory />} />
                     <Route path="/admin/crm" element={<AdminCrmDebug />} />
                     <Route path="/admin/tabelas-preco" element={<AdminTabelasPreco />} />
-                    <Route path="/admin/portal-banners" element={<AdminPortalBanners />} />
                   </Route>
                   <Route element={<PortalRoute />}>
                     <Route path="/portal" element={<Portal />} />
@@ -128,6 +147,7 @@ const App = () => (
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>
+              </Suspense>
               <ConditionalWhatsApp />
             </CartProvider>
           </AuthProvider>
