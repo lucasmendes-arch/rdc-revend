@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import { FunctionsHttpError } from '@supabase/functions-js'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
@@ -30,7 +31,16 @@ export async function callEdgeFunction(functionName: string, body: Record<string
   })
 
   if (error) {
-    throw new Error(error.message || `Edge function error: ${functionName}`)
+    let message = error.message || `Edge function error: ${functionName}`
+    if (error instanceof FunctionsHttpError) {
+      try {
+        const body = await error.context.json()
+        if (body?.error) message = body.error
+      } catch {
+        // context não era JSON ou já foi consumido — mantém a mensagem genérica
+      }
+    }
+    throw new Error(message)
   }
 
   return data
