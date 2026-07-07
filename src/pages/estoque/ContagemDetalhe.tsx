@@ -209,16 +209,16 @@ function ProductCard({
 
         {!disabled && (
           isZeroed ? (
-            <p className="flex items-center justify-center gap-1.5 py-1 rounded-xl bg-red-50 border border-red-200 text-xs font-bold text-red-500">
-              <CircleSlash className="w-3.5 h-3.5" /> Zerado — sem estoque
+            <p className="flex items-center justify-center gap-1 py-0.5 rounded-lg border border-red-300 bg-white text-[11px] font-semibold text-red-500">
+              <CircleSlash className="w-3 h-3" /> Zerado — sem estoque
             </p>
           ) : (
             <button
               type="button"
               onClick={markZero}
-              className="w-full flex items-center justify-center gap-1.5 py-1 rounded-xl bg-red-50 border border-red-100 text-xs font-semibold text-red-400 hover:text-red-600 hover:bg-red-100 active:scale-[0.99] transition-all"
+              className="w-full flex items-center justify-center gap-1 py-0.5 rounded-lg border border-red-200 bg-white text-[11px] font-medium text-red-400 hover:text-red-600 hover:border-red-300 active:scale-[0.99] transition-all"
             >
-              <CircleSlash className="w-3.5 h-3.5" /> Zerado — sem estoque
+              <CircleSlash className="w-3 h-3" /> Zerado — sem estoque
             </button>
           )
         )}

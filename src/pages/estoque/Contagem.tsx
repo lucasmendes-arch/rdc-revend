@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Loader, Plus, ClipboardList, ChevronRight, PackageCheck } from 'lucide-react'
@@ -21,6 +21,8 @@ export default function EstoqueContagem() {
   const { user } = useAuth()
   const { store, isLoading: storeLoading, needsStoreSelection } = useMyStore()
   const storeId = store?.id
+  const [showNamePrompt, setShowNamePrompt] = useState(false)
+  const [employeeName, setEmployeeName] = useState('')
 
   const { data: counts = [], isLoading: countsLoading } = useQuery<StockCountRow[]>({
     queryKey: ['stock-counts-list', storeId],
@@ -58,10 +60,10 @@ export default function EstoqueContagem() {
   const draft = counts.find((c) => c.status === 'draft')
 
   const createDraft = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (name: string) => {
       const { data, error } = await supabase
         .from('stock_counts')
-        .insert({ store_id: storeId, employee_id: user?.id })
+        .insert({ store_id: storeId, employee_id: user?.id, employee_name: name })
         .select('id')
         .single()
       if (error) throw error
@@ -69,6 +71,8 @@ export default function EstoqueContagem() {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['stock-counts-list', storeId] })
+      setShowNamePrompt(false)
+      setEmployeeName('')
       navigate(`/estoque/contagem/${data.id}`)
     },
     onError: (err) => {
@@ -80,8 +84,14 @@ export default function EstoqueContagem() {
     if (draft) {
       navigate(`/estoque/contagem/${draft.id}`)
     } else {
-      createDraft.mutate()
+      setShowNamePrompt(true)
     }
+  }
+
+  function handleConfirmName() {
+    const trimmed = employeeName.trim()
+    if (!trimmed) return
+    createDraft.mutate(trimmed)
   }
 
   if (needsStoreSelection) {
@@ -162,6 +172,49 @@ export default function EstoqueContagem() {
           </div>
         )}
       </div>
+
+      {showNamePrompt && (
+        <div
+          className="fixed inset-0 z-50 bg-black/40 flex items-end sm:items-center justify-center p-4"
+          onClick={() => !createDraft.isPending && setShowNamePrompt(false)}
+        >
+          <div className="bg-white rounded-2xl w-full max-w-sm p-5 space-y-4" onClick={(e) => e.stopPropagation()}>
+            <div>
+              <p className="text-[11px] font-bold text-amber-700 uppercase tracking-wide">Nova contagem</p>
+              <h2 className="text-base font-bold text-foreground">Quem está contando?</h2>
+              <p className="text-xs text-muted-foreground mt-1">Esse nome fica registrado na contagem, no campo Colaborador.</p>
+            </div>
+            <input
+              type="text"
+              autoFocus
+              value={employeeName}
+              onChange={(e) => setEmployeeName(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') handleConfirmName() }}
+              placeholder="Seu nome"
+              className="w-full h-11 rounded-xl border border-input text-sm bg-white px-3 focus:outline-none focus:ring-2 focus:ring-amber-400"
+            />
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setShowNamePrompt(false)}
+                disabled={createDraft.isPending}
+                className="flex-1 px-4 py-2.5 rounded-xl border border-border text-sm font-semibold disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmName}
+                disabled={!employeeName.trim() || createDraft.isPending}
+                className="flex-1 px-4 py-2.5 rounded-xl btn-gold text-sm font-bold disabled:opacity-50 flex items-center justify-center gap-1.5"
+              >
+                {createDraft.isPending && <Loader className="w-4 h-4 animate-spin" />}
+                {createDraft.isPending ? 'Iniciando…' : 'Começar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </EstoqueLayout>
   )
 }

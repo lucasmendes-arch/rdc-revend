@@ -11,6 +11,7 @@ interface StockCountRow {
   id: string
   store_id: string
   employee_id: string | null
+  employee_name: string | null
   status: 'draft' | 'confirmed'
   created_at: string
   confirmed_at: string | null
@@ -124,7 +125,7 @@ export default function EstoqueHistorico() {
       // updated_at entre os itens da contagem).
       const { data, error } = await supabase
         .from('stock_counts_history')
-        .select('id, store_id, employee_id, status, created_at, confirmed_at, last_activity_at')
+        .select('id, store_id, employee_id, employee_name, status, created_at, confirmed_at, last_activity_at')
         .order('created_at', { ascending: false })
         .limit(200)
       if (error) throw error
@@ -227,7 +228,9 @@ export default function EstoqueHistorico() {
                         {expandedId === count.id ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
                       </td>
                       <td className="px-4 py-2.5 text-sm font-medium text-foreground">{storeNameById.get(count.store_id) || '—'}</td>
-                      <td className="px-4 py-2.5 text-sm text-muted-foreground">{count.employee_id ? (employeeNameById.get(count.employee_id) || '—') : '—'}</td>
+                      <td className="px-4 py-2.5 text-sm text-muted-foreground">
+                        {count.employee_name || (count.employee_id ? employeeNameById.get(count.employee_id) : null) || '—'}
+                      </td>
                       <td className="px-4 py-2.5 text-center">
                         <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-semibold ${
                           count.status === 'confirmed' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
