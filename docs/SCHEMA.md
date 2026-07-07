@@ -1,6 +1,6 @@
 # SCHEMA.md — Single Source of Truth · RDC Revend
-> Atualizado em: 2026-07-02
-> Gerado a partir das migrations `20250221000001` → `20260702000009`
+> Atualizado em: 2026-07-07
+> Gerado a partir das migrations `20250221000001` → `20260707000001`
 > **LEIA ESTE ARQUIVO antes de escrever qualquer query, RPC call ou type definition no frontend.**
 
 ---
@@ -57,6 +57,7 @@ Perfil do usuário. Criado automaticamente por trigger ao registrar em `auth.use
 | next_action_at | timestamptz | YES | NULL | — |
 | assigned_seller_id | uuid | YES | NULL | sellers.id |
 | store_id | uuid | YES | NULL | stores.id |
+| permissions | jsonb | NO | `'{}'` | — |
 
 > `customer_segment` válidos: `'network_partner'`, `'wholesale_buyer'`. NULL = não classificado (legado pendente de revisão). Source of truth da segmentação comercial do cliente.
 > `price_list_id` FK para `price_lists`. NULL = sem tabela especial, usa `catalog_products.price`. Quando preenchida e lista ativa, o sistema usa preços de `price_list_items` no catálogo e no checkout.
@@ -65,6 +66,7 @@ Perfil do usuário. Criado automaticamente por trigger ao registrar em `auth.use
 > Colunas de integração (Etapa 9): `clickup_task_id`, `lead_source`, `lead_status`, `assigned_seller`, `integration_notes`, `last_synced_at`, `updated_by` — todas nullable, usadas pelo fluxo n8n/ClickUp.
 > `assigned_seller_id` (CRM P1): FK para `sellers.id ON DELETE SET NULL`. Source of truth do owner comercial. A coluna legada `assigned_seller` (text) é mantida em paralelo e sincronizada pela RPC — usada pela integração n8n/ClickUp.
 > `next_action` (CRM P1): texto livre da próxima ação planejada pelo comercial. `next_action_at`: data/hora agendada (UTC). Ambos nullable. Editáveis via RPC `admin_set_profile_next_action`.
+> `permissions` (jsonb, DEFAULT `'{}'`, desde `20260420000002`): permissões granulares por usuário, além do `role`. Chave em uso: `can_edit_orders` (boolean) — exigida por `admin_update_order` mesmo para admins. Alterada só via RPC `admin_set_user_permission` (admin-only); retornada por `get_system_users`.
 > **Módulo de Estoque:** `store_id` (FK `stores.id`) vincula um colaborador `role='salao'` à sua loja física — opcional (NULL = só acessa o módulo de venda, não o de contagem de estoque). Unificado com o antigo role `'estoque'` em 2026-07-02 (D-23): não existe mais `role='estoque'`, colaborador de loja física é sempre `salao` + `store_id`. Ver função `is_estoque()` (nome mantido por compatibilidade, mas checa `role='salao'`) e `my_store_id()`.
 
 ---
@@ -1198,6 +1200,24 @@ Define `role` (`user`/`admin`/`salao`) e, opcionalmente, `store_id` de um usuár
 get_system_users() → TABLE (id, role, full_name, email, created_at, last_sign_in_at, permissions, store_id, store_name)
 ```
 Lista usuários com `role IN ('admin','salao')`, com o nome da loja (`stores.name`) quando o `salao` tem `store_id` vinculado. Usada por `/admin/usuarios`.
+
+---
+
+### `admin_set_user_permission`
+```
+admin_set_user_permission(p_user_id uuid, p_key text, p_value boolean) → void
+```
+Liga/desliga uma permissão granular em `profiles.permissions` (merge de `{p_key: p_value}` no jsonb). Admin-only, verificado internamente via `is_admin()`. Criada em `20260420000002`. Chave em uso hoje: `can_edit_orders`.
+
+---
+
+### `admin_update_order`
+```
+admin_update_order(p_order_id uuid, p_seller_id uuid, p_payment_method text,
+                   p_payment_splits jsonb, p_notes text, p_status text,
+                   p_discount numeric, p_items jsonb) → void
+```
+Edição completa de um pedido existente: substitui todos os `order_items` (`p_items`: `[{product_id, product_name, qty, unit_price}]`), recalcula `subtotal`/`total` server-side e atualiza vendedor, pagamento, notas, status e desconto. Exige `is_admin()` **e** `permissions->>'can_edit_orders' = true` no perfil do chamador. `p_seller_id` NULL remove o vendedor. Criada em `20260420000002`.
 
 ---
 

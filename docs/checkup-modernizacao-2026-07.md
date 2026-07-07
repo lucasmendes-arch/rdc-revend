@@ -2,7 +2,7 @@
 
 > Data do diagnóstico: 2026-07-02
 > Escopo: arquitetura, código, performance, design, segurança e dependências.
-> Status: **Fases 1 e 2 concluídas (diagnóstico + priorização). Fases 3 e 4 aguardando aprovação do humano.**
+> Status: **Roadmap aprovado pelo humano em 2026-07-07 (ordem mantida como proposta). Etapa 0 executada em 2026-07-07 — ver notas de execução na Fase 3. Próxima: Etapa 1 (code splitting).**
 
 ---
 
@@ -112,12 +112,20 @@ Cada etapa é pequena, independente e validável antes da próxima.
 
 | Etapa | Escopo | Esforço | Risco / mitigação |
 |-------|--------|---------|-------------------|
-| **0 — Quick wins** | Itens 1, 2, 7 e 9 da priorização | P | Zero risco funcional; não toca rota nem checkout |
+| **0 — Quick wins** ✅ 2026-07-07 | Itens 1, 2, 7 e 9 da priorização | P | Zero risco funcional; não toca rota nem checkout |
 | **1 — Code splitting** | `React.lazy` por módulo no `App.tsx` + `manualChunks` para vendors pesados (recharts, html2canvas) | M | Flash de loading entre rotas → Suspense fallback. Validar tamanhos por chunk + navegar todas as rotas |
 | **2 — Tema unificado** | Um único provider/chave; remover toggles manuais dos layouts | M | Preferência de tema salva reseta uma vez (aceitável). Validar alternância em cada módulo |
 | **3 — Estrutura + AuthContext** | Fundir `lib/{hooks,services,types}` na estrutura principal; 1 query no AuthContext | P/M | Validar login em cada role |
 | **4 — Tipos do Supabase** | `supabase gen types` + `createClient<Database>`; adotar nos hooks/páginas novas primeiro, legado gradual | M | Requer acesso ao projeto Supabase via CLI |
 | **5 — Convenção de módulo + shell** | Doc "anatomia de um módulo" + padrão de shell/menu que aguenta financeiro/agenda no futuro | M | Pré-requisito da Fase 4 |
+
+### Notas de execução — Etapa 0 (2026-07-07)
+
+- **Item 1**: `npm audit fix` reduziu de 24 para **2 vulnerabilidades** (esbuild/vite no dev server) — o fix restante exige major do Vite (5→8), adiado junto com os demais majors por decisão do plano. `update-browserslist-db` rodado; warning do build sumiu.
+- **Item 2**: SCHEMA.md — adicionados `profiles.permissions` e as RPCs `admin_set_user_permission` e `admin_update_order` (a `get_system_users` já tinha sido documentada após o diagnóstico).
+- **Item 7**: `debug-sync` e `test-sync` deletadas do repositório **e do projeto Supabase remoto** (estavam deployadas). `axios` substituído por `fetch` nativo em `facebook-conversion-api.ts` (usado pela rota Vercel `api/events/track-conversion.ts`) e removido do package.json.
+- **Item 9**: migration `20260707000001_wrap_rls_functions_initplan.sql` aplicada via `supabase db push` — `ALTER POLICY` nas 20 policies do módulo de estoque (stores, stock_counts, stock_count_items, store_stock_targets, stock_categories, replenishment_orders/requests/request_items), embrulhando `is_admin()`/`is_estoque()`/`my_store_id()` em `(SELECT ...)`. Policies legadas (pré-módulo de estoque) **não** foram tocadas — ficam para quando/se aparecerem em profiling real.
+- **Extra (pedido do humano)**: regra ESLint `complexity: ['warn', 15]` adicionada ao `eslint.config.js` como trava para código novo — 41 warnings no legado de `src/`, esperados; lint não faz parte do build.
 
 ### Fora de escopo (não tocar)
 
@@ -135,7 +143,7 @@ Módulo por módulo, começando por onde a operação vive (`/salao`, `/estoque`
 
 ## Pendências de decisão do humano
 
-1. Confirmar a ordem das etapas do roadmap.
-2. Autorizar Etapa 0 (inclui `npm audit fix`).
-3. Etapa 4 precisa de acesso ao projeto Supabase via CLI (`supabase login`).
+1. ~~Confirmar a ordem das etapas do roadmap.~~ ✅ Confirmada em 2026-07-07 (mantida como proposta).
+2. ~~Autorizar Etapa 0 (inclui `npm audit fix`).~~ ✅ Autorizada e executada em 2026-07-07.
+3. ~~Etapa 4 precisa de acesso ao projeto Supabase via CLI.~~ ✅ CLI já linkada (verificado na Etapa 0: `db push` e `functions delete` funcionaram).
 4. Alguma tela monolítica do admin incomoda no dia a dia a ponto de subir de prioridade?

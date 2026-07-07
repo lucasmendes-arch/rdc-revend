@@ -1,4 +1,3 @@
-import axios from 'axios';
 import { createHash, randomUUID } from 'node:crypto';
 
 import type { ConversionEvent, TrackingResponse } from '../types/facebook-conversion';
@@ -246,22 +245,30 @@ export async function sendFacebookConversionEvent(event: ConversionEvent): Promi
   const { accessToken, pixelId, eventId, payload } = createFacebookConversionPayload(event);
 
   try {
-    const response = await axios.post<MetaApiResponse>(
-      `${META_GRAPH_API_BASE_URL}/${pixelId}/events`,
-      payload,
-      {
-        params: { access_token: accessToken },
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        timeout: 10_000,
-      }
-    );
+    const url = new URL(`${META_GRAPH_API_BASE_URL}/${pixelId}/events`);
+    url.searchParams.set('access_token', accessToken);
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(10_000),
+    });
+
+    const data: MetaApiResponse & { error?: { message?: string } } = await response
+      .json()
+      .catch(() => ({}));
+
+    if (!response.ok) {
+      throw new Error(data.error?.message || `Meta CAPI respondeu ${response.status}`);
+    }
 
     console.log(`✅ [Meta CAPI] Evento ${event.eventName} enviado com sucesso.`, {
       eventId,
-      eventsReceived: response.data.events_received ?? 0,
-      fbTraceId: response.data.fbtrace_id,
+      eventsReceived: data.events_received ?? 0,
+      fbTraceId: data.fbtrace_id,
     });
 
     return {
@@ -270,11 +277,8 @@ export async function sendFacebookConversionEvent(event: ConversionEvent): Promi
       eventId,
     };
   } catch (error) {
-    const metaErrorMessage = axios.isAxiosError(error)
-      ? error.response?.data?.error?.message || error.message
-      : error instanceof Error
-        ? error.message
-        : 'Erro desconhecido ao enviar evento para a Meta.';
+    const metaErrorMessage =
+      error instanceof Error ? error.message : 'Erro desconhecido ao enviar evento para a Meta.';
 
     console.error(`❌ [Meta CAPI] Falha ao enviar ${event.eventName}.`, {
       eventId,
