@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { ShoppingBag, ClipboardList, Package, Star } from 'lucide-react'
+import { ClipboardList, Package, Star } from 'lucide-react'
 
 interface Profile {
   full_name: string | null
@@ -8,13 +8,9 @@ interface Profile {
   is_partner: boolean | null
 }
 
-interface Order { id: string }
-
 interface Props {
   profile: Profile | null | undefined
   loadingProfile: boolean
-  orders: Order[]
-  loadingOrders: boolean
 }
 
 function Skeleton({ className }: { className?: string }) {
@@ -31,7 +27,7 @@ function resolveCommercialLabel(p: Profile | null | undefined): { label: string 
   return { label: 'Parceiro' }
 }
 
-export function PortalPageHeader({ profile, loadingProfile, orders, loadingOrders }: Props) {
+export function PortalPageHeader({ profile, loadingProfile }: Props) {
   const h = new Date().getHours()
   const greeting = h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite'
   const displayName = profile?.full_name ?? 'Parceiro'
@@ -65,12 +61,6 @@ export function PortalPageHeader({ profile, loadingProfile, orders, loadingOrder
       </div>
 
       <div className="flex gap-2">
-        <Link to="/portal/comprar"
-          className="flex items-center gap-1.5 h-11 px-4 rounded-lg border border-gray-200 bg-white text-[13px] font-medium text-gray-700 hover:border-amber-300 hover:text-amber-700 hover:bg-amber-50 transition-all whitespace-nowrap"
-        >
-          <ShoppingBag className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />
-          {orders.length === 0 && !loadingOrders ? 'Comprar agora' : 'Repor estoque'}
-        </Link>
         <Link to="/meus-pedidos"
           className="flex items-center gap-1.5 h-11 px-4 rounded-lg border border-gray-200 bg-white text-[13px] font-medium text-gray-700 hover:border-indigo-300 hover:text-indigo-700 hover:bg-indigo-50 transition-all whitespace-nowrap"
         >

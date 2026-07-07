@@ -13,7 +13,6 @@ import { SalaoRoute } from "@/components/SalaoRoute";
 import { EstoqueRoute } from "@/components/EstoqueRoute";
 import { PortalRoute } from "@/components/portal/PortalRoute";
 import Portal from "./pages/portal/Portal";
-import PortalComprar from "./pages/portal/PortalComprar";
 import Login from "./pages/Login";
 import Catalogo from "./pages/Catalogo";
 import Lookbook from "./pages/Lookbook";
@@ -109,7 +108,7 @@ const App = () => (
                   </Route>
                   <Route element={<PortalRoute />}>
                     <Route path="/portal" element={<Portal />} />
-                    <Route path="/portal/comprar" element={<PortalComprar />} />
+                    <Route path="/portal/comprar" element={<Navigate to="/portal" replace />} />
                   </Route>
                   <Route element={<SalaoRoute />}>
                     <Route path="/salao" element={<SalaoInicio />} />

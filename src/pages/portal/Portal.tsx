@@ -2,7 +2,7 @@ import { useMemo, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import {
-  Package, ShoppingBag, ShoppingCart, ArrowRight,
+  Package, ShoppingCart, ArrowRight,
   ChevronLeft, ChevronRight, MessageCircle,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
@@ -426,8 +426,6 @@ export default function Portal() {
             <PortalPageHeader
               profile={profile}
               loadingProfile={loadingProfile}
-              orders={orders}
-              loadingOrders={loadingOrders}
             />
           </div>
 
@@ -584,19 +582,6 @@ export default function Portal() {
           </section>
 
       </div>{/* fim conteúdo */}
-
-      {/* ── FAB — CTA fixo no mobile ──────────────────────────────────────
-           lg:hidden — no desktop o CTA está na sidebar e nos atalhos
-           shadow-amber garante destaque sobre o conteúdo                */}
-      <div className="fixed bottom-0 inset-x-0 px-4 pb-6 pt-2 z-50 lg:hidden bg-gradient-to-t from-gray-100 via-gray-100/95 to-transparent pointer-events-none">
-        <Link
-          to="/portal/comprar"
-          className="pointer-events-auto flex items-center justify-center gap-2 w-full py-3.5 rounded-2xl bg-amber-500 active:bg-amber-600 text-white font-bold text-[14px] shadow-lg shadow-amber-500/40 active:scale-[0.98] transition-all"
-        >
-          <ShoppingBag className="w-4 h-4" />
-          {orders.length === 0 && !loadingOrders ? 'Comprar agora' : 'Fazer novo pedido'}
-        </Link>
-      </div>
 
     </PortalLayout>
   )

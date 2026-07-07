@@ -10,7 +10,7 @@ import logo from "@/assets/logo-rei-dos-cachos.png";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCatalogProducts } from "@/hooks/useCatalogProducts";
-import { useCategories, Category } from "@/hooks/useCategories";
+import { useCategories } from "@/hooks/useCategories";
 import { useCart } from "@/contexts/CartContext";
 import { useTrackPageView, useTrackAddToCart, useTrackProductView } from "@/hooks/useSessionTracking";
 import { ProfileCompletionModal } from "@/components/ProfileCompletionModal";
@@ -129,7 +129,7 @@ const RotatingTrustBanner = () => {
   );
 };
 
-const Catalogo = ({ portalMode = false }: { portalMode?: boolean }) => {
+const Catalogo = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const viewAll = searchParams.get('view') === 'todos';
@@ -137,7 +137,7 @@ const Catalogo = ({ portalMode = false }: { portalMode?: boolean }) => {
   const { user, role, isPartner, loading: isLoadingAuth } = useAuth();
   const { data: products = [], isLoading, error, priceListError } = useCatalogProducts({ includePartnerPrice: isPartner, fetchPriceList: isPartner });
   const { data: dbCategories = [] } = useCategories();
-  const { items: cart, addItem, updateQty, removeItem, clearCart, total: cartTotal, count: cartCount, minOrderValue, cartOpen, setCartOpen } = useCart();
+  const { items: cart, addItem, updateQty, total: cartTotal, count: cartCount, minOrderValue, cartOpen, setCartOpen } = useCart();
   const isGuest = !isLoadingAuth && !user;
   useTrackPageView('Catálogo');
   const trackAddToCart = useTrackAddToCart();
@@ -447,9 +447,8 @@ const Catalogo = ({ portalMode = false }: { portalMode?: boolean }) => {
 
   return (
     <>
-    <div className={`min-h-screen ${portalMode ? 'bg-gray-100' : 'bg-surface-alt'} overflow-x-hidden`}>
+    <div className="min-h-screen bg-surface-alt overflow-x-hidden">
       {/* Header */}
-      {!portalMode && (
       <div className="sticky top-0 z-40 w-full overflow-visible">
         <header className="bg-gold border-b border-amber-600 shadow-sm transition-all duration-300">
           <div className="container mx-auto px-3 sm:px-4 lg:px-6 py-2 sm:h-16 flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4">
@@ -639,10 +638,9 @@ const Catalogo = ({ portalMode = false }: { portalMode?: boolean }) => {
         <RotatingTrustBanner />
       </div>
     </div>
-      )}
 
       {/* Mobile sticky category chips — below header, above content */}
-      {!portalMode && !debouncedSearch && !viewAll && categoriesToDisplay.length > 0 && (
+      {!debouncedSearch && !viewAll && categoriesToDisplay.length > 0 && (
         <div className="sm:hidden sticky top-36 z-20 bg-surface-alt border-b border-border/30 shadow-sm py-2">
           <CategoryBubbles
             categories={categoriesToDisplay}
@@ -653,7 +651,7 @@ const Catalogo = ({ portalMode = false }: { portalMode?: boolean }) => {
       )}
 
       {/* Hero B2B Section - Visible before anything else */}
-      {!portalMode && !debouncedSearch && !viewAll && (
+      {!debouncedSearch && !viewAll && (
         <B2BHero
           onScrollToKits={scrollToKits}
           onScrollToProducts={scrollToProducts}
@@ -662,8 +660,8 @@ const Catalogo = ({ portalMode = false }: { portalMode?: boolean }) => {
 
       <div className="flex flex-col lg:flex-row lg:gap-6 w-full max-w-full">
         {/* Sidebar Filters (Desktop) */}
-        <aside className={`${portalMode ? 'hidden' : 'hidden lg:block'} w-64 px-3 pt-4 pb-6`}>
-          <div className={`sticky ${portalMode ? 'top-4' : 'top-24'} bg-white rounded-2xl p-1 shadow-sm border border-border`}>
+        <aside className="hidden lg:block w-64 px-3 pt-4 pb-6">
+          <div className="sticky top-24 bg-white rounded-2xl p-1 shadow-sm border border-border">
             <div className="p-3 border-b border-border mb-1">
               <h3 className="font-bold text-foreground">Filtros</h3>
             </div>
@@ -827,40 +825,8 @@ const Catalogo = ({ portalMode = false }: { portalMode?: boolean }) => {
             </div>
           )}
 
-          {/* Portal mode: chips de categoria + carousel filtrado */}
-          {portalMode && !debouncedSearch && !viewAll && categoriesToDisplay.length > 0 && (
-            <div className="sm:hidden pt-2">
-              <div className="px-4 pb-1">
-                <CategoryBubbles
-                  categories={categoriesToDisplay}
-                  activeCategories={filterCategories}
-                  onToggleCategory={toggleCategory}
-                />
-              </div>
-              {!isLoading && !error && filtered.length > 0 && (
-                <CompactProductCarousel
-                  title={
-                    filterCategories.length === 1
-                      ? (categoriesToDisplay.find(c => c.id === filterCategories[0])?.name ?? 'Produtos')
-                      : filterCategories.length > 1 ? 'Filtrados' : 'Todos os Produtos'
-                  }
-                  products={filtered}
-                  cartAddedId={addedId}
-                  getQty={getQty}
-                  setQty={setQty}
-                  onAdd={handleAddItem}
-                  onSelect={handleSelectProduct}
-                  getSuggestedPrice={getSuggestedPrice}
-                  isGuest={isGuest}
-                  isPartner={isPartner}
-                  onViewAll={() => setViewAll(true)}
-                />
-              )}
-            </div>
-          )}
-
           {/* Mobile Only: Destaques & Rest — ocultar durante busca ou viewAll */}
-          {!portalMode && !debouncedSearch && !viewAll && (
+          {!debouncedSearch && !viewAll && (
             <div className="pt-0 sm:hidden">
               {/* Mobile Only: Compact Product Carousel for Featured Items */}
               {!isLoading && !error && filtered.length > 0 && (
@@ -901,7 +867,7 @@ const Catalogo = ({ portalMode = false }: { portalMode?: boolean }) => {
               </div>
             )}
 
-            {!portalMode && !debouncedSearch && !viewAll && (
+            {!debouncedSearch && !viewAll && (
               <HowItWorks />
             )}
 
@@ -1159,7 +1125,7 @@ const Catalogo = ({ portalMode = false }: { portalMode?: boolean }) => {
                   </>
                 )}
 
-                {!portalMode && <WhatsAppCTA />}
+                <WhatsAppCTA />
               </>
             )}
           </div>
@@ -1451,8 +1417,7 @@ const Catalogo = ({ portalMode = false }: { portalMode?: boolean }) => {
           </div>
         )}
 
-        {/* Cart Drawer — rendered here only in public mode; portal mode uses PortalLayout */}
-        {!portalMode && <CartDrawer />}
+        <CartDrawer />
       </div>
     </div>
 

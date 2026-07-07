@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { LayoutDashboard, ShoppingBag, Package, Menu, X, LogOut, MessageCircle, ShoppingCart } from 'lucide-react'
+import { LayoutDashboard, Package, Menu, X, LogOut, MessageCircle, ShoppingCart } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useCart } from '@/contexts/CartContext'
 import { supabase } from '@/lib/supabase'
@@ -11,7 +11,6 @@ type NavItem = { label: string; path: string; icon: React.ElementType; external?
 
 const navItems: NavItem[] = [
   { label: 'Início',   path: '/portal',        icon: LayoutDashboard },
-  { label: 'Comprar',  path: '/portal/comprar',  icon: ShoppingBag },
   { label: 'Pedidos',  path: '/meus-pedidos',   icon: Package,        external: true },
 ]
 
