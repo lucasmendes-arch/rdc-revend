@@ -61,6 +61,7 @@ const EstoquePedidos = lazy(() => import("./pages/estoque/Pedidos"));
 const EstoqueConfig = lazy(() => import("./pages/estoque/Config"));
 const EstoqueHistorico = lazy(() => import("./pages/estoque/Historico"));
 const EstoqueRelatorio = lazy(() => import("./pages/estoque/Relatorio"));
+const EstoqueAtual = lazy(() => import("./pages/estoque/Atual"));
 
 function ConditionalWhatsApp() {
   const { pathname } = useLocation();
@@ -142,6 +143,7 @@ const App = () => (
                     <Route path="/estoque/config" element={<EstoqueConfig />} />
                     <Route path="/estoque/historico" element={<EstoqueHistorico />} />
                     <Route path="/estoque/relatorio" element={<EstoqueRelatorio />} />
+                    <Route path="/estoque/atual" element={<EstoqueAtual />} />
                   </Route>
                 </Route>
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

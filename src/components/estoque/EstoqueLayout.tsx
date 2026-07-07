@@ -1,6 +1,6 @@
 import { useState, useEffect, type ReactNode } from 'react'
 import { NavLink, Link } from 'react-router-dom'
-import { ClipboardList, Truck, LogOut, Sun, Moon, Warehouse, Settings, History, BarChart3, LayoutGrid } from 'lucide-react'
+import { ClipboardList, Truck, LogOut, Sun, Moon, Warehouse, Settings, History, BarChart3, Boxes, LayoutGrid } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useMyStore } from '@/hooks/useMyStore'
 
@@ -82,6 +82,10 @@ export default function EstoqueLayout({ children }: EstoqueLayoutProps) {
                 <NavLink to="/estoque/relatorio" className={navLinkClass}>
                   <BarChart3 className="w-4 h-4" />
                   <span className="hidden sm:inline">Relatório</span>
+                </NavLink>
+                <NavLink to="/estoque/atual" className={navLinkClass}>
+                  <Boxes className="w-4 h-4" />
+                  <span className="hidden sm:inline">Estoque Atual</span>
                 </NavLink>
                 <NavLink to="/estoque/historico" className={navLinkClass}>
                   <History className="w-4 h-4" />

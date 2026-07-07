@@ -8,6 +8,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import EstoqueLayout from '@/components/estoque/EstoqueLayout'
 import { STOCK_CATEGORY_PALETTE, getCategoryColor } from '@/lib/stockCategoryColors'
 import { naturalCompare } from '@/lib/naturalSort'
+import { sortByStoreOrder } from '@/lib/storeOrder'
 
 interface Product {
   id: string
@@ -617,7 +618,7 @@ export default function EstoqueConfig() {
     staleTime: 60 * 1000,
   })
 
-  const { data: stores = [] } = useQuery<StoreOption[]>({
+  const { data: storesRaw = [] } = useQuery<StoreOption[]>({
     queryKey: ['stores-config'],
     queryFn: async () => {
       const { data, error } = await supabase.from('stores').select('id, name, slug, type').order('name')
@@ -626,6 +627,10 @@ export default function EstoqueConfig() {
     },
     staleTime: 5 * 60 * 1000,
   })
+
+  // Ordem fixa das colunas de loja (Linhares, Serra, Colatina, Teixeira, São
+  // Gabriel) — mesma ordem usada em /estoque/atual, ver src/lib/storeOrder.ts.
+  const stores = useMemo(() => sortByStoreOrder(storesRaw), [storesRaw])
 
   // Metas de TODAS as lojas de uma vez — a matriz mostra cada loja como
   // uma coluna, porque cada loja tem um porte (e portanto uma meta) diferente.
