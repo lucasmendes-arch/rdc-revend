@@ -1,9 +1,10 @@
 import { useState, useMemo } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Loader, AlertTriangle, CheckCircle2, ArrowLeft, PackageCheck, TrendingUp, TrendingDown } from 'lucide-react'
+import { Loader, AlertTriangle, CheckCircle2, ArrowLeft, PackageCheck, TrendingUp, TrendingDown, Pencil, Minus, Plus, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/contexts/AuthContext'
 import EstoqueLayout from '@/components/estoque/EstoqueLayout'
 import { naturalCompare } from '@/lib/naturalSort'
 import { getCategoryColor } from '@/lib/stockCategoryColors'
@@ -26,6 +27,7 @@ interface CountItemWithProduct {
     name: string
     units_per_box: number | null
     stock_category: string | null
+    package_type: string | null
   } | null
 }
 
@@ -52,11 +54,112 @@ const SKIP_REASON_LABEL: Record<string, string> = {
   no_target_defined: 'Meta de estoque não cadastrada para esta loja',
 }
 
+// ─── Correção de admin — mesmo padrão de stepper da tela de contagem ────────
+
+function NumberField({ label, value, onChange }: { label: string; value: number; onChange: (value: number) => void }) {
+  return (
+    <div className="flex items-center justify-between gap-2">
+      <p className="text-xs font-semibold text-muted-foreground">{label}</p>
+      <div className="flex items-center gap-1.5">
+        <button
+          type="button"
+          onClick={() => onChange(Math.max(0, value - 1))}
+          disabled={value === 0}
+          className="w-9 h-9 rounded-xl border border-border bg-surface-alt flex items-center justify-center active:scale-95 transition-transform disabled:opacity-30"
+        >
+          <Minus className="w-4 h-4" />
+        </button>
+        <input
+          type="number"
+          inputMode="numeric"
+          min={0}
+          value={value}
+          onChange={(e) => onChange(Math.max(0, parseInt(e.target.value) || 0))}
+          className="w-14 h-9 rounded-xl border border-input text-center text-base font-bold bg-white focus:outline-none focus:ring-2 focus:ring-amber-400"
+        />
+        <button
+          type="button"
+          onClick={() => onChange(value + 1)}
+          className="w-9 h-9 rounded-xl border border-border bg-surface-alt flex items-center justify-center active:scale-95 transition-transform"
+        >
+          <Plus className="w-4 h-4" />
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function EditCountModal({
+  item,
+  saving,
+  onClose,
+  onSave,
+}: {
+  item: CountItemWithProduct
+  saving: boolean
+  onClose: () => void
+  onSave: (closedBoxes: number, looseUnits: number) => void
+}) {
+  const [closedBoxes, setClosedBoxes] = useState(item.closed_boxes)
+  const [looseUnits, setLooseUnits] = useState(item.loose_units)
+  const unitsPerBox = item.catalog_products?.units_per_box ?? null
+  const showBoxes = item.catalog_products?.package_type === 'CX' || closedBoxes > 0
+  const previewTotal = unitsPerBox != null ? closedBoxes * unitsPerBox + looseUnits : looseUnits
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/40 flex items-end sm:items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-white rounded-2xl w-full max-w-sm p-5 space-y-4" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-start justify-between gap-2">
+          <div>
+            <p className="text-[11px] font-bold text-amber-700 uppercase tracking-wide">Corrigir contagem (admin)</p>
+            <h2 className="text-base font-bold text-foreground">{item.catalog_products?.name || 'Produto'}</h2>
+          </div>
+          <button type="button" onClick={onClose} className="text-muted-foreground hover:text-foreground shrink-0">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <div className="space-y-2">
+          {showBoxes && <NumberField label="Caixas fechadas" value={closedBoxes} onChange={setClosedBoxes} />}
+          <NumberField label="Unidades avulsas" value={looseUnits} onChange={setLooseUnits} />
+        </div>
+
+        <div className="bg-surface-alt rounded-xl p-3 text-center">
+          <p className="text-2xl font-black text-foreground">{previewTotal}</p>
+          <p className="text-[10px] uppercase text-muted-foreground tracking-wide">novo total</p>
+        </div>
+
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={saving}
+            className="flex-1 px-4 py-2.5 rounded-xl border border-border text-sm font-semibold disabled:opacity-50"
+          >
+            Cancelar
+          </button>
+          <button
+            type="button"
+            onClick={() => onSave(closedBoxes, looseUnits)}
+            disabled={saving}
+            className="flex-1 px-4 py-2.5 rounded-xl btn-gold text-sm font-bold disabled:opacity-50"
+          >
+            {saving ? 'Salvando…' : 'Salvar'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function EstoqueConfirmacao() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const { role } = useAuth()
+  const isAdmin = role === 'admin'
   const [result, setResult] = useState<ConfirmSummary | null>(null)
+  const [editingItem, setEditingItem] = useState<CountItemWithProduct | null>(null)
 
   const { data: stockCount, isLoading: countLoading } = useQuery<StockCount | null>({
     queryKey: ['stock-count-by-id', id],
@@ -77,7 +180,7 @@ export default function EstoqueConfirmacao() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('stock_count_items')
-        .select('id, product_id, closed_boxes, loose_units, total_units, catalog_products(name, units_per_box, stock_category)')
+        .select('id, product_id, closed_boxes, loose_units, total_units, catalog_products(name, units_per_box, stock_category, package_type)')
         .eq('stock_count_id', id as string)
       if (error) throw error
       return (data || []) as unknown as CountItemWithProduct[]
@@ -243,6 +346,27 @@ export default function EstoqueConfirmacao() {
     },
   })
 
+  // Correção pós-confirmação — só admin (RLS: stock_count_items_admin_all
+  // permite update mesmo com a contagem já confirmada; colaborador comum só
+  // edita em draft, via tela de contagem).
+  const updateCountMutation = useMutation({
+    mutationFn: async ({ itemId, closedBoxes, looseUnits }: { itemId: string; closedBoxes: number; looseUnits: number }) => {
+      const { error } = await supabase
+        .from('stock_count_items')
+        .update({ closed_boxes: closedBoxes, loose_units: looseUnits })
+        .eq('id', itemId)
+      if (error) throw error
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['stock-count-items-review', id] })
+      toast.success('Quantidade corrigida.')
+      setEditingItem(null)
+    },
+    onError: (err) => {
+      toast.error(`Erro ao corrigir: ${err instanceof Error ? err.message : 'desconhecido'}`)
+    },
+  })
+
   if (countLoading) {
     return (
       <EstoqueLayout>
@@ -345,13 +469,22 @@ export default function EstoqueConfirmacao() {
                   </span>
                   <div className="bg-white rounded-2xl border border-border shadow-card overflow-hidden">
                     <div className="overflow-x-auto">
-                      <table className="w-full">
+                      <table className="w-full table-fixed min-w-[640px]">
+                        <colgroup>
+                          <col className="w-[30%]" />
+                          <col className="w-[12%]" />
+                          <col className="w-[10%]" />
+                          <col className="w-[12%]" />
+                          <col className="w-[12%]" />
+                          <col className="w-[24%]" />
+                        </colgroup>
                         <thead>
                           <tr className="border-b border-border bg-surface-alt">
                             <th className="px-4 py-2.5 text-left text-xs font-semibold text-foreground">Produto</th>
                             <th className="px-4 py-2.5 text-center text-xs font-semibold text-foreground">Contado</th>
                             <th className="px-4 py-2.5 text-center text-xs font-semibold text-foreground">Meta</th>
                             <th className="px-4 py-2.5 text-center text-xs font-semibold text-foreground">Anterior</th>
+                            <th className="px-4 py-2.5 text-center text-xs font-semibold text-foreground">Saldo</th>
                             <th className="px-4 py-2.5 text-center text-xs font-semibold text-foreground">Status</th>
                           </tr>
                         </thead>
@@ -361,12 +494,27 @@ export default function EstoqueConfirmacao() {
                             const previous = previousTotalByProduct.get(item.product_id)
                             const unclassified = item.catalog_products?.units_per_box == null
                             const hasTarget = !unclassified && target !== undefined
+                            const saldo = hasTarget ? (item.total_units ?? 0) - (target as number) : null
                             const isLow = hasTarget && (item.total_units ?? 0) < (target as number)
                             return (
                               <tr key={item.id} className={index % 2 === 0 ? '' : 'bg-surface-alt/50'}>
-                                <td className="px-4 py-2.5 text-sm font-medium text-foreground">{item.catalog_products?.name || 'Produto'}</td>
+                                <td className="px-4 py-2.5 text-sm font-medium text-foreground truncate" title={item.catalog_products?.name || 'Produto'}>
+                                  {item.catalog_products?.name || 'Produto'}
+                                </td>
                                 <td className="px-4 py-2.5 text-sm text-center font-bold">
-                                  {item.total_units ?? <span className="text-amber-600 text-xs font-semibold">não classif.</span>}
+                                  <div className="inline-flex items-center gap-1.5">
+                                    <span>{item.total_units ?? <span className="text-amber-600 text-xs font-semibold">não classif.</span>}</span>
+                                    {isAdmin && (
+                                      <button
+                                        type="button"
+                                        onClick={() => setEditingItem(item)}
+                                        title="Corrigir quantidade (admin)"
+                                        className="text-muted-foreground hover:text-amber-700 transition-colors"
+                                      >
+                                        <Pencil className="w-3.5 h-3.5" />
+                                      </button>
+                                    )}
+                                  </div>
                                 </td>
                                 <td className="px-4 py-2.5 text-sm text-center text-muted-foreground">{target ?? '—'}</td>
                                 <td className="px-4 py-2.5 text-sm text-center">
@@ -386,6 +534,17 @@ export default function EstoqueConfirmacao() {
                                     </span>
                                   ) : (
                                     <span className="text-muted-foreground">{previous}</span>
+                                  )}
+                                </td>
+                                <td className="px-4 py-2.5 text-sm text-center font-semibold">
+                                  {saldo === null ? (
+                                    <span className="text-muted-foreground font-normal">—</span>
+                                  ) : saldo > 0 ? (
+                                    <span className="text-green-600">+{saldo}</span>
+                                  ) : saldo < 0 ? (
+                                    <span className="text-red-600">{saldo}</span>
+                                  ) : (
+                                    <span className="text-muted-foreground font-normal">0</span>
                                   )}
                                 </td>
                                 <td className="px-4 py-2.5 text-center">
@@ -412,6 +571,17 @@ export default function EstoqueConfirmacao() {
               )
             })}
           </div>
+        )}
+
+        {editingItem && (
+          <EditCountModal
+            item={editingItem}
+            saving={updateCountMutation.isPending}
+            onClose={() => setEditingItem(null)}
+            onSave={(closedBoxes, looseUnits) =>
+              updateCountMutation.mutate({ itemId: editingItem.id, closedBoxes, looseUnits })
+            }
+          />
         )}
       </EstoqueLayout>
     )
