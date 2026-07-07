@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { ArrowRight, Crown, Eye, EyeOff, Lock, Mail } from "lucide-react";
+import { ArrowRight, Eye, EyeOff, Lock, Mail } from "lucide-react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import logo from "@/assets/logo-rei-dos-cachos.png";
 import { supabase } from "@/lib/supabase";
@@ -146,31 +146,32 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen bg-surface-alt flex flex-col">
+    <div className="min-h-screen bg-gray-100 flex flex-col">
       {/* Header */}
-      <header className="bg-white border-b border-border px-4 sm:px-6 h-16 flex items-center">
-        <div className="container mx-auto flex items-center justify-between">
-          <div className="select-none pointer-events-none">
-            <img src={logo} alt="Rei dos Cachos" className="h-12 w-auto" />
+      <header className="bg-white border-b border-gray-200 px-4 sm:px-6 h-16 flex items-center">
+        <div className="container mx-auto flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-lg bg-amber-50 border border-amber-100 flex items-center justify-center flex-shrink-0">
+            <img src={logo} alt="Rei dos Cachos" className="h-4 w-auto" />
+          </div>
+          <div className="leading-tight">
+            <p className="text-[13px] font-semibold text-gray-900">Rei dos Cachos</p>
+            <p className="text-[10px] text-amber-600 font-medium tracking-[0.15em] uppercase">
+              Portal do Parceiro
+            </p>
           </div>
         </div>
       </header>
 
       {/* Main */}
       <main className="flex-1 flex items-center justify-center px-4 py-16">
-        <div className="w-full max-w-md">
+        <div className="w-full max-w-sm">
           {/* Card */}
-          <div className="bg-white rounded-2xl border border-border shadow-card p-8">
-            {/* Icon */}
-            <div className="w-14 h-14 rounded-2xl gradient-gold flex items-center justify-center mx-auto mb-6 shadow-gold">
-              <Crown className="w-7 h-7 text-white" />
-            </div>
-
-            <h1 className="text-2xl font-bold text-foreground text-center mb-1">
-              Área do Cliente
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8">
+            <h1 className="text-xl font-bold text-gray-900 text-center mb-1">
+              Acessar o Portal
             </h1>
-            <p className="text-muted-foreground text-center text-sm mb-8">
-              Acesse o catálogo exclusivo para revendedores
+            <p className="text-gray-500 text-center text-sm mb-8">
+              Entre com seus dados para gerenciar pedidos e catálogo
             </p>
 
             {error && (
@@ -188,11 +189,11 @@ const Login = () => {
             <form onSubmit={handleSubmit} className="flex flex-col gap-4">
               {/* Identifier (email or phone) */}
               <div>
-                <label className="block text-sm font-medium text-foreground mb-1.5">
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
                   E-mail
                 </label>
                 <div className="relative">
-                  <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                   <input
                     type="text"
                     name="identifier"
@@ -201,18 +202,18 @@ const Login = () => {
                     value={form.identifier}
                     onChange={handleChange}
                     placeholder="seu@email.com"
-                    className="w-full pl-10 pr-4 py-3 rounded-lg border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-gold focus:border-gold-border transition-all"
+                    className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-gray-200 bg-white text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-amber-300 transition-all"
                   />
                 </div>
               </div>
 
               {/* Password */}
               <div>
-                <label className="block text-sm font-medium text-foreground mb-1.5">
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
                   Senha
                 </label>
                 <div className="relative">
-                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                   <input
                     type={showPassword ? "text" : "password"}
                     name="password"
@@ -221,12 +222,12 @@ const Login = () => {
                     value={form.password}
                     onChange={handleChange}
                     placeholder="••••••••"
-                    className="w-full pl-10 pr-11 py-3 rounded-lg border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-gold focus:border-gold-border transition-all"
+                    className="w-full pl-10 pr-11 py-2.5 rounded-lg border border-gray-200 bg-white text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-amber-300 transition-all"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
                   >
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
@@ -240,7 +241,7 @@ const Login = () => {
                     type="button"
                     onClick={handleResetPassword}
                     disabled={resetLoading}
-                    className="text-xs text-gold-text hover:underline disabled:opacity-50"
+                    className="text-xs text-amber-600 hover:underline disabled:opacity-50"
                   >
                     {resetLoading ? "Enviando..." : "Esqueci minha senha"}
                   </button>
@@ -251,7 +252,7 @@ const Login = () => {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full flex items-center justify-center gap-2.5 py-3.5 rounded-xl font-semibold text-base btn-gold text-white disabled:opacity-70 disabled:cursor-not-allowed mt-2"
+                className="w-full flex items-center justify-center gap-2 py-3 rounded-lg font-semibold text-sm bg-amber-500 hover:bg-amber-600 text-white transition-colors disabled:opacity-60 disabled:cursor-not-allowed mt-2"
               >
                 {loading ? (
                   <>
@@ -260,29 +261,30 @@ const Login = () => {
                   </>
                 ) : (
                   <>
-                    Acessar Catálogo
+                    Entrar
                     <ArrowRight className="w-4 h-4" />
                   </>
                 )}
               </button>
             </form>
 
-            <div className="mt-6 pt-6 border-t border-border text-center">
-              <p className="text-sm text-muted-foreground">
+            <div className="mt-6 pt-6 border-t border-gray-100 text-center">
+              <p className="text-sm text-gray-500">
                 Ainda não tem conta?{" "}
                 <Link
                   to="/cadastro"
-                  className="font-semibold text-gold-text hover:underline"
+                  className="font-semibold text-amber-600 hover:underline"
                 >
-                  Cadastre-se gratuitamente
+                  Cadastre-se
                 </Link>
               </p>
             </div>
           </div>
 
           {/* Trust */}
-          <p className="text-center text-xs text-muted-foreground mt-6">
-            🔒 Acesso seguro e exclusivo para revendedores cadastrados
+          <p className="flex items-center justify-center gap-1.5 text-center text-xs text-gray-400 mt-6">
+            <Lock className="w-3 h-3" />
+            Acesso restrito a parceiros cadastrados
           </p>
         </div>
       </main>
