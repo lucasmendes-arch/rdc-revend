@@ -21,6 +21,9 @@ export default tseslint.config(
       ...reactHooks.configs.recommended.rules,
       "react-refresh/only-export-components": ["warn", { allowConstantExport: true }],
       "@typescript-eslint/no-unused-vars": "off",
+      // Trava de complexidade pra código novo — warnings no legado são
+      // esperados e não falham o build (só vira erro se promovido a 'error').
+      complexity: ["warn", 15],
     },
   },
 );
