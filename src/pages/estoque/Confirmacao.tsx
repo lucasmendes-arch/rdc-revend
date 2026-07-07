@@ -1,11 +1,12 @@
 import { useState, useMemo } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Loader, AlertTriangle, CheckCircle2, ArrowLeft, PackageCheck } from 'lucide-react'
+import { Loader, AlertTriangle, CheckCircle2, ArrowLeft, PackageCheck, TrendingUp, TrendingDown } from 'lucide-react'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 import EstoqueLayout from '@/components/estoque/EstoqueLayout'
 import { naturalCompare } from '@/lib/naturalSort'
+import { getCategoryColor } from '@/lib/stockCategoryColors'
 
 interface StockCount {
   id: string
@@ -24,6 +25,7 @@ interface CountItemWithProduct {
   catalog_products: {
     name: string
     units_per_box: number | null
+    stock_category: string | null
   } | null
 }
 
@@ -36,6 +38,13 @@ interface ConfirmSummary {
   items_sufficient: number
   items_skipped: { product_id: string; reason: string }[]
   replenishment_request_id: string | null
+}
+
+interface StockCategoryOption {
+  id: string
+  name: string
+  sort_order: number
+  color_index: number
 }
 
 const SKIP_REASON_LABEL: Record<string, string> = {
@@ -68,7 +77,7 @@ export default function EstoqueConfirmacao() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('stock_count_items')
-        .select('id, product_id, closed_boxes, loose_units, total_units, catalog_products(name, units_per_box)')
+        .select('id, product_id, closed_boxes, loose_units, total_units, catalog_products(name, units_per_box, stock_category)')
         .eq('stock_count_id', id as string)
       if (error) throw error
       return (data || []) as unknown as CountItemWithProduct[]
@@ -81,6 +90,127 @@ export default function EstoqueConfirmacao() {
     for (const item of items) map.set(item.product_id, item.catalog_products?.name || 'Produto')
     return map
   }, [items])
+
+  const storeId = stockCount?.store_id
+
+  const { data: countStore } = useQuery<{ id: string; type: 'central' | 'satellite' } | null>({
+    queryKey: ['store-type', storeId],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('stores').select('id, type').eq('id', storeId as string).maybeSingle()
+      if (error) throw error
+      return data as { id: string; type: 'central' | 'satellite' } | null
+    },
+    enabled: !!storeId,
+    staleTime: 5 * 60 * 1000,
+  })
+  const isCentral = countStore?.type === 'central'
+
+  const { data: stockCategories = [] } = useQuery<StockCategoryOption[]>({
+    queryKey: ['stock-categories'],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('stock_categories').select('id, name, sort_order, color_index').order('sort_order').order('name')
+      if (error) throw error
+      return (data || []) as StockCategoryOption[]
+    },
+    staleTime: 5 * 60 * 1000,
+  })
+
+  const { data: storeTargets = [] } = useQuery<{ product_id: string; target_quantity: number }[]>({
+    queryKey: ['store-stock-targets', storeId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('store_stock_targets')
+        .select('product_id, target_quantity')
+        .eq('store_id', storeId as string)
+      if (error) throw error
+      return (data || []) as { product_id: string; target_quantity: number }[]
+    },
+    enabled: !!storeId,
+  })
+
+  const targetByProduct = useMemo(() => {
+    const map = new Map<string, number>()
+    storeTargets.forEach((t) => map.set(t.product_id, t.target_quantity))
+    return map
+  }, [storeTargets])
+
+  // Contagem anterior confirmada da mesma loja, pra comparação (▲/▼) — só
+  // busca em tela já confirmada (readOnly), comparando com o que veio antes
+  // desta contagem.
+  const readOnlyForCompare = stockCount?.status === 'confirmed' || !!result
+  const referenceConfirmedAt = stockCount?.confirmed_at || result?.confirmed_at || null
+
+  const { data: previousCountId } = useQuery<string | null>({
+    queryKey: ['stock-count-previous', storeId, id, referenceConfirmedAt],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('stock_counts')
+        .select('id')
+        .eq('store_id', storeId as string)
+        .eq('status', 'confirmed')
+        .lt('confirmed_at', referenceConfirmedAt as string)
+        .neq('id', id as string)
+        .order('confirmed_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+      if (error) throw error
+      return data?.id ?? null
+    },
+    enabled: !!storeId && !!id && !!referenceConfirmedAt && readOnlyForCompare,
+  })
+
+  const { data: previousItems = [] } = useQuery<{ product_id: string; total_units: number | null }[]>({
+    queryKey: ['stock-count-items-previous', previousCountId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('stock_count_items')
+        .select('product_id, total_units')
+        .eq('stock_count_id', previousCountId as string)
+      if (error) throw error
+      return (data || []) as { product_id: string; total_units: number | null }[]
+    },
+    enabled: !!previousCountId,
+  })
+
+  const previousTotalByProduct = useMemo(() => {
+    const map = new Map<string, number | null>()
+    previousItems.forEach((i) => map.set(i.product_id, i.total_units))
+    return map
+  }, [previousItems])
+
+  const categoryOrderByName = useMemo(() => {
+    const map = new Map<string, number>()
+    stockCategories.forEach((c) => map.set(c.name, c.sort_order))
+    return map
+  }, [stockCategories])
+
+  const categoryColorByName = useMemo(() => {
+    const map = new Map<string, number>()
+    stockCategories.forEach((c) => map.set(c.name, c.color_index))
+    return map
+  }, [stockCategories])
+
+  // Agrupa por categoria (mesma ordem/desempate da tela de contagem) —
+  // "Sem categoria" sempre por último, ordem natural do nome dentro do grupo.
+  const groupedByCategory = useMemo(() => {
+    const map = new Map<string, CountItemWithProduct[]>()
+    for (const item of items) {
+      const key = item.catalog_products?.stock_category || 'Sem categoria'
+      if (!map.has(key)) map.set(key, [])
+      map.get(key)!.push(item)
+    }
+    for (const arr of map.values()) {
+      arr.sort((a, b) => naturalCompare(a.catalog_products?.name || '', b.catalog_products?.name || ''))
+    }
+    return Array.from(map.entries()).sort(([a], [b]) => {
+      if (a === 'Sem categoria') return 1
+      if (b === 'Sem categoria') return -1
+      const orderA = categoryOrderByName.get(a) ?? Infinity
+      const orderB = categoryOrderByName.get(b) ?? Infinity
+      if (orderA !== orderB) return orderA - orderB
+      return a.localeCompare(b)
+    })
+  }, [items, categoryOrderByName])
 
   const confirmMutation = useMutation({
     mutationFn: async () => {
@@ -99,6 +229,13 @@ export default function EstoqueConfirmacao() {
         supabase.functions
           .invoke('notify-replenishment', { body: { request_id: summary.replenishment_request_id } })
           .catch((err) => console.warn('notify-replenishment falhou:', err))
+      }
+      // Contagem da central não gera replenishment_request (é compra do
+      // fornecedor, não pedido entre lojas) — notifica direto pela contagem.
+      if (isCentral) {
+        supabase.functions
+          .invoke('notify-stock-count', { body: { stock_count_id: summary.stock_count_id } })
+          .catch((err) => console.warn('notify-stock-count falhou:', err))
       }
     },
     onError: (err) => {
@@ -156,7 +293,7 @@ export default function EstoqueConfirmacao() {
               </div>
               <div className="bg-amber-50 rounded-xl p-3">
                 <p className="text-xl font-bold text-amber-700">{summary.items_replenished}</p>
-                <p className="text-[11px] text-amber-700">Geraram reposição</p>
+                <p className="text-[11px] text-amber-700">{isCentral ? 'Abaixo da meta' : 'Geraram reposição'}</p>
               </div>
               <div className="bg-green-50 rounded-xl p-3">
                 <p className="text-xl font-bold text-green-700">{summary.items_sufficient}</p>
@@ -185,6 +322,97 @@ export default function EstoqueConfirmacao() {
             Voltar ao histórico
           </button>
         </div>
+
+        {/* Detalhe por produto, agrupado por categoria (mesma ordem da tela de
+            contagem) — cruza com meta e com a contagem confirmada anterior da
+            loja, pra dar visibilidade real do que foi contado, não só os 3
+            números do resumo. */}
+        {itemsLoading ? (
+          <div className="text-center py-8">
+            <Loader className="w-6 h-6 animate-spin text-gold-text mx-auto" />
+          </div>
+        ) : (
+          <div className="space-y-4 pb-8">
+            {groupedByCategory.map(([category, categoryItems]) => {
+              const color = category === 'Sem categoria' ? { bg: '#F3F4F6', text: '#6B7280' } : getCategoryColor(categoryColorByName.get(category))
+              return (
+                <section key={category} className="space-y-2">
+                  <span
+                    className="inline-block px-2.5 py-1 rounded-lg text-sm font-semibold uppercase tracking-wide"
+                    style={{ backgroundColor: color.bg, color: color.text }}
+                  >
+                    {category}
+                  </span>
+                  <div className="bg-white rounded-2xl border border-border shadow-card overflow-hidden">
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead>
+                          <tr className="border-b border-border bg-surface-alt">
+                            <th className="px-4 py-2.5 text-left text-xs font-semibold text-foreground">Produto</th>
+                            <th className="px-4 py-2.5 text-center text-xs font-semibold text-foreground">Contado</th>
+                            <th className="px-4 py-2.5 text-center text-xs font-semibold text-foreground">Meta</th>
+                            <th className="px-4 py-2.5 text-center text-xs font-semibold text-foreground">Anterior</th>
+                            <th className="px-4 py-2.5 text-center text-xs font-semibold text-foreground">Status</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {categoryItems.map((item, index) => {
+                            const target = targetByProduct.get(item.product_id)
+                            const previous = previousTotalByProduct.get(item.product_id)
+                            const unclassified = item.catalog_products?.units_per_box == null
+                            const hasTarget = !unclassified && target !== undefined
+                            const isLow = hasTarget && (item.total_units ?? 0) < (target as number)
+                            return (
+                              <tr key={item.id} className={index % 2 === 0 ? '' : 'bg-surface-alt/50'}>
+                                <td className="px-4 py-2.5 text-sm font-medium text-foreground">{item.catalog_products?.name || 'Produto'}</td>
+                                <td className="px-4 py-2.5 text-sm text-center font-bold">
+                                  {item.total_units ?? <span className="text-amber-600 text-xs font-semibold">não classif.</span>}
+                                </td>
+                                <td className="px-4 py-2.5 text-sm text-center text-muted-foreground">{target ?? '—'}</td>
+                                <td className="px-4 py-2.5 text-sm text-center">
+                                  {previous === undefined ? (
+                                    <span className="text-muted-foreground">—</span>
+                                  ) : previous === null ? (
+                                    <span className="text-muted-foreground">—</span>
+                                  ) : item.total_units == null ? (
+                                    <span className="text-muted-foreground">{previous}</span>
+                                  ) : item.total_units > previous ? (
+                                    <span className="inline-flex items-center gap-0.5 text-green-600 font-semibold">
+                                      <TrendingUp className="w-3 h-3" /> {previous}
+                                    </span>
+                                  ) : item.total_units < previous ? (
+                                    <span className="inline-flex items-center gap-0.5 text-red-600 font-semibold">
+                                      <TrendingDown className="w-3 h-3" /> {previous}
+                                    </span>
+                                  ) : (
+                                    <span className="text-muted-foreground">{previous}</span>
+                                  )}
+                                </td>
+                                <td className="px-4 py-2.5 text-center">
+                                  {unclassified ? (
+                                    <span className="text-[10px] font-semibold text-muted-foreground">não classificado</span>
+                                  ) : !hasTarget ? (
+                                    <span className="text-[10px] text-muted-foreground">sem meta</span>
+                                  ) : isLow ? (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-red-100 text-red-700">
+                                      <AlertTriangle className="w-3 h-3" /> {isCentral ? 'Comprar do fornecedor' : 'Abaixo da meta'}
+                                    </span>
+                                  ) : (
+                                    <span className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold bg-green-100 text-green-700">OK</span>
+                                  )}
+                                </td>
+                              </tr>
+                            )
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </section>
+              )
+            })}
+          </div>
+        )}
       </EstoqueLayout>
     )
   }

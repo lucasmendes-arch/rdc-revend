@@ -943,8 +943,8 @@ export default function EstoqueConfig() {
         <section className="space-y-2 pb-8">
           <p className="text-xs text-muted-foreground px-1">
             Cada loja tem seu próprio porte — defina a meta ideal (em unidades) por loja, lado a lado.
-            Nas lojas satélite, meta vazia/0 = a loja não trabalha com o produto (ele não aparece na contagem dela).
-            A central conta o catálogo inteiro, independente de meta.
+            Nas lojas satélite, meta vazia/0 = a loja não trabalha com o produto (ele não aparece na contagem dela) e contagem abaixo da meta gera pedido de reposição enviado pela central.
+            A central conta o catálogo inteiro, independente de meta — lá, a meta é o ponto mínimo de estoque: contagem abaixo dela sinaliza "comprar do fornecedor" na revisão da contagem, sem gerar pedido interno.
           </p>
           <div className="flex items-center flex-wrap gap-1.5 px-1">
             <span className="text-xs font-semibold text-foreground flex items-center gap-1"><Copy className="w-3.5 h-3.5" /> Copiar metas:</span>
