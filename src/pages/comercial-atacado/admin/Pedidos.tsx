@@ -5,6 +5,7 @@ import OrderCouponModal from '@/components/admin/OrderCouponModal';
 import { useAuth } from '@/contexts/AuthContext';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
+import { useImageUpload } from '@/hooks/useImageUpload';
 import { toast } from 'sonner';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { AdminHeader } from '@/components/admin/ui/AdminHeader';
@@ -79,7 +80,7 @@ const AdminPedidos = () => {
   const [orderToCoupon, setOrderToCoupon] = useState<Order | null>(null);
   const [orderToProof, setOrderToProof] = useState<Order | null>(null);
   const [proofFile, setProofFile] = useState<File | null>(null);
-  const [uploadingProof, setUploadingProof] = useState(false);
+  const { upload: uploadProofImage, uploading: uploadingProof } = useImageUpload();
 
   // Date Filter State
   const [dateFilterType, setDateFilterType] = useState<PeriodPresetKey>('esteMes');
@@ -223,20 +224,13 @@ const AdminPedidos = () => {
 
   const handleProofUpload = async (order: Order) => {
     if (!proofFile) return;
-    setUploadingProof(true);
     try {
-      const fileName = `${order.id}-${Date.now()}.jpg`;
-      const { error } = await supabase.storage
-        .from('product-images')
-        .upload(`payment-proofs/${fileName}`, proofFile, { contentType: proofFile.type || 'image/jpeg', upsert: false });
-      if (error) throw error;
-      const { data } = supabase.storage.from('product-images').getPublicUrl(`payment-proofs/${fileName}`);
-      await updateProofMutation.mutateAsync({ orderId: order.id, url: data.publicUrl });
+      const url = await uploadProofImage(proofFile);
+      await updateProofMutation.mutateAsync({ orderId: order.id, url });
       setProofFile(null);
-    } catch {
-      toast.error('Erro ao fazer upload');
-    } finally {
-      setUploadingProof(false);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : '';
+      toast.error(message ? `Erro ao fazer upload: ${message}` : 'Erro ao fazer upload');
     }
   };
 

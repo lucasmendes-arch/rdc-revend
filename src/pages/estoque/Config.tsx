@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Loader, Search, Package, Plus, Tags, Target as TargetIcon, ChevronUp, ChevronDown, Pencil, Trash2, ImagePlus, Copy, ArrowRight } from 'lucide-react'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
+import { useImageUpload } from '@/hooks/useImageUpload'
 import { useAuth } from '@/contexts/AuthContext'
 import EstoqueLayout from '@/components/estoque/EstoqueLayout'
 import { STOCK_CATEGORY_PALETTE, getCategoryColor } from '@/lib/stockCategoryColors'
@@ -41,23 +42,6 @@ interface StockCategory {
   color_index: number
 }
 
-// Redimensiona a foto no cliente (máx 1000px, JPEG) — o bucket product-images
-// tem limite de 5MB e foto de celular passa disso fácil.
-async function compressImage(file: File): Promise<Blob> {
-  const bitmap = await createImageBitmap(file)
-  const maxDim = 1000
-  const scale = Math.min(1, maxDim / Math.max(bitmap.width, bitmap.height))
-  const canvas = document.createElement('canvas')
-  canvas.width = Math.round(bitmap.width * scale)
-  canvas.height = Math.round(bitmap.height * scale)
-  canvas.getContext('2d')!.drawImage(bitmap, 0, 0, canvas.width, canvas.height)
-  return new Promise((resolve, reject) => {
-    canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error('Falha ao processar imagem'))), 'image/jpeg', 0.85)
-  })
-}
-
-const BUCKET_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
-
 function ClassificationRow({ product, categories, onSave, onDelete }: { product: Product; categories: StockCategory[]; onSave: (id: string, updates: Partial<Product>) => void; onDelete: (product: Product) => void }) {
   const [unitsPerBox, setUnitsPerBox] = useState(product.units_per_box ?? '')
   const [packageType, setPackageType] = useState(product.package_type ?? '')
@@ -68,37 +52,18 @@ function ClassificationRow({ product, categories, onSave, onDelete }: { product:
   const [name, setName] = useState(product.name)
   const timerRef = useRef<ReturnType<typeof setTimeout>>()
   const [dirty, setDirty] = useState(false)
-  const [uploadingPhoto, setUploadingPhoto] = useState(false)
+  const { upload: uploadPhoto, uploading: uploadingPhoto } = useImageUpload()
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Foto só em itens stock_only — em produtos B2B a main_image vem do sync
   // da Nuvemshop e seria sobrescrita.
   const handlePhotoSelect = async (file: File) => {
-    setUploadingPhoto(true)
     try {
-      let blob: Blob
-      let ext = 'jpg'
-      try {
-        blob = await compressImage(file)
-      } catch {
-        // Formato que o navegador não decodifica — tenta subir o original.
-        if (!BUCKET_MIME_TYPES.includes(file.type)) throw new Error('Formato não suportado — use JPG, PNG ou WebP')
-        if (file.size > 5 * 1024 * 1024) throw new Error('Imagem maior que 5MB')
-        blob = file
-        ext = file.type.replace('image/', '').replace('jpeg', 'jpg')
-      }
-      const path = `stock-only/${product.id}-${Date.now()}.${ext}`
-      const { error } = await supabase.storage
-        .from('product-images')
-        .upload(path, blob, { contentType: blob.type || 'image/jpeg', cacheControl: '31536000', upsert: false })
-      if (error) throw error
-      const { data } = supabase.storage.from('product-images').getPublicUrl(path)
-      onSave(product.id, { main_image: data.publicUrl })
+      const url = await uploadPhoto(file)
+      onSave(product.id, { main_image: url })
       toast.success('Foto adicionada')
     } catch (err) {
       toast.error(`Erro ao enviar foto: ${err instanceof Error ? err.message : 'desconhecido'}`)
-    } finally {
-      setUploadingPhoto(false)
     }
   }
 
