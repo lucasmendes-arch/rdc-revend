@@ -1,7 +1,7 @@
 import { useState, useMemo, Fragment } from 'react'
 import { Navigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Loader, ChevronDown, ChevronRight, ClipboardList, Trash2 } from 'lucide-react'
+import { Loader, ChevronDown, ChevronRight, ClipboardList, Trash2, RotateCcw } from 'lucide-react'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
@@ -116,6 +116,27 @@ export default function EstoqueHistorico() {
       : 'Excluir este rascunho de contagem? Os itens preenchidos serão apagados. Esta ação não pode ser desfeita.'
     if (!confirm(label)) return
     deleteCount.mutate(count.id)
+  }
+
+  // Reabrir: status volta pra draft e a contagem fica editável de novo. O
+  // pedido de reposição consolidado gerado por essa confirmação (se ainda
+  // 'open') é apagado — a RPC bloqueia se já estiver picking/shipped.
+  const reopenCount = useMutation({
+    mutationFn: async (countId: string) => {
+      const { error } = await supabase.rpc('admin_reopen_stock_count', { p_stock_count_id: countId })
+      if (error) throw error
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['stock-counts-history'] })
+      queryClient.invalidateQueries({ queryKey: ['stock-counts-list'] })
+      toast.success('Contagem reaberta')
+    },
+    onError: (err) => toast.error(`Erro ao reabrir: ${err instanceof Error ? err.message : 'desconhecido'}`),
+  })
+
+  const handleReopen = (count: StockCountRow) => {
+    if (!confirm('Reabrir esta contagem confirmada? Ela volta a ficar editável e o pedido de reposição gerado por ela (se ainda não separado) será apagado.')) return
+    reopenCount.mutate(count.id)
   }
 
   const { data: counts = [], isLoading: countsLoading } = useQuery<StockCountRow[]>({
@@ -242,14 +263,26 @@ export default function EstoqueHistorico() {
                       <td className="px-4 py-2.5 text-sm text-muted-foreground">{count.confirmed_at ? new Date(count.confirmed_at).toLocaleString('pt-BR') : '—'}</td>
                       <td className="px-4 py-2.5 text-sm text-muted-foreground">{new Date(count.last_activity_at).toLocaleString('pt-BR')}</td>
                       <td className="px-2 text-center">
-                        <button
-                          onClick={(e) => { e.stopPropagation(); handleDelete(count) }}
-                          disabled={deleteCount.isPending}
-                          className="text-muted-foreground hover:text-red-600 disabled:opacity-40 transition-colors"
-                          title="Excluir contagem"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        <div className="flex items-center justify-center gap-2">
+                          {count.status === 'confirmed' && (
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handleReopen(count) }}
+                              disabled={reopenCount.isPending}
+                              className="text-muted-foreground hover:text-amber-600 disabled:opacity-40 transition-colors"
+                              title="Reabrir contagem"
+                            >
+                              <RotateCcw className="w-4 h-4" />
+                            </button>
+                          )}
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleDelete(count) }}
+                            disabled={deleteCount.isPending}
+                            className="text-muted-foreground hover:text-red-600 disabled:opacity-40 transition-colors"
+                            title="Excluir contagem"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                     {expandedId === count.id && <ItemsExpansion stockCountId={count.id} />}
