@@ -592,7 +592,7 @@ Controle de rate limit por chave.
 ---
 
 ### `catalog_sync_runs`
-Log de sincronizações com a Nuvemshop e Google Sheets.
+Log de sincronizações de catálogo. Sync Nuvemshop removida em 2026-07-13 (histórico preservado, nada mais escreve `source='nuvemshop'`); Google Sheets segue ativo.
 
 | Coluna | Tipo | Nullable | Default | FK |
 |--------|------|----------|---------|-----|

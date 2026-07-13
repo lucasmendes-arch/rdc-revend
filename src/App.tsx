@@ -37,11 +37,9 @@ const AdminClientes = lazy(() => import("./pages/comercial-atacado/admin/Cliente
 const AdminEstoque = lazy(() => import("./pages/comercial-atacado/admin/DisponibilidadeCatalogo"));
 const AdminCategorias = lazy(() => import("./pages/comercial-atacado/admin/Categorias"));
 const AdminUpsell = lazy(() => import("./pages/comercial-atacado/admin/Upsell"));
-const AdminCrmDebug = lazy(() => import("./pages/comercial-atacado/admin/CrmDebug"));
 const AdminNewOrder = lazy(() => import("./pages/comercial-atacado/admin/NewOrder"));
 const AdminEditOrder = lazy(() => import("./pages/comercial-atacado/admin/EditOrder"));
 const AdminVendedores = lazy(() => import("./pages/comercial-atacado/admin/Vendedores"));
-const AdminSyncHistory = lazy(() => import("./pages/comercial-atacado/admin/SyncHistory"));
 const AdminTabelasPreco = lazy(() => import("./pages/comercial-atacado/admin/TabelasPreco"));
 
 // módulo financeiro (lazy — inclui recharts)
@@ -122,8 +120,6 @@ const App = () => (
                     <Route path="/admin/financeiro" element={<AdminFinanceiro />} />
                     <Route path="/admin/marketing" element={<AdminMarketing />} />
                     <Route path="/admin/vendedores" element={<AdminVendedores />} />
-                    <Route path="/admin/sync-history" element={<AdminSyncHistory />} />
-                    <Route path="/admin/crm" element={<AdminCrmDebug />} />
                     <Route path="/admin/tabelas-preco" element={<AdminTabelasPreco />} />
                   </Route>
                   <Route element={<PortalRoute />}>

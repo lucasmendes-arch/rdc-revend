@@ -178,7 +178,7 @@ serve(async (req) => {
         console.log(`Order ${orderId} updated to: ${orderStatus}`)
       }
 
-      // ── Pagamento aprovado: atualizar sessão + emitir CRM event ─────────────
+      // ── Pagamento aprovado: atualizar sessão ────────────────────────────────
       if (orderStatus === 'pago') {
         const { data: orderData } = await serviceClient
           .from('orders')
@@ -203,29 +203,6 @@ serve(async (req) => {
             console.warn('Failed to update session to comprou:', sessionError)
           } else {
             console.log(`Session updated to comprou for user ${orderData.user_id}`)
-          }
-
-          // Emitir CRM event de purchase_completed
-          // Idempotência já garantida pelo processed_webhooks acima —
-          // este bloco só executa uma vez por paymentId.
-          const { error: crmError } = await serviceClient
-            .from('crm_events')
-            .insert({
-              user_id: orderData.user_id,
-              session_id: `user_${orderData.user_id}`,
-              event_type: 'purchase_completed',
-              metadata: {
-                order_id: orderId,
-                payment_id: String(paymentId),
-                amount: payment.transaction_amount,
-                payment_type: payment.payment_type_id,
-              },
-            })
-
-          if (crmError) {
-            console.warn('Failed to insert CRM event purchase_completed:', crmError.message)
-          } else {
-            console.log(`CRM event purchase_completed emitted for user ${orderData.user_id}`)
           }
         }
       }

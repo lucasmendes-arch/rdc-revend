@@ -4,11 +4,10 @@ import { supabase, callEdgeFunction } from '@/lib/supabase'
 import { toast } from 'sonner'
 import {
   Loader, Eye, MousePointerClick, ShoppingCart, CreditCard,
-  CheckCircle, XCircle, X, User, Phone, Mail, Tag, Edit2, Check,
+  CheckCircle, XCircle, X, User, Phone, Mail, Edit2, Check,
   Building2, FileText, Package, Clock, Calendar, Users, DollarSign, Sparkles, AlertTriangle, Trash2, TrendingUp,
   KeyRound, Copy, Lock, Unlock, MessageCircle, RefreshCw, LayoutList, Columns3, ChevronRight,
 } from 'lucide-react'
-import { CustomerTimeline } from '@/components/admin/CustomerTimeline'
 import { NextActionEditor } from '@/components/admin/NextActionEditor'
 import { CustomerNotes } from '@/components/admin/CustomerNotes'
 import AdminLayout from '@/components/admin/AdminLayout'
@@ -74,7 +73,6 @@ interface ClientSession {
   updated_at: string
   profile: ClientProfile | null
   orders: OrderSummary[]
-  tags: { id: string; name: string; slug: string; type: string; color: string }[]
 }
 
 const funnelStages = [
@@ -185,8 +183,6 @@ function getClientLabels(session: ClientSession): Array<{ text: string; color: s
 function getClientName(session: ClientSession): string {
   return session.profile?.full_name || session.email || `Visitante ${session.session_id.slice(0, 8)}`
 }
-
-import { getTagColorClasses } from '@/utils/crm'
 
 // --------------------------------------------------------------------------
 // Fila Comercial — componentes de card e formulário inline
@@ -703,11 +699,6 @@ function ClientDetailPanel({ session, onClose, onDeleteClick }: { session: Clien
                   {segmentLabel(profile.customer_segment)}
                 </span>
               )}
-              {session.tags?.map(t => (
-                <span key={t.id} className="inline-flex items-center text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-muted text-muted-foreground ring-1 ring-inset ring-border">
-                  {t.name}
-                </span>
-              ))}
             </div>
           </div>
           <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground flex-shrink-0">
@@ -1049,11 +1040,6 @@ function ClientDetailPanel({ session, onClose, onDeleteClick }: { session: Clien
             <CustomerNotes userId={session.user_id} />
           )}
 
-          {/* Timeline Completa */}
-          {session.user_id && (
-            <CustomerTimeline userId={session.user_id} />
-          )}
-
           {/* Danger Zone */}
           <div className="px-5 py-5 mt-2 border-t border-border">
             <button
@@ -1355,7 +1341,6 @@ function PartnerAccessSection({ session }: { session: ClientSession }) {
 export default function AdminClientes() {
   const queryClient = useQueryClient()
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null)
-  const [selectedTagFilter, setSelectedTagFilter] = useState<string>('')
   const [selectedSegmentFilter, setSelectedSegmentFilter] = useState<string>('wholesale_buyer')
   const [selectedOperationalFilter, setSelectedOperationalFilter] = useState<string>('')
   const [clientToDelete, setClientToDelete] = useState<ClientSession | null>(null)
@@ -1430,7 +1415,6 @@ export default function AdminClientes() {
 
       let profilesMap: Record<string, ClientProfile> = {}
       let ordersMap: Record<string, OrderSummary[]> = {}
-      let tagsMap: Record<string, any[]> = {}
 
       if (userIds.length > 0) {
         // Use get_all_profiles() RPC — admin_read_all_profiles policy was removed
@@ -1486,50 +1470,21 @@ export default function AdminClientes() {
           }
         }
 
-        const { data: tagsData } = await supabase
-          .from('crm_customer_tags')
-          .select(`
-            user_id,
-            tag:crm_tags (id, name, slug, type, color)
-          `)
-          .in('user_id', userIds)
-
-        if (tagsData) {
-          for (const ct of tagsData) {
-            const uid = ct.user_id as string
-            if (!tagsMap[uid]) tagsMap[uid] = []
-            const tagObj = Array.isArray(ct.tag) ? ct.tag[0] : ct.tag
-            if (tagObj) tagsMap[uid].push(tagObj)
-          }
-        }
       }
 
       return rawSessions.map(s => ({
         ...s,
         profile: s.user_id ? (profilesMap[s.user_id] || null) : null,
         orders: s.user_id ? (ordersMap[s.user_id] || []) : [],
-        tags: s.user_id ? (tagsMap[s.user_id] || []) : [],
       })) as ClientSession[]
     },
     staleTime: 30 * 1000,
   })
 
-  // Derive unique tags from loaded sessions to populate the filter dropdown
-  const availableTags = useMemo(() => {
-    const map = new Map<string, any>()
-    sessions.forEach(s => {
-      s.tags?.forEach(t => map.set(t.id, t))
-    })
-    return Array.from(map.values()).sort((a,b) => a.name.localeCompare(b.name))
-  }, [sessions])
-
   const filteredSessions = useMemo(() => {
     let result = sessions
     if (selectedSegmentFilter) {
       result = result.filter(s => s.profile?.customer_segment === selectedSegmentFilter)
-    }
-    if (selectedTagFilter) {
-      result = result.filter(s => s.tags?.some(t => t.id === selectedTagFilter))
     }
     if (selectedOperationalFilter) {
       const filter = OPERATIONAL_FILTERS.find(f => f.key === selectedOperationalFilter)
@@ -1538,7 +1493,7 @@ export default function AdminClientes() {
       }
     }
     return result
-  }, [sessions, selectedTagFilter, selectedSegmentFilter, selectedOperationalFilter])
+  }, [sessions, selectedSegmentFilter, selectedOperationalFilter])
 
   // ── Fila comercial: base segmentada + view + ordenação por prioridade ──────
   const queueSessions = useMemo(() => {
@@ -1654,16 +1609,6 @@ export default function AdminClientes() {
                     icon={Users}
                     allLabel="Todos os tipos"
                   />
-                  {availableTags.length > 0 && (
-                    <AdminSelect
-                      options={availableTags.map(t => ({ value: t.id, label: t.name }))}
-                      value={selectedTagFilter}
-                      onChange={setSelectedTagFilter}
-                      placeholder="Filtrar tag"
-                      icon={Tag}
-                      allLabel="Todas as tags"
-                    />
-                  )}
                   <AdminSelect
                     options={OPERATIONAL_FILTERS.map(f => ({ value: f.key, label: f.label }))}
                     value={selectedOperationalFilter}
@@ -1913,22 +1858,12 @@ export default function AdminClientes() {
                                   )}
                                 </div>
 
-                                {/* Segment + Tags */}
-                                {(session.profile?.customer_segment || (session.tags && session.tags.length > 0)) && (
+                                {/* Segment */}
+                                {session.profile?.customer_segment && (
                                   <div className="flex flex-wrap items-center gap-1.5 mb-0.5">
-                                    {session.profile?.customer_segment && (
-                                      <span className={`inline-flex items-center text-[10px] font-bold px-1.5 py-0.5 rounded-md ring-1 ring-inset ${segmentBadgeColor(session.profile.customer_segment).replace('border-', 'ring-')}`}>
-                                        {segmentLabel(session.profile.customer_segment)}
-                                      </span>
-                                    )}
-                                    {session.tags?.slice(0, 3).map(t => (
-                                      <span key={t.id} className="inline-flex items-center text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-muted text-muted-foreground border border-border max-w-full" title={t.name}>
-                                        <span className="truncate">{t.name}</span>
-                                      </span>
-                                    ))}
-                                    {session.tags.length > 3 && (
-                                      <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-md bg-muted text-muted-foreground border border-border">+{session.tags.length - 3}</span>
-                                    )}
+                                    <span className={`inline-flex items-center text-[10px] font-bold px-1.5 py-0.5 rounded-md ring-1 ring-inset ${segmentBadgeColor(session.profile.customer_segment).replace('border-', 'ring-')}`}>
+                                      {segmentLabel(session.profile.customer_segment)}
+                                    </span>
                                   </div>
                                 )}
 
@@ -2046,7 +1981,7 @@ export default function AdminClientes() {
                 </>
               ) : (
                 <>
-                  <p className="text-sm text-muted-foreground mb-6 px-2">Esta ação apagará o cadastro inteiro deste cliente (sessão e CRM). Confirma a exclusão de <strong>{getClientName(clientToDelete)}</strong>?</p>
+                  <p className="text-sm text-muted-foreground mb-6 px-2">Esta ação apagará o cadastro inteiro deste cliente (sessão e histórico). Confirma a exclusão de <strong>{getClientName(clientToDelete)}</strong>?</p>
 
                   <div className="flex gap-3">
                     <button

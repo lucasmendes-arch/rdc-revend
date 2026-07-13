@@ -3,8 +3,6 @@ import { ArrowLeft, CheckCircle2, Crown, Building2, Store, User, Mail, Lock, Pho
 import { Link, useNavigate } from "react-router-dom";
 import logo from "@/assets/logo-rei-dos-cachos.png";
 import { supabase } from "@/lib/supabase";
-import { crmService } from '@/services/crm';
-import { CrmEventCode } from '@/types/crm';
 import { useTrackConversion } from '@/lib/hooks/useFacebookConversion';
 
 type BusinessType = 'salao' | 'revenda' | 'loja' | '';
@@ -102,18 +100,6 @@ export default function Cadastro() {
                 if (profileError) {
                     console.error('[CADASTRO] Erro ao atualizar profile:', profileError);
                 }
-
-                // CRM event
-                crmService.trackEvent({
-                    user_id: user.id,
-                    session_id: `user_${user.id}`,
-                    event_type: CrmEventCode.USER_REGISTERED,
-                    metadata: {
-                        name: formData.name,
-                        email: formData.email,
-                        business_type: formData.businessType,
-                    },
-                });
 
                 trackConversion({
                     eventName: 'Lead',

@@ -1,10 +1,9 @@
 import { useState, useRef } from 'react'
-import { Edit2, Trash2, RefreshCw, ChevronLeft, ChevronRight, X, Plus, Filter, Upload, ImageIcon, AlertTriangle, GripVertical, ListOrdered } from 'lucide-react'
-import { useAdminProducts, useUpdateProduct, useDeleteProduct, useCreateProduct, useNuvemshopSync, useNuvemshopDryRun, useBulkUpdateSortOrder, CatalogProduct, SyncResult, DryRunPreview } from '@/hooks/useAdminProducts'
+import { Edit2, Trash2, RefreshCw, ChevronLeft, ChevronRight, X, Plus, Filter, Upload, ImageIcon, GripVertical, ListOrdered } from 'lucide-react'
+import { useAdminProducts, useUpdateProduct, useDeleteProduct, useCreateProduct, useBulkUpdateSortOrder, CatalogProduct } from '@/hooks/useAdminProducts'
 import { useCategories } from '@/hooks/useCategories'
 import { useImageUpload } from '@/hooks/useImageUpload'
 import AdminLayout from '@/components/admin/AdminLayout'
-import { isProduction } from '@/lib/environment'
 import {
   DndContext,
   closestCenter,
@@ -62,8 +61,6 @@ export default function AdminCatalogo() {
   const updateMutation = useUpdateProduct()
   const deleteMutation = useDeleteProduct()
   const createMutation = useCreateProduct()
-  const syncMutation = useNuvemshopSync()
-  const dryRunMutation = useNuvemshopDryRun()
   const { data: categories = [] } = useCategories()
 
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -87,11 +84,6 @@ export default function AdminCatalogo() {
   const [filterCategory, setFilterCategory] = useState('')
   const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'paused'>('all')
   const [currentPage, setCurrentPage] = useState(1)
-  const [syncResult, setSyncResult] = useState<SyncResult | null>(null)
-  const [showSyncResult, setShowSyncResult] = useState(false)
-  const [showSyncConfirm, setShowSyncConfirm] = useState(false)
-  const [syncConfirmText, setSyncConfirmText] = useState('')
-  const [dryRunPreview, setDryRunPreview] = useState<DryRunPreview | null>(null)
   const { upload, uploading } = useImageUpload()
   const createFileRef = useRef<HTMLInputElement>(null)
   const editFileRef = useRef<HTMLInputElement>(null)
@@ -251,128 +243,8 @@ export default function AdminCatalogo() {
     }
   }
 
-  const handleSyncClick = () => {
-    if (isProduction) {
-      // In production: open confirmation modal first, no server call yet
-      setShowSyncConfirm(true)
-      setSyncConfirmText('')
-      setDryRunPreview(null)
-    } else {
-      executeSync()
-    }
-  }
-
-  const handleLoadPreview = async () => {
-    try {
-      const dryResult = await dryRunMutation.mutateAsync()
-      setDryRunPreview(dryResult.preview || null)
-    } catch (err) {
-      alert(`Erro ao carregar preview: ${err instanceof Error ? err.message : 'Desconhecido'}`)
-    }
-  }
-
-  const executeSync = async () => {
-    setShowSyncConfirm(false)
-    setSyncConfirmText('')
-    setDryRunPreview(null)
-    try {
-      const result = await syncMutation.mutateAsync()
-      setSyncResult(result)
-      setShowSyncResult(true)
-      setTimeout(() => setShowSyncResult(false), 5000)
-    } catch (err) {
-      alert(`Erro na sincronização: ${err instanceof Error ? err.message : 'Desconhecido'}`)
-    }
-  }
-
   return (
     <AdminLayout>
-      {/* Sync Confirmation Modal with Dry-Run Preview (production only) */}
-      {showSyncConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-white rounded-xl shadow-xl p-6 max-w-lg mx-4">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
-                <AlertTriangle className="w-5 h-5 text-red-600" />
-              </div>
-              <div>
-                <h3 className="font-bold text-foreground">Sincronizar em PRODUÇÃO</h3>
-                <p className="text-sm text-muted-foreground">Esta ação altera o catálogo real dos clientes.</p>
-              </div>
-            </div>
-
-            {/* Dry-run preview (loaded on demand inside modal) */}
-            {dryRunPreview ? (
-              <div className="mb-4 p-3 bg-gray-50 rounded-lg border border-border text-sm">
-                <p className="font-semibold text-foreground mb-2">Preview da sincronização:</p>
-                <div className="grid grid-cols-2 gap-1 text-muted-foreground">
-                  <span>Produtos na fonte:</span><span className="font-medium text-foreground">{dryRunPreview.total_source}</span>
-                  <span>Novos (importar):</span><span className="font-medium text-green-600">{dryRunPreview.to_import}</span>
-                  <span>Alterados (atualizar):</span><span className="font-medium text-amber-600">{dryRunPreview.to_update}</span>
-                  <span>Sem alteração:</span><span className="font-medium text-foreground">{dryRunPreview.unchanged}</span>
-                </div>
-                {dryRunPreview.details.length > 0 && (
-                  <details className="mt-2">
-                    <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground">
-                      Ver detalhes ({dryRunPreview.details.length} itens)
-                    </summary>
-                    <ul className="mt-1 max-h-32 overflow-y-auto text-xs space-y-0.5">
-                      {dryRunPreview.details.map((d, i) => (
-                        <li key={i} className="flex items-center gap-1.5">
-                          <span className={`inline-block w-14 text-center rounded px-1 py-0.5 ${d.action === 'import' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
-                            {d.action === 'import' ? 'novo' : 'update'}
-                          </span>
-                          <span className="truncate">{d.name}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </details>
-                )}
-              </div>
-            ) : (
-              <button
-                onClick={handleLoadPreview}
-                disabled={dryRunMutation.isPending}
-                className="mb-4 w-full px-3 py-2 rounded-lg border border-border text-sm text-muted-foreground hover:bg-gray-50 hover:text-foreground transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-              >
-                {dryRunMutation.isPending ? (
-                  <><RefreshCw className="w-3.5 h-3.5 animate-spin" /> Carregando preview...</>
-                ) : (
-                  'Carregar preview (opcional)'
-                )}
-              </button>
-            )}
-
-            <p className="text-sm text-foreground mb-3">
-              Digite <strong className="text-red-600">SINCRONIZAR</strong> para confirmar:
-            </p>
-            <input
-              type="text"
-              value={syncConfirmText}
-              onChange={(e) => setSyncConfirmText(e.target.value)}
-              placeholder="SINCRONIZAR"
-              className="w-full border border-border rounded-lg px-3 py-2 text-sm mb-4 focus:outline-none focus:ring-2 focus:ring-red-500"
-              autoFocus
-            />
-            <div className="flex gap-3 justify-end">
-              <button
-                onClick={() => { setShowSyncConfirm(false); setSyncConfirmText(''); setDryRunPreview(null) }}
-                className="px-4 py-2 rounded-lg border border-border text-sm hover:bg-gray-50"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={executeSync}
-                disabled={syncConfirmText !== 'SINCRONIZAR'}
-                className="px-4 py-2 rounded-lg bg-red-600 text-white text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed hover:bg-red-700"
-              >
-                Confirmar sincronização
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Page Header */}
       <div className="bg-white border-b border-border sticky top-0 lg:top-0 z-30">
         <div className="px-4 sm:px-6 py-4 flex items-center justify-between gap-4">
@@ -412,43 +284,9 @@ export default function AdminCatalogo() {
                 </>
               )}
             </div>
-            <button
-              onClick={handleSyncClick}
-              disabled={syncMutation.isPending}
-              className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg text-white text-sm disabled:opacity-70 ${
-                isProduction ? 'bg-red-600 hover:bg-red-700' : 'btn-gold'
-              }`}
-            >
-              <RefreshCw className={`w-4 h-4 ${syncMutation.isPending ? 'animate-spin' : ''}`} />
-              <span className="hidden sm:inline">{isProduction ? 'Sync (prod)' : 'Sincronizar'}</span>
-            </button>
           </div>
         </div>
-        
-
       </div>
-
-      {/* Sync Result Toast */}
-      {showSyncResult && syncResult && (
-        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 bg-white border border-border rounded-xl shadow-lg p-4 max-w-md">
-          <div className="flex items-start justify-between gap-3 mb-2">
-            <p className="font-semibold text-foreground">Sincronização concluída!</p>
-            <button
-              onClick={() => setShowSyncResult(false)}
-              className="text-muted-foreground hover:text-foreground transition-colors flex-shrink-0"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-          <div className="text-sm text-muted-foreground space-y-1">
-            <p>Importados: {syncResult.result.imported}</p>
-            <p>Atualizados: {syncResult.result.updated}</p>
-            {syncResult.result.errors > 0 && (
-              <p className="text-red-600">Erros: {syncResult.result.errors}</p>
-            )}
-          </div>
-        </div>
-      )}
 
       {/* Main */}
       <div className="px-4 sm:px-6 py-4">

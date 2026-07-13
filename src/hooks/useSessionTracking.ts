@@ -1,7 +1,6 @@
 import { useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
-import { crmService } from '@/services/crm'
 
 declare global {
   interface Window {
@@ -110,13 +109,6 @@ export function useTrackPageView(pageName?: string) {
       email: user?.email || null,
       last_page: pageName || window.location.pathname,
     })
-
-    crmService.trackEvent({
-      user_id: user?.id || null,
-      session_id: sessionId,
-      event_type: 'visitou', // custom string for page visits if not explicitly in enum
-      metadata: { page: pageName || window.location.pathname }
-    })
   }, [pageName, user, role])
 }
 
@@ -134,13 +126,6 @@ export function useTrackProductView() {
         user_id: user?.id || null,
         email: user?.email || null,
         last_page: productName,
-      })
-
-      crmService.trackEvent({
-        user_id: user?.id || null,
-        session_id: sessionId,
-        event_type: 'visualizou_produto',
-        metadata: { product: productName }
       })
     },
     [user, role]
@@ -162,17 +147,6 @@ export function useTrackAddToCart() {
         email: user?.email || null,
         cart_items_count: cartItemsCount,
         last_page: window.location.pathname,
-      })
-
-      crmService.trackEvent({
-        user_id: user?.id || null,
-        session_id: sessionId,
-        event_type: 'adicionou_carrinho',
-        metadata: { 
-          cart_items_count: cartItemsCount,
-          product: productName,
-          price: productPrice
-        }
       })
 
       window.fbq?.('track', 'AddToCart', {
@@ -203,16 +177,6 @@ export function useTrackInitiateCheckout() {
         last_page: '/checkout',
       })
 
-      crmService.trackEvent({
-        user_id: user?.id || null,
-        session_id: sessionId,
-        event_type: 'iniciou_checkout',
-        metadata: {
-          cart_items_count: numItems,
-          total_value: totalValue,
-        }
-      })
-
       window.fbq?.('track', 'InitiateCheckout', {
         value: totalValue,
         currency: 'BRL',
@@ -226,7 +190,7 @@ export function useTrackInitiateCheckout() {
 /**
  * @deprecated Nunca foi chamado em nenhuma página.
  * A confirmação real de compra vem server-side via webhook-mercadopago,
- * que emite 'purchase_completed' em crm_events e atualiza client_sessions para 'comprou'.
+ * que atualiza client_sessions para 'comprou'.
  * Não remover ainda — pode ser conectado a PedidoSucesso.tsx no futuro se necessário.
  */
 export function useTrackPurchase() {

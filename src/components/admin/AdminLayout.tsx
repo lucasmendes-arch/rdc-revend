@@ -2,8 +2,8 @@ import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import {
   Package, ShoppingCart, Users, Warehouse, UserCog,
-  Menu, X, ExternalLink, Tag, DollarSign, GitBranch,
-  Megaphone, UserCheck, History, BadgeDollarSign, ChevronRight,
+  Menu, X, ExternalLink, Tag, DollarSign,
+  Megaphone, UserCheck, BadgeDollarSign, ChevronRight,
   ClipboardList,
 } from 'lucide-react'
 import logo from '@/assets/logo-rei-dos-cachos.png'
@@ -37,13 +37,6 @@ const navGroups: { label: string; items: NavItem[] }[] = [
       { label: 'Contagem de Estoque', path: '/estoque/relatorio', icon: ClipboardList },
       { label: 'Categorias', path: '/admin/categorias', icon: Tag },
       { label: 'Marketing', path: '/admin/marketing', icon: Megaphone },
-    ],
-  },
-  {
-    label: 'Sistema',
-    items: [
-      { label: 'Sync Log', path: '/admin/sync-history', icon: History },
-      { label: 'CRM Debug', path: '/admin/crm', icon: GitBranch },
     ],
   },
 ]

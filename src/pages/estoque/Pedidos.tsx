@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { Navigate, useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Loader, Package, PlayCircle, Truck, X, Check, Store } from 'lucide-react'
+import { Loader, Package, PlayCircle, Truck, X, Check, Store, Trash2, ChevronDown, ChevronUp } from 'lucide-react'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 import { useMyStore } from '@/hooks/useMyStore'
@@ -39,7 +39,9 @@ function RequestCard({
   onAdvance,
   onTogglePicked,
   onDeclareQty,
+  onDelete,
   isPending,
+  isDeletePending,
   highlighted,
 }: {
   request: ReplenishmentRequest
@@ -47,7 +49,9 @@ function RequestCard({
   onAdvance: (requestId: string, newStatus: 'picking' | 'shipped', shippedItems?: { item_id: string; shipped_quantity: number }[]) => void
   onTogglePicked: (itemId: string, picked: boolean) => void
   onDeclareQty: (itemId: string, qty: number | null) => void
+  onDelete: (requestId: string) => void
   isPending: boolean
+  isDeletePending: boolean
   highlighted: boolean
 }) {
   // Modo "conferindo envio": mostra um input de quantidade por item,
@@ -58,6 +62,8 @@ function RequestCard({
   // "em falta" (0) ou quantidade parcial menor que a sugerida.
   const [declareItemId, setDeclareItemId] = useState<string | null>(null)
   const [declareQty, setDeclareQty] = useState('')
+  // Pedido "enviado" nasce colapsado — só mostra os produtos ao clicar no card.
+  const [expanded, setExpanded] = useState(false)
 
   // Mesma ordem de categorias da tela de contagem (sort_order manual em
   // stock_categories), com "Sem categoria" sempre por último; dentro da
@@ -80,6 +86,14 @@ function RequestCard({
   const totalShipped = items.reduce((sum, i) => sum + (i.shipped_quantity ?? 0), 0)
   const pickedCount = items.filter((i) => i.picked_at !== null).length
   const isPicking = request.status === 'picking'
+  const isShipped = request.status === 'shipped'
+  const showItems = !isShipped || expanded
+
+  const handleDelete = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (!confirm(`Excluir o pedido de reposição de "${request.stores?.name || 'loja'}"? Esta ação não pode ser desfeita.`)) return
+    onDelete(request.id)
+  }
 
   const startShipping = () => {
     setShipQty(Object.fromEntries(items.map((i) => [i.id, String(i.shipped_quantity ?? i.suggested_quantity)])))
@@ -100,18 +114,35 @@ function RequestCard({
     // id usado pelo deep-link ?pedido=<id> (rolagem + destaque)
     <div
       id={`pedido-${request.id}`}
+      onClick={() => isShipped && setExpanded((v) => !v)}
       className={`bg-white rounded-2xl border shadow-card p-4 space-y-3 scroll-mt-24 transition-shadow ${
         highlighted ? 'border-amber-400 ring-2 ring-amber-300' : 'border-border'
-      }`}
+      } ${isShipped ? 'cursor-pointer' : ''}`}
     >
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0">
           <Store className="w-4 h-4 text-muted-foreground shrink-0" />
           <p className="text-base font-bold text-foreground truncate">{request.stores?.name || 'Loja'}</p>
+          {isShipped && (
+            expanded ? <ChevronUp className="w-3.5 h-3.5 text-muted-foreground shrink-0" /> : <ChevronDown className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+          )}
         </div>
-        <p className="text-xs text-muted-foreground shrink-0">
-          {new Date(request.generated_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
-        </p>
+        <div className="flex items-center gap-2 shrink-0">
+          <p className="text-xs text-muted-foreground">
+            {new Date(request.generated_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
+          </p>
+          {!isShipped && (
+            <button
+              type="button"
+              onClick={handleDelete}
+              disabled={isDeletePending}
+              className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground hover:text-red-600 hover:bg-red-50 transition-colors disabled:opacity-60"
+              title="Excluir pedido"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          )}
+        </div>
       </div>
 
       <p className="text-xs text-muted-foreground">
@@ -127,6 +158,7 @@ function RequestCard({
         )}
       </p>
 
+      {showItems && (
       <div className="space-y-1 max-h-96 overflow-y-auto">
         {items.map((item) => (
           // Item com painel de declaração aberto ganha um "envelope" destacado
@@ -259,6 +291,7 @@ function RequestCard({
           </div>
         ))}
       </div>
+      )}
 
       {request.status === 'open' && (
         <button
@@ -427,6 +460,20 @@ export default function EstoquePedidos() {
     },
   })
 
+  const deleteRequest = useMutation({
+    mutationFn: async (requestId: string) => {
+      const { error } = await supabase.rpc('admin_delete_replenishment_request', { p_request_id: requestId })
+      if (error) throw error
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['replenishment-requests'] })
+      toast.success('Pedido excluído')
+    },
+    onError: (err) => {
+      toast.error(`Erro ao excluir: ${err instanceof Error ? err.message : 'desconhecido'}`)
+    },
+  })
+
   if (storeLoading) {
     return (
       <EstoqueLayout>
@@ -488,7 +535,9 @@ export default function EstoquePedidos() {
                       onAdvance={(requestId, newStatus, shippedItems) => updateStatus.mutate({ requestId, newStatus, shippedItems })}
                       onTogglePicked={(itemId, picked) => togglePicked.mutate({ itemId, picked })}
                       onDeclareQty={(itemId, qty) => declareQty.mutate({ itemId, qty })}
+                      onDelete={(requestId) => deleteRequest.mutate(requestId)}
                       isPending={updateStatus.isPending}
+                      isDeletePending={deleteRequest.isPending}
                       highlighted={request.id === focusRequestId}
                     />
                   ))

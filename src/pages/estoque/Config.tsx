@@ -46,8 +46,8 @@ function ClassificationRow({ product, categories, onSave, onDelete }: { product:
   const [unitsPerBox, setUnitsPerBox] = useState(product.units_per_box ?? '')
   const [packageType, setPackageType] = useState(product.package_type ?? '')
   const [stockCategory, setStockCategory] = useState(product.stock_category ?? '')
-  // Nome só é editável em itens stock_only — produtos B2B têm nome/imagem
-  // vindos do sync Nuvemshop (seriam sobrescritos no próximo sync).
+  // Nome só é editável em itens stock_only — produtos B2B são gerenciados
+  // no Catálogo admin, não aqui.
   const [editingName, setEditingName] = useState(false)
   const [name, setName] = useState(product.name)
   const timerRef = useRef<ReturnType<typeof setTimeout>>()
@@ -55,8 +55,8 @@ function ClassificationRow({ product, categories, onSave, onDelete }: { product:
   const { upload: uploadPhoto, uploading: uploadingPhoto } = useImageUpload()
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  // Foto só em itens stock_only — em produtos B2B a main_image vem do sync
-  // da Nuvemshop e seria sobrescrita.
+  // Foto só em itens stock_only — em produtos B2B a main_image é gerenciada
+  // no Catálogo admin.
   const handlePhotoSelect = async (file: File) => {
     try {
       const url = await uploadPhoto(file)
@@ -153,7 +153,7 @@ function ClassificationRow({ product, categories, onSave, onDelete }: { product:
               <span
                 className={`font-medium text-foreground truncate max-w-[220px] block ${product.stock_only ? 'cursor-pointer hover:text-amber-700' : ''}`}
                 onClick={product.stock_only ? () => setEditingName(true) : undefined}
-                title={product.stock_only ? 'Clique para renomear' : 'Nome vem do sync da Nuvemshop — edite lá'}
+                title={product.stock_only ? 'Clique para renomear' : 'Edite no Catálogo admin'}
               >
                 {product.name}
                 {product.stock_only && (

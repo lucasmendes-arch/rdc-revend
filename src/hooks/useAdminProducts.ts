@@ -123,63 +123,6 @@ export function useDeleteProduct() {
   })
 }
 
-export interface SyncResult {
-  success: boolean
-  syncRunId: string
-  dry_run?: boolean
-  preview?: DryRunPreview
-  result?: {
-    imported: number
-    updated: number
-    total: number
-    errors: number
-    errorMessages: string[]
-  }
-}
-
-export interface DryRunPreview {
-  to_import: number
-  to_update: number
-  unchanged: number
-  total_source: number
-  details: Array<{ name: string; action: string }>
-}
-
-async function callSyncNuvemshop(options: { dryRun?: boolean } = {}): Promise<SyncResult> {
-  // Force session refresh to avoid expired JWT → 401
-  await supabase.auth.refreshSession()
-
-  const { data, error } = await supabase.functions.invoke('sync-nuvemshop', {
-    headers: { 'x-confirm-sync': 'true' },
-    body: { dry_run: options.dryRun || false },
-  })
-
-  if (error) {
-    const errorMsg = error.message || 'Erro na sincronização'
-    console.error('Sync error:', errorMsg)
-    throw new Error(errorMsg)
-  }
-
-  return data as SyncResult
-}
-
-export function useNuvemshopSync() {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: async (): Promise<SyncResult> => callSyncNuvemshop(),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin-products'] })
-    },
-  })
-}
-
-export function useNuvemshopDryRun() {
-  return useMutation({
-    mutationFn: async (): Promise<SyncResult> => callSyncNuvemshop({ dryRun: true }),
-  })
-}
-
 export function useBulkUpdateSortOrder() {
   const queryClient = useQueryClient()
 
