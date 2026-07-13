@@ -196,7 +196,7 @@ export default function EstoqueConfirmacao() {
 
   const storeId = stockCount?.store_id
 
-  const { data: countStore } = useQuery<{ id: string; type: 'central' | 'satellite' } | null>({
+  const { data: countStore, isLoading: countStoreLoading } = useQuery<{ id: string; type: 'central' | 'satellite' } | null>({
     queryKey: ['store-type', storeId],
     queryFn: async () => {
       const { data, error } = await supabase.from('stores').select('id, type').eq('id', storeId as string).maybeSingle()
@@ -207,6 +207,20 @@ export default function EstoqueConfirmacao() {
     staleTime: 5 * 60 * 1000,
   })
   const isCentral = countStore?.type === 'central'
+  const isSatellite = countStore?.type === 'satellite'
+
+  // Sortimento completo da loja (mesma regra da tela de contagem) — usado só
+  // pra travar a confirmação enquanto faltar item do sortimento, caso o
+  // usuário chegue direto nesta tela por URL sem passar pela trava de lá.
+  const { data: assortmentProductIds = [], isLoading: assortmentLoading } = useQuery<string[]>({
+    queryKey: ['stock-products-ids'],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('stock_countable_products').select('id')
+      if (error) throw error
+      return (data || []).map((p: { id: string }) => p.id)
+    },
+    staleTime: 5 * 60 * 1000,
+  })
 
   const { data: stockCategories = [] } = useQuery<StockCategoryOption[]>({
     queryKey: ['stock-categories'],
@@ -218,7 +232,7 @@ export default function EstoqueConfirmacao() {
     staleTime: 5 * 60 * 1000,
   })
 
-  const { data: storeTargets = [] } = useQuery<{ product_id: string; target_quantity: number }[]>({
+  const { data: storeTargets = [], isLoading: storeTargetsLoading } = useQuery<{ product_id: string; target_quantity: number }[]>({
     queryKey: ['store-stock-targets', storeId],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -236,6 +250,18 @@ export default function EstoqueConfirmacao() {
     storeTargets.forEach((t) => map.set(t.product_id, t.target_quantity))
     return map
   }, [storeTargets])
+
+  // Total do sortimento da loja: central conta o catálogo inteiro, satélite só
+  // produtos com meta > 0 (ou já contados neste rascunho).
+  const totalAssortment = useMemo(() => {
+    if (isCentral) return assortmentProductIds.length
+    const allowed = new Set(storeTargets.filter((t) => t.target_quantity > 0).map((t) => t.product_id))
+    const countedIds = new Set(items.map((i) => i.product_id))
+    return assortmentProductIds.filter((pid) => allowed.has(pid) || countedIds.has(pid)).length
+  }, [assortmentProductIds, isCentral, storeTargets, items])
+
+  const assortmentReady = !countStoreLoading && !assortmentLoading && !storeTargetsLoading && (isCentral || isSatellite)
+  const missingCount = assortmentReady ? Math.max(totalAssortment - items.length, 0) : 0
 
   // Contagem anterior confirmada da mesma loja, pra comparação (▲/▼) — só
   // busca em tela já confirmada (readOnly), comparando com o que veio antes
@@ -621,6 +647,15 @@ export default function EstoqueConfirmacao() {
             </p>
           </div>
         )}
+
+        {missingCount > 0 && (
+          <div className="flex items-start gap-2 bg-red-50 border border-red-200 rounded-xl p-3">
+            <AlertTriangle className="w-4 h-4 text-red-700 shrink-0 mt-0.5" />
+            <p className="text-xs text-red-800">
+              Faltam {missingCount} produto{missingCount !== 1 ? 's' : ''} contar. Volte e preencha todos os itens antes de confirmar.
+            </p>
+          </div>
+        )}
       </div>
 
       {itemsLoading ? (
@@ -668,11 +703,15 @@ export default function EstoqueConfirmacao() {
       <div className="pb-8">
         <button
           onClick={() => confirmMutation.mutate()}
-          disabled={confirmMutation.isPending || countedItems.length === 0}
+          disabled={confirmMutation.isPending || countedItems.length === 0 || !assortmentReady || missingCount > 0}
           className="w-full px-6 py-3.5 rounded-xl btn-gold text-sm font-bold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
           {confirmMutation.isPending ? (
             <><Loader className="w-4 h-4 animate-spin" /> Confirmando…</>
+          ) : !assortmentReady ? (
+            <><Loader className="w-4 h-4 animate-spin" /> Verificando…</>
+          ) : missingCount > 0 ? (
+            <><AlertTriangle className="w-4 h-4" /> Faltam {missingCount} itens</>
           ) : (
             <><PackageCheck className="w-4 h-4" /> Confirmar e enviar</>
           )}

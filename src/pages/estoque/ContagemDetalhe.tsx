@@ -149,7 +149,8 @@ function ProductCard({
           ? 'border-red-200 bg-red-50/50 hover:bg-red-50'
           : counted
             ? 'border-green-200 bg-green-50/30'
-            : 'border-border bg-white'
+            // Pendente = ainda não contado: destaque laranja pra chamar atenção
+            : 'border-orange-300 bg-orange-50/40 ring-1 ring-orange-200'
     }`}>
       {/* Imagem grande à esquerda — identificação visual rápida do produto */}
       {/* Escalona pela largura real do aparelho — em telas ≤ 400px a imagem
@@ -176,6 +177,11 @@ function ProductCard({
             ) : (
               <p className="text-[11px] text-muted-foreground mt-0.5">
                 {product.package_type === 'CX' ? `${product.units_per_box} un./caixa` : 'conta por unidade avulsa'}
+              </p>
+            )}
+            {!unclassified && !counted && (
+              <p className="flex items-center gap-1 text-[11px] text-orange-600 font-semibold mt-0.5">
+                <AlertTriangle className="w-3 h-3 shrink-0" /> ainda não contado
               </p>
             )}
           </div>
@@ -483,6 +489,7 @@ export default function EstoqueContagemDetalhe() {
     [assortmentProducts, itemsByProduct]
   )
   const progressPct = totalProducts > 0 ? Math.round((countedProducts / totalProducts) * 100) : 0
+  const allCounted = totalProducts > 0 && countedProducts === totalProducts
   const readOnly = stockCount?.status === 'confirmed'
 
   // Espera também o tipo da loja/metas pra não piscar a lista completa
@@ -600,16 +607,19 @@ export default function EstoqueContagemDetalhe() {
         )}
       </div>
 
-      {/* Barra fixa de confirmação */}
+      {/* Barra fixa de confirmação — só libera quando todo o sortimento foi contado,
+          pra não deixar item esquecido passar batido pra reposição. */}
       {!readOnly && (
         <div className="fixed bottom-0 left-0 right-0 z-30 bg-white border-t border-border px-4 sm:px-6 py-3 shadow-[0_-2px_10px_rgba(0,0,0,0.06)]">
           <button
             onClick={() => navigate(`/estoque/contagem/${id}/confirmar`)}
-            disabled={countedProducts === 0}
+            disabled={!allCounted}
             className="w-full max-w-6xl mx-auto flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl btn-gold text-sm font-bold disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <PackageCheck className="w-4 h-4" />
-            Revisar e Confirmar {countedProducts > 0 ? `(${countedProducts}/${totalProducts})` : ''}
+            {allCounted
+              ? `Revisar e Confirmar (${countedProducts}/${totalProducts})`
+              : `Faltam ${totalProducts - countedProducts} de ${totalProducts} itens`}
           </button>
         </div>
       )}
