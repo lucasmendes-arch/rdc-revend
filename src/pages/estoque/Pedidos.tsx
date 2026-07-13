@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { Navigate, useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Loader, Package, PlayCircle, Truck, X, Check, Store, Trash2, ChevronDown, ChevronUp } from 'lucide-react'
+import { Loader, Package, PlayCircle, Truck, X, Check, CheckCircle2, Store, Trash2, ChevronDown, ChevronUp } from 'lucide-react'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 import { useMyStore } from '@/hooks/useMyStore'
@@ -131,7 +131,9 @@ function RequestCard({
           <p className="text-xs text-muted-foreground">
             {new Date(request.generated_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
           </p>
-          {!isShipped && (
+          {isShipped ? (
+            <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0" />
+          ) : (
             <button
               type="button"
               onClick={handleDelete}
