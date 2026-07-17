@@ -710,6 +710,65 @@ Esta regra é aplicada no catálogo (via `get_my_price_list_items`) e no checkou
 
 ---
 
+### `job_roles`
+Catálogo global de cargos (RH) — template reutilizável entre unidades. Ao criar uma vaga em `job_openings`, selecionar um cargo aqui copia os campos descritivos como snapshot editável (editar o cargo depois **não** altera vagas já criadas).
+
+| Coluna | Tipo | Nullable | Default | FK |
+|--------|------|----------|---------|-----|
+| id | uuid | NO | `gen_random_uuid()` | — |
+| title | text | NO | — | — (UNIQUE) |
+| description | text | YES | NULL | — |
+| contract_type | text | NO | — | — |
+| compensation_type | text | NO | — | — |
+| fixed_amount | numeric(10,2) | YES | NULL | — |
+| variable_percentage | numeric(5,2) | YES | NULL | — |
+| variable_basis | text | YES | NULL | — |
+| work_schedule | text | YES | NULL | — |
+| workload_hours | numeric(4,1) | YES | NULL | — |
+| requirements | text | YES | NULL | — |
+| benefits | text | YES | NULL | — |
+| seniority_level | text | YES | NULL | — |
+| is_active | boolean | NO | `true` | — |
+| created_at | timestamptz | NO | `now()` | — |
+| updated_at | timestamptz | NO | `now()` | — |
+
+> `contract_type` válidos: `'clt'`, `'mei'`, `'pj'`, `'estagio'`.
+> `compensation_type` válidos: `'fixa'`, `'variavel'`, `'mista'`. CHECK garante consistência com `fixed_amount`/`variable_percentage` conforme o tipo (ver [Constraints](#constraints--check-values)).
+> `seniority_level` válidos (opcional): `'junior'`, `'pleno'`, `'senior'`.
+> `is_active = false` "aposenta" o cargo sem apagar (some do select de novas vagas, preserva histórico).
+> RLS: `has_rh_access()` (admin OU `profiles.permissions->>'can_manage_rh' = 'true'`).
+
+---
+
+### `job_openings` (vagas)
+Vaga por unidade. Colunas descritivas (`description`, `contract_type`, `compensation_type`, `fixed_amount`, `variable_percentage`, `variable_basis`, `work_schedule`, `workload_hours`, `requirements`, `benefits`) são um **snapshot** copiado de `job_roles` no momento da criação — todas nullable, editáveis independentemente do cargo de origem.
+
+| Coluna | Tipo | Nullable | Default | FK |
+|--------|------|----------|---------|-----|
+| id | uuid | NO | `gen_random_uuid()` | — |
+| store_id | uuid | NO | — | stores.id |
+| role_title | text | NO | — | — |
+| job_role_id | uuid | YES | NULL | job_roles.id (ON DELETE RESTRICT) |
+| status | text | NO | `'aberta'` | — |
+| description | text | YES | NULL | — |
+| contract_type | text | YES | NULL | — |
+| compensation_type | text | YES | NULL | — |
+| fixed_amount | numeric(10,2) | YES | NULL | — |
+| variable_percentage | numeric(5,2) | YES | NULL | — |
+| variable_basis | text | YES | NULL | — |
+| work_schedule | text | YES | NULL | — |
+| workload_hours | numeric(4,1) | YES | NULL | — |
+| requirements | text | YES | NULL | — |
+| benefits | text | YES | NULL | — |
+| created_at | timestamptz | NO | `now()` | — |
+
+> `status` válidos: `'aberta'`, `'fechada'`.
+> `job_role_id` é só rastro de origem — `ON DELETE RESTRICT` impede excluir um cargo com vagas vinculadas (desativar em vez de excluir).
+> CRUD feito direto via `supabase.from('job_openings')` no frontend, sem RPC dedicada. RLS: `has_rh_access()`.
+> Módulo completo de RH (`candidates`, `candidate_stage_history`, `candidate_answers`, `form_fields`) ainda não documentado neste arquivo — ver migrations `20260717000001_rh_recruitment_module.sql` e `20260718000001_rh_public_application_form.sql`.
+
+---
+
 ## Views
 
 ### `catalog_products_public`
@@ -1239,6 +1298,11 @@ Edição completa de um pedido existente: substitui todos os `order_items` (`p_i
 | coupons | code | UPPERCASE (enforced por CHECK) |
 | coupons | discount_type | `'percent'`, `'fixed'`, `'free_shipping'`, `'shipping_percent'` |
 | coupons | discount_value | `> 0` |
+| job_roles | contract_type | `'clt'`, `'mei'`, `'pj'`, `'estagio'` |
+| job_roles | compensation_type | `'fixa'`, `'variavel'`, `'mista'` — CHECK exige `fixed_amount`/`variable_percentage` coerentes com o tipo |
+| job_roles | seniority_level | `'junior'`, `'pleno'`, `'senior'`, NULL |
+| job_openings | status | `'aberta'`, `'fechada'` |
+| job_openings | contract_type / compensation_type | mesmos valores de `job_roles`, porém nullable (snapshot opcional) |
 | crm_events | event_type | `'visitou'`, `'visualizou_produto'`, `'adicionou_carrinho'`, `'iniciou_checkout'`, `'comprou'`, `'abandonou'`, `'user_registered'`, `'purchase_completed'`, `'cart_abandoned'`, `'checkout_abandoned'`, `'order_created'`, `'tag_added'`, `'inactivity_detected'`, `'profile_completed'`, `'profile_synced'` |
 | integration_outbox | status | `'pending'`, `'processing'`, `'delivered'`, `'failed'` |
 | crm_tags | type | `'system'`, `'custom'` |

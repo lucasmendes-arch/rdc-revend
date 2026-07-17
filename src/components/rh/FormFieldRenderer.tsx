@@ -1,0 +1,191 @@
+import { useRef } from 'react'
+import { Image as ImageIcon, FileText, Loader, X, FileSearch } from 'lucide-react'
+import type { JobRoleDescriptiveRow } from './JobRoleFieldsForm'
+
+export type FieldType = 'texto' | 'numero' | 'telefone' | 'select' | 'checkbox' | 'data' | 'upload_imagem' | 'upload_arquivo'
+
+// Resposta de checkbox (múltipla escolha) grava as opções marcadas juntas
+// numa string só, já que candidate_answers.value é sempre texto simples.
+export const CHECKBOX_DELIM = '; '
+
+export interface FormFieldConfig {
+  id: string
+  field_key: string
+  label: string
+  question_text: string | null
+  help_text: string | null
+  placeholder: string | null
+  field_type: FieldType
+  required: boolean
+  sort_order: number
+  step: number
+  options: string[] | null
+  is_system_field: boolean
+}
+
+export interface PublicJobOpening extends JobRoleDescriptiveRow {
+  id: string
+  role_title: string
+  status: string
+}
+
+interface FormFieldRendererProps {
+  field: FormFieldConfig
+  value: string
+  onChange: (value: string) => void
+  readOnly?: boolean
+  jobOpenings?: PublicJobOpening[]
+  onUploadFile?: (file: File) => void
+  uploading?: boolean
+  onViewJobDetails?: (jobOpeningId: string) => void
+}
+
+const inputClass = 'w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-60'
+
+export default function FormFieldRenderer({
+  field, value, onChange, readOnly, jobOpenings = [], onUploadFile, uploading, onViewJobDetails,
+}: FormFieldRendererProps) {
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const labelNode = (
+    <div className="mb-2">
+      <label className="block text-sm font-medium text-foreground leading-snug">
+        {field.question_text || field.label}{field.required && <span className="text-red-500"> *</span>}
+      </label>
+      {field.help_text && <p className="text-xs text-muted-foreground mt-1 leading-snug">{field.help_text}</p>}
+    </div>
+  )
+
+  if (field.field_key === 'vaga_id') {
+    return (
+      <div>
+        {labelNode}
+        <select
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          disabled={readOnly}
+          className={inputClass}
+        >
+          <option value="" disabled>{field.placeholder || 'Selecione a vaga'}</option>
+          {jobOpenings.map((j) => (
+            <option key={j.id} value={j.id}>
+              {j.role_title}{j.status === 'fechada' ? ' (banco de currículos)' : ''}
+            </option>
+          ))}
+        </select>
+        {value && onViewJobDetails && (
+          <button
+            type="button"
+            onClick={() => onViewJobDetails(value)}
+            className="flex items-center gap-1.5 text-xs font-medium text-gold-text hover:underline mt-1.5"
+          >
+            <FileSearch className="w-3.5 h-3.5" /> Ver descrição completa da vaga
+          </button>
+        )}
+      </div>
+    )
+  }
+
+  if (field.field_type === 'select') {
+    return (
+      <div>
+        {labelNode}
+        <select value={value} onChange={(e) => onChange(e.target.value)} disabled={readOnly} className={inputClass}>
+          <option value="" disabled>{field.placeholder || 'Selecione'}</option>
+          {(field.options || []).map((opt) => (
+            <option key={opt} value={opt}>{opt}</option>
+          ))}
+        </select>
+      </div>
+    )
+  }
+
+  if (field.field_type === 'checkbox') {
+    const selected = value ? value.split(CHECKBOX_DELIM) : []
+    function toggle(opt: string) {
+      const next = selected.includes(opt) ? selected.filter((o) => o !== opt) : [...selected, opt]
+      onChange(next.join(CHECKBOX_DELIM))
+    }
+    return (
+      <div>
+        {labelNode}
+        <div className="space-y-1.5">
+          {(field.options || []).map((opt) => (
+            <label key={opt} className={`flex items-center gap-2 ${readOnly ? '' : 'cursor-pointer'}`}>
+              <input
+                type="checkbox"
+                checked={selected.includes(opt)}
+                disabled={readOnly}
+                onChange={() => toggle(opt)}
+                className="w-4 h-4 rounded border-border accent-emerald-600 disabled:opacity-60"
+              />
+              <span className="text-sm text-foreground">{opt}</span>
+            </label>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  if (field.field_type === 'upload_imagem' || field.field_type === 'upload_arquivo') {
+    const isImage = field.field_type === 'upload_imagem'
+    return (
+      <div>
+        {labelNode}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept={isImage ? 'image/*' : '.pdf,.doc,.docx'}
+          className="hidden"
+          disabled={readOnly}
+          onChange={(e) => {
+            const file = e.target.files?.[0]
+            if (file && onUploadFile) onUploadFile(file)
+          }}
+        />
+        {value ? (
+          <div className="flex items-center gap-2">
+            <a href={value} target="_blank" rel="noopener noreferrer" className="flex-1 flex items-center gap-1.5 px-3 py-2 rounded-lg border border-border text-sm text-foreground hover:bg-surface-alt min-w-0">
+              {isImage ? <ImageIcon className="w-4 h-4 shrink-0" /> : <FileText className="w-4 h-4 shrink-0" />}
+              <span className="truncate">{isImage ? 'Ver foto enviada' : 'Ver arquivo enviado'}</span>
+            </a>
+            {!readOnly && (
+              <button
+                type="button"
+                onClick={() => onChange('')}
+                className="p-2 rounded-lg border border-border text-muted-foreground hover:text-red-600 hover:border-red-200 hover:bg-red-50 transition-colors shrink-0"
+                title={isImage ? 'Remover foto e escolher outra' : 'Remover arquivo e escolher outro'}
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+        ) : (
+          <button
+            type="button"
+            disabled={readOnly || uploading}
+            onClick={() => fileInputRef.current?.click()}
+            className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border border-dashed border-border text-sm text-muted-foreground hover:bg-surface-alt disabled:opacity-60"
+          >
+            {uploading ? <Loader className="w-4 h-4 animate-spin" /> : isImage ? <ImageIcon className="w-4 h-4" /> : <FileText className="w-4 h-4" />}
+            {uploading ? 'Enviando...' : 'Selecionar arquivo'}
+          </button>
+        )}
+      </div>
+    )
+  }
+
+  return (
+    <div>
+      {labelNode}
+      <input
+        type={field.field_type === 'numero' ? 'number' : field.field_type === 'data' ? 'date' : 'text'}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        disabled={readOnly}
+        placeholder={field.placeholder || (field.field_type === 'telefone' ? '(27) 99999-9999' : undefined)}
+        className={inputClass}
+      />
+    </div>
+  )
+}

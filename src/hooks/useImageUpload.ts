@@ -31,7 +31,7 @@ async function compressImage(file: File): Promise<Blob> {
 export function useImageUpload() {
   const [uploading, setUploading] = useState(false)
 
-  const upload = async (file: File): Promise<string> => {
+  const upload = async (file: File, folder?: string): Promise<string> => {
     setUploading(true)
     try {
       await supabase.auth.refreshSession()
@@ -41,6 +41,7 @@ export function useImageUpload() {
 
       const formData = new FormData()
       formData.append('file', new File([compressed], fileName, { type: 'image/webp' }))
+      if (folder) formData.append('folder', folder)
 
       const { data, error } = await supabase.functions.invoke('upload-product-image', {
         body: formData,

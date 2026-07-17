@@ -41,8 +41,11 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: 'No file provided (field: "file")' }, 400)
     }
 
+    const folderRaw = formData.get('folder')
+    const folder = typeof folderRaw === 'string' && folderRaw.trim() ? folderRaw.trim().replace(/^\/+|\/+$/g, '') : 'products'
+
     const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg'
-    const key = `products/${Date.now()}-${crypto.randomUUID().slice(0, 8)}.${ext}`
+    const key = `${folder}/${Date.now()}-${crypto.randomUUID().slice(0, 8)}.${ext}`
     const contentType = file.type || 'application/octet-stream'
 
     const aws = new AwsClient({

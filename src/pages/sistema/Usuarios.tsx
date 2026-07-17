@@ -1347,6 +1347,7 @@ function SystemUserSidePanel({
             <div className="space-y-3">
               {[
                 { key: 'can_edit_orders', label: 'Editar pedidos', description: 'Permite alterar itens, vendedor e pagamento de pedidos criados' },
+                { key: 'can_manage_rh', label: 'Gerenciar RH', description: 'Acesso às telas de Vagas e Kanban de Candidatos' },
               ].map(({ key, label, description }) => {
                 const enabled = !!(user.permissions?.[key])
                 return (

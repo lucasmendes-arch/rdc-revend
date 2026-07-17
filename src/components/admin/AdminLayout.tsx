@@ -4,11 +4,12 @@ import {
   Package, ShoppingCart, Users, Warehouse, UserCog,
   Menu, X, ExternalLink, Tag, DollarSign,
   Megaphone, UserCheck, BadgeDollarSign, ChevronRight,
-  ClipboardList,
+  ClipboardList, Briefcase, KanbanSquare, ListChecks, IdCard,
 } from 'lucide-react'
 import logo from '@/assets/logo-rei-dos-cachos.png'
 import { ThemeToggle } from '@/components/ui/ThemeToggle'
 import { AdminThemeProvider } from '@/contexts/AdminThemeContext'
+import { useAuth } from '@/contexts/AuthContext'
 
 type NavItem = { label: string; path: string; icon: React.ElementType }
 
@@ -41,6 +42,18 @@ const navGroups: { label: string; items: NavItem[] }[] = [
   },
 ]
 
+// RH tem acesso restrito (admin ou permissão can_manage_rh) — grupo separado,
+// só aparece na sidebar pra quem tem acesso.
+const rhNavGroup: { label: string; items: NavItem[] } = {
+  label: 'RH',
+  items: [
+    { label: 'Vagas', path: '/admin/rh/vagas', icon: Briefcase },
+    { label: 'Cargos', path: '/admin/rh/cargos', icon: IdCard },
+    { label: 'Candidatos', path: '/admin/rh/candidatos', icon: KanbanSquare },
+    { label: 'Formulário', path: '/admin/rh/formulario', icon: ListChecks },
+  ],
+}
+
 function SidebarNavItem({ item, isActive, onClick }: { item: NavItem; isActive: boolean; onClick?: () => void }) {
   const Icon = item.icon
   return (
@@ -70,10 +83,13 @@ function SidebarNavItem({ item, isActive, onClick }: { item: NavItem; isActive: 
 
 function SidebarContent({ onNavClick }: { onNavClick?: () => void }) {
   const location = useLocation()
+  const { role, hasPermission } = useAuth()
+  const canManageRh = role === 'admin' || hasPermission('can_manage_rh')
+  const groups = canManageRh ? [...navGroups, rhNavGroup] : navGroups
 
   const [expanded, setExpanded] = useState<Set<string>>(() => {
     const initial = new Set<string>()
-    navGroups.forEach((group) => {
+    groups.forEach((group) => {
       if (group.items.some((item) => item.path === location.pathname)) {
         initial.add(group.label)
       }
@@ -117,7 +133,7 @@ function SidebarContent({ onNavClick }: { onNavClick?: () => void }) {
 
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto py-3 px-2 scrollbar-none">
-        {navGroups.map((group) => {
+        {groups.map((group) => {
           const isOpen = expanded.has(group.label)
           const hasActive = group.items.some((item) => item.path === location.pathname)
 
@@ -224,7 +240,11 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
       )}
 
       {/* Main Content */}
-      <main className="flex-1 lg:ml-60 pt-14 lg:pt-0">
+      {/* min-w-0 + overflow-x-hidden: sem isso, um item flex sem largura mínima
+          definida cresce pra caber o conteúdo mais largo (ex: kanban de RH com
+          13 colunas) e alarga a página inteira em vez de rolar só por dentro —
+          mesma proteção que EstoqueLayout já tem. */}
+      <main className="flex-1 min-w-0 overflow-x-hidden lg:ml-60 pt-14 lg:pt-0">
         {children}
       </main>
     </div>

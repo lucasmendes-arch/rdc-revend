@@ -13,6 +13,7 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { AdminRoute } from "@/components/AdminRoute";
 import { SalaoRoute } from "@/components/SalaoRoute";
 import { EstoqueRoute } from "@/components/EstoqueRoute";
+import { RhRoute } from "@/components/RhRoute";
 import { PortalRoute } from "@/components/portal/PortalRoute";
 import Portal from "./pages/portal/Portal";
 import Login from "./pages/Login";
@@ -51,6 +52,13 @@ const AdminMarketing = lazy(() => import("./pages/marketing/Marketing"));
 // módulo sistema (lazy)
 const AdminUsuarios = lazy(() => import("./pages/sistema/Usuarios"));
 
+// módulo RH (lazy)
+const RhVagas = lazy(() => import("./pages/rh/Vagas"));
+const RhCargos = lazy(() => import("./pages/rh/Cargos"));
+const RhCandidatos = lazy(() => import("./pages/rh/Candidatos"));
+const RhFormulario = lazy(() => import("./pages/rh/Formulario"));
+const CandidaturaPublica = lazy(() => import("./pages/rh/CandidaturaPublica"));
+
 // módulo estoque (lazy)
 const EstoqueContagem = lazy(() => import("./pages/estoque/Contagem"));
 const EstoqueContagemDetalhe = lazy(() => import("./pages/estoque/ContagemDetalhe"));
@@ -63,7 +71,7 @@ const EstoqueAtual = lazy(() => import("./pages/estoque/Atual"));
 
 function ConditionalWhatsApp() {
   const { pathname } = useLocation();
-  if (pathname.startsWith('/admin') || pathname.startsWith('/salao') || pathname.startsWith('/portal') || pathname.startsWith('/estoque') || pathname === '/cadastro' || pathname === '/login' || pathname === '/redefinir-senha') return null;
+  if (pathname.startsWith('/admin') || pathname.startsWith('/salao') || pathname.startsWith('/portal') || pathname.startsWith('/estoque') || pathname.startsWith('/candidatura') || pathname === '/cadastro' || pathname === '/login' || pathname === '/redefinir-senha') return null;
   return <WhatsAppButton />;
 }
 
@@ -102,6 +110,7 @@ const App = () => (
                 <Route path="/redefinir-senha" element={<RedefinirSenha />} />
                 <Route path="/catalogo" element={<Catalogo />} />
                 <Route path="/lookbook" element={<Lookbook />} />
+                <Route path="/candidatura/:storeSlug" element={<CandidaturaPublica />} />
                 <Route element={<ProtectedRoute />}>
                   <Route path="/checkout" element={<Checkout />} />
                   <Route path="/pedido/sucesso/:id" element={<PedidoSucesso />} />
@@ -140,6 +149,12 @@ const App = () => (
                     <Route path="/estoque/historico" element={<EstoqueHistorico />} />
                     <Route path="/estoque/relatorio" element={<EstoqueRelatorio />} />
                     <Route path="/estoque/atual" element={<EstoqueAtual />} />
+                  </Route>
+                  <Route element={<RhRoute />}>
+                    <Route path="/admin/rh/vagas" element={<RhVagas />} />
+                    <Route path="/admin/rh/cargos" element={<RhCargos />} />
+                    <Route path="/admin/rh/candidatos" element={<RhCandidatos />} />
+                    <Route path="/admin/rh/formulario" element={<RhFormulario />} />
                   </Route>
                 </Route>
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

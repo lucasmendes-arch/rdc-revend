@@ -16,3 +16,4 @@ Scripts de teste para RPCs, edge functions e comportamentos críticos do sistema
 | [test_get_seller_commission_summary.sql](test_get_seller_commission_summary.sql) | RPC de resumo de comissão por vendedor e período | `get_seller_commission_summary` |
 | [test_send_seller_commission_report.sh](test_send_seller_commission_report.sh) | Edge function de geração de PDF + upload Storage + envio WhatsApp | `send-seller-commission-report` |
 | [test_cron_commission_reports.sh](test_cron_commission_reports.sh) | Cron mensal de comissão: disparo sem JWT, período automático, contadores processed/skipped/errors | `cron-commission-reports`, `get_seller_commission_summary_internal` |
+| [test_job_roles.sql](test_job_roles.sql) | Catálogo de cargos (RH): CHECK de consistência de remuneração, snapshot editável em `job_openings`, retrocompatibilidade sem cargo, ON DELETE RESTRICT | tabelas `job_roles`, `job_openings` |
