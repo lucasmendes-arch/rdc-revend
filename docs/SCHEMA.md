@@ -1,6 +1,6 @@
 # SCHEMA.md — Single Source of Truth · RDC Revend
-> Atualizado em: 2026-07-07
-> Gerado a partir das migrations `20250221000001` → `20260707000001`
+> Atualizado em: 2026-07-18
+> Gerado a partir das migrations `20250221000001` → `20260718000008`
 > **LEIA ESTE ARQUIVO antes de escrever qualquer query, RPC call ou type definition no frontend.**
 
 ---
@@ -765,7 +765,113 @@ Vaga por unidade. Colunas descritivas (`description`, `contract_type`, `compensa
 > `status` válidos: `'aberta'`, `'fechada'`.
 > `job_role_id` é só rastro de origem — `ON DELETE RESTRICT` impede excluir um cargo com vagas vinculadas (desativar em vez de excluir).
 > CRUD feito direto via `supabase.from('job_openings')` no frontend, sem RPC dedicada. RLS: `has_rh_access()`.
-> Módulo completo de RH (`candidates`, `candidate_stage_history`, `candidate_answers`, `form_fields`) ainda não documentado neste arquivo — ver migrations `20260717000001_rh_recruitment_module.sql` e `20260718000001_rh_public_application_form.sql`.
+
+---
+
+### `candidates`
+Candidato a uma vaga (`job_openings`). Um candidato pertence a exatamente uma vaga — sem candidato "solto" sem vaga. Alimentado pelo Kanban (`/admin/rh/candidatos`, cadastro manual) e pelo formulário público (`/candidatura/:slug`, via RPC).
+
+| Coluna | Tipo | Nullable | Default | FK |
+|--------|------|----------|---------|-----|
+| id | uuid | NO | `gen_random_uuid()` | — |
+| job_opening_id | uuid | NO | — | job_openings.id (ON DELETE RESTRICT) |
+| name | text | NO | — | — |
+| age | int | YES | NULL | — |
+| whatsapp | text | NO | — | — |
+| stage | text | NO | `'pendente'` | — |
+| source | text | NO | — | — |
+| photo_url | text | YES | NULL | — |
+| resume_url | text | YES | NULL | — |
+| notes | text | YES | NULL | — |
+| created_at | timestamptz | NO | `now()` | — |
+| updated_at | timestamptz | NO | `now()` | — |
+| stage_started_at | timestamptz | NO | `now()` | — |
+
+> `stage` válidos (13 — funil sugerido + 3 "saídas" que aceitam drop vindo de qualquer etapa, sem transição restrita no CHECK): `pendente`, `conversa_iniciada`, `entrevista_marcada`, `no_show`, `decisao_necessaria`, `selecionado`, `em_formacao`, `em_contratacao`, `contratado`, `concluido_arquivado`, `descartado`, `banco_de_talentos`, `sem_contratacao`.
+> `source` válidos: `'formulario'` (via `/candidatura/:slug`), `'manual'` (cadastro direto no Kanban).
+> `age` é **nullable** (mudou de NOT NULL pra nullable em `20260718000001`): candidatos do formulário público não gravam idade aqui — vira resposta dinâmica em `candidate_answers` (chave `idade`, seed não-sistema). Cadastro manual no Kanban continua preenchendo a coluna normalmente. UI (`Candidatos.tsx`) mostra `age` com fallback pra resposta dinâmica quando `NULL`.
+> `stage_started_at`: quando o candidato entrou na etapa **atual** — mantido sozinho pelo trigger `trg_candidates_set_updated_at` toda vez que `stage` muda (sem UPDATE manual). Combinado com `stage_sla_days` calcula atraso no card do Kanban (client-side, nada gravado).
+> RLS: `has_rh_access()` pra tudo (`authenticated`). **Sem** policy de INSERT/UPDATE/DELETE pra `anon` — candidatura pública entra via RPC `submit_candidate_application` (`SECURITY DEFINER`, bypassa RLS por design, ver nota de segurança na RPC).
+
+---
+
+### `candidate_stage_history`
+Histórico de mudança de etapa — uma linha por transição, incluindo a criação (`previous_stage = NULL`). Populado só por trigger, nunca escrito direto pelo frontend (usado hoje pra auditoria; base pronta pra automações futuras, ex: disparo de WhatsApp ao entrar em determinada etapa).
+
+| Coluna | Tipo | Nullable | Default | FK |
+|--------|------|----------|---------|-----|
+| id | uuid | NO | `gen_random_uuid()` | — |
+| candidate_id | uuid | NO | — | candidates.id (ON DELETE CASCADE) |
+| previous_stage | text | YES | NULL | — |
+| new_stage | text | NO | — | — |
+| changed_by | uuid | YES | NULL | auth.users.id (ON DELETE SET NULL) |
+| changed_at | timestamptz | NO | `now()` | — |
+
+> `changed_by` é `NULL` quando a mudança vem de um visitante anônimo (criação via formulário público) — só é preenchido quando um usuário autenticado move o card no Kanban.
+> RLS: só `SELECT` via `has_rh_access()`. Nenhuma policy de INSERT — só a função de trigger `log_candidate_stage_change()` (`SECURITY DEFINER`) escreve, disparada em `AFTER INSERT`/`AFTER UPDATE` de `candidates`.
+
+---
+
+### `form_fields`
+Config **global** (não por unidade) das perguntas do formulário público de candidatura — construtor em `/admin/rh/formulario` (tela "Build", nos moldes do ClickUp Forms: cada card é o próprio campo, editável no clique).
+
+| Coluna | Tipo | Nullable | Default | FK |
+|--------|------|----------|---------|-----|
+| id | uuid | NO | `gen_random_uuid()` | — |
+| field_key | text | NO | — | — (UNIQUE) |
+| label | text | NO | — | — |
+| question_text | text | YES | NULL | — |
+| help_text | text | YES | NULL | — |
+| placeholder | text | YES | NULL | — |
+| field_type | text | NO | — | — |
+| required | boolean | NO | `false` | — |
+| sort_order | int | NO | `0` | — |
+| step | int | NO | `1` | — |
+| options | jsonb | YES | NULL | — |
+| is_system_field | boolean | NO | `false` | — |
+| show_on_card | boolean | NO | `false` | — |
+| created_at | timestamptz | NO | `now()` | — |
+| updated_at | timestamptz | NO | `now()` | — |
+
+> `field_type` válidos: `'texto'`, `'numero'`, `'telefone'`, `'select'`, `'checkbox'`, `'data'`, `'upload_imagem'`, `'upload_arquivo'`. `select`/`checkbox` usam `options` (array de strings); `checkbox` aceita múltiplas respostas marcadas na mesma pergunta (gravadas juntas em `candidate_answers.value`, separadas por `'; '` — ver `CHECKBOX_DELIM` em `src/components/rh/FormFieldRenderer.tsx`).
+> `label` = nome curto interno (construtor, card do Kanban via `show_on_card`, respostas do candidato). `question_text` = frase que o candidato lê no formulário público; `NULL` cai de volta pra `label`. `help_text` = texto de apoio abaixo da pergunta. `placeholder` = texto fantasma dentro do campo de resposta. Tudo editável pelo construtor, exceto pros 3 campos de sistema.
+> `is_system_field = true` em exatamente 3 registros (seed): `nome`, `whatsapp`, `vaga_id` — respostas desses vão direto pras colunas `candidates.name`/`candidates.whatsapp`/`candidates.job_opening_id`, nunca pra `candidate_answers`. `foto`/`curriculo` (seed, `upload_imagem`/`upload_arquivo`) **não** são `is_system_field` (podem ser apagados/renomeados livremente), mas por convenção de `field_key` também vão direto pras colunas `candidates.photo_url`/`candidates.resume_url` quando respondidos.
+> Trigger `trg_form_fields_protect_system`: se `is_system_field`, força `required = true` e impede zerar `is_system_field` via UPDATE (imutável após criado) — bloqueio de "campo de sistema" em 2 camadas (esse trigger + a RLS de DELETE abaixo).
+> `step`: agrupa perguntas em telas do wizard público — todas nascem em `1`; sem etapas diferentes configuradas, o formulário público é uma tela só (sem barra de progresso).
+> RLS: `SELECT` pra `anon` **e** `authenticated` (config pública, sem PII — o formulário precisa ler pra se renderizar sem estar logado). `INSERT`/`UPDATE` só `authenticated` com `has_rh_access()`; `DELETE` adicionalmente exige `NOT is_system_field` na própria policy.
+
+---
+
+### `candidate_answers`
+Resposta de um candidato a um campo dinâmico de `form_fields` (não-sistema, não-foto/currículo — esses vão direto pras colunas de `candidates`). Uma linha por pergunta efetivamente respondida; pergunta opcional deixada em branco não gera linha.
+
+| Coluna | Tipo | Nullable | Default | FK |
+|--------|------|----------|---------|-----|
+| id | uuid | NO | `gen_random_uuid()` | — |
+| candidate_id | uuid | NO | — | candidates.id (ON DELETE CASCADE) |
+| field_id | uuid | NO | — | form_fields.id (ON DELETE CASCADE) |
+| value | text | NO | — | — |
+| created_at | timestamptz | NO | `now()` | — |
+
+> `value`: bruto pra texto/número/telefone/data/select; URL do R2 pra uploads; opções marcadas separadas por `'; '` pra `checkbox`.
+> **`ON DELETE CASCADE`** em `field_id` (decisão deliberada, não é o padrão RESTRICT do resto do schema): o construtor permite apagar qualquer campo não-sistema sem exceção — apagar a pergunta descarta as respostas históricas dela junto. Aceitável por ser dado de formulário, não financeiro/estoque.
+> Só escrito pela RPC `submit_candidate_application` (`SECURITY DEFINER`) — **sem policy de INSERT pra ninguém**, nem `authenticated`, pra garantir que uma resposta só nasce atomicamente junto com o candidato dono dela (uma policy de INSERT direta pra `anon` não teria como impedir escrever respostas em candidatos alheios).
+> RLS: só `SELECT` via `has_rh_access()`.
+
+---
+
+### `stage_sla_days`
+Prazo interno (em dias) que o operador tem pra avaliar um candidato em cada etapa antes do card contar como atrasado no Kanban — **não é campo de formulário**, é config operacional. Uma linha por etapa (13, mesmo domínio de `candidates.stage`).
+
+| Coluna | Tipo | Nullable | Default | FK |
+|--------|------|----------|---------|-----|
+| stage | text | NO (PK) | — | — |
+| days | int | NO | `3` | — |
+| updated_at | timestamptz | NO | `now()` | — |
+
+> Seed com um valor por etapa (1 a 30 dias — mais curto em etapas de ação rápida como `no_show`, mais longo nas de arquivo/saída), editável em `/admin/rh/candidatos` (botão "Prazos").
+> Usado junto com `candidates.stage_started_at`: card fica "atrasado" quando `now() > stage_started_at + days`. Calculado no client (`daysOverdue()` em `src/pages/rh/Candidatos.tsx`) — nada fica gravado, mudar a config já reflete pros candidatos existentes sem precisar de backfill.
+> RLS: `has_rh_access()` pra tudo (`authenticated`).
 
 ---
 
@@ -1266,7 +1372,7 @@ Lista usuários com `role IN ('admin','salao')`, com o nome da loja (`stores.nam
 ```
 admin_set_user_permission(p_user_id uuid, p_key text, p_value boolean) → void
 ```
-Liga/desliga uma permissão granular em `profiles.permissions` (merge de `{p_key: p_value}` no jsonb). Admin-only, verificado internamente via `is_admin()`. Criada em `20260420000002`. Chave em uso hoje: `can_edit_orders`.
+Liga/desliga uma permissão granular em `profiles.permissions` (merge de `{p_key: p_value}` no jsonb). Admin-only, verificado internamente via `is_admin()`. Criada em `20260420000002`. Chaves em uso hoje: `can_edit_orders` (restringe uma ação mesmo pra admin), `can_manage_rh` (concede acesso ao módulo de RH pra quem não é admin — usada por `has_rh_access()`).
 
 ---
 
@@ -1277,6 +1383,58 @@ admin_update_order(p_order_id uuid, p_seller_id uuid, p_payment_method text,
                    p_discount numeric, p_items jsonb) → void
 ```
 Edição completa de um pedido existente: substitui todos os `order_items` (`p_items`: `[{product_id, product_name, qty, unit_price}]`), recalcula `subtotal`/`total` server-side e atualiza vendedor, pagamento, notas, status e desconto. Exige `is_admin()` **e** `permissions->>'can_edit_orders' = true` no perfil do chamador. `p_seller_id` NULL remove o vendedor. Criada em `20260420000002`.
+
+---
+
+### `has_rh_access`
+```
+has_rh_access() → boolean
+```
+Retorna `true` se o usuário autenticado é `admin` OU tem `profiles.permissions->>'can_manage_rh' = 'true'` — permissão granular, mesmo padrão de `can_edit_orders`. `SECURITY DEFINER`, mesmo padrão de `is_admin()`/`is_estoque()` (evita subquery direta em `profiles` dentro de policy, regra D-01). Usada em toda a RLS do módulo de RH: `job_openings`, `job_roles`, `candidates`, `candidate_stage_history`, `form_fields` (escrita), `candidate_answers` (leitura), `stage_sla_days`.
+
+---
+
+### `get_public_application_form`
+```
+get_public_application_form(p_store_slug text) → jsonb
+```
+Resolve a unidade pelo slug e retorna tudo que o formulário público (`/candidatura/:slug`) precisa pra se renderizar numa chamada só:
+```json
+{
+  "store": { "id", "name" },
+  "job_openings": [{ "id", "role_title", "status", "description", "contract_type", "compensation_type", "fixed_amount", "variable_percentage", "variable_basis", "work_schedule", "workload_hours", "requirements", "benefits" }],
+  "fields": [{ "id", "field_key", "label", "question_text", "help_text", "placeholder", "step", "field_type", "required", "sort_order", "options", "is_system_field" }]
+}
+```
+`job_openings` inclui vagas fechadas (frontend mostra "banco de currículos"). Loja não encontrada → `RAISE EXCEPTION`.
+`SECURITY DEFINER` — não abre RLS de `stores`/`job_openings`/`form_fields` pra `anon`, só devolve o que a função decide expor.
+Acessível por: `anon`, `authenticated`.
+
+---
+
+### `submit_candidate_application`
+```
+submit_candidate_application(p_store_slug text, p_answers jsonb) → uuid
+```
+`p_answers`: `[{"field_key": "...", "value": "..."}]`. Ponto de entrada único e atômico da candidatura pública:
+1. Resolve a unidade pelo slug.
+2. Valida obrigatoriedade de cada linha de `form_fields` server-side (nunca confia em validação client-side).
+3. Extrai `nome`/`whatsapp`/`vaga_id`/`foto`/`curriculo` das respostas por `field_key`; valida que a vaga pertence à unidade resolvida.
+4. Rate limit via `check_rate_limit('candidate_application:' || whatsapp_normalizado, 3, 600)` — bloqueia excesso de submissões pro mesmo WhatsApp.
+5. `INSERT` em `candidates` (`stage='pendente'`, `source='formulario'`) — dispara sozinho o trigger de `candidate_stage_history` já existente.
+6. Demais respostas (não-sistema, não-foto/currículo) viram uma linha em `candidate_answers` cada.
+Retorna o `id` do candidato criado.
+`SECURITY DEFINER` — é o único caminho de escrita pública em `candidates`/`candidate_answers`; nenhuma dessas tabelas tem policy de INSERT pra `anon` (ver nota de segurança em `candidate_answers`).
+Acessível por: `anon`, `authenticated`.
+
+---
+
+### `admin_update_form_field_sort_orders`
+```
+admin_update_form_field_sort_orders(updates jsonb) → void
+```
+Atualiza `sort_order` em lote (drag-and-drop no construtor). `updates` = `[{"id": "uuid", "sort_order": 0}, ...]`. Mesmo padrão de `admin_update_product_sort_orders`, mas checa `has_rh_access()` em vez de admin-only.
+Acessível por: `authenticated`.
 
 ---
 
@@ -1303,6 +1461,10 @@ Edição completa de um pedido existente: substitui todos os `order_items` (`p_i
 | job_roles | seniority_level | `'junior'`, `'pleno'`, `'senior'`, NULL |
 | job_openings | status | `'aberta'`, `'fechada'` |
 | job_openings | contract_type / compensation_type | mesmos valores de `job_roles`, porém nullable (snapshot opcional) |
+| candidates | stage | 13 valores — ver tabela `candidates` acima |
+| candidates | source | `'formulario'`, `'manual'` |
+| form_fields | field_type | `'texto'`, `'numero'`, `'telefone'`, `'select'`, `'checkbox'`, `'data'`, `'upload_imagem'`, `'upload_arquivo'` |
+| stage_sla_days | stage | mesmos 13 valores de `candidates.stage` |
 | crm_events | event_type | `'visitou'`, `'visualizou_produto'`, `'adicionou_carrinho'`, `'iniciou_checkout'`, `'comprou'`, `'abandonou'`, `'user_registered'`, `'purchase_completed'`, `'cart_abandoned'`, `'checkout_abandoned'`, `'order_created'`, `'tag_added'`, `'inactivity_detected'`, `'profile_completed'`, `'profile_synced'` |
 | integration_outbox | status | `'pending'`, `'processing'`, `'delivered'`, `'failed'` |
 | crm_tags | type | `'system'`, `'custom'` |
@@ -1338,3 +1500,5 @@ Edição completa de um pedido existente: substitui todos os `order_items` (`p_i
 | `pickup_unit_id` (orders) | Não existe — FK lógica por `pickup_unit_slug` |
 | `produtos`/`lojas`/`contagens` (nomes em português) | `catalog_products`/`stores`/`stock_counts` — tabelas técnicas são sempre em inglês |
 | `stores` = `pickup_units` | São tabelas diferentes — `stores` (módulo de estoque) não tem FK física com `pickup_units` (checkout), apenas mesmos `slug` |
+| `vagas`/`candidatos`/`formulario_campos`/`candidato_respostas` (nomes em português do briefing original) | `job_openings`/`candidates`/`form_fields`/`candidate_answers` — módulo de RH segue a mesma convenção: tabelas/colunas em inglês, só os *valores* de status/tipo (`etapa`, `field_type`) ficam em português |
+| `unidade_id` (RH) | Não existe — vaga usa `store_id`, RH reaproveita a tabela `stores` já existente (não criou tabela `unidades` própria) |
