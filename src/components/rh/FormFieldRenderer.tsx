@@ -179,7 +179,9 @@ export default function FormFieldRenderer({
     <div>
       {labelNode}
       <input
-        type={field.field_type === 'numero' ? 'number' : field.field_type === 'data' ? 'date' : 'text'}
+        type={field.field_type === 'numero' ? 'number' : field.field_type === 'data' ? 'date' : field.field_type === 'telefone' ? 'tel' : 'text'}
+        inputMode={field.field_type === 'telefone' ? 'numeric' : undefined}
+        maxLength={field.field_type === 'telefone' ? 15 : undefined}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         disabled={readOnly}
