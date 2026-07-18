@@ -19,6 +19,7 @@ interface JobRole extends JobRoleDescriptiveRow {
   title: string
   seniority_level: string | null
   is_active: boolean
+  requires_experience: boolean
   created_at: string
   job_openings: { count: number }[]
 }
@@ -29,12 +30,13 @@ const SENIORITY_LABELS: Record<string, string> = {
   senior: 'Sênior',
 }
 
-const EMPTY_FORM = { title: '', seniority_level: '', ...EMPTY_JOB_ROLE_FIELDS }
+const EMPTY_FORM = { title: '', seniority_level: '', requires_experience: true, ...EMPTY_JOB_ROLE_FIELDS }
 
 function toPayload(form: typeof EMPTY_FORM) {
   return {
     title: form.title.trim(),
     seniority_level: form.seniority_level || null,
+    requires_experience: form.requires_experience,
     ...descriptiveFormValueToPayload(form),
   }
 }
@@ -117,6 +119,7 @@ export default function RhCargos() {
     setForm({
       title: role.title,
       seniority_level: role.seniority_level || '',
+      requires_experience: role.requires_experience,
       ...descriptiveRowToFormValue(role),
     })
     setModalOpen(true)
@@ -267,6 +270,23 @@ export default function RhCargos() {
               </div>
 
               <JobRoleFieldsForm value={form} onChange={(patch) => setForm({ ...form, ...patch })} />
+
+              {form.contract_type === 'mei' && (
+                <label className="flex items-start gap-2 cursor-pointer bg-surface-alt rounded-lg px-3 py-2.5">
+                  <input
+                    type="checkbox"
+                    checked={form.requires_experience}
+                    onChange={(e) => setForm({ ...form, requires_experience: e.target.checked })}
+                    className="w-4 h-4 rounded border-border accent-amber-500 mt-0.5"
+                  />
+                  <span className="text-sm text-foreground">
+                    Exige experiência prévia
+                    <span className="block text-xs text-muted-foreground font-normal mt-0.5">
+                      Desmarcado = aceita candidato sem experiência, que passa pela trilha de formação MEI no Departamento Pessoal antes da contratação.
+                    </span>
+                  </span>
+                </label>
+              )}
 
               <div>
                 <label className="block text-sm font-medium text-foreground mb-1">Nível (opcional)</label>

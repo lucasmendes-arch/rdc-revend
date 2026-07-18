@@ -1,0 +1,402 @@
+import { useState } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { toast } from 'sonner'
+import { Loader, Users, Store as StoreIcon, Plus, X } from 'lucide-react'
+import { supabase } from '@/lib/supabase'
+import { formatPhone } from '@/lib/phone'
+import AdminLayout from '@/components/admin/AdminLayout'
+import ProcessoDetailModal from '@/components/dp/ProcessoDetailModal'
+import { EMPLOYMENT_TYPE_LABELS, type EmploymentType } from '@/lib/dpConstants'
+import type { Processo } from '@/lib/dpTypes'
+
+interface Store { id: string; name: string }
+interface JobRoleOption { id: string; title: string }
+
+function formatDateBR(iso: string | null) {
+  if (!iso) return '—'
+  return new Date(iso).toLocaleDateString('pt-BR')
+}
+
+function initials(name: string) {
+  const parts = name.trim().split(/\s+/).filter(Boolean)
+  if (parts.length === 0) return '?'
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+}
+
+function AvatarBubble({ name, photoUrl }: { name: string; photoUrl: string | null | undefined }) {
+  return (
+    <div className="w-8 h-8 rounded-full overflow-hidden shrink-0 bg-surface-alt border border-border flex items-center justify-center">
+      {photoUrl ? (
+        <img src={photoUrl} alt="" className="w-full h-full object-cover" />
+      ) : (
+        <span className="text-[10px] font-bold text-muted-foreground">{initials(name)}</span>
+      )}
+    </div>
+  )
+}
+
+const todayISO = () => new Date().toISOString().slice(0, 10)
+
+const EMPTY_CREATE_FORM = {
+  name: '',
+  whatsapp: '',
+  role_title: '',
+  store_id: '',
+  employment_type: 'clt' as EmploymentType,
+  activated_at: todayISO(),
+}
+
+// Papel de visualização/gestão do colaborador já efetivado — sem
+// drag-and-drop de etapas de admissão (isso é o kanban de Contratação).
+// A única transição de estado possível aqui é encerrar o vínculo.
+export default function DpColaboradores() {
+  const queryClient = useQueryClient()
+  const [storeId, setStoreId] = useState('')
+  const [employmentType, setEmploymentType] = useState<EmploymentType | ''>('')
+  const [detailProcesso, setDetailProcesso] = useState<Processo | null>(null)
+  const [confirmEncerrar, setConfirmEncerrar] = useState<Processo | null>(null)
+  const [createOpen, setCreateOpen] = useState(false)
+  const [createForm, setCreateForm] = useState(EMPTY_CREATE_FORM)
+
+  const { data: stores = [] } = useQuery<Store[]>({
+    queryKey: ['dp-stores'],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('stores').select('id, name').order('name')
+      if (error) throw error
+      return (data || []) as Store[]
+    },
+    staleTime: 5 * 60 * 1000,
+  })
+
+  const { data: jobRoles = [] } = useQuery<JobRoleOption[]>({
+    queryKey: ['dp-job-roles-active'],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('job_roles').select('id, title').eq('is_active', true).order('title')
+      if (error) throw error
+      return (data || []) as JobRoleOption[]
+    },
+    staleTime: 5 * 60 * 1000,
+  })
+
+  const { data: colaboradores = [], isLoading } = useQuery<Processo[]>({
+    queryKey: ['dp-colaboradores-ativos', storeId, employmentType],
+    queryFn: async () => {
+      let query = supabase
+        .from('employee_processes')
+        .select('id, candidate_id, employment_type, store_id, role_title, current_stage, status, started_at, activated_at, onboarding_completed, training_applicable, training_completed, created_at, candidates(id, name, whatsapp, photo_url), stores(name)')
+        .eq('status', 'ativo')
+        .order('activated_at', { ascending: false })
+      if (storeId) query = query.eq('store_id', storeId)
+      if (employmentType) query = query.eq('employment_type', employmentType)
+      const { data, error } = await query
+      if (error) throw error
+      return (data || []) as unknown as Processo[]
+    },
+  })
+
+  const updateStage = useMutation({
+    mutationFn: async ({ id, stage }: { id: string; stage: string }) => {
+      const { error } = await supabase.from('employee_processes').update({ current_stage: stage }).eq('id', id)
+      if (error) throw error
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['dp-colaboradores-ativos'] })
+      queryClient.invalidateQueries({ queryKey: ['dp-processos'] })
+      toast.success('Vínculo encerrado')
+      setDetailProcesso(null)
+      setConfirmEncerrar(null)
+    },
+    onError: (err) => toast.error(`Erro ao encerrar: ${err instanceof Error ? err.message : 'desconhecido'}`),
+  })
+
+  // Cadastro retroativo — colaborador que já está ativo na empresa e nunca
+  // passou pelo funil de recrutamento do RH. A RPC cria por baixo dos panos
+  // uma vaga já fechada + um candidato manual só pra reaproveitar toda a
+  // estrutura (checklist de documentos, RLS) sem duplicar dado em outro lugar.
+  const registerEmployee = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.rpc('register_existing_employee', {
+        p_name: createForm.name.trim(),
+        p_whatsapp: createForm.whatsapp.replace(/\D/g, ''),
+        p_role_title: createForm.role_title.trim(),
+        p_store_id: createForm.store_id,
+        p_employment_type: createForm.employment_type,
+        p_activated_at: createForm.activated_at,
+      })
+      if (error) throw error
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['dp-colaboradores-ativos'] })
+      toast.success('Colaborador cadastrado')
+      closeCreate()
+    },
+    onError: (err) => toast.error(`Erro ao cadastrar: ${err instanceof Error ? err.message : 'desconhecido'}`),
+  })
+
+  function openCreate() {
+    setCreateForm({ ...EMPTY_CREATE_FORM, store_id: stores[0]?.id ?? '' })
+    setCreateOpen(true)
+  }
+
+  function closeCreate() {
+    setCreateOpen(false)
+    setCreateForm(EMPTY_CREATE_FORM)
+  }
+
+  function handleCreateSave() {
+    if (!createForm.name.trim()) { toast.error('Informe o nome'); return }
+    if (!createForm.whatsapp.trim()) { toast.error('Informe o WhatsApp'); return }
+    if (!createForm.role_title.trim()) { toast.error('Informe o cargo'); return }
+    if (!createForm.store_id) { toast.error('Selecione a unidade'); return }
+    registerEmployee.mutate()
+  }
+
+  return (
+    <AdminLayout>
+      <div className="bg-card border-b border-border sticky top-0 z-30">
+        <div className="px-4 sm:px-6 py-4 flex items-center justify-between gap-4 flex-wrap">
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold text-foreground">Colaboradores</h1>
+            <p className="text-sm text-muted-foreground mt-1">Colaboradores ativos (já efetivados)</p>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-border bg-background">
+              <StoreIcon className="w-4 h-4 text-muted-foreground" />
+              <select
+                value={storeId}
+                onChange={(e) => setStoreId(e.target.value)}
+                className="bg-transparent text-sm font-medium text-foreground focus:outline-none"
+              >
+                <option value="">Todas as unidades</option>
+                {stores.map((s) => (
+                  <option key={s.id} value={s.id}>{s.name}</option>
+                ))}
+              </select>
+            </div>
+            <div className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-border bg-background">
+              <select
+                value={employmentType}
+                onChange={(e) => setEmploymentType(e.target.value as EmploymentType | '')}
+                className="bg-transparent text-sm font-medium text-foreground focus:outline-none"
+              >
+                <option value="">Todos os vínculos</option>
+                {(Object.keys(EMPLOYMENT_TYPE_LABELS) as EmploymentType[]).map((tv) => (
+                  <option key={tv} value={tv}>{EMPLOYMENT_TYPE_LABELS[tv]}</option>
+                ))}
+              </select>
+            </div>
+            <button
+              onClick={openCreate}
+              className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg btn-action text-sm font-medium transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              <span className="hidden sm:inline">Cadastrar colaborador</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="px-4 sm:px-6 py-8">
+        {isLoading ? (
+          <div className="text-center py-16">
+            <Loader className="w-8 h-8 animate-spin text-gold-text mx-auto mb-4" />
+            <p className="text-muted-foreground">Carregando colaboradores...</p>
+          </div>
+        ) : colaboradores.length === 0 ? (
+          <div className="text-center py-16">
+            <Users className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
+            <p className="text-muted-foreground font-medium">Nenhum colaborador ativo encontrado.</p>
+            <p className="text-sm text-muted-foreground mt-1">
+              Colaboradores aparecem aqui assim que efetivados no kanban de Contratação, ou cadastre direto quem já está ativo.
+            </p>
+          </div>
+        ) : (
+          <div className="bg-card rounded-xl border border-border shadow-[var(--shadow-card)] overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-border bg-muted/50">
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-foreground">Nome</th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-foreground">Cargo</th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-foreground hidden sm:table-cell">Unidade</th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-foreground hidden md:table-cell">Vínculo</th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-foreground hidden lg:table-cell">Efetivado em</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {colaboradores.map((p, index) => (
+                    <tr
+                      key={p.id}
+                      onClick={() => setDetailProcesso(p)}
+                      className={`border-b border-border/40 last:border-0 cursor-pointer hover:bg-surface-alt transition-colors ${index % 2 === 0 ? '' : 'bg-muted/30'}`}
+                    >
+                      <td className="px-4 py-3 text-sm font-medium text-foreground">
+                        <div className="flex items-center gap-2.5">
+                          <AvatarBubble name={p.candidates?.name || '?'} photoUrl={p.candidates?.photo_url} />
+                          {p.candidates?.name || 'Candidato removido'}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-muted-foreground">{p.role_title}</td>
+                      <td className="px-4 py-3 text-sm text-muted-foreground hidden sm:table-cell">{p.stores?.name || '—'}</td>
+                      <td className="px-4 py-3 text-sm hidden md:table-cell">
+                        <span className="px-2 py-0.5 rounded-md bg-[#CCFBF1] text-[#0D9488] text-xs font-medium">
+                          {EMPLOYMENT_TYPE_LABELS[p.employment_type]}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-muted-foreground hidden lg:table-cell">{formatDateBR(p.activated_at)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {detailProcesso && (
+        <ProcessoDetailModal
+          processo={detailProcesso}
+          onClose={() => setDetailProcesso(null)}
+          estagio={{
+            mode: 'ativo',
+            onEncerrar: () => setConfirmEncerrar(detailProcesso),
+          }}
+        />
+      )}
+
+      {confirmEncerrar && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-foreground/40 backdrop-blur-sm" onClick={() => setConfirmEncerrar(null)} />
+          <div className="relative bg-card rounded-2xl shadow-2xl border border-border p-6 w-full max-w-sm">
+            <h2 className="text-lg font-bold text-foreground mb-1">Encerrar vínculo?</h2>
+            <p className="text-sm text-muted-foreground mb-5">
+              {confirmEncerrar.candidates?.name} sai da lista de colaboradores ativos. O registro é mantido, não é apagado.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => updateStage.mutate({ id: confirmEncerrar.id, stage: 'encerrado' })}
+                disabled={updateStage.isPending}
+                className="flex-1 px-4 py-2.5 rounded-lg bg-red-600 text-white font-medium hover:bg-red-700 transition-colors disabled:opacity-70"
+              >
+                {updateStage.isPending ? 'Encerrando...' : 'Encerrar'}
+              </button>
+              <button onClick={() => setConfirmEncerrar(null)} className="flex-1 px-4 py-2.5 rounded-lg border border-border bg-card text-foreground font-medium hover:bg-accent">
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: cadastro retroativo de colaborador já ativo (sem passar pelo RH) */}
+      {createOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-foreground/40 backdrop-blur-sm" onClick={closeCreate} />
+          <div className="relative bg-card rounded-2xl shadow-2xl border border-border p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="text-xl font-bold text-foreground">Cadastrar colaborador</h2>
+              <button onClick={closeCreate} className="p-1.5 rounded-lg hover:bg-surface-alt text-muted-foreground">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <p className="text-xs text-muted-foreground mb-4">
+              Para quem já está ativo na empresa e nunca passou pelo funil de recrutamento do RH. Entra direto como colaborador efetivado.
+            </p>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1">Nome *</label>
+                <input
+                  type="text"
+                  value={createForm.name}
+                  onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })}
+                  className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-1">WhatsApp *</label>
+                  <input
+                    type="tel"
+                    inputMode="numeric"
+                    maxLength={15}
+                    value={createForm.whatsapp}
+                    onChange={(e) => setCreateForm({ ...createForm, whatsapp: formatPhone(e.target.value) })}
+                    placeholder="(27) 99999-9999"
+                    className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-1">Cargo *</label>
+                  <select
+                    value={createForm.role_title}
+                    onChange={(e) => setCreateForm({ ...createForm, role_title: e.target.value })}
+                    className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                  >
+                    <option value="">Selecione...</option>
+                    {jobRoles.map((r) => (
+                      <option key={r.id} value={r.title}>{r.title}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-1">Unidade *</label>
+                  <select
+                    value={createForm.store_id}
+                    onChange={(e) => setCreateForm({ ...createForm, store_id: e.target.value })}
+                    className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                  >
+                    <option value="">Selecione...</option>
+                    {stores.map((s) => (
+                      <option key={s.id} value={s.id}>{s.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-1">Tipo de vínculo *</label>
+                  <select
+                    value={createForm.employment_type}
+                    onChange={(e) => setCreateForm({ ...createForm, employment_type: e.target.value as EmploymentType })}
+                    className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                  >
+                    {(Object.keys(EMPLOYMENT_TYPE_LABELS) as EmploymentType[]).map((tv) => (
+                      <option key={tv} value={tv}>{EMPLOYMENT_TYPE_LABELS[tv]}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1">Efetivado desde</label>
+                <input
+                  type="date"
+                  value={createForm.activated_at}
+                  onChange={(e) => setCreateForm({ ...createForm, activated_at: e.target.value })}
+                  className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={handleCreateSave}
+                disabled={registerEmployee.isPending}
+                className="flex-1 px-4 py-2.5 rounded-lg btn-action font-medium disabled:opacity-70 transition-colors"
+              >
+                {registerEmployee.isPending ? 'Salvando...' : 'Cadastrar'}
+              </button>
+              <button onClick={closeCreate} className="flex-1 px-4 py-2.5 rounded-lg border border-border bg-card text-foreground font-medium hover:bg-accent">
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </AdminLayout>
+  )
+}

@@ -13,6 +13,7 @@ import { supabase } from '@/lib/supabase'
 import { useImageUpload } from '@/hooks/useImageUpload'
 import { useFileUpload } from '@/hooks/useFileUpload'
 import AdminLayout from '@/components/admin/AdminLayout'
+import { EMPLOYMENT_TYPE_LABELS, EMPLOYMENT_TYPE_OPTIONS, type EmploymentType } from '@/lib/dpConstants'
 
 type Stage =
   | 'pendente' | 'conversa_iniciada' | 'entrevista_marcada' | 'no_show'
@@ -340,6 +341,8 @@ export default function RhCandidatos() {
   const [assigneeDraft, setAssigneeDraft] = useState('')
   const [createOpen, setCreateOpen] = useState(false)
   const [slaConfigOpen, setSlaConfigOpen] = useState(false)
+  const [promoteCandidate, setPromoteCandidate] = useState<Candidate | null>(null)
+  const [promoteEmploymentType, setPromoteEmploymentType] = useState<EmploymentType>('clt')
   const [createForm, setCreateForm] = useState(EMPTY_CREATE_FORM)
   const [createPhotoFile, setCreatePhotoFile] = useState<File | null>(null)
   const [createResumeFile, setCreateResumeFile] = useState<File | null>(null)
@@ -442,12 +445,29 @@ export default function RhCandidatos() {
     enabled: !!detailCandidate,
   })
 
+  // Candidatos já promovidos pro Departamento Pessoal — somem da coluna
+  // "Contratado" do kanban ativo do RH (o registro do candidato continua
+  // intacto no banco, só a exibição aqui é filtrada).
+  const { data: promotedRows = [] } = useQuery<{ candidate_id: string }[]>({
+    queryKey: ['dp-promoted-candidate-ids'],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('employee_processes').select('candidate_id')
+      if (error) throw error
+      return (data || []) as { candidate_id: string }[]
+    },
+    staleTime: 15 * 1000,
+  })
+  const promotedIds = useMemo(() => new Set(promotedRows.map((r) => r.candidate_id)), [promotedRows])
+
   const candidatesByStage = useMemo(() => {
     const map = new Map<Stage, Candidate[]>()
     ALL_COLUMNS.forEach((col) => map.set(col.stage, []))
-    candidates.forEach((c) => map.get(c.stage)?.push(c))
+    candidates.forEach((c) => {
+      if (c.stage === 'contratado' && promotedIds.has(c.id)) return
+      map.get(c.stage)?.push(c)
+    })
     return map
-  }, [candidates])
+  }, [candidates, promotedIds])
 
   const updateStage = useMutation({
     mutationFn: async ({ id, stage }: { id: string; stage: Stage }) => {
@@ -467,6 +487,25 @@ export default function RhCandidatos() {
       toast.error(`Erro ao mover candidato: ${err instanceof Error ? err.message : 'desconhecido'}`)
     },
     onSettled: () => queryClient.invalidateQueries({ queryKey: ['rh-candidates', storeId] }),
+  })
+
+  const promoteToDp = useMutation({
+    mutationFn: async ({ id, employmentType }: { id: string; employmentType: EmploymentType }) => {
+      const { error } = await supabase.rpc('promote_candidate_to_dp', {
+        p_candidate_id: id,
+        p_employment_type: employmentType,
+      })
+      if (error) throw error
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['rh-candidates', storeId] })
+      queryClient.invalidateQueries({ queryKey: ['dp-promoted-candidate-ids'] })
+      queryClient.invalidateQueries({ queryKey: ['dp-processos'] })
+      toast.success('Candidato promovido para o Departamento Pessoal')
+      setPromoteCandidate(null)
+      setDetailCandidate(null)
+    },
+    onError: (err) => toast.error(`Erro ao promover: ${err instanceof Error ? err.message : 'desconhecido'}`),
   })
 
   const updateNotes = useMutation({
@@ -616,14 +655,27 @@ export default function RhCandidatos() {
     setActiveCandidate(c || null)
   }
 
+  // Transição pra "Contratado" precisa do tipo_vinculo antes de commitar —
+  // abre o modal de promoção em vez de mover o card direto. Cancelar não
+  // altera nada: a etapa só muda dentro da RPC promote_candidate_to_dp.
+  function requestStageChange(candidate: Candidate, newStage: Stage) {
+    if (candidate.stage === newStage) return
+    if (newStage === 'contratado' && !promotedIds.has(candidate.id)) {
+      setPromoteCandidate(candidate)
+      setPromoteEmploymentType('clt')
+      return
+    }
+    updateStage.mutate({ id: candidate.id, stage: newStage })
+  }
+
   function handleDragEnd(event: DragEndEvent) {
     setActiveCandidate(null)
     const { active, over } = event
     if (!over) return
     const newStage = over.id as Stage
     const candidate = candidates.find((c) => c.id === active.id)
-    if (!candidate || candidate.stage === newStage) return
-    updateStage.mutate({ id: candidate.id, stage: newStage })
+    if (!candidate) return
+    requestStageChange(candidate, newStage)
   }
 
   async function handleDetailPhotoChange(file: File) {
@@ -875,8 +927,10 @@ export default function RhCandidatos() {
                   value={detailCandidate.stage}
                   onChange={(e) => {
                     const stage = e.target.value as Stage
-                    updateStage.mutate({ id: detailCandidate.id, stage })
-                    setDetailCandidate({ ...detailCandidate, stage })
+                    requestStageChange(detailCandidate, stage)
+                    if (stage !== 'contratado' || promotedIds.has(detailCandidate.id)) {
+                      setDetailCandidate({ ...detailCandidate, stage })
+                    }
                   }}
                   className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                 >
@@ -1098,6 +1152,41 @@ export default function RhCandidatos() {
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: promoção pro Departamento Pessoal (transição RH → DP) */}
+      {promoteCandidate && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-foreground/40 backdrop-blur-sm" onClick={() => setPromoteCandidate(null)} />
+          <div className="relative bg-card rounded-2xl shadow-2xl border border-border p-6 w-full max-w-sm">
+            <h2 className="text-lg font-bold text-foreground mb-1">Contratar {promoteCandidate.name}</h2>
+            <p className="text-xs text-muted-foreground mb-4">
+              Selecione o tipo de vínculo — o candidato passa a ser gerenciado no módulo Departamento Pessoal, mantendo o histórico de recrutamento.
+            </p>
+            <label className="block text-sm font-medium text-foreground mb-1">Tipo de vínculo *</label>
+            <select
+              value={promoteEmploymentType}
+              onChange={(e) => setPromoteEmploymentType(e.target.value as EmploymentType)}
+              className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring mb-5"
+            >
+              {EMPLOYMENT_TYPE_OPTIONS.map((tv) => (
+                <option key={tv} value={tv}>{EMPLOYMENT_TYPE_LABELS[tv]}</option>
+              ))}
+            </select>
+            <div className="flex gap-3">
+              <button
+                onClick={() => promoteToDp.mutate({ id: promoteCandidate.id, employmentType: promoteEmploymentType })}
+                disabled={promoteToDp.isPending}
+                className="flex-1 px-4 py-2.5 rounded-lg btn-action font-medium disabled:opacity-70 transition-colors"
+              >
+                {promoteToDp.isPending ? 'Contratando...' : 'Confirmar contratação'}
+              </button>
+              <button onClick={() => setPromoteCandidate(null)} className="flex-1 px-4 py-2.5 rounded-lg border border-border bg-card text-foreground font-medium hover:bg-accent">
+                Cancelar
+              </button>
             </div>
           </div>
         </div>

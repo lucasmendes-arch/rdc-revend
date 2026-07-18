@@ -4,7 +4,7 @@ import {
   Package, ShoppingCart, Users, Warehouse, UserCog,
   Menu, X, ExternalLink, Tag, DollarSign,
   Megaphone, UserCheck, BadgeDollarSign, ChevronRight,
-  ClipboardList, Briefcase, KanbanSquare, ListChecks, IdCard, Zap,
+  ClipboardList, Briefcase, KanbanSquare, ListChecks, IdCard, Contact, Zap,
 } from 'lucide-react'
 import logo from '@/assets/logo-rei-dos-cachos.png'
 import { ThemeToggle } from '@/components/ui/ThemeToggle'
@@ -55,6 +55,18 @@ const rhNavGroup: { label: string; items: NavItem[] } = {
   ],
 }
 
+// DP reaproveita o mesmo guard/permissão do RH nesta etapa (can_manage_rh) —
+// grupo separado só por clareza visual do módulo. "Contratação" é o kanban
+// de admissão (candidato contratado até efetivado/encerrado); "Colaboradores"
+// é só visualização/gestão de quem já está ativo.
+const dpNavGroup: { label: string; items: NavItem[] } = {
+  label: 'Departamento Pessoal',
+  items: [
+    { label: 'Contratação', path: '/admin/dp/contratacao', icon: ClipboardList },
+    { label: 'Colaboradores', path: '/admin/dp/colaboradores', icon: Contact },
+  ],
+}
+
 function SidebarNavItem({ item, isActive, onClick }: { item: NavItem; isActive: boolean; onClick?: () => void }) {
   const Icon = item.icon
   return (
@@ -86,7 +98,7 @@ function SidebarContent({ onNavClick }: { onNavClick?: () => void }) {
   const location = useLocation()
   const { role, hasPermission } = useAuth()
   const canManageRh = role === 'admin' || hasPermission('can_manage_rh')
-  const groups = canManageRh ? [...navGroups, rhNavGroup] : navGroups
+  const groups = canManageRh ? [...navGroups, rhNavGroup, dpNavGroup] : navGroups
 
   const [expanded, setExpanded] = useState<Set<string>>(() => {
     const initial = new Set<string>()

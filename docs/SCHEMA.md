@@ -729,6 +729,7 @@ Catálogo global de cargos (RH) — template reutilizável entre unidades. Ao cr
 | benefits | text | YES | NULL | — |
 | seniority_level | text | YES | NULL | — |
 | is_active | boolean | NO | `true` | — |
+| requires_experience | boolean | NO | `true` | — |
 | created_at | timestamptz | NO | `now()` | — |
 | updated_at | timestamptz | NO | `now()` | — |
 
@@ -736,6 +737,7 @@ Catálogo global de cargos (RH) — template reutilizável entre unidades. Ao cr
 > `compensation_type` válidos: `'fixa'`, `'variavel'`, `'mista'`. CHECK garante consistência com `fixed_amount`/`variable_percentage` conforme o tipo (ver [Constraints](#constraints--check-values)).
 > `seniority_level` válidos (opcional): `'junior'`, `'pleno'`, `'senior'`.
 > `is_active = false` "aposenta" o cargo sem apagar (some do select de novas vagas, preserva histórico).
+> `requires_experience` (módulo DP, `20260718000015`): só relevante quando `contract_type='mei'` — editável em `/admin/rh/cargos` (checkbox visível só nesse caso). `false` = cargo aceita candidato sem experiência prévia; ao promover um candidato dessa vaga pra DP com `employment_type='mei'`, o processo nasce em `current_stage='contrato_formacao'` (trilha de formação) em vez de direto em `'contratacao'`. Lido via `job_openings.job_role_id → job_roles` dentro de `promote_candidate_to_dp` — vaga manual sem cargo vinculado assume `true` (caminho padrão, sem formação).
 > RLS: `has_rh_access()` (admin OU `profiles.permissions->>'can_manage_rh' = 'true'`).
 
 ---
@@ -981,6 +983,100 @@ Prazo interno (em dias) que o operador tem pra avaliar um candidato em cada etap
 
 > Seed com um valor por etapa (1 a 30 dias — mais curto em etapas de ação rápida como `no_show`, mais longo nas de arquivo/saída), editável em `/admin/rh/candidatos` (botão "Prazos").
 > Usado junto com `candidates.stage_started_at`: card fica "atrasado" quando `now() > stage_started_at + days`. Calculado no client (`daysOverdue()` em `src/pages/rh/Candidatos.tsx`) — nada fica gravado, mudar a config já reflete pros candidatos existentes sem precisar de backfill.
+> RLS: `has_rh_access()` pra tudo (`authenticated`).
+
+---
+
+### `employee_processes`
+Módulo Departamento Pessoal (DP) — assume o candidato a partir do momento em que é contratado no RH (`candidates.stage = 'contratado'`). Criado pela RPC `promote_candidate_to_dp`, nunca direto pelo frontend. Identificadores técnicos em inglês (mesma convenção de `candidates`/`job_openings`); valores de negócio (`current_stage`, `employment_type` etc.) continuam em português, mesmo padrão de `candidates.stage`.
+
+| Coluna | Tipo | Nullable | Default | FK |
+|--------|------|----------|---------|-----|
+| id | uuid | NO | `gen_random_uuid()` | — |
+| candidate_id | uuid | NO | — | candidates.id (ON DELETE RESTRICT) |
+| employment_type | text | NO | — | — |
+| store_id | uuid | NO | — | stores.id |
+| role_title | text | NO | — | — |
+| current_stage | text | NO | — | — |
+| status | text | NO | `'em_andamento'` | — |
+| started_at | timestamptz | NO | `now()` | — |
+| activated_at | timestamptz | YES | NULL | — |
+| onboarding_completed | boolean | NO | `false` | — |
+| training_applicable | boolean | NO | `true` | — |
+| training_completed | boolean | NO | `false` | — |
+| created_at | timestamptz | NO | `now()` | — |
+| updated_at | timestamptz | NO | `now()` | — |
+
+> `employment_type` válidos: `'clt'`, `'mei'` (`20260718000015` — antes existia `mei_sem_experiencia`/`mei_com_experiencia`, removido: não há diferença de tipo de contratação entre os dois, experiência é característica do **cargo**, não uma escolha manual na promoção).
+> `role_title` é snapshot de `job_openings.role_title` no momento da promoção (mesmo padrão de `job_openings` copiando de `job_roles`).
+> `current_stage` válidos dependem de `employment_type` (CHECK composto `employee_processes_current_stage_valid`):
+> - `clt`: `contratacao → experiencia → decisao → (efetivado | encerrado)`
+> - `mei`: `contrato_formacao → formacao → decisao_formacao → contratacao → acompanhamento_90d → (efetivado | encerrado)` — `contrato_formacao`/`formacao`/`decisao_formacao` só acontecem quando `job_roles.requires_experience = false` pro cargo da vaga do candidato; `promote_candidate_to_dp` decide o `current_stage` inicial sozinho (`contrato_formacao` se não exige experiência, `contratacao` direto se exige) — ver `job_roles.requires_experience`.
+> - `contratacao` é uma etapa única que concentra o **checklist** de documentos + exame admissional (`employee_documents`, item `aso_admissional`) + assinatura de contrato (aba própria, `employee_contracts`) + onboarding/treinamento (`onboarding_completed`/`training_completed` abaixo) — não são etapas de kanban separadas.
+> `onboarding_completed`: institucional, mesmo checklist pra todo `employment_type`. `training_applicable`/`training_completed`: treinamento técnico só aplicável a determinados cargos (ex: recepcionista) — cabeleireiro sem experiência já cobre a parte técnica em `formacao` (`mei_sem_experiencia`), então `training_applicable` normalmente vira `false` nesse caso. Ambas editáveis manualmente na aba "Documentos" do card — não fazem parte do CHECK de `current_stage`, são só um checklist de apoio.
+> `status` válidos: `'em_andamento'`, `'ativo'`, `'encerrado'` — sincronizado automaticamente por trigger (`trg_employee_processes_sync_status`) a partir de `current_stage`: `efetivado` → `ativo` (+ `activated_at`), `encerrado` → `encerrado`, qualquer outro → `em_andamento`. Não editar `status` direto — mude `current_stage`.
+> Índice único parcial `(candidate_id) WHERE status IN ('em_andamento', 'ativo')` — um candidato não pode ter dois processos simultaneamente ativos (permite reabrir só depois de `encerrado`, mesmo padrão de `replenishment_requests`).
+> RLS: `has_rh_access()` pra tudo (`authenticated`), mesmo padrão do RH.
+> UI: kanban de admissão em `/admin/dp/contratacao` (só `status='em_andamento'` por padrão, toggle pra ver finalizados); lista somente-leitura/gestão dos já `status='ativo'` em `/admin/dp/colaboradores` (sem drag-and-drop — a única ação de mudança de estado ali é encerrar o vínculo).
+> Dois caminhos de entrada: via RH (`promote_candidate_to_dp`, nasce `em_andamento` e percorre o kanban) ou cadastro retroativo direto (`register_existing_employee`, nasce já `ativo` — colaborador que nunca passou pelo funil de recrutamento).
+
+---
+
+### `employee_documents`
+Checklist de documentos de admissão — fixa por `employment_type`, definida em código (`src/lib/dpConstants.ts`, espelhada na RPC `promote_candidate_to_dp`), populada automaticamente na promoção. Não configurável nesta etapa.
+
+| Coluna | Tipo | Nullable | Default | FK |
+|--------|------|----------|---------|-----|
+| id | uuid | NO | `gen_random_uuid()` | — |
+| process_id | uuid | NO | — | employee_processes.id (ON DELETE CASCADE) |
+| document_type | text | NO | — | — |
+| status | text | NO | `'pendente'` | — |
+| file_url | text | YES | NULL | — |
+| created_at | timestamptz | NO | `now()` | — |
+| updated_at | timestamptz | NO | `now()` | — |
+
+> `document_type` válidos (união das duas checklists): `rg_cpf`, `comprovante_residencia`, `ctps`, `pis_pasep`, `titulo_eleitor`, `comprovante_escolaridade`, `foto_3x4`, `aso_admissional`, `dados_bancarios`, `cnpj_ccmei`.
+> Checklist CLT (9 itens): todos exceto `cnpj_ccmei`. Checklist MEI sem/com experiência (5 itens, iguais pros dois): `rg_cpf`, `comprovante_residencia`, `cnpj_ccmei`, `dados_bancarios`, `foto_3x4`.
+> `status` válidos: `'pendente'`, `'enviado'`, `'aprovado'`.
+> `file_url` fica `NULL` nesta etapa — upload real pro R2 é fora de escopo (UI é stub, "Anexar arquivo" desabilitado).
+> RLS: `has_rh_access()` pra tudo (`authenticated`).
+
+---
+
+### `employee_contracts`
+Contrato(s) do processo de admissão — normalmente 0 ou 1 linha por processo, cadastro manual na aba "Contrato" do card.
+
+| Coluna | Tipo | Nullable | Default | FK |
+|--------|------|----------|---------|-----|
+| id | uuid | NO | `gen_random_uuid()` | — |
+| process_id | uuid | NO | — | employee_processes.id (ON DELETE CASCADE) |
+| contract_type | text | NO | — | — |
+| file_url | text | YES | NULL | — |
+| signature_date | date | YES | NULL | — |
+| term_start | date | YES | NULL | — |
+| term_end | date | YES | NULL | — |
+| created_at | timestamptz | NO | `now()` | — |
+
+> `contract_type` válidos: `'formacao'`, `'prestacao_servico'`, `'clt'`.
+> `file_url` fica `NULL` nesta etapa — mesma ressalva de upload de `employee_documents`.
+> RLS: `has_rh_access()` pra tudo (`authenticated`).
+
+---
+
+### `employee_timeline`
+Linha do tempo do processo de admissão — mistura histórico herdado do recrutamento (`source='rh'`, copiado 1x na promoção, somente leitura no DP) com anotações feitas dentro do próprio DP (`source='dp'`).
+
+| Coluna | Tipo | Nullable | Default | FK |
+|--------|------|----------|---------|-----|
+| id | uuid | NO | `gen_random_uuid()` | — |
+| process_id | uuid | NO | — | employee_processes.id (ON DELETE CASCADE) |
+| author_id | uuid | YES | NULL | auth.users.id (ON DELETE SET NULL) |
+| occurred_at | timestamptz | NO | `now()` | — |
+| note | text | NO | — | — |
+| source | text | NO | — | — |
+| created_at | timestamptz | NO | `now()` | — |
+
+> `source` válidos: `'rh'`, `'dp'`. As linhas `'rh'` são geradas 1x pela RPC `promote_candidate_to_dp` a partir de `candidate_stage_history` — não crescem depois (o RH e o DP são módulos distintos a partir da promoção).
 > RLS: `has_rh_access()` pra tudo (`authenticated`).
 
 ---
@@ -1549,6 +1645,38 @@ Acessível por: `authenticated`.
 
 ---
 
+### `promote_candidate_to_dp`
+```
+promote_candidate_to_dp(p_candidate_id uuid, p_employment_type text) → uuid
+```
+Trigger RH → DP: chamada quando o operador move um card do RH pra "Contratado" e escolhe o `employment_type` (`'clt'`/`'mei'`) no modal. Transação única:
+1. Resolve `store_id`/`role_title`/`job_role_id` via `candidates → job_openings`.
+2. `UPDATE candidates SET stage='contratado'` (idempotente se já estava — o trigger de histórico só grava se o stage mudar de fato).
+3. Resolve `job_roles.requires_experience` via `job_role_id` (`true` se vaga manual sem cargo vinculado). `INSERT` em `employee_processes` com `current_stage` inicial: `contrato_formacao` se `employment_type='mei'` E o cargo não exige experiência, `contratacao` em qualquer outro caso. Índice único parcial de `employee_processes` barra dupla promoção (`RAISE EXCEPTION` legível).
+4. `INSERT` em `employee_documents` — checklist fixa por `employment_type` (ver tabela `employee_documents`), todos `status='pendente'`.
+5. `INSERT` em `employee_timeline` copiando `candidate_stage_history` (só linhas `event_type='stage_change'`, incluindo a transição pra `contratado` do passo 2) como `source='rh'`.
+Retorna o `id` de `employee_processes` criado.
+`SECURITY DEFINER` — valida `has_rh_access()` explicitamente no corpo antes de qualquer escrita.
+Acessível por: `authenticated`.
+
+---
+
+### `register_existing_employee`
+```
+register_existing_employee(p_name text, p_whatsapp text, p_role_title text, p_store_id uuid, p_employment_type text, p_activated_at date DEFAULT CURRENT_DATE) → uuid
+```
+Cadastro retroativo de colaborador que já está ativo na empresa e nunca passou pelo funil de recrutamento do RH (funcionário legado). Usado pelo botão "Cadastrar colaborador" em `/admin/dp/colaboradores`. Reaproveita 100% da estrutura existente em vez de duplicar nome/whatsapp em `employee_processes`:
+1. `INSERT` em `job_openings` já com `status='fechada'` (o cargo nunca esteve realmente em aberto pra recrutamento — só documenta a origem cargo/unidade).
+2. `INSERT` em `candidates` com `source='manual'`, `stage='contratado'`.
+3. Chama `promote_candidate_to_dp` normalmente (mesma checklist de documentos, mesma cópia de timeline).
+4. `UPDATE employee_processes SET current_stage='efetivado', activated_at=p_activated_at` — trigger `trg_employee_processes_sync_status` já sincroniza `status='ativo'`.
+Resultado: o processo nasce direto em `status='ativo'` — não passa pelo kanban de Contratação, some do kanban do RH (mesmo filtro client-side de `employee_processes.candidate_id` já usado pra `promote_candidate_to_dp`), aparece direto em `/admin/dp/colaboradores`.
+Retorna o `id` de `employee_processes` criado.
+`SECURITY DEFINER` — valida `has_rh_access()` explicitamente no corpo antes de qualquer escrita.
+Acessível por: `authenticated`.
+
+---
+
 ### Motor de Automações (Fase 3) — RPCs
 
 ### `dispatch_candidate_automations`
@@ -1639,6 +1767,13 @@ Acessível por: `authenticated`.
 | stock_counts | status | `'draft'`, `'confirmed'` |
 | replenishment_orders (legada) | status | `'open'`, `'picking'`, `'shipped'` |
 | replenishment_requests | status | `'open'`, `'picking'`, `'shipped'` |
+| employee_processes | employment_type | `'clt'`, `'mei'` |
+| employee_processes | status | `'em_andamento'`, `'ativo'`, `'encerrado'` (sincronizado por trigger a partir de `current_stage`) |
+| employee_processes | current_stage | depende de `employment_type` — ver tabela `employee_processes` acima |
+| employee_documents | document_type | `'rg_cpf'`, `'comprovante_residencia'`, `'ctps'`, `'pis_pasep'`, `'titulo_eleitor'`, `'comprovante_escolaridade'`, `'foto_3x4'`, `'aso_admissional'`, `'dados_bancarios'`, `'cnpj_ccmei'` |
+| employee_documents | status | `'pendente'`, `'enviado'`, `'aprovado'` |
+| employee_contracts | contract_type | `'formacao'`, `'prestacao_servico'`, `'clt'` |
+| employee_timeline | source | `'rh'`, `'dp'` |
 
 ---
 
