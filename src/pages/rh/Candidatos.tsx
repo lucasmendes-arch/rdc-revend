@@ -26,6 +26,16 @@ interface CandidateAnswer {
   value: string
   form_fields: { field_key: string; label: string; field_type: string; show_on_card: boolean } | null
 }
+interface CandidateTag { tags: { id: string; name: string; color: string } | null }
+interface ActivityRow {
+  id: string
+  event_type: string
+  previous_stage: string | null
+  new_stage: string | null
+  automation_id: string | null
+  metadata: Record<string, unknown>
+  changed_at: string
+}
 interface Candidate {
   id: string
   job_opening_id: string
@@ -37,10 +47,13 @@ interface Candidate {
   photo_url: string | null
   resume_url: string | null
   notes: string | null
+  due_date: string | null
+  assignee_id: string | null
   created_at: string
   stage_started_at: string
   job_openings: { id: string; role_title: string; status: string } | null
   candidate_answers: CandidateAnswer[]
+  candidate_tags: CandidateTag[]
 }
 
 function getAnswerValue(c: Candidate, fieldKey: string): string | undefined {
@@ -56,6 +69,34 @@ function daysOverdue(candidate: Candidate, slaDays: number | undefined): number 
   const deadline = new Date(candidate.stage_started_at).getTime() + slaDays * 24 * 60 * 60 * 1000
   const diffMs = Date.now() - deadline
   return diffMs > 0 ? Math.ceil(diffMs / (24 * 60 * 60 * 1000)) : 0
+}
+
+const STAGE_LABEL_BY_VALUE: Record<string, string> = {
+  pendente: 'Pendente', conversa_iniciada: 'Conversa Iniciada', entrevista_marcada: 'Entrevista Marcada',
+  no_show: 'No-show', decisao_necessaria: 'Decisão Necessária', selecionado: 'Selecionado',
+  em_formacao: 'Em Formação', em_contratacao: 'Em Contratação', contratado: 'Contratado',
+  concluido_arquivado: 'Arquivado', descartado: 'Descartado', banco_de_talentos: 'Banco de Talentos',
+  sem_contratacao: 'Sem Contratação',
+}
+
+// Descrição curta de uma linha de candidate_stage_history — agora um log de
+// atividade genérico (Fase 3 do motor de automações), não só mudança de etapa.
+function describeActivity(row: { event_type: string; previous_stage: string | null; new_stage: string | null; metadata: Record<string, unknown> }): string {
+  const m = row.metadata || {}
+  switch (row.event_type) {
+    case 'stage_change':
+      return row.previous_stage
+        ? `Mudou de "${STAGE_LABEL_BY_VALUE[row.previous_stage] || row.previous_stage}" para "${STAGE_LABEL_BY_VALUE[row.new_stage || ''] || row.new_stage}"`
+        : 'Candidatura criada'
+    case 'tag_added': return `Tag adicionada: ${m.tag_name || '—'}`
+    case 'tag_removed': return `Tag removida: ${m.tag_name || '—'}`
+    case 'due_date_changed': return m.new_due_date ? `Prazo alterado para ${new Date(String(m.new_due_date) + 'T00:00:00').toLocaleDateString('pt-BR')}` : 'Prazo removido'
+    case 'assignee_changed': return m.new_assignee_id ? 'Responsável alterado' : 'Responsável removido'
+    case 'whatsapp_sent': return m.success ? 'WhatsApp enviado' : `Falha ao enviar WhatsApp${m.error ? `: ${m.error}` : ''}`
+    case 'comment_added': return String(m.text || '')
+    case 'automation_error': return `Erro na automação${m.action_type ? ` (${m.action_type})` : ''}${m.error ? `: ${m.error}` : ''}`
+    default: return row.event_type
+  }
 }
 
 function formatAnswerValue(a: CandidateAnswer): string {
@@ -126,6 +167,11 @@ function attachmentCount(c: Candidate) {
   return (c.photo_url ? 1 : 0) + (c.resume_url ? 1 : 0)
 }
 
+function isDueDateOverdue(c: Candidate) {
+  if (!c.due_date) return false
+  return new Date(c.due_date + 'T00:00:00') < new Date(new Date().toDateString())
+}
+
 function CandidatePhoto({ candidate }: { candidate: Pick<Candidate, 'photo_url' | 'name'> }) {
   return (
     <div className="h-[120px] w-full bg-slate-100 shrink-0">
@@ -140,10 +186,18 @@ function CandidatePhoto({ candidate }: { candidate: Pick<Candidate, 'photo_url' 
   )
 }
 
-function CandidateCard({ candidate, onOpen, slaDays }: { candidate: Candidate; onOpen: (c: Candidate) => void; slaDays: number | undefined }) {
+function CandidateCard({
+  candidate, onOpen, slaDays, assigneeName,
+}: {
+  candidate: Candidate
+  onOpen: (c: Candidate) => void
+  slaDays: number | undefined
+  assigneeName: string | undefined
+}) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: candidate.id })
   const { accent } = getStageColors(candidate.stage)
   const overdue = daysOverdue(candidate, slaDays)
+  const dueOverdue = isDueDateOverdue(candidate)
   const style = {
     ...(transform ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`, zIndex: 10 } : null),
     borderLeftColor: accent,
@@ -187,11 +241,38 @@ function CandidateCard({ candidate, onOpen, slaDays }: { candidate: Candidate; o
             ))}
           </div>
         )}
-        {attachmentCount(candidate) > 0 && (
-          <div className="flex justify-end">
-            <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-amber-100 text-amber-700 flex items-center gap-0.5">
-              <Paperclip className="w-2.5 h-2.5" /> {attachmentCount(candidate)}
-            </span>
+        {candidate.candidate_tags.some((ct) => ct.tags) && (
+          <div className="flex items-center gap-1 flex-wrap">
+            {candidate.candidate_tags.filter((ct) => ct.tags).map((ct) => (
+              <span
+                key={ct.tags!.id}
+                className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full truncate max-w-full"
+                style={{ backgroundColor: `${ct.tags!.color}22`, color: ct.tags!.color }}
+              >
+                {ct.tags!.name}
+              </span>
+            ))}
+          </div>
+        )}
+        {(assigneeName || candidate.due_date || attachmentCount(candidate) > 0) && (
+          <div className="flex items-center justify-between gap-1.5">
+            <div className="flex items-center gap-1 flex-wrap min-w-0">
+              {assigneeName && (
+                <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-600 truncate max-w-full" title={assigneeName}>
+                  {assigneeName}
+                </span>
+              )}
+              {candidate.due_date && (
+                <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-md ${dueOverdue ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-600'}`}>
+                  {new Date(candidate.due_date + 'T00:00:00').toLocaleDateString('pt-BR')}
+                </span>
+              )}
+            </div>
+            {attachmentCount(candidate) > 0 && (
+              <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-amber-100 text-amber-700 flex items-center gap-0.5 shrink-0">
+                <Paperclip className="w-2.5 h-2.5" /> {attachmentCount(candidate)}
+              </span>
+            )}
           </div>
         )}
       </div>
@@ -200,7 +281,7 @@ function CandidateCard({ candidate, onOpen, slaDays }: { candidate: Candidate; o
 }
 
 function StageColumn({
-  stage, label, candidates, onOpen, onAddClick, addDisabled, slaDays,
+  stage, label, candidates, onOpen, onAddClick, addDisabled, slaDays, assigneeNames,
 }: {
   stage: Stage
   label: string
@@ -209,6 +290,7 @@ function StageColumn({
   onAddClick: () => void
   addDisabled: boolean
   slaDays: number | undefined
+  assigneeNames: Map<string, string>
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: stage })
   const { accent, bg } = getStageColors(stage)
@@ -229,7 +311,10 @@ function StageColumn({
         className={`space-y-2 min-h-[80px] rounded-2xl border p-1.5 transition-colors ${isOver ? '' : 'border-dashed border-border/70'}`}
       >
         {candidates.map((c) => (
-          <CandidateCard key={c.id} candidate={c} onOpen={onOpen} slaDays={slaDays} />
+          <CandidateCard
+            key={c.id} candidate={c} onOpen={onOpen} slaDays={slaDays}
+            assigneeName={c.assignee_id ? assigneeNames.get(c.assignee_id) : undefined}
+          />
         ))}
         <button
           type="button"
@@ -251,6 +336,8 @@ export default function RhCandidatos() {
   const [activeCandidate, setActiveCandidate] = useState<Candidate | null>(null)
   const [detailCandidate, setDetailCandidate] = useState<Candidate | null>(null)
   const [notesDraft, setNotesDraft] = useState('')
+  const [dueDateDraft, setDueDateDraft] = useState('')
+  const [assigneeDraft, setAssigneeDraft] = useState('')
   const [createOpen, setCreateOpen] = useState(false)
   const [slaConfigOpen, setSlaConfigOpen] = useState(false)
   const [createForm, setCreateForm] = useState(EMPTY_CREATE_FORM)
@@ -298,7 +385,7 @@ export default function RhCandidatos() {
     queryFn: async () => {
       let query = supabase
         .from('candidates')
-        .select('id, job_opening_id, name, age, whatsapp, stage, source, photo_url, resume_url, notes, created_at, stage_started_at, job_openings!inner(id, role_title, status, store_id), candidate_answers(value, form_fields(field_key, label, field_type, show_on_card))')
+        .select('id, job_opening_id, name, age, whatsapp, stage, source, photo_url, resume_url, notes, due_date, assignee_id, created_at, stage_started_at, job_openings!inner(id, role_title, status, store_id), candidate_answers(value, form_fields(field_key, label, field_type, show_on_card)), candidate_tags(tags(id, name, color))')
         .order('created_at', { ascending: false })
       if (storeId) query = query.eq('job_openings.store_id', storeId)
       const { data, error } = await query
@@ -319,6 +406,41 @@ export default function RhCandidatos() {
   })
 
   const slaMap = useMemo(() => new Map(slaRows.map((r) => [r.stage, r.days])), [slaRows])
+
+  const { data: systemUsers = [] } = useQuery<{ id: string; full_name: string | null; email: string }[]>({
+    queryKey: ['rh-system-users'],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('get_system_users')
+      if (error) throw error
+      return (data || []) as { id: string; full_name: string | null; email: string }[]
+    },
+    staleTime: 5 * 60 * 1000,
+  })
+  const assigneeNames = useMemo(() => new Map(systemUsers.map((u) => [u.id, u.full_name || u.email])), [systemUsers])
+
+  const { data: rhTags = [] } = useQuery<{ id: string; name: string; color: string }[]>({
+    queryKey: ['rh-tags'],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('tags').select('id, name, color').order('name')
+      if (error) throw error
+      return (data || []) as { id: string; name: string; color: string }[]
+    },
+    staleTime: 30 * 1000,
+  })
+
+  const { data: activity = [] } = useQuery<ActivityRow[]>({
+    queryKey: ['rh-candidate-activity', detailCandidate?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('candidate_stage_history')
+        .select('id, event_type, previous_stage, new_stage, automation_id, metadata, changed_at')
+        .eq('candidate_id', detailCandidate!.id)
+        .order('changed_at', { ascending: false })
+      if (error) throw error
+      return (data || []) as ActivityRow[]
+    },
+    enabled: !!detailCandidate,
+  })
 
   const candidatesByStage = useMemo(() => {
     const map = new Map<Stage, Candidate[]>()
@@ -357,6 +479,44 @@ export default function RhCandidatos() {
       toast.success('Observações salvas')
     },
     onError: (err) => toast.error(`Erro ao salvar: ${err instanceof Error ? err.message : 'desconhecido'}`),
+  })
+
+  const updateDueDate = useMutation({
+    mutationFn: async ({ id, dueDate }: { id: string; dueDate: string }) => {
+      const { error } = await supabase.from('candidates').update({ due_date: dueDate || null }).eq('id', id)
+      if (error) throw error
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['rh-candidates', storeId] })
+      toast.success('Prazo salvo')
+    },
+    onError: (err) => toast.error(`Erro ao salvar prazo: ${err instanceof Error ? err.message : 'desconhecido'}`),
+  })
+
+  const updateAssignee = useMutation({
+    mutationFn: async ({ id, assigneeId }: { id: string; assigneeId: string }) => {
+      const { error } = await supabase.from('candidates').update({ assignee_id: assigneeId || null }).eq('id', id)
+      if (error) throw error
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['rh-candidates', storeId] })
+      toast.success('Responsável salvo')
+    },
+    onError: (err) => toast.error(`Erro ao salvar responsável: ${err instanceof Error ? err.message : 'desconhecido'}`),
+  })
+
+  const toggleTag = useMutation({
+    mutationFn: async ({ candidateId, tagId, checked }: { candidateId: string; tagId: string; checked: boolean }) => {
+      if (checked) {
+        const { error } = await supabase.from('candidate_tags').insert({ candidate_id: candidateId, tag_id: tagId })
+        if (error) throw error
+      } else {
+        const { error } = await supabase.from('candidate_tags').delete().eq('candidate_id', candidateId).eq('tag_id', tagId)
+        if (error) throw error
+      }
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['rh-candidates', storeId] }),
+    onError: (err) => toast.error(`Erro ao atualizar tag: ${err instanceof Error ? err.message : 'desconhecido'}`),
   })
 
   const updateSlaDays = useMutation({
@@ -440,11 +600,15 @@ export default function RhCandidatos() {
   function openDetail(c: Candidate) {
     setDetailCandidate(c)
     setNotesDraft(c.notes || '')
+    setDueDateDraft(c.due_date || '')
+    setAssigneeDraft(c.assignee_id || '')
   }
 
   function closeDetail() {
     setDetailCandidate(null)
     setNotesDraft('')
+    setDueDateDraft('')
+    setAssigneeDraft('')
   }
 
   function handleDragStart(event: DragStartEvent) {
@@ -544,6 +708,7 @@ export default function RhCandidatos() {
                   onAddClick={openCreate}
                   addDisabled={jobOpenings.length === 0}
                   slaDays={slaMap.get(col.stage)}
+                  assigneeNames={assigneeNames}
                 />
               ))}
             </div>
@@ -790,6 +955,88 @@ export default function RhCandidatos() {
                   </div>
                 </div>
               )}
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-1">Prazo (due date)</label>
+                  <input
+                    type="date"
+                    value={dueDateDraft}
+                    onChange={(e) => setDueDateDraft(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                  />
+                  <button
+                    onClick={() => updateDueDate.mutate({ id: detailCandidate.id, dueDate: dueDateDraft })}
+                    disabled={updateDueDate.isPending}
+                    className="mt-1.5 px-3 py-1.5 rounded-lg border border-border text-xs font-medium hover:bg-surface-alt disabled:opacity-70"
+                  >
+                    {updateDueDate.isPending ? 'Salvando...' : 'Salvar prazo'}
+                  </button>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-1">Responsável</label>
+                  <select
+                    value={assigneeDraft}
+                    onChange={(e) => setAssigneeDraft(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                  >
+                    <option value="">Sem responsável</option>
+                    {systemUsers.map((u) => (
+                      <option key={u.id} value={u.id}>{u.full_name || u.email}</option>
+                    ))}
+                  </select>
+                  <button
+                    onClick={() => updateAssignee.mutate({ id: detailCandidate.id, assigneeId: assigneeDraft })}
+                    disabled={updateAssignee.isPending}
+                    className="mt-1.5 px-3 py-1.5 rounded-lg border border-border text-xs font-medium hover:bg-surface-alt disabled:opacity-70"
+                  >
+                    {updateAssignee.isPending ? 'Salvando...' : 'Salvar responsável'}
+                  </button>
+                </div>
+              </div>
+
+              {rhTags.length > 0 && (
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-1.5">Tags</label>
+                  <div className="flex flex-wrap gap-2">
+                    {rhTags.map((t) => {
+                      const checked = detailCandidate.candidate_tags.some((ct) => ct.tags?.id === t.id)
+                      return (
+                        <button
+                          key={t.id}
+                          type="button"
+                          onClick={() => toggleTag.mutate({ candidateId: detailCandidate.id, tagId: t.id, checked: !checked })}
+                          className="text-xs font-semibold px-2.5 py-1 rounded-full border transition-colors"
+                          style={checked
+                            ? { backgroundColor: `${t.color}22`, color: t.color, borderColor: t.color }
+                            : { borderColor: 'var(--border)', color: 'var(--muted-foreground)' }}
+                        >
+                          {t.name}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1.5">Atividade</label>
+                <div className="space-y-1.5 max-h-48 overflow-y-auto bg-surface-alt rounded-lg p-3">
+                  {activity.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">Sem atividade registrada.</p>
+                  ) : (
+                    activity.map((row) => (
+                      <div key={row.id} className="flex items-start justify-between gap-3 text-xs">
+                        <span className="text-foreground">
+                          {describeActivity(row)}
+                          {row.automation_id && <span className="ml-1.5 text-[10px] font-semibold px-1 py-0.5 rounded bg-violet-100 text-violet-700">automação</span>}
+                        </span>
+                        <span className="text-muted-foreground shrink-0">{new Date(row.changed_at).toLocaleString('pt-BR')}</span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
 
               <div>
                 <label className="block text-sm font-medium text-foreground mb-1">Observações</label>

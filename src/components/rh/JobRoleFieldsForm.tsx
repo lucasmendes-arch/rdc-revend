@@ -137,7 +137,16 @@ export function JobRoleFieldsForm({ value, onChange }: JobRoleFieldsFormProps) {
           <label className={labelClass}>Tipo de remuneração</label>
           <select
             value={value.compensation_type}
-            onChange={(e) => onChange({ compensation_type: e.target.value })}
+            onChange={(e) => {
+              const compensation_type = e.target.value
+              const nextShowFixed = compensation_type === 'fixa' || compensation_type === 'mista'
+              const nextShowVariable = compensation_type === 'variavel' || compensation_type === 'mista'
+              onChange({
+                compensation_type,
+                ...(nextShowFixed ? {} : { fixed_amount: '' }),
+                ...(nextShowVariable ? {} : { variable_percentage: '', variable_basis: '' }),
+              })
+            }}
             className={inputClass}
           >
             <option value="">Selecione</option>

@@ -40,19 +40,35 @@ export default function CandidaturaPublica() {
 
   const fields = useMemo(() => (data?.fields || []).slice().sort((a, b) => a.sort_order - b.sort_order), [data])
 
-  // Etapas do wizard = valores distintos de "step" presentes nos campos, em
-  // ordem crescente. Enquanto o construtor não atribuir etapas diferentes,
-  // tudo cai em "1" — formulário se comporta como uma tela só, sem barra de
-  // progresso nem botão Voltar.
+  // Cargo da vaga escolhida — usado pra filtrar perguntas restritas a
+  // cargos específicos (visible_for_job_role_ids). Vaga sem cargo vinculado
+  // no catálogo (job_role_id null) nunca satisfaz uma restrição de cargo.
+  const selectedJobRoleId = useMemo(
+    () => data?.job_openings.find((j) => j.id === answers['vaga_id'])?.job_role_id ?? null,
+    [data, answers]
+  )
+
+  const isFieldVisible = useMemo(() => (field: FormFieldConfig) => {
+    const restriction = field.visible_for_job_role_ids
+    if (!restriction || restriction.length === 0) return true
+    return selectedJobRoleId != null && restriction.includes(selectedJobRoleId)
+  }, [selectedJobRoleId])
+
+  const visibleFields = useMemo(() => fields.filter(isFieldVisible), [fields, isFieldVisible])
+
+  // Etapas do wizard = valores distintos de "step" presentes nos campos
+  // visíveis, em ordem crescente. Enquanto o construtor não atribuir etapas
+  // diferentes, tudo cai em "1" — formulário se comporta como uma tela só,
+  // sem barra de progresso nem botão Voltar.
   const steps = useMemo(() => {
-    const unique = Array.from(new Set(fields.map((f) => f.step))).sort((a, b) => a - b)
+    const unique = Array.from(new Set(visibleFields.map((f) => f.step))).sort((a, b) => a - b)
     return unique.length > 0 ? unique : [1]
-  }, [fields])
+  }, [visibleFields])
 
   const safeStepIdx = Math.min(currentStepIdx, steps.length - 1)
   const currentFields = useMemo(
-    () => fields.filter((f) => f.step === steps[safeStepIdx]),
-    [fields, steps, safeStepIdx]
+    () => visibleFields.filter((f) => f.step === steps[safeStepIdx]),
+    [visibleFields, steps, safeStepIdx]
   )
   const isLastStep = safeStepIdx === steps.length - 1
   const isMultiStep = steps.length > 1
@@ -65,7 +81,7 @@ export default function CandidaturaPublica() {
 
   const submit = useMutation({
     mutationFn: async () => {
-      const p_answers = fields
+      const p_answers = visibleFields
         .filter((f) => answers[f.field_key]?.trim())
         .map((f) => ({ field_key: f.field_key, value: answers[f.field_key] }))
       const { error } = await supabase.rpc('submit_candidate_application', {
@@ -96,6 +112,14 @@ export default function CandidaturaPublica() {
     if (missingRequiredInStep.length > 0) {
       toast.error(`Preencha: ${missingRequiredInStep.map((f) => f.label).join(', ')}`)
       return
+    }
+    const ageField = currentFields.find((f) => f.field_key === 'idade')
+    if (ageField) {
+      const age = Number(answers[ageField.field_key])
+      if (Number.isFinite(age) && age < 17) {
+        toast.error('Não contratamos menores de idade.')
+        return
+      }
     }
     if (isLastStep) {
       submit.mutate()

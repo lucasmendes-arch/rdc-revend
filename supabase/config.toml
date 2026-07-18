@@ -395,3 +395,6 @@ verify_jwt = false
 
 [functions.n8n-sync-back]
 verify_jwt = false
+
+[functions.send-automation-whatsapp]
+verify_jwt = false

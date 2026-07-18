@@ -1,5 +1,6 @@
 import { useRef } from 'react'
 import { Image as ImageIcon, FileText, Loader, X, FileSearch } from 'lucide-react'
+import { formatPhone } from '@/lib/phone'
 import type { JobRoleDescriptiveRow } from './JobRoleFieldsForm'
 
 export type FieldType = 'texto' | 'numero' | 'telefone' | 'select' | 'checkbox' | 'data' | 'upload_imagem' | 'upload_arquivo'
@@ -21,12 +22,14 @@ export interface FormFieldConfig {
   step: number
   options: string[] | null
   is_system_field: boolean
+  visible_for_job_role_ids?: string[] | null
 }
 
 export interface PublicJobOpening extends JobRoleDescriptiveRow {
   id: string
   role_title: string
   status: string
+  job_role_id: string | null
 }
 
 interface FormFieldRendererProps {
@@ -182,12 +185,22 @@ export default function FormFieldRenderer({
         type={field.field_type === 'numero' ? 'number' : field.field_type === 'data' ? 'date' : field.field_type === 'telefone' ? 'tel' : 'text'}
         inputMode={field.field_type === 'telefone' ? 'numeric' : undefined}
         maxLength={field.field_type === 'telefone' ? 15 : undefined}
+        min={field.field_key === 'idade' ? 17 : undefined}
+        max={field.field_key === 'idade' ? 99 : undefined}
         value={value}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={(e) => onChange(
+          field.field_type === 'telefone' ? formatPhone(e.target.value)
+          : field.field_key === 'idade' ? formatAge(e.target.value)
+          : e.target.value
+        )}
         disabled={readOnly}
         placeholder={field.placeholder || (field.field_type === 'telefone' ? '(27) 99999-9999' : undefined)}
         className={inputClass}
       />
     </div>
   )
+}
+
+function formatAge(raw: string) {
+  return raw.replace(/\D/g, '').slice(0, 2)
 }

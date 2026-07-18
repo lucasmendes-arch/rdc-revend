@@ -1,6 +1,6 @@
 # SCHEMA.md — Single Source of Truth · RDC Revend
 > Atualizado em: 2026-07-18
-> Gerado a partir das migrations `20250221000001` → `20260718000008`
+> Gerado a partir das migrations `20250221000001` → `20260719000005`
 > **LEIA ESTE ARQUIVO antes de escrever qualquer query, RPC call ou type definition no frontend.**
 
 ---
@@ -786,29 +786,137 @@ Candidato a uma vaga (`job_openings`). Um candidato pertence a exatamente uma va
 | created_at | timestamptz | NO | `now()` | — |
 | updated_at | timestamptz | NO | `now()` | — |
 | stage_started_at | timestamptz | NO | `now()` | — |
+| due_date | date | YES | NULL | — |
+| assignee_id | uuid | YES | NULL | auth.users.id (ON DELETE SET NULL) |
+| due_date_reached_processed_at | timestamptz | YES | NULL | — |
 
 > `stage` válidos (13 — funil sugerido + 3 "saídas" que aceitam drop vindo de qualquer etapa, sem transição restrita no CHECK): `pendente`, `conversa_iniciada`, `entrevista_marcada`, `no_show`, `decisao_necessaria`, `selecionado`, `em_formacao`, `em_contratacao`, `contratado`, `concluido_arquivado`, `descartado`, `banco_de_talentos`, `sem_contratacao`.
 > `source` válidos: `'formulario'` (via `/candidatura/:slug`), `'manual'` (cadastro direto no Kanban).
 > `age` é **nullable** (mudou de NOT NULL pra nullable em `20260718000001`): candidatos do formulário público não gravam idade aqui — vira resposta dinâmica em `candidate_answers` (chave `idade`, seed não-sistema). Cadastro manual no Kanban continua preenchendo a coluna normalmente. UI (`Candidatos.tsx`) mostra `age` com fallback pra resposta dinâmica quando `NULL`.
 > `stage_started_at`: quando o candidato entrou na etapa **atual** — mantido sozinho pelo trigger `trg_candidates_set_updated_at` toda vez que `stage` muda (sem UPDATE manual). Combinado com `stage_sla_days` calcula atraso no card do Kanban (client-side, nada gravado).
+> `due_date`/`assignee_id`/`due_date_reached_processed_at` (Fase 3, motor de automações): prazo e responsável livres, editáveis manualmente no Kanban ou por ação de automação (`change_due_date`/`change_assignee`). `due_date_reached_processed_at` é controle interno do cron `dispatch_due_date_reached_automations` (evita disparo duplicado do trigger `due_date_reached`) — resetado pra `NULL` automaticamente (mesmo trigger `trg_candidates_set_updated_at`) sempre que `due_date` muda de valor, permitindo um novo prazo disparar de novo no futuro.
 > RLS: `has_rh_access()` pra tudo (`authenticated`). **Sem** policy de INSERT/UPDATE/DELETE pra `anon` — candidatura pública entra via RPC `submit_candidate_application` (`SECURITY DEFINER`, bypassa RLS por design, ver nota de segurança na RPC).
 
 ---
 
+### `tags` / `candidate_tags`
+Tags genéricas do motor de automações (Fase 3) — **separado** da tag de vaga/cargo (`job_openings.role_title`) e da tag de origem (`candidates.source`) já existentes, que continuam sendo atributos diretos do candidato, não entram nesse sistema.
+
+**`tags`**: `id` uuid PK, `name` text NOT NULL, `slug` text NOT NULL UNIQUE, `color` text NOT NULL DEFAULT `'#6B7280'` (hex, exibição no card/badge), `created_at`.
+
+**`candidate_tags`** (many-to-many): `id` uuid PK, `candidate_id` uuid NOT NULL → candidates.id (ON DELETE CASCADE), `tag_id` uuid NOT NULL → tags.id (ON DELETE CASCADE), `source` text NOT NULL DEFAULT `'manual'` CHECK `'manual'|'automation'`, `assigned_by` uuid → auth.users.id (ON DELETE SET NULL), `assigned_at` timestamptz. `UNIQUE(candidate_id, tag_id)`.
+
+> RLS: `has_rh_access()` pra tudo (`authenticated`), ambas as tabelas.
+
+---
+
+### `whatsapp_templates`
+Modelos de mensagem reaproveitáveis pela ação `send_whatsapp` de uma automação (Fase 3) — substitui a automação de WhatsApp que rodava no n8n.
+
+| Coluna | Tipo | Nullable | Default | FK |
+|--------|------|----------|---------|-----|
+| id | uuid | NO | `gen_random_uuid()` | — |
+| name | text | NO | — | — |
+| body | text | NO | — | — |
+| is_active | boolean | NO | `true` | — |
+| created_by | uuid | YES | NULL | auth.users.id (ON DELETE SET NULL) |
+| created_at | timestamptz | NO | `now()` | — |
+| updated_at | timestamptz | NO | `now()` | — |
+
+> `body` aceita os placeholders (substituição simples via `render_automation_template`, sem SQL dinâmico): `{candidate_name}`, `{job_role_title}`, `{store_name}`, `{new_stage}`, `{previous_stage}`.
+> RLS: `has_rh_access()` pra tudo (`authenticated`).
+
+---
+
+### `automations` / `automation_actions`
+Motor de automações genérico (Fase 3) — substitui as 8 regras do ClickUp (When → Condition → Then). Recriar as regras específicas é configuração feita pela tela `/admin/rh/automacoes`, não código.
+
+**`automations`**:
+
+| Coluna | Tipo | Nullable | Default | FK |
+|--------|------|----------|---------|-----|
+| id | uuid | NO | `gen_random_uuid()` | — |
+| name | text | NO | — | — |
+| description | text | YES | NULL | — |
+| trigger_type | text | NO | — | — |
+| trigger_stage | text | YES | NULL | — |
+| trigger_conditions | jsonb | NO | `'[]'` | — |
+| is_active | boolean | NO | `true` | — |
+| sort_order | int | NO | `0` | — |
+| created_by | uuid | YES | NULL | auth.users.id (ON DELETE SET NULL) |
+| created_at / updated_at | timestamptz | NO | `now()` | — |
+
+> `trigger_type` válidos: `'candidate_created'`, `'stage_changed'`, `'due_date_reached'`. `trigger_stage` (mesmos 13 valores de `candidates.stage`) é obrigatório só quando `trigger_type='stage_changed'` (CHECK composto `automations_trigger_stage_required`).
+> `trigger_conditions`: array AND-combinado, ex. `[{"field":"job_opening.role_title","op":"eq","value":"Vendedor"}]`. Whitelist fixa de `field` (`evaluate_automation_conditions`): `candidate.age`, `candidate.stage`, `job_opening.role_title`, `store.name`, `store.slug`. `op`: `eq`, `neq`, `gt`, `gte`, `lt`, `lte`, `in`, `contains`. Campo fora da whitelist falha fechado (condição nunca casa).
+
+**`automation_actions`**: `id` uuid PK, `automation_id` uuid NOT NULL → automations.id (ON DELETE CASCADE), `sort_order` int, `action_type` text NOT NULL, `action_config` jsonb NOT NULL DEFAULT `'{}'`, `created_at`.
+
+> `action_type` válidos e shape de `action_config`: `change_stage` `{stage}`; `add_tag`/`remove_tag` `{tag_id}`; `change_due_date` `{mode:"relative_days", days}` ou `{mode:"clear"}`; `change_assignee` `{assignee_id}` ou `{clear:true}`; `send_whatsapp` `{template_id}`; `add_comment` `{text}` (placeholders `{{...}}` renderizados por `render_automation_template`).
+> RLS: `has_rh_access()` pra tudo (`authenticated`), ambas as tabelas.
+
+---
+
+### `store_whatsapp_credentials`
+Credencial Uazapi por unidade (Fase 3) — opcional; sem linha configurada, o envio cai no fallback da instância global (`UAZAPI_URL`/`UAZAPI_TOKEN`, mesmos env vars já usados por `send-order-whatsapp` e outras 4 edge functions). Populado manualmente pelo admin depois de copiar os dados do credential store do n8n.
+
+| Coluna | Tipo | Nullable | Default | FK |
+|--------|------|----------|---------|-----|
+| store_id | uuid | NO (PK) | — | stores.id (ON DELETE CASCADE) |
+| uazapi_url | text | YES | NULL | — |
+| uazapi_token | text | YES | NULL | — |
+| is_active | boolean | NO | `true` | — |
+| updated_by | uuid | YES | NULL | auth.users.id (ON DELETE SET NULL) |
+| updated_at / created_at | timestamptz | NO | `now()` | — |
+
+> **Segurança**: `uazapi_token` é secret — a tabela **não tem nenhuma RLS policy pra `authenticated`** (`REVOKE ALL ... FROM authenticated, PUBLIC`), fica invisível via PostgREST direto. Só a edge function `send-automation-whatsapp` (via `service_role`, bypassa RLS) lê o token cru. Frontend só enxerga via `get_store_whatsapp_credential_status(store_id)` (retorna `configured`, `is_active`, `uazapi_url`, `token_last4` — nunca o token completo) e escreve via `admin_set_store_whatsapp_credential(store_id, url, token)` (write-only, não retorna nada). Ambas as RPCs restritas a `is_admin()` (mais estrito que `has_rh_access()` — única exceção deliberada do módulo: gerenciar secret de canal de envio é mais sensível que operar o funil de RH).
+
+---
+
+### `automation_whatsapp_queue`
+Fila da ação `send_whatsapp` — desacopla o envio (rede externa, pode falhar/demorar) da transação que disparou a automação. Populada por `execute_automation_action`, drenada a cada minuto pelo pg_cron `rh-automation-whatsapp-sender` → edge function `send-automation-whatsapp`.
+
+| Coluna | Tipo | Nullable | Default | FK |
+|--------|------|----------|---------|-----|
+| id | uuid | NO | `gen_random_uuid()` | — |
+| candidate_id | uuid | NO | — | candidates.id (ON DELETE CASCADE) |
+| store_id | uuid | NO | — | stores.id |
+| automation_id | uuid | YES | NULL | automations.id (ON DELETE SET NULL) |
+| automation_action_id | uuid | YES | NULL | automation_actions.id (ON DELETE SET NULL) |
+| template_id | uuid | YES | NULL | whatsapp_templates.id (ON DELETE SET NULL) |
+| phone_number | text | NO | — | — |
+| rendered_message | text | NO | — | — |
+| idempotency_key | text | NO | — | — (UNIQUE) |
+| status | text | NO | `'pending'` | — |
+| attempt_count | int | NO | `0` | — |
+| last_error | text | YES | NULL | — |
+| processed_at | timestamptz | YES | NULL | — |
+| created_at | timestamptz | NO | `now()` | — |
+
+> `status` válidos: `'pending'`, `'processing'`, `'sent'`, `'failed'`. Reivindicação em lote via `claim_automation_whatsapp_queue_items(batch_size)` (`FOR UPDATE SKIP LOCKED`, marca `'processing'` + incrementa `attempt_count`) — a edge function some `'sent'` no sucesso, ou devolve pra `'pending'` (retry, até 3 tentativas) / `'failed'` (esgotado) na falha, sempre gravando um `candidate_stage_history` (`event_type='whatsapp_sent'`).
+> RLS: `SELECT` via `has_rh_access()` (auditoria); sem policy de escrita pra `authenticated` — só a função/edge function (`service_role`) grava.
+
+---
+
 ### `candidate_stage_history`
-Histórico de mudança de etapa — uma linha por transição, incluindo a criação (`previous_stage = NULL`). Populado só por trigger, nunca escrito direto pelo frontend (usado hoje pra auditoria; base pronta pra automações futuras, ex: disparo de WhatsApp ao entrar em determinada etapa).
+Generalizado na Fase 3 (motor de automações) de "histórico de etapa" pra log de atividade do candidato — continua com o mesmo nome (não renomeado: `promote_candidate_to_dp` e o trigger o referenciam pelo nome atual) e cobre também tag/prazo/responsável/WhatsApp/comentário/erro de automação, além da mudança de etapa original. `new_stage` deixou de ser `NOT NULL` (só obrigatório quando `event_type='stage_change'`).
 
 | Coluna | Tipo | Nullable | Default | FK |
 |--------|------|----------|---------|-----|
 | id | uuid | NO | `gen_random_uuid()` | — |
 | candidate_id | uuid | NO | — | candidates.id (ON DELETE CASCADE) |
 | previous_stage | text | YES | NULL | — |
-| new_stage | text | NO | — | — |
+| new_stage | text | YES | NULL | — |
 | changed_by | uuid | YES | NULL | auth.users.id (ON DELETE SET NULL) |
 | changed_at | timestamptz | NO | `now()` | — |
+| event_type | text | NO | `'stage_change'` | — |
+| automation_id | uuid | YES | NULL | automations.id (ON DELETE SET NULL) |
+| metadata | jsonb | NO | `'{}'` | — |
 
-> `changed_by` é `NULL` quando a mudança vem de um visitante anônimo (criação via formulário público) — só é preenchido quando um usuário autenticado move o card no Kanban.
-> RLS: só `SELECT` via `has_rh_access()`. Nenhuma policy de INSERT — só a função de trigger `log_candidate_stage_change()` (`SECURITY DEFINER`) escreve, disparada em `AFTER INSERT`/`AFTER UPDATE` de `candidates`.
+> `event_type` válidos: `'stage_change'`, `'tag_added'`, `'tag_removed'`, `'due_date_changed'`, `'assignee_changed'`, `'whatsapp_sent'`, `'comment_added'`, `'automation_error'`. `automation_id` não-nulo = a linha foi gerada por uma automação (não por ação manual do operador) — é como o frontend distingue "gerado por automação" de "gerado por usuário", em vez de uma coluna `gerado_por` separada.
+> `metadata` por `event_type`: `tag_added`/`tag_removed` → `{tag_id, tag_name}`; `due_date_changed` → `{previous_due_date, new_due_date}`; `assignee_changed` → `{previous_assignee_id, new_assignee_id}`; `whatsapp_sent` → `{template_id, success, error}`; `comment_added` → `{text}` (já renderizado, placeholders substituídos); `automation_error` → `{action_type, error}` (ação que falhou + `SQLERRM`).
+> `changed_by` é `NULL` quando a mudança vem de um visitante anônimo (criação via formulário público) ou de uma automação — só é preenchido quando um usuário autenticado move o card no Kanban.
+> RLS: só `SELECT` via `has_rh_access()`. Nenhuma policy de INSERT — só a função de trigger `log_candidate_stage_change()` e as funções do motor de automações (`SECURITY DEFINER`) escrevem.
+> `promote_candidate_to_dp` (módulo DP) copia só linhas `event_type='stage_change'` pra `employee_timeline` — outros tipos de evento não fazem sentido como "Etapa RH: X → Y".
 
 ---
 
@@ -830,10 +938,12 @@ Config **global** (não por unidade) das perguntas do formulário público de ca
 | options | jsonb | YES | NULL | — |
 | is_system_field | boolean | NO | `false` | — |
 | show_on_card | boolean | NO | `false` | — |
+| visible_for_job_role_ids | uuid[] | YES | NULL | — (sem FK — array) |
 | created_at | timestamptz | NO | `now()` | — |
 | updated_at | timestamptz | NO | `now()` | — |
 
 > `field_type` válidos: `'texto'`, `'numero'`, `'telefone'`, `'select'`, `'checkbox'`, `'data'`, `'upload_imagem'`, `'upload_arquivo'`. `select`/`checkbox` usam `options` (array de strings); `checkbox` aceita múltiplas respostas marcadas na mesma pergunta (gravadas juntas em `candidate_answers.value`, separadas por `'; '` — ver `CHECKBOX_DELIM` em `src/components/rh/FormFieldRenderer.tsx`).
+> `visible_for_job_role_ids`: restringe a pergunta a aparecer só quando a vaga escolhida pelo candidato (`vaga_id` → `job_openings.job_role_id`) bate com um dos cargos (`job_roles.id`) listados. `NULL`/array vazio = sempre visível (padrão de todo campo existente). Vaga criada sem vínculo a um cargo do catálogo (`job_openings.job_role_id IS NULL`) nunca satisfaz essa condição. Não se aplica a campo de sistema (`nome`/`whatsapp`/`vaga_id` sempre visíveis). Validado nos dois lados: `get_public_application_form` expõe a condição + o `job_role_id` de cada vaga pro frontend filtrar em tempo real (`CandidaturaPublica.tsx`); `submit_candidate_application` reforça a mesma regra na obrigatoriedade e na gravação de `candidate_answers`, já que é `SECURITY DEFINER` chamável por `anon`.
 > `label` = nome curto interno (construtor, card do Kanban via `show_on_card`, respostas do candidato). `question_text` = frase que o candidato lê no formulário público; `NULL` cai de volta pra `label`. `help_text` = texto de apoio abaixo da pergunta. `placeholder` = texto fantasma dentro do campo de resposta. Tudo editável pelo construtor, exceto pros 3 campos de sistema.
 > `is_system_field = true` em exatamente 3 registros (seed): `nome`, `whatsapp`, `vaga_id` — respostas desses vão direto pras colunas `candidates.name`/`candidates.whatsapp`/`candidates.job_opening_id`, nunca pra `candidate_answers`. `foto`/`curriculo` (seed, `upload_imagem`/`upload_arquivo`) **não** são `is_system_field` (podem ser apagados/renomeados livremente), mas por convenção de `field_key` também vão direto pras colunas `candidates.photo_url`/`candidates.resume_url` quando respondidos.
 > Trigger `trg_form_fields_protect_system`: se `is_system_field`, força `required = true` e impede zerar `is_system_field` via UPDATE (imutável após criado) — bloqueio de "campo de sistema" em 2 camadas (esse trigger + a RLS de DELETE abaixo).
@@ -1402,8 +1512,8 @@ Resolve a unidade pelo slug e retorna tudo que o formulário público (`/candida
 ```json
 {
   "store": { "id", "name" },
-  "job_openings": [{ "id", "role_title", "status", "description", "contract_type", "compensation_type", "fixed_amount", "variable_percentage", "variable_basis", "work_schedule", "workload_hours", "requirements", "benefits" }],
-  "fields": [{ "id", "field_key", "label", "question_text", "help_text", "placeholder", "step", "field_type", "required", "sort_order", "options", "is_system_field" }]
+  "job_openings": [{ "id", "role_title", "status", "job_role_id", "description", "contract_type", "compensation_type", "fixed_amount", "variable_percentage", "variable_basis", "work_schedule", "workload_hours", "requirements", "benefits" }],
+  "fields": [{ "id", "field_key", "label", "question_text", "help_text", "placeholder", "step", "field_type", "required", "sort_order", "options", "is_system_field", "visible_for_job_role_ids" }]
 }
 ```
 `job_openings` inclui vagas fechadas (frontend mostra "banco de currículos"). Loja não encontrada → `RAISE EXCEPTION`.
@@ -1418,11 +1528,12 @@ submit_candidate_application(p_store_slug text, p_answers jsonb) → uuid
 ```
 `p_answers`: `[{"field_key": "...", "value": "..."}]`. Ponto de entrada único e atômico da candidatura pública:
 1. Resolve a unidade pelo slug.
-2. Valida obrigatoriedade de cada linha de `form_fields` server-side (nunca confia em validação client-side).
-3. Extrai `nome`/`whatsapp`/`vaga_id`/`foto`/`curriculo` das respostas por `field_key`; valida que a vaga pertence à unidade resolvida.
-4. Rate limit via `check_rate_limit('candidate_application:' || whatsapp_normalizado, 3, 600)` — bloqueia excesso de submissões pro mesmo WhatsApp.
-5. `INSERT` em `candidates` (`stage='pendente'`, `source='formulario'`) — dispara sozinho o trigger de `candidate_stage_history` já existente.
-6. Demais respostas (não-sistema, não-foto/currículo) viram uma linha em `candidate_answers` cada.
+2. Resolve a vaga (`vaga_id`) e o cargo dela (`job_openings.job_role_id`) **antes** do loop de validação — não dá pra confiar na ordem de `sort_order` pra saber o cargo a tempo de checar campos condicionados por cargo.
+3. Valida obrigatoriedade de cada linha de `form_fields` server-side (nunca confia em validação client-side) — pulando a checagem se o campo tiver `visible_for_job_role_ids` e o cargo da vaga escolhida não estiver na lista (campo não se aplica a essa vaga).
+4. Extrai `nome`/`whatsapp`/`vaga_id`/`foto`/`curriculo` das respostas por `field_key`; valida que a vaga pertence à unidade resolvida.
+5. Rate limit via `check_rate_limit('candidate_application:' || whatsapp_normalizado, 3, 600)` — bloqueia excesso de submissões pro mesmo WhatsApp.
+6. `INSERT` em `candidates` (`stage='pendente'`, `source='formulario'`) — dispara sozinho o trigger de `candidate_stage_history` já existente.
+7. Demais respostas (não-sistema, não-foto/currículo, aplicáveis ao cargo da vaga escolhida) viram uma linha em `candidate_answers` cada.
 Retorna o `id` do candidato criado.
 `SECURITY DEFINER` — é o único caminho de escrita pública em `candidates`/`candidate_answers`; nenhuma dessas tabelas tem policy de INSERT pra `anon` (ver nota de segurança em `candidate_answers`).
 Acessível por: `anon`, `authenticated`.
@@ -1434,6 +1545,50 @@ Acessível por: `anon`, `authenticated`.
 admin_update_form_field_sort_orders(updates jsonb) → void
 ```
 Atualiza `sort_order` em lote (drag-and-drop no construtor). `updates` = `[{"id": "uuid", "sort_order": 0}, ...]`. Mesmo padrão de `admin_update_product_sort_orders`, mas checa `has_rh_access()` em vez de admin-only.
+Acessível por: `authenticated`.
+
+---
+
+### Motor de Automações (Fase 3) — RPCs
+
+### `dispatch_candidate_automations`
+```
+dispatch_candidate_automations(p_candidate_id uuid, p_trigger_type text, p_previous_stage text, p_new_stage text) → void
+```
+Ponto de entrada do motor: monta um `context jsonb` (candidato + vaga + loja), busca `automations` ativas com `trigger_type`/`trigger_stage` batendo e `trigger_conditions` satisfeitas (`evaluate_automation_conditions`), executa as `automation_actions` de cada uma em ordem via `execute_automation_action`. Cada ação roda dentro de um bloco `EXCEPTION WHEN OTHERS` isolado — falha numa ação grava `event_type='automation_error'` em `candidate_stage_history` e **não** impede as demais ações nem reverte a transição que disparou a automação.
+Chamada por: o trigger `log_candidate_stage_change()` (estendido nesta fase, mesmos triggers `candidates_log_stage_insert`/`candidates_log_stage_update` de sempre — sem trigger novo) pra `candidate_created`/`stage_changed`; `dispatch_due_date_reached_automations()` pra `due_date_reached`.
+**Guarda de recursão**: usa `pg_trigger_depth()` nativo do Postgres (não um contador manual) — uma ação `change_stage` refaz `UPDATE candidates`, o que re-dispara o mesmo trigger e incrementa a profundidade sozinho. Cap em 10 níveis; ao estourar, grava `automation_error` em vez de continuar a cadeia (protege contra automações que se disparam em círculo).
+`SECURITY DEFINER`. Não exposta a `authenticated`/`anon` (`REVOKE ALL ... FROM PUBLIC`) — só chamada internamente.
+
+### `evaluate_automation_conditions` / `execute_automation_action` / `render_automation_template`
+Funções internas do motor (não chamadas diretamente pelo frontend): a primeira avalia `automations.trigger_conditions` (whitelist de campo/operador, ver tabela `automations` acima, fail-closed em campo desconhecido); a segunda executa 1 `automation_actions` por tipo (`change_stage`/`add_tag`/`remove_tag`/`change_due_date`/`change_assignee`/`send_whatsapp`/`add_comment`), gravando a linha de atividade correspondente; a terceira substitui os placeholders de um texto (template WhatsApp ou comentário) por dados reais do `context`, sem SQL dinâmico.
+
+### `dispatch_due_date_reached_automations`
+```
+dispatch_due_date_reached_automations() → int
+```
+Scan periódico (`cron.schedule('rh-due-date-automations', '*/15 * * * *', ...)`): busca `candidates` com `due_date <= CURRENT_DATE` e `due_date_reached_processed_at IS NULL`, marca processado **antes** de disparar e usa `FOR UPDATE SKIP LOCKED` (mesmo padrão de idempotência de `send_pending_partner_order_webhooks`, evita disparo duplicado em execução concorrente do cron). Retorna quantos candidatos processou.
+
+### `claim_automation_whatsapp_queue_items`
+```
+claim_automation_whatsapp_queue_items(p_batch_size int DEFAULT 20) → SETOF automation_whatsapp_queue
+```
+Reivindica um lote de `automation_whatsapp_queue` pendente (`FOR UPDATE SKIP LOCKED`, marca `status='processing'` + incrementa `attempt_count`) pra a edge function `send-automation-whatsapp` processar. Acessível só por `service_role`.
+
+### `get_store_whatsapp_credential_status` / `admin_set_store_whatsapp_credential`
+```
+get_store_whatsapp_credential_status(p_store_id uuid) → jsonb   -- {configured, is_active, uazapi_url, token_last4, updated_at}
+admin_set_store_whatsapp_credential(p_store_id uuid, p_uazapi_url text, p_uazapi_token text) → void
+```
+Único jeito do frontend interagir com `store_whatsapp_credentials` — a primeira nunca retorna o token completo (só `token_last4`), a segunda é write-only (não retorna nada). Ambas restritas a `is_admin()` (a leitura mascarada checa `has_rh_access()` primeiro, mas a escrita exige `is_admin()` — única exceção do módulo a esse padrão, ver nota de segurança na tabela `store_whatsapp_credentials`).
+Acessível por: `authenticated`.
+
+### `admin_reorder_automations` / `admin_reorder_automation_actions`
+```
+admin_reorder_automations(updates jsonb) → void              -- [{"id","sort_order"}], reordena automations
+admin_reorder_automation_actions(updates jsonb) → void        -- idem, reordena automation_actions
+```
+Mesmo formato de `admin_update_form_field_sort_orders` (Fase 2) — usado pelo drag-and-drop de `/admin/rh/automacoes`. `SECURITY DEFINER`, valida `has_rh_access()`.
 Acessível por: `authenticated`.
 
 ---
@@ -1465,6 +1620,12 @@ Acessível por: `authenticated`.
 | candidates | source | `'formulario'`, `'manual'` |
 | form_fields | field_type | `'texto'`, `'numero'`, `'telefone'`, `'select'`, `'checkbox'`, `'data'`, `'upload_imagem'`, `'upload_arquivo'` |
 | stage_sla_days | stage | mesmos 13 valores de `candidates.stage` |
+| candidate_stage_history | event_type | `'stage_change'`, `'tag_added'`, `'tag_removed'`, `'due_date_changed'`, `'assignee_changed'`, `'whatsapp_sent'`, `'comment_added'`, `'automation_error'` |
+| candidate_tags | source | `'manual'`, `'automation'` |
+| automations | trigger_type | `'candidate_created'`, `'stage_changed'`, `'due_date_reached'` |
+| automations | trigger_stage | mesmos 13 valores de `candidates.stage`, obrigatório só quando `trigger_type='stage_changed'` |
+| automation_actions | action_type | `'change_stage'`, `'add_tag'`, `'remove_tag'`, `'change_due_date'`, `'change_assignee'`, `'send_whatsapp'`, `'add_comment'` |
+| automation_whatsapp_queue | status | `'pending'`, `'processing'`, `'sent'`, `'failed'` |
 | crm_events | event_type | `'visitou'`, `'visualizou_produto'`, `'adicionou_carrinho'`, `'iniciou_checkout'`, `'comprou'`, `'abandonou'`, `'user_registered'`, `'purchase_completed'`, `'cart_abandoned'`, `'checkout_abandoned'`, `'order_created'`, `'tag_added'`, `'inactivity_detected'`, `'profile_completed'`, `'profile_synced'` |
 | integration_outbox | status | `'pending'`, `'processing'`, `'delivered'`, `'failed'` |
 | crm_tags | type | `'system'`, `'custom'` |

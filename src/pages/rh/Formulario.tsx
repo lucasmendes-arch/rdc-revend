@@ -16,6 +16,12 @@ interface FieldRow extends FormFieldConfig {
   updated_at: string
 }
 
+interface JobRoleOption {
+  id: string
+  title: string
+  is_active: boolean
+}
+
 const TYPE_LABELS: Record<FieldType, string> = {
   texto: 'Texto',
   numero: 'Número',
@@ -47,7 +53,7 @@ const EMPTY_CREATE_FORM = { field_type: 'texto' as FieldType, label: '' }
 // modo leitura); clicar abre a edição inline — pergunta, texto de apoio,
 // placeholder e obrigatório, que é o que o candidato realmente vê e usa.
 function BuildFieldCard({
-  field, expanded, onToggleExpand, onDelete, onFieldUpdate, onToggleRequired, onToggleCard,
+  field, expanded, onToggleExpand, onDelete, onFieldUpdate, onToggleRequired, onToggleCard, jobRoles,
 }: {
   field: FieldRow
   expanded: boolean
@@ -56,6 +62,7 @@ function BuildFieldCard({
   onFieldUpdate: (id: string, patch: Record<string, unknown>) => void
   onToggleRequired: (f: FieldRow) => void
   onToggleCard: (f: FieldRow) => void
+  jobRoles: JobRoleOption[]
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: field.id })
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1 }
@@ -179,6 +186,35 @@ function BuildFieldCard({
           </div>
           <p className="text-[11px] text-muted-foreground -mt-2">Perguntas com a mesma etapa aparecem juntas na mesma tela do formulário público.</p>
 
+          {!field.is_system_field && jobRoles.length > 0 && (
+            <div className="pt-2 border-t border-border/60">
+              <label className="block text-xs font-semibold text-muted-foreground uppercase mb-1">Mostrar apenas para os cargos</label>
+              <div className="space-y-1.5 max-h-32 overflow-y-auto">
+                {jobRoles.map((role) => {
+                  const selected = field.visible_for_job_role_ids || []
+                  const checked = selected.includes(role.id)
+                  return (
+                    <label key={role.id} className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => {
+                          const next = checked ? selected.filter((id) => id !== role.id) : [...selected, role.id]
+                          onFieldUpdate(field.id, { visible_for_job_role_ids: next.length ? next : null })
+                        }}
+                        className="w-4 h-4 rounded border-border accent-emerald-600"
+                      />
+                      <span className="text-sm text-foreground">{role.title}{!role.is_active ? ' (inativo)' : ''}</span>
+                    </label>
+                  )
+                })}
+              </div>
+              <p className="text-[11px] text-muted-foreground mt-1">
+                Nenhum cargo marcado = pergunta aparece pra qualquer vaga. Vagas sem cargo vinculado no catálogo nunca mostram uma pergunta restrita por cargo.
+              </p>
+            </div>
+          )}
+
           <details className="pt-2 border-t border-border/60">
             <summary className="text-xs font-semibold text-muted-foreground uppercase cursor-pointer py-1">Avançado</summary>
             <div className="pt-2 space-y-3">
@@ -252,6 +288,16 @@ export default function RhFormulario() {
   })
   const [previewStoreSlug, setPreviewStoreSlug] = useState('')
   const effectivePreviewSlug = previewStoreSlug || stores[0]?.slug || ''
+
+  const { data: jobRoles = [] } = useQuery<JobRoleOption[]>({
+    queryKey: ['rh-job-roles-options'],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('job_roles').select('id, title, is_active').order('title')
+      if (error) throw error
+      return (data || []) as JobRoleOption[]
+    },
+    staleTime: 30 * 1000,
+  })
 
   const updateField = useMutation({
     mutationFn: async ({ id, patch }: { id: string; patch: Record<string, unknown> }) => {
@@ -388,6 +434,7 @@ export default function RhFormulario() {
                     onFieldUpdate={(id, patch) => updateField.mutate({ id, patch })}
                     onToggleRequired={(f) => updateField.mutate({ id: f.id, patch: { required: !f.required } })}
                     onToggleCard={(f) => updateField.mutate({ id: f.id, patch: { show_on_card: !f.show_on_card } })}
+                    jobRoles={jobRoles}
                   />
                 ))}
               </div>

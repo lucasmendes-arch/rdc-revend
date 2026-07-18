@@ -4,7 +4,7 @@ import {
   Package, ShoppingCart, Users, Warehouse, UserCog,
   Menu, X, ExternalLink, Tag, DollarSign,
   Megaphone, UserCheck, BadgeDollarSign, ChevronRight,
-  ClipboardList, Briefcase, KanbanSquare, ListChecks, IdCard,
+  ClipboardList, Briefcase, KanbanSquare, ListChecks, IdCard, Zap,
 } from 'lucide-react'
 import logo from '@/assets/logo-rei-dos-cachos.png'
 import { ThemeToggle } from '@/components/ui/ThemeToggle'
@@ -51,6 +51,7 @@ const rhNavGroup: { label: string; items: NavItem[] } = {
     { label: 'Cargos', path: '/admin/rh/cargos', icon: IdCard },
     { label: 'Candidatos', path: '/admin/rh/candidatos', icon: KanbanSquare },
     { label: 'Formulário', path: '/admin/rh/formulario', icon: ListChecks },
+    { label: 'Automações', path: '/admin/rh/automacoes', icon: Zap },
   ],
 }
 
