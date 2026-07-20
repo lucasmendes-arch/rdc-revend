@@ -11,7 +11,7 @@ import AdminLayout from '@/components/admin/AdminLayout'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import ProcessoDetailModal from '@/components/dp/ProcessoDetailModal'
 import {
-  EMPLOYMENT_TYPE_LABELS, EMPLOYMENT_TYPE_OPTIONS, STAGE_COLUMNS_BY_EMPLOYMENT_TYPE, getStageColumn,
+  EMPLOYMENT_TYPE_LABELS, EMPLOYMENT_TYPE_OPTIONS, STAGE_COLUMNS_BY_EMPLOYMENT_TYPE, ALL_STAGE_COLUMNS, getStageColumn,
   type EmploymentType, type StageColumn,
 } from '@/lib/dpConstants'
 import type { Processo } from '@/lib/dpTypes'
@@ -79,10 +79,15 @@ function StageColumnView({
   )
 }
 
+type ViewFilter = EmploymentType | 'todos'
+
+const VIEW_OPTIONS: ViewFilter[] = [...EMPLOYMENT_TYPE_OPTIONS, 'todos']
+const VIEW_LABELS: Record<ViewFilter, string> = { ...EMPLOYMENT_TYPE_LABELS, todos: 'Todos' }
+
 export default function DpContratacao() {
   const queryClient = useQueryClient()
   const [storeId, setStoreId] = useState('')
-  const [employmentType, setEmploymentType] = useState<EmploymentType>('clt')
+  const [employmentType, setEmploymentType] = useState<ViewFilter>('clt')
   const [showFinalizados, setShowFinalizados] = useState(false)
   const [activeProcesso, setActiveProcesso] = useState<Processo | null>(null)
   const [detailProcesso, setDetailProcesso] = useState<Processo | null>(null)
@@ -111,8 +116,8 @@ export default function DpContratacao() {
       let query = supabase
         .from('employee_processes')
         .select('id, candidate_id, employment_type, store_id, role_title, current_stage, status, started_at, activated_at, onboarding_completed, training_applicable, training_completed, created_at, candidates(id, name, whatsapp, photo_url), stores(name)')
-        .eq('employment_type', employmentType)
         .order('started_at', { ascending: false })
+      if (employmentType !== 'todos') query = query.eq('employment_type', employmentType)
       if (storeId) query = query.eq('store_id', storeId)
       if (!showFinalizados) query = query.eq('status', 'em_andamento')
       const { data, error } = await query
@@ -121,7 +126,7 @@ export default function DpContratacao() {
     },
   })
 
-  const columns = STAGE_COLUMNS_BY_EMPLOYMENT_TYPE[employmentType]
+  const columns = employmentType === 'todos' ? ALL_STAGE_COLUMNS : STAGE_COLUMNS_BY_EMPLOYMENT_TYPE[employmentType]
 
   const processosByStage = useMemo(() => {
     const map = new Map<string, Processo[]>()
@@ -180,7 +185,15 @@ export default function DpContratacao() {
     if (!over) return
     const processo = processos.find((p) => p.id === active.id)
     if (!processo) return
-    requestStageChange(processo, over.id as string)
+    const newStage = over.id as string
+    // Na aba "Todos" as colunas são a união CLT+MEI — soltar num estágio que
+    // não existe no fluxo real do processo (ex.: CLT em "Formação") não é
+    // uma transição válida.
+    if (!STAGE_COLUMNS_BY_EMPLOYMENT_TYPE[processo.employment_type].some((c) => c.stage === newStage)) {
+      toast.error(`Etapa não aplicável a ${EMPLOYMENT_TYPE_LABELS[processo.employment_type]}`)
+      return
+    }
+    requestStageChange(processo, newStage)
   }
 
   return (
@@ -216,10 +229,10 @@ export default function DpContratacao() {
           </div>
         </div>
         <div className="px-4 sm:px-6 pb-3">
-          <Tabs value={employmentType} onValueChange={(v) => setEmploymentType(v as EmploymentType)}>
+          <Tabs value={employmentType} onValueChange={(v) => setEmploymentType(v as ViewFilter)}>
             <TabsList>
-              {EMPLOYMENT_TYPE_OPTIONS.map((tv) => (
-                <TabsTrigger key={tv} value={tv}>{EMPLOYMENT_TYPE_LABELS[tv]}</TabsTrigger>
+              {VIEW_OPTIONS.map((tv) => (
+                <TabsTrigger key={tv} value={tv}>{VIEW_LABELS[tv]}</TabsTrigger>
               ))}
             </TabsList>
           </Tabs>

@@ -61,6 +61,25 @@ export function getStageColumn(employmentType: EmploymentType, stage: string): S
   return STAGE_COLUMNS_BY_EMPLOYMENT_TYPE[employmentType].find((c) => c.stage === stage)
 }
 
+// União ordenada das colunas de CLT + MEI, pra visão combinada "Todos" —
+// segue o funil geral (formação exclusiva do MEI primeiro, contratação
+// compartilhada, experiência/decisão exclusivas do CLT, acompanhamento
+// exclusivo do MEI, efetivado/encerrado compartilhados). Um processo só
+// pode ser arrastado entre colunas do seu próprio employment_type
+// (validado em Contratacao.tsx) — as colunas exclusivas do outro tipo
+// ficam visíveis mas não são destino válido.
+export const ALL_STAGE_COLUMNS: StageColumn[] = [
+  STAGE_COLUMNS_BY_EMPLOYMENT_TYPE.mei[0], // contrato_formacao
+  STAGE_COLUMNS_BY_EMPLOYMENT_TYPE.mei[1], // formacao
+  STAGE_COLUMNS_BY_EMPLOYMENT_TYPE.mei[2], // decisao_formacao
+  STAGE_COLUMNS_BY_EMPLOYMENT_TYPE.clt[0], // contratacao (compartilhada)
+  STAGE_COLUMNS_BY_EMPLOYMENT_TYPE.clt[1], // experiencia
+  STAGE_COLUMNS_BY_EMPLOYMENT_TYPE.clt[2], // decisao
+  STAGE_COLUMNS_BY_EMPLOYMENT_TYPE.mei[4], // acompanhamento_90d
+  STAGE_COLUMNS_BY_EMPLOYMENT_TYPE.clt[3], // efetivado (compartilhada)
+  STAGE_COLUMNS_BY_EMPLOYMENT_TYPE.clt[4], // encerrado (compartilhada)
+]
+
 // Checklist fixa de documentos — mesmos slugs em src/lib/dpConstants.ts e no
 // CHECK/RPC do banco. MEI sem/com experiência usam a mesma lista.
 export type DocumentSlug =
