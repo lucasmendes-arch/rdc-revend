@@ -9,7 +9,7 @@ declare const Deno: {
   };
 };
 const ALLOWED_ORIGINS = [
-  'https://rdc-revend.vercel.app',
+  'https://rdc-os.vercel.app',
 ]
 
 function getCorsHeaders(req: Request) {
@@ -557,7 +557,7 @@ serve(async (req: Request) => {
       const mpAccessToken = Deno.env.get('MERCADOPAGO_ACCESS_TOKEN')
 
       if (mpAccessToken && body.payment_method !== 'pay_on_delivery') {
-        const origin = req.headers.get('Origin') || 'https://rdc-revend.vercel.app'
+        const origin = req.headers.get('Origin') || 'https://rdc-os.vercel.app'
         const webhookUrl = `${supabaseUrl}/functions/v1/webhook-mercadopago`
 
         const mpItems = orderItems.map(item => ({
@@ -602,9 +602,9 @@ serve(async (req: Request) => {
             } : undefined,
           },
           back_urls: {
-            success: `https://rdc-revend.vercel.app/pedido/sucesso/${order.id}`,
-            failure: `https://rdc-revend.vercel.app/catalogo`,
-            pending: `https://rdc-revend.vercel.app/pedido/sucesso/${order.id}`,
+            success: `https://rdc-os.vercel.app/pedido/sucesso/${order.id}`,
+            failure: `https://rdc-os.vercel.app/catalogo`,
+            pending: `https://rdc-os.vercel.app/pedido/sucesso/${order.id}`,
           },
           payment_methods: {
             excluded_payment_types: [

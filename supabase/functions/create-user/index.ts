@@ -1,7 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.97.0";
 
 const ALLOWED_ORIGINS = [
-  'https://rdc-revend.vercel.app',
+  'https://rdc-os.vercel.app',
   'http://localhost:8080',
   'http://localhost:5173',
 ]

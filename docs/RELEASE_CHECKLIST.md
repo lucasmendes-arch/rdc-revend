@@ -77,7 +77,7 @@ Marque cada item mentalmente ou fisicamente. Não pule itens.
 - [ ] "Esqueci minha senha" na tela de login aceita e-mail válido
 - [ ] Toast/mensagem de confirmação exibida após envio
 - [ ] Link do e-mail redireciona para `/redefinir-senha` (não `/login`)
-  - Pré-requisito: URL `https://rdc-revend.vercel.app/redefinir-senha` na allowlist do Supabase
+  - Pré-requisito: URL `https://rdc-os.vercel.app/redefinir-senha` na allowlist do Supabase
 - [ ] Formulário de nova senha funciona sem login prévio
 - [ ] Após redefinição: redireciona para `/login` com mensagem de sucesso
 

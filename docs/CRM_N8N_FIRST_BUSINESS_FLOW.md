@@ -62,7 +62,7 @@
   "address_state": "ES",                // nullable
   "lead_source":   "site",             // sempre preenchido (default 'site')
   "registered_at": "2026-04-19T...",   // timestamp do evento user_registered
-  "catalog_url":   "https://rdc-revend.vercel.app/catalogo"
+  "catalog_url":   "https://rdc-os.vercel.app/catalogo"
 }
 ```
 

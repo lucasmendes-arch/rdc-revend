@@ -161,7 +161,7 @@ serve(async (req) => {
     }
 
 👉 Ver detalhe da contagem:
-https://rdc-revend.vercel.app/estoque/contagem/${count.id}/confirmar`;
+https://rdc-os.vercel.app/estoque/contagem/${count.id}/confirmar`;
 
     const uazapiEndpoint = `${uazapiUrl}/send/text?token=${encodeURIComponent(uazapiToken)}`;
     const waResp = await fetch(uazapiEndpoint, {

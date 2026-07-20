@@ -104,7 +104,7 @@ Regras de transição (`shouldUpdateStatus`):
 - Página consome o token via `onAuthStateChange` (evento `PASSWORD_RECOVERY`)
 - Após redefinição: redireciona para `/login` com mensagem de sucesso
 - **Ação manual necessária no Supabase Dashboard:**
-  - Auth → URL Configuration → Redirect URLs: adicionar `https://rdc-revend.vercel.app/redefinir-senha`
+  - Auth → URL Configuration → Redirect URLs: adicionar `https://rdc-os.vercel.app/redefinir-senha`
 
 ---
 

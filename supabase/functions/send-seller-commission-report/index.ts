@@ -7,7 +7,7 @@ import { PDFDocument, rgb, StandardFonts } from 'https://esm.sh/pdf-lib@1.17.1'
 
 declare const Deno: { env: { get(k: string): string | undefined } }
 
-const ALLOWED_ORIGINS = ['https://rdc-revend.vercel.app']
+const ALLOWED_ORIGINS = ['https://rdc-os.vercel.app']
 
 function corsHeaders(req: Request) {
   const origin = req.headers.get('Origin') || ''

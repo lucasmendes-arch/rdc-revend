@@ -10,7 +10,7 @@ declare const Deno: {
 };
 
 const ALLOWED_ORIGINS = [
-  'https://rdc-revend.vercel.app',
+  'https://rdc-os.vercel.app',
 ]
 
 function getCorsHeaders(req: Request) {

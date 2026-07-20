@@ -131,7 +131,7 @@ rdc-revend/
 
 ### Diferenciação Dev/Prod
 - **Dev:** `http://localhost:5173` (Vite dev server)
-- **Prod:** `https://rdc-revend.vercel.app` (Vercel)
+- **Prod:** `https://rdc-os.vercel.app` (Vercel)
 - CORS configurado nas edge functions para ambas as origens
 - MercadoPago: credenciais de teste (DEV) vs produção (PROD) separadas no `.env`
 - UAZAPI: **mesma instância** para dev e prod (risco de envio acidental em testes)
