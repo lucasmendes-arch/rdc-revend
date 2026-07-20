@@ -50,6 +50,7 @@ const Login = () => {
     }
     if (role === "admin") navigate("/admin/financeiro", { replace: true });
     else if (role === "salao") navigate("/salao", { replace: true });
+    else if (role === "administrativo") navigate("/admin/rh/candidatos", { replace: true });
     else navigate("/catalogo", { replace: true });
   }, [pendingNav, authLoading, user, role]);
 

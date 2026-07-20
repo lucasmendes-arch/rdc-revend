@@ -3,6 +3,7 @@ import { NavLink, Link } from 'react-router-dom'
 import { ClipboardList, Truck, LogOut, Sun, Moon, Warehouse, Settings, History, BarChart3, Boxes, LayoutGrid } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useMyStore } from '@/hooks/useMyStore'
+import { useAuth } from '@/contexts/AuthContext'
 
 const THEME_KEY = 'rdc-admin-theme'
 
@@ -12,6 +13,7 @@ interface EstoqueLayoutProps {
 
 export default function EstoqueLayout({ children }: EstoqueLayoutProps) {
   const { store, isCentral, isAdmin, allStores, adminStoreSlug, setAdminStore } = useMyStore()
+  const { role } = useAuth()
 
   const [isDark, setIsDark] = useState(() => {
     try { return localStorage.getItem(THEME_KEY) === 'dark' } catch { return false }
@@ -100,7 +102,7 @@ export default function EstoqueLayout({ children }: EstoqueLayoutProps) {
           </nav>
 
           <div className="flex items-center gap-1 shrink-0">
-            {isAdmin ? (
+            {role === 'admin' ? (
               <Link
                 to="/admin/catalogo"
                 className="p-2 hover:bg-white/10 rounded-lg transition-colors text-white flex items-center gap-1.5 text-sm"
@@ -108,6 +110,15 @@ export default function EstoqueLayout({ children }: EstoqueLayoutProps) {
               >
                 <LayoutGrid className="w-4 h-4" />
                 <span className="hidden sm:inline">Admin</span>
+              </Link>
+            ) : role === 'administrativo' ? (
+              <Link
+                to="/admin/rh/candidatos"
+                className="p-2 hover:bg-white/10 rounded-lg transition-colors text-white flex items-center gap-1.5 text-sm"
+                title="Voltar ao RH"
+              >
+                <LayoutGrid className="w-4 h-4" />
+                <span className="hidden sm:inline">RH</span>
               </Link>
             ) : (
               <Link

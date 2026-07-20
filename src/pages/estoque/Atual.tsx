@@ -59,7 +59,7 @@ export default function EstoqueAtual() {
       if (error) throw error
       return (data || []) as StockRow[]
     },
-    enabled: role === 'admin',
+    enabled: role === 'admin' || role === 'administrativo',
   })
 
   const { data: stockCategories = [] } = useQuery<StockCategoryOption[]>({
@@ -131,7 +131,7 @@ export default function EstoqueAtual() {
     })
   }, [pivotByProduct, categoryOrderByName])
 
-  if (role !== 'admin') {
+  if (role !== 'admin' && role !== 'administrativo') {
     return <Navigate to="/estoque/contagem" replace />
   }
 

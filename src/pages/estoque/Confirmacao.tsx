@@ -157,7 +157,7 @@ export default function EstoqueConfirmacao() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { role } = useAuth()
-  const isAdmin = role === 'admin'
+  const isAdmin = role === 'admin' || role === 'administrativo'
   const [result, setResult] = useState<ConfirmSummary | null>(null)
   const [editingItem, setEditingItem] = useState<CountItemWithProduct | null>(null)
 

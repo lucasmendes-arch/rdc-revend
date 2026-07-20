@@ -94,7 +94,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    if (profile?.role !== 'admin' && profile?.role !== 'salao') {
+    if (profile?.role !== 'admin' && profile?.role !== 'salao' && profile?.role !== 'administrativo') {
       return new Response(
         JSON.stringify({ error: "Apenas administradores ou operadores de salão podem criar usuários" }),
         { status: 403, headers: { "Content-Type": "application/json", ...getCorsHeaders(req) } }
@@ -117,12 +117,15 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Resolve role: salao and admin allowed; only admin can create another admin.
-    // Colaborador de loja física é sempre role='salao' (store_id, quando
-    // aplicável, é atribuído depois via admin_set_user_role).
-    const CREATABLE_ROLES = ['admin', 'salao']
+    // Resolve role: salao, admin e administrativo permitidos; só admin pode
+    // criar outro admin ou um administrativo (evita escalonamento por um
+    // salao/administrativo criando um usuário com mais acesso que o próprio
+    // criador). Colaborador de loja física é sempre role='salao' (store_id,
+    // quando aplicável, é atribuído depois via admin_set_user_role).
+    const CREATABLE_ROLES = ['admin', 'salao', 'administrativo']
     const requestedRole = CREATABLE_ROLES.includes(role) ? role : 'user'
-    const userRole = requestedRole === 'admin' && profile?.role !== 'admin' ? 'salao' : requestedRole
+    const isPrivilegedRole = requestedRole === 'admin' || requestedRole === 'administrativo'
+    const userRole = isPrivilegedRole && profile?.role !== 'admin' ? 'salao' : requestedRole
 
     // Create user via Supabase Admin API
     const { data: userData, error: createError } = await supabase.auth.admin.createUser({

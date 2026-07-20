@@ -17,9 +17,10 @@ export const RhRoute = () => {
     )
   }
 
-  // Acesso ao módulo de RH: admin sempre; outros papéis via permissão granular
-  // can_manage_rh (profiles.permissions), mesmo padrão de can_edit_orders.
-  if (role !== 'admin' && !hasPermission('can_manage_rh')) {
+  // Acesso ao módulo de RH+DP: admin e administrativo sempre; outros papéis
+  // via permissão granular can_manage_rh (profiles.permissions), mesmo
+  // padrão de can_edit_orders.
+  if (role !== 'admin' && role !== 'administrativo' && !hasPermission('can_manage_rh')) {
     return <Navigate to="/" replace />
   }
 

@@ -1,9 +1,10 @@
 import { useMemo, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import {
   Loader, Plus, User, Phone, FileText, Image as ImageIcon, X, Paperclip,
-  Store as StoreIcon, Settings, AlertTriangle,
+  Store as StoreIcon, Zap, AlertTriangle,
 } from 'lucide-react'
 import {
   DndContext, DragOverlay, PointerSensor, KeyboardSensor, useSensor, useSensors,
@@ -48,6 +49,7 @@ interface Candidate {
   photo_url: string | null
   resume_url: string | null
   notes: string | null
+  start_date: string | null
   due_date: string | null
   assignee_id: string | null
   created_at: string
@@ -59,17 +61,6 @@ interface Candidate {
 
 function getAnswerValue(c: Candidate, fieldKey: string): string | undefined {
   return c.candidate_answers.find((a) => a.form_fields?.field_key === fieldKey)?.value
-}
-
-// Prazo interno (não é campo de formulário): quantos dias em atraso o
-// candidato está na etapa atual, dado o limite configurado pra essa etapa em
-// stage_sla_days. stage_started_at é mantido pelo trigger do banco — atualiza
-// sozinho toda vez que a etapa muda.
-function daysOverdue(candidate: Candidate, slaDays: number | undefined): number {
-  if (!slaDays) return 0
-  const deadline = new Date(candidate.stage_started_at).getTime() + slaDays * 24 * 60 * 60 * 1000
-  const diffMs = Date.now() - deadline
-  return diffMs > 0 ? Math.ceil(diffMs / (24 * 60 * 60 * 1000)) : 0
 }
 
 const STAGE_LABEL_BY_VALUE: Record<string, string> = {
@@ -188,16 +179,14 @@ function CandidatePhoto({ candidate }: { candidate: Pick<Candidate, 'photo_url' 
 }
 
 function CandidateCard({
-  candidate, onOpen, slaDays, assigneeName,
+  candidate, onOpen, assigneeName,
 }: {
   candidate: Candidate
   onOpen: (c: Candidate) => void
-  slaDays: number | undefined
   assigneeName: string | undefined
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: candidate.id })
   const { accent } = getStageColors(candidate.stage)
-  const overdue = daysOverdue(candidate, slaDays)
   const dueOverdue = isDueDateOverdue(candidate)
   const style = {
     ...(transform ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`, zIndex: 10 } : null),
@@ -215,9 +204,9 @@ function CandidateCard({
         isDragging ? 'opacity-50' : ''
       }`}
     >
-      {overdue > 0 && (
-        <div className="absolute top-1.5 right-1.5 z-10 flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-red-600 text-white text-[10px] font-bold shadow" title={`${overdue} dia(s) além do prazo desta etapa`}>
-          <AlertTriangle className="w-2.5 h-2.5" /> {overdue}d
+      {dueOverdue && (
+        <div className="absolute top-1.5 right-1.5 z-10 flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-red-600 text-white text-[10px] font-bold shadow" title="Data fim já passou">
+          <AlertTriangle className="w-2.5 h-2.5" /> Atrasado
         </div>
       )}
       <CandidatePhoto candidate={candidate} />
@@ -282,7 +271,7 @@ function CandidateCard({
 }
 
 function StageColumn({
-  stage, label, candidates, onOpen, onAddClick, addDisabled, slaDays, assigneeNames,
+  stage, label, candidates, onOpen, onAddClick, addDisabled, assigneeNames,
 }: {
   stage: Stage
   label: string
@@ -290,7 +279,6 @@ function StageColumn({
   onOpen: (c: Candidate) => void
   onAddClick: () => void
   addDisabled: boolean
-  slaDays: number | undefined
   assigneeNames: Map<string, string>
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: stage })
@@ -313,7 +301,7 @@ function StageColumn({
       >
         {candidates.map((c) => (
           <CandidateCard
-            key={c.id} candidate={c} onOpen={onOpen} slaDays={slaDays}
+            key={c.id} candidate={c} onOpen={onOpen}
             assigneeName={c.assignee_id ? assigneeNames.get(c.assignee_id) : undefined}
           />
         ))}
@@ -337,10 +325,10 @@ export default function RhCandidatos() {
   const [activeCandidate, setActiveCandidate] = useState<Candidate | null>(null)
   const [detailCandidate, setDetailCandidate] = useState<Candidate | null>(null)
   const [notesDraft, setNotesDraft] = useState('')
+  const [startDateDraft, setStartDateDraft] = useState('')
   const [dueDateDraft, setDueDateDraft] = useState('')
   const [assigneeDraft, setAssigneeDraft] = useState('')
   const [createOpen, setCreateOpen] = useState(false)
-  const [slaConfigOpen, setSlaConfigOpen] = useState(false)
   const [promoteCandidate, setPromoteCandidate] = useState<Candidate | null>(null)
   const [promoteEmploymentType, setPromoteEmploymentType] = useState<EmploymentType>('clt')
   const [createForm, setCreateForm] = useState(EMPTY_CREATE_FORM)
@@ -388,7 +376,7 @@ export default function RhCandidatos() {
     queryFn: async () => {
       let query = supabase
         .from('candidates')
-        .select('id, job_opening_id, name, age, whatsapp, stage, source, photo_url, resume_url, notes, due_date, assignee_id, created_at, stage_started_at, job_openings!inner(id, role_title, status, store_id), candidate_answers(value, form_fields(field_key, label, field_type, show_on_card)), candidate_tags(tags(id, name, color))')
+        .select('id, job_opening_id, name, age, whatsapp, stage, source, photo_url, resume_url, notes, start_date, due_date, assignee_id, created_at, stage_started_at, job_openings!inner(id, role_title, status, store_id), candidate_answers(value, form_fields(field_key, label, field_type, show_on_card)), candidate_tags(tags(id, name, color))')
         .order('created_at', { ascending: false })
       if (storeId) query = query.eq('job_openings.store_id', storeId)
       const { data, error } = await query
@@ -397,18 +385,6 @@ export default function RhCandidatos() {
     },
     staleTime: 15 * 1000,
   })
-
-  const { data: slaRows = [] } = useQuery<{ stage: Stage; days: number }[]>({
-    queryKey: ['rh-stage-sla-days'],
-    queryFn: async () => {
-      const { data, error } = await supabase.from('stage_sla_days').select('stage, days')
-      if (error) throw error
-      return (data || []) as { stage: Stage; days: number }[]
-    },
-    staleTime: 60 * 1000,
-  })
-
-  const slaMap = useMemo(() => new Map(slaRows.map((r) => [r.stage, r.days])), [slaRows])
 
   const { data: systemUsers = [] } = useQuery<{ id: string; full_name: string | null; email: string }[]>({
     queryKey: ['rh-system-users'],
@@ -520,6 +496,18 @@ export default function RhCandidatos() {
     onError: (err) => toast.error(`Erro ao salvar: ${err instanceof Error ? err.message : 'desconhecido'}`),
   })
 
+  const updateStartDate = useMutation({
+    mutationFn: async ({ id, startDate }: { id: string; startDate: string }) => {
+      const { error } = await supabase.from('candidates').update({ start_date: startDate || null }).eq('id', id)
+      if (error) throw error
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['rh-candidates', storeId] })
+      toast.success('Data início salva')
+    },
+    onError: (err) => toast.error(`Erro ao salvar data início: ${err instanceof Error ? err.message : 'desconhecido'}`),
+  })
+
   const updateDueDate = useMutation({
     mutationFn: async ({ id, dueDate }: { id: string; dueDate: string }) => {
       const { error } = await supabase.from('candidates').update({ due_date: dueDate || null }).eq('id', id)
@@ -527,9 +515,9 @@ export default function RhCandidatos() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['rh-candidates', storeId] })
-      toast.success('Prazo salvo')
+      toast.success('Data fim salva')
     },
-    onError: (err) => toast.error(`Erro ao salvar prazo: ${err instanceof Error ? err.message : 'desconhecido'}`),
+    onError: (err) => toast.error(`Erro ao salvar data fim: ${err instanceof Error ? err.message : 'desconhecido'}`),
   })
 
   const updateAssignee = useMutation({
@@ -556,18 +544,6 @@ export default function RhCandidatos() {
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['rh-candidates', storeId] }),
     onError: (err) => toast.error(`Erro ao atualizar tag: ${err instanceof Error ? err.message : 'desconhecido'}`),
-  })
-
-  const updateSlaDays = useMutation({
-    mutationFn: async ({ stage, days }: { stage: Stage; days: number }) => {
-      const { error } = await supabase.from('stage_sla_days').update({ days }).eq('stage', stage)
-      if (error) throw error
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['rh-stage-sla-days'] })
-      toast.success('Prazo atualizado')
-    },
-    onError: (err) => toast.error(`Erro ao salvar prazo: ${err instanceof Error ? err.message : 'desconhecido'}`),
   })
 
   const updateAttachment = useMutation({
@@ -639,6 +615,7 @@ export default function RhCandidatos() {
   function openDetail(c: Candidate) {
     setDetailCandidate(c)
     setNotesDraft(c.notes || '')
+    setStartDateDraft(c.start_date || '')
     setDueDateDraft(c.due_date || '')
     setAssigneeDraft(c.assignee_id || '')
   }
@@ -646,6 +623,7 @@ export default function RhCandidatos() {
   function closeDetail() {
     setDetailCandidate(null)
     setNotesDraft('')
+    setStartDateDraft('')
     setDueDateDraft('')
     setAssigneeDraft('')
   }
@@ -720,14 +698,14 @@ export default function RhCandidatos() {
                 ))}
               </select>
             </div>
-            <button
-              onClick={() => setSlaConfigOpen(true)}
+            <Link
+              to="/admin/rh/automacoes"
               className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border text-sm font-medium hover:bg-surface-alt transition-colors"
-              title="Configurar prazo (em dias) de cada etapa"
+              title="Automações do processo seletivo"
             >
-              <Settings className="w-4 h-4" />
-              <span className="hidden sm:inline">Prazos</span>
-            </button>
+              <Zap className="w-4 h-4" />
+              <span className="hidden sm:inline">Automações</span>
+            </Link>
             <button
               onClick={openCreate}
               disabled={jobOpenings.length === 0}
@@ -759,7 +737,6 @@ export default function RhCandidatos() {
                   onOpen={openDetail}
                   onAddClick={openCreate}
                   addDisabled={jobOpenings.length === 0}
-                  slaDays={slaMap.get(col.stage)}
                   assigneeNames={assigneeNames}
                 />
               ))}
@@ -1012,7 +989,23 @@ export default function RhCandidatos() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-foreground mb-1">Prazo (due date)</label>
+                  <label className="block text-sm font-medium text-foreground mb-1">Data início</label>
+                  <input
+                    type="date"
+                    value={startDateDraft}
+                    onChange={(e) => setStartDateDraft(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                  />
+                  <button
+                    onClick={() => updateStartDate.mutate({ id: detailCandidate.id, startDate: startDateDraft })}
+                    disabled={updateStartDate.isPending}
+                    className="mt-1.5 px-3 py-1.5 rounded-lg border border-border text-xs font-medium hover:bg-surface-alt disabled:opacity-70"
+                  >
+                    {updateStartDate.isPending ? 'Salvando...' : 'Salvar data início'}
+                  </button>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-1">Data fim</label>
                   <input
                     type="date"
                     value={dueDateDraft}
@@ -1024,10 +1017,10 @@ export default function RhCandidatos() {
                     disabled={updateDueDate.isPending}
                     className="mt-1.5 px-3 py-1.5 rounded-lg border border-border text-xs font-medium hover:bg-surface-alt disabled:opacity-70"
                   >
-                    {updateDueDate.isPending ? 'Salvando...' : 'Salvar prazo'}
+                    {updateDueDate.isPending ? 'Salvando...' : 'Salvar data fim'}
                   </button>
                 </div>
-                <div>
+                <div className="col-span-2">
                   <label className="block text-sm font-medium text-foreground mb-1">Responsável</label>
                   <select
                     value={assigneeDraft}
@@ -1109,49 +1102,6 @@ export default function RhCandidatos() {
                   {updateNotes.isPending ? 'Salvando...' : 'Salvar observações'}
                 </button>
               </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Modal: prazo (dias) por etapa — controle interno, não é campo do formulário */}
-      {slaConfigOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-foreground/40 backdrop-blur-sm" onClick={() => setSlaConfigOpen(false)} />
-          <div className="relative bg-card rounded-2xl shadow-2xl border border-border p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-2">
-              <h2 className="text-xl font-bold text-foreground">Prazos por etapa</h2>
-              <button onClick={() => setSlaConfigOpen(false)} className="p-1.5 rounded-lg hover:bg-surface-alt text-muted-foreground">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <p className="text-xs text-muted-foreground mb-4">
-              Quantos dias o operador tem pra avaliar o candidato em cada etapa antes de contar como atrasado no card. Conta a partir de quando o candidato entrou na etapa atual.
-            </p>
-            <div className="space-y-1.5">
-              {ALL_COLUMNS.map((col) => (
-                <div key={col.stage} className="flex items-center justify-between gap-3 py-1">
-                  <div className="flex items-center gap-1.5 min-w-0">
-                    <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: getStageColors(col.stage).accent }} />
-                    <span className="text-sm text-foreground truncate">{col.label}</span>
-                  </div>
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <input
-                      type="number"
-                      min={1}
-                      defaultValue={slaMap.get(col.stage) ?? 3}
-                      onBlur={(e) => {
-                        const days = parseInt(e.target.value, 10)
-                        if (!isNaN(days) && days > 0 && days !== slaMap.get(col.stage)) {
-                          updateSlaDays.mutate({ stage: col.stage, days })
-                        }
-                      }}
-                      className="w-16 px-2 py-1.5 rounded-lg border border-border bg-background text-foreground text-sm text-center focus:outline-none focus:ring-2 focus:ring-ring"
-                    />
-                    <span className="text-xs text-muted-foreground">dias</span>
-                  </div>
-                </div>
-              ))}
             </div>
           </div>
         </div>

@@ -4,7 +4,8 @@ import {
   Package, ShoppingCart, Users, Warehouse, UserCog,
   Menu, X, ExternalLink, Tag, DollarSign,
   Megaphone, UserCheck, BadgeDollarSign, ChevronRight,
-  ClipboardList, Briefcase, KanbanSquare, ListChecks, IdCard, Contact, Zap,
+  ClipboardList, Briefcase, KanbanSquare, ListChecks, IdCard, Contact,
+  Boxes,
 } from 'lucide-react'
 import logo from '@/assets/logo-rei-dos-cachos.png'
 import { ThemeToggle } from '@/components/ui/ThemeToggle'
@@ -18,52 +19,54 @@ const navGroups: { label: string; items: NavItem[] }[] = [
     label: 'Comercial',
     items: [
       { label: 'Pedidos', path: '/admin/pedidos', icon: ShoppingCart },
-      { label: 'Financeiro', path: '/admin/financeiro', icon: DollarSign },
-      { label: 'Tabelas de Preço', path: '/admin/tabelas-preco', icon: BadgeDollarSign },
-    ],
-  },
-  {
-    label: 'Pessoas',
-    items: [
       { label: 'Clientes', path: '/admin/clientes', icon: Users },
       { label: 'Vendedores', path: '/admin/vendedores', icon: UserCheck },
-      { label: 'Usuários', path: '/admin/usuarios', icon: UserCog },
+      { label: 'Financeiro', path: '/admin/financeiro', icon: DollarSign },
+      { label: 'Tabelas de Preço', path: '/admin/tabelas-preco', icon: BadgeDollarSign },
+      { label: 'Marketing', path: '/admin/marketing', icon: Megaphone },
     ],
   },
   {
-    label: 'Operações',
+    label: 'Catálogo & Estoque',
     items: [
       { label: 'Catálogo', path: '/admin/catalogo', icon: Package },
+      { label: 'Categorias', path: '/admin/categorias', icon: Tag },
       { label: 'Estoque', path: '/admin/estoque', icon: Warehouse },
       { label: 'Contagem de Estoque', path: '/estoque/relatorio', icon: ClipboardList },
-      { label: 'Categorias', path: '/admin/categorias', icon: Tag },
-      { label: 'Marketing', path: '/admin/marketing', icon: Megaphone },
+    ],
+  },
+  {
+    label: 'Sistema',
+    items: [
+      { label: 'Usuários', path: '/admin/usuarios', icon: UserCog },
     ],
   },
 ]
 
-// RH tem acesso restrito (admin ou permissão can_manage_rh) — grupo separado,
-// só aparece na sidebar pra quem tem acesso.
+// RH+DP tem acesso restrito (admin ou permissão can_manage_rh) — grupo
+// separado, só aparece na sidebar pra quem tem acesso. Ordem segue o funil:
+// Vagas → Candidatos → Contratação (kanban de admissão) → Colaboradores
+// (ativos) → itens de configuração (Cargos, Formulário). Automações é
+// acessado direto pela tela de Candidatos, não fica na sidebar.
 const rhNavGroup: { label: string; items: NavItem[] } = {
-  label: 'RH',
+  label: 'Recursos Humanos',
   items: [
     { label: 'Vagas', path: '/admin/rh/vagas', icon: Briefcase },
-    { label: 'Cargos', path: '/admin/rh/cargos', icon: IdCard },
     { label: 'Candidatos', path: '/admin/rh/candidatos', icon: KanbanSquare },
+    { label: 'Contratação', path: '/admin/dp/contratacao', icon: ClipboardList },
+    { label: 'Colaboradores', path: '/admin/dp/colaboradores', icon: Contact },
+    { label: 'Cargos', path: '/admin/rh/cargos', icon: IdCard },
     { label: 'Formulário', path: '/admin/rh/formulario', icon: ListChecks },
-    { label: 'Automações', path: '/admin/rh/automacoes', icon: Zap },
   ],
 }
 
-// DP reaproveita o mesmo guard/permissão do RH nesta etapa (can_manage_rh) —
-// grupo separado só por clareza visual do módulo. "Contratação" é o kanban
-// de admissão (candidato contratado até efetivado/encerrado); "Colaboradores"
-// é só visualização/gestão de quem já está ativo.
-const dpNavGroup: { label: string; items: NavItem[] } = {
-  label: 'Departamento Pessoal',
+// Estoque completo (Contagem, Pedidos, Relatório, Estoque Atual, Histórico,
+// Config) pra quem tem has_full_stock_access() sem ser admin — hoje só
+// role='administrativo'. Admin já enxerga o módulo via navGroups acima.
+const estoqueNavGroup: { label: string; items: NavItem[] } = {
+  label: 'Estoque',
   items: [
-    { label: 'Contratação', path: '/admin/dp/contratacao', icon: ClipboardList },
-    { label: 'Colaboradores', path: '/admin/dp/colaboradores', icon: Contact },
+    { label: 'Contagem de Estoque', path: '/estoque/contagem', icon: Boxes },
   ],
 }
 
@@ -97,8 +100,20 @@ function SidebarNavItem({ item, isActive, onClick }: { item: NavItem; isActive: 
 function SidebarContent({ onNavClick }: { onNavClick?: () => void }) {
   const location = useLocation()
   const { role, hasPermission } = useAuth()
-  const canManageRh = role === 'admin' || hasPermission('can_manage_rh')
-  const groups = canManageRh ? [...navGroups, rhNavGroup, dpNavGroup] : navGroups
+  const canManageRh = role === 'admin' || role === 'administrativo' || hasPermission('can_manage_rh')
+  const hasFullStockAccess = role === 'admin' || role === 'administrativo'
+
+  // admin enxerga tudo (navGroups já inclui Estoque); administrativo (e um
+  // eventual can_manage_rh-only sem ser admin) só vê RH+DP e/ou Estoque —
+  // nada do Comercial/Catálogo/Sistema, que continuam admin-only.
+  const groups = role === 'admin'
+    ? [...navGroups, rhNavGroup]
+    : [
+        ...(hasFullStockAccess ? [estoqueNavGroup] : []),
+        ...(canManageRh ? [rhNavGroup] : []),
+      ]
+
+  const homePath = role === 'admin' ? '/admin/catalogo' : '/admin/rh/candidatos'
 
   const [expanded, setExpanded] = useState<Set<string>>(() => {
     const initial = new Set<string>()
@@ -124,7 +139,7 @@ function SidebarContent({ onNavClick }: { onNavClick?: () => void }) {
       <div className="px-4 pt-4 pb-3.5 border-b border-white/[0.07]">
         <div className="flex items-center justify-between gap-2">
           <Link
-            to="/admin/catalogo"
+            to={homePath}
             onClick={onNavClick}
             className="flex items-center gap-3 min-w-0"
           >
@@ -204,6 +219,8 @@ function SidebarContent({ onNavClick }: { onNavClick?: () => void }) {
 
 function AdminLayoutInner({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false)
+  const { role } = useAuth()
+  const homePath = role === 'admin' ? '/admin/catalogo' : '/admin/rh/candidatos'
 
   const sidebarBg = 'bg-[hsl(218,18%,11%)]'
   const borderColor = 'border-white/[0.07]'
@@ -221,7 +238,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
       <header
         className={`lg:hidden fixed top-0 inset-x-0 z-40 ${sidebarBg} text-white h-14 flex items-center justify-between px-4 border-b ${borderColor}`}
       >
-        <Link to="/admin/catalogo" className="flex items-center gap-2.5">
+        <Link to={homePath} className="flex items-center gap-2.5">
           <img src={logo} alt="Rei dos Cachos" className="h-7 w-auto" />
           <span className="text-[13px] font-semibold text-white">Admin</span>
         </Link>

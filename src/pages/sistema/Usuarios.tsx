@@ -6,7 +6,7 @@ import {
   Loader, Plus, UserPlus, ShieldCheck, Store, Users, Search,
   X, Edit2, Check, User, Phone, Mail, FileText, Building2,
   DollarSign, KeyRound, RefreshCw, Lock, Unlock, Copy, Package,
-  AlertTriangle, TrendingUp,
+  AlertTriangle, TrendingUp, Briefcase,
 } from 'lucide-react'
 import AdminLayout from '@/components/admin/AdminLayout'
 
@@ -69,14 +69,16 @@ interface ClientOrder {
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const ROLE_LABELS: Record<string, string> = { admin: 'Admin', salao: 'Salão' }
+const ROLE_LABELS: Record<string, string> = { admin: 'Admin', salao: 'Salão', administrativo: 'Administrativo' }
 const ROLE_STYLES: Record<string, string> = {
   admin: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
   salao: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
+  administrativo: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
 }
 const ROLE_ICONS: Record<string, React.ReactNode> = {
   admin: <ShieldCheck className="w-3.5 h-3.5" />,
   salao: <Store className="w-3.5 h-3.5" />,
+  administrativo: <Briefcase className="w-3.5 h-3.5" />,
 }
 
 const SEGMENT_OPTIONS = [
@@ -372,12 +374,12 @@ export default function AdminUsuarios() {
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-foreground mb-1">Tipo de acesso</label>
-                <div className="grid grid-cols-2 gap-2">
-                  {(['salao', 'admin'] as const).map(r => (
+                <div className="grid grid-cols-3 gap-2">
+                  {(['salao', 'administrativo', 'admin'] as const).map(r => (
                     <button key={r} type="button" onClick={() => setCreateForm({ ...createForm, role: r, store_id: r === 'salao' ? createForm.store_id : '' })}
-                      className={`flex items-center justify-center gap-2 py-2.5 rounded-lg border text-sm font-semibold transition-all ${
+                      className={`flex items-center justify-center gap-2 py-2.5 rounded-lg border text-xs sm:text-sm font-semibold transition-all ${
                         createForm.role === r
-                          ? r === 'admin' ? 'bg-purple-100 text-purple-700 border-purple-300 dark:bg-purple-900/30 dark:text-purple-400 dark:border-purple-700/40' : 'bg-amber-100 text-amber-700 border-amber-300 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-700/40'
+                          ? `${ROLE_STYLES[r]} border-current/30`
                           : 'bg-background text-muted-foreground border-border hover:bg-accent'
                       }`}>
                       {ROLE_ICONS[r]}{ROLE_LABELS[r]}
@@ -1202,7 +1204,7 @@ function SystemUserSidePanel({
   const [selectedStoreId, setSelectedStoreId] = useState(user.store_id ?? '')
 
   const initials = (user.full_name || user.email).split(/[\s@]/).map(w => w[0]).join('').slice(0, 2).toUpperCase()
-  const roleColor = user.role === 'admin' ? 'bg-purple-700' : 'bg-amber-700'
+  const roleColor = user.role === 'admin' ? 'bg-purple-700' : user.role === 'administrativo' ? 'bg-blue-700' : 'bg-amber-700'
 
   const hasRoleChange = selectedRole !== user.role || (selectedRole === 'salao' && selectedStoreId !== (user.store_id ?? ''))
 
@@ -1298,14 +1300,14 @@ function SystemUserSidePanel({
           {/* Nível de acesso */}
           <div className="px-5 py-4 border-b border-zinc-200">
             <h3 className="text-[11px] font-bold text-zinc-400 uppercase tracking-widest mb-3">Nível de Acesso</h3>
-            <div className="grid grid-cols-2 gap-2">
-              {(['salao', 'admin'] as const).map(r => (
+            <div className="grid grid-cols-3 gap-2">
+              {(['salao', 'administrativo', 'admin'] as const).map(r => (
                 <button key={r} type="button"
                   onClick={() => setSelectedRole(r)}
                   disabled={isPending}
-                  className={`flex items-center justify-center gap-2 py-2.5 rounded-lg border text-sm font-semibold transition-all disabled:cursor-default ${
+                  className={`flex items-center justify-center gap-2 py-2.5 rounded-lg border text-xs sm:text-sm font-semibold transition-all disabled:cursor-default ${
                     selectedRole === r
-                      ? r === 'admin' ? 'bg-purple-100 text-purple-700 border-purple-300' : 'bg-amber-100 text-amber-700 border-amber-300'
+                      ? `${ROLE_STYLES[r]} border-current/30`
                       : 'bg-white text-muted-foreground border-border hover:bg-surface-alt disabled:opacity-50'
                   }`}>
                   {ROLE_ICONS[r]}{ROLE_LABELS[r]}

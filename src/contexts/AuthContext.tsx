@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useRef, useState } from 'react'
 import { Session, User } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
 
-export type UserRole = 'user' | 'admin' | 'salao' | null
+export type UserRole = 'user' | 'admin' | 'salao' | 'administrativo' | null
 
 interface AuthContextType {
   user: User | null

@@ -40,10 +40,13 @@ function writeAdminSlug(slug: string) {
 
 export function useMyStore() {
   const { storeId, role } = useAuth()
-  const isAdmin = role === 'admin'
+  // administrativo tem o mesmo acesso irrestrito de estoque que o admin
+  // (sem loja fixa, escolhe qualquer loja) — ver has_full_stock_access() no backend.
+  const isAdmin = role === 'admin' || role === 'administrativo'
 
-  // Admin não tem store_id (não é colaborador de nenhuma loja) — para poder
-  // supervisionar/testar o módulo, escolhe manualmente uma loja "de teste".
+  // Admin (e administrativo) não tem store_id (não é colaborador de nenhuma
+  // loja) — para poder supervisionar/testar o módulo, escolhe manualmente
+  // uma loja "de teste".
   const sharedAdminSlug = useSyncExternalStore(subscribeAdminSlug, readAdminSlug)
   const adminSlug = isAdmin ? sharedAdminSlug : null
 

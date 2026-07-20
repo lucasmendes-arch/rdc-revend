@@ -19,7 +19,8 @@ export const EstoqueRoute = () => {
 
   // Colaborador de loja física é role='salao' (unificado com o módulo de
   // estoque em 2026-07-02) — admin também acessa, pra supervisionar/testar.
-  if (role !== 'salao' && role !== 'admin') {
+  // administrativo tem acesso completo ao módulo (sem loja fixa, como admin).
+  if (role !== 'salao' && role !== 'admin' && role !== 'administrativo') {
     return <Navigate to="/" replace />
   }
 

@@ -180,7 +180,7 @@ export default function EstoqueHistorico() {
   const storeNameById = useMemo(() => new Map(stores.map((s) => [s.id, s.name])), [stores])
   const employeeNameById = useMemo(() => new Map(profiles.map((p) => [p.id, p.full_name])), [profiles])
 
-  if (role !== 'admin') {
+  if (role !== 'admin' && role !== 'administrativo') {
     return <Navigate to="/estoque/contagem" replace />
   }
 

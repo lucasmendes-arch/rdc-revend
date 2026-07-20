@@ -721,7 +721,7 @@ export default function EstoqueConfig() {
     copyTargets.mutate({ fromStoreId: from.id, toStoreId: to.id })
   }
 
-  if (role !== 'admin') {
+  if (role !== 'admin' && role !== 'administrativo') {
     return <Navigate to="/estoque/contagem" replace />
   }
 

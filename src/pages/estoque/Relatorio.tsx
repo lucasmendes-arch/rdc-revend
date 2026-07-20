@@ -58,7 +58,7 @@ export default function EstoqueRelatorio() {
     return Array.from(map.entries())
   }, [rows])
 
-  if (role !== 'admin') {
+  if (role !== 'admin' && role !== 'administrativo') {
     return <Navigate to="/estoque/contagem" replace />
   }
 
