@@ -62,7 +62,7 @@ As áreas abaixo estão em **feature freeze permanente**. Nenhuma alteração se
 - Não espalhar lógica crítica em múltiplos pontos sem necessidade
 - Preferir consistência entre persistência, cálculo e exibição
 - Manter retrocompatibilidade: novas colunas com DEFAULT, pedidos antigos não quebram
-- Testar que o TypeScript compila (`npx tsc --noEmit`) antes de entregar
+- Testar que o TypeScript compila (`npx tsc --noEmit -p tsconfig.app.json`) antes de entregar — o comando sem `-p` não checa nada neste repo (tsconfig.json raiz é só `references`, sem `files`), sempre retorna sucesso mesmo com erro real
 
 ## Referências rápidas
 
