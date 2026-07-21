@@ -17,25 +17,31 @@ import {
 interface JobRole extends JobRoleDescriptiveRow {
   id: string
   title: string
-  seniority_level: string | null
+  education_level: string | null
+  color: string
   is_active: boolean
   requires_experience: boolean
   created_at: string
   job_openings: { count: number }[]
 }
 
-const SENIORITY_LABELS: Record<string, string> = {
-  junior: 'Júnior',
-  pleno: 'Pleno',
-  senior: 'Sênior',
+const EDUCATION_LEVEL_LABELS: Record<string, string> = {
+  fundamental_incompleto: 'Fundamental incompleto',
+  fundamental_completo: 'Fundamental completo',
+  medio_incompleto: 'Médio incompleto',
+  medio_completo: 'Médio completo',
+  superior_incompleto: 'Superior incompleto',
+  superior_completo: 'Superior completo',
+  pos_graduacao: 'Pós-graduação',
 }
 
-const EMPTY_FORM = { title: '', seniority_level: '', requires_experience: true, ...EMPTY_JOB_ROLE_FIELDS }
+const EMPTY_FORM = { title: '', education_level: '', color: '#0D9488', requires_experience: true, ...EMPTY_JOB_ROLE_FIELDS }
 
 function toPayload(form: typeof EMPTY_FORM) {
   return {
     title: form.title.trim(),
-    seniority_level: form.seniority_level || null,
+    education_level: form.education_level || null,
+    color: form.color,
     requires_experience: form.requires_experience,
     ...descriptiveFormValueToPayload(form),
   }
@@ -118,7 +124,8 @@ export default function RhCargos() {
     setEditingId(role.id)
     setForm({
       title: role.title,
-      seniority_level: role.seniority_level || '',
+      education_level: role.education_level || '',
+      color: role.color,
       requires_experience: role.requires_experience,
       ...descriptiveRowToFormValue(role),
     })
@@ -202,7 +209,12 @@ export default function RhCargos() {
                 <tbody>
                   {jobRoles.map((role, index) => (
                     <tr key={role.id} className={`border-b border-border/40 last:border-0 ${index % 2 === 0 ? '' : 'bg-muted/30'}`}>
-                      <td className="px-4 py-3 text-sm font-medium text-foreground">{role.title}</td>
+                      <td className="px-4 py-3 text-sm font-medium text-foreground">
+                        <span className="inline-flex items-center gap-2">
+                          <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: role.color }} />
+                          {role.title}
+                        </span>
+                      </td>
                       <td className="px-4 py-3 text-sm text-muted-foreground">{contractTypeLabel(role.contract_type)}</td>
                       <td className="px-4 py-3 text-sm text-muted-foreground">{compensationTypeLabel(role.compensation_type)}</td>
                       <td className="px-4 py-3 text-sm text-center text-foreground">{role.job_openings?.[0]?.count ?? 0}</td>
@@ -269,6 +281,16 @@ export default function RhCargos() {
                 />
               </div>
 
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1">Cor (identifica a vaga no kanban de candidatos)</label>
+                <input
+                  type="color"
+                  value={form.color}
+                  onChange={(e) => setForm({ ...form, color: e.target.value })}
+                  className="w-full h-10 rounded-lg border border-border cursor-pointer"
+                />
+              </div>
+
               <JobRoleFieldsForm value={form} onChange={(patch) => setForm({ ...form, ...patch })} />
 
               {form.contract_type === 'mei' && (
@@ -289,14 +311,14 @@ export default function RhCargos() {
               )}
 
               <div>
-                <label className="block text-sm font-medium text-foreground mb-1">Nível (opcional)</label>
+                <label className="block text-sm font-medium text-foreground mb-1">Grau de Escolaridade (opcional)</label>
                 <select
-                  value={form.seniority_level}
-                  onChange={(e) => setForm({ ...form, seniority_level: e.target.value })}
+                  value={form.education_level}
+                  onChange={(e) => setForm({ ...form, education_level: e.target.value })}
                   className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                 >
                   <option value="">Não especificado</option>
-                  {Object.entries(SENIORITY_LABELS).map(([k, label]) => (
+                  {Object.entries(EDUCATION_LEVEL_LABELS).map(([k, label]) => (
                     <option key={k} value={k}>{label}</option>
                   ))}
                 </select>

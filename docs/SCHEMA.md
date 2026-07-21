@@ -728,7 +728,8 @@ Catálogo global de cargos (RH) — template reutilizável entre unidades. Ao cr
 | workload_hours | numeric(4,1) | YES | NULL | — |
 | requirements | text | YES | NULL | — |
 | benefits | text | YES | NULL | — |
-| seniority_level | text | YES | NULL | — |
+| education_level | text | YES | NULL | — |
+| color | text | NO | `'#0D9488'` | — |
 | is_active | boolean | NO | `true` | — |
 | requires_experience | boolean | NO | `true` | — |
 | created_at | timestamptz | NO | `now()` | — |
@@ -736,7 +737,8 @@ Catálogo global de cargos (RH) — template reutilizável entre unidades. Ao cr
 
 > `contract_type` válidos: `'clt'`, `'mei'`, `'pj'`, `'estagio'`.
 > `compensation_type` válidos: `'fixa'`, `'variavel'`, `'mista'`. CHECK garante consistência com `fixed_amount`/`variable_percentage` conforme o tipo (ver [Constraints](#constraints--check-values)).
-> `seniority_level` válidos (opcional): `'junior'`, `'pleno'`, `'senior'`.
+> `education_level` válidos (opcional, `20260720000003`): `'fundamental_incompleto'`, `'fundamental_completo'`, `'medio_incompleto'`, `'medio_completo'`, `'superior_incompleto'`, `'superior_completo'`, `'pos_graduacao'`. Antes chamado `seniority_level` (júnior/pleno/sênior) — repropositado pra grau de escolaridade.
+> `color` (hex, `20260720000004`): exibido nos cards/badges de vaga do kanban RH (`/admin/rh/candidatos`) e nos dropdowns de vaga/etapa. Editável em `/admin/rh/cargos`, mesmo padrão de `tags.color`. **Não** é copiado como snapshot pra `job_openings` — o join é sempre ao vivo via `job_openings.job_role_id → job_roles.color`, então mudar a cor do cargo reflete em todas as vagas ligadas a ele. Vaga manual sem `job_role_id` cai no default `'#0D9488'` no frontend.
 > `is_active = false` "aposenta" o cargo sem apagar (some do select de novas vagas, preserva histórico).
 > `requires_experience` (módulo DP, `20260718000015`): só relevante quando `contract_type='mei'` — editável em `/admin/rh/cargos` (checkbox visível só nesse caso). `false` = cargo aceita candidato sem experiência prévia; ao promover um candidato dessa vaga pra DP com `employment_type='mei'`, o processo nasce em `current_stage='contrato_formacao'` (trilha de formação) em vez de direto em `'contratacao'`. Lido via `job_openings.job_role_id → job_roles` dentro de `promote_candidate_to_dp` — vaga manual sem cargo vinculado assume `true` (caminho padrão, sem formação).
 > RLS: `has_rh_access()` (admin OU `profiles.permissions->>'can_manage_rh' = 'true'`).
@@ -1737,7 +1739,7 @@ Acessível por: `authenticated`.
 | coupons | discount_value | `> 0` |
 | job_roles | contract_type | `'clt'`, `'mei'`, `'pj'`, `'estagio'` |
 | job_roles | compensation_type | `'fixa'`, `'variavel'`, `'mista'` — CHECK exige `fixed_amount`/`variable_percentage` coerentes com o tipo |
-| job_roles | seniority_level | `'junior'`, `'pleno'`, `'senior'`, NULL |
+| job_roles | education_level | `'fundamental_incompleto'`, `'fundamental_completo'`, `'medio_incompleto'`, `'medio_completo'`, `'superior_incompleto'`, `'superior_completo'`, `'pos_graduacao'`, NULL |
 | job_openings | status | `'aberta'`, `'fechada'` |
 | job_openings | contract_type / compensation_type | mesmos valores de `job_roles`, porém nullable (snapshot opcional) |
 | candidates | stage | 13 valores — ver tabela `candidates` acima |

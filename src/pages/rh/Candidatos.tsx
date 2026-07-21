@@ -1,10 +1,10 @@
-import { useMemo, useRef, useState } from 'react'
+import { useMemo, useRef, useState, type SyntheticEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import {
   Loader, Plus, User, Phone, FileText, Image as ImageIcon, X, Paperclip,
-  Store as StoreIcon, Zap, AlertTriangle,
+  Store as StoreIcon, Zap, AlertTriangle, SlidersHorizontal, Calendar, Tag,
 } from 'lucide-react'
 import {
   DndContext, DragOverlay, PointerSensor, KeyboardSensor, useSensor, useSensors,
@@ -14,6 +14,9 @@ import { supabase } from '@/lib/supabase'
 import { useImageUpload } from '@/hooks/useImageUpload'
 import { useFileUpload } from '@/hooks/useFileUpload'
 import AdminLayout from '@/components/admin/AdminLayout'
+import ColorSelect, { type ColorSelectOption } from '@/components/rh/ColorSelect'
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
+import { Switch } from '@/components/ui/switch'
 import { EMPLOYMENT_TYPE_LABELS, EMPLOYMENT_TYPE_OPTIONS, type EmploymentType } from '@/lib/dpConstants'
 
 type Stage =
@@ -23,12 +26,22 @@ type Stage =
   | 'descartado' | 'banco_de_talentos' | 'sem_contratacao'
 
 interface Store { id: string; name: string }
-interface JobOpening { id: string; role_title: string; status: 'aberta' | 'fechada'; stores: { name: string } | null }
+// Cor da vaga vem do cargo vinculado (job_roles.color) — vaga manual sem
+// cargo (job_role_id null) cai no default, mesmo valor default da coluna.
+const DEFAULT_VAGA_COLOR = '#0D9488'
+interface JobOpening {
+  id: string
+  role_title: string
+  status: 'aberta' | 'fechada'
+  stores: { name: string } | null
+  job_roles: { color: string } | null
+}
 interface CandidateAnswer {
   value: string
   form_fields: { field_key: string; label: string; field_type: string; show_on_card: boolean } | null
 }
 interface CandidateTag { tags: { id: string; name: string; color: string } | null }
+interface SystemUser { id: string; full_name: string | null; email: string; role: string; permissions: { can_manage_rh?: boolean } | null }
 interface ActivityRow {
   id: string
   event_type: string
@@ -54,7 +67,7 @@ interface Candidate {
   assignee_id: string | null
   created_at: string
   stage_started_at: string
-  job_openings: { id: string; role_title: string; status: string } | null
+  job_openings: { id: string; role_title: string; status: string; job_roles: { color: string } | null } | null
   candidate_answers: CandidateAnswer[]
   candidate_tags: CandidateTag[]
 }
@@ -123,6 +136,30 @@ const ALL_COLUMNS: { stage: Stage; label: string }[] = [
 
 const EMPTY_CREATE_FORM = { job_opening_id: '', name: '', age: '', whatsapp: '' }
 
+// Preferência de exibição dos elementos "built-in" do card — puramente
+// visual (não é dado de negócio), então fica em localStorage, por
+// navegador/usuário, igual a uma preferência de view. Campos personalizados
+// do formulário continuam controlados por form_fields.show_on_card (banco).
+const CARD_PREFS_STORAGE_KEY = 'rdc-rh-candidatos-card-prefs'
+interface CardFieldPrefs { responsavel: boolean; dataFim: boolean; anexos: boolean; tags: boolean }
+const DEFAULT_CARD_PREFS: CardFieldPrefs = { responsavel: true, dataFim: true, anexos: true, tags: true }
+const CARD_PREF_LABELS: [keyof CardFieldPrefs, string][] = [
+  ['responsavel', 'Responsável'],
+  ['dataFim', 'Data fim'],
+  ['anexos', 'Anexos'],
+  ['tags', 'Tags'],
+]
+
+function loadCardPrefs(): CardFieldPrefs {
+  try {
+    const raw = localStorage.getItem(CARD_PREFS_STORAGE_KEY)
+    if (!raw) return DEFAULT_CARD_PREFS
+    return { ...DEFAULT_CARD_PREFS, ...JSON.parse(raw) }
+  } catch {
+    return DEFAULT_CARD_PREFS
+  }
+}
+
 // Uma cor própria por etapa (não por grupo) — mas seguindo uma progressão:
 // tons frios/neutros no início do funil, amarelo/laranja nos pontos de
 // atenção (no-show, decisão necessária), rampa de verde ganhando força
@@ -159,9 +196,108 @@ function attachmentCount(c: Candidate) {
   return (c.photo_url ? 1 : 0) + (c.resume_url ? 1 : 0)
 }
 
+function fileNameFromUrl(url: string) {
+  try {
+    const clean = url.split('?')[0]
+    const last = clean.split('/').pop() || 'arquivo'
+    return decodeURIComponent(last)
+  } catch {
+    return 'arquivo'
+  }
+}
+
+// Card de anexo estilo ClickUp: thumbnail + nome do arquivo truncado + ação
+// de remover. `image` renderiza o preview real; `doc` (currículo) usa um
+// tile com ícone já que não geramos thumbnail de PDF/DOC no cliente.
+function AttachmentCard({ url, kind, onRemove }: { url: string; kind: 'image' | 'doc'; onRemove: () => void }) {
+  const name = fileNameFromUrl(url)
+  return (
+    <div className="rounded-lg border border-border bg-card overflow-hidden">
+      <a href={url} target="_blank" rel="noopener noreferrer" className="block h-20 w-full bg-surface-alt flex items-center justify-center overflow-hidden">
+        {kind === 'image' ? (
+          <img src={url} alt="" className="w-full h-full object-cover" />
+        ) : (
+          <FileText className="w-7 h-7 text-muted-foreground" />
+        )}
+      </a>
+      <div className="flex items-center gap-1 px-2 py-1.5 border-t border-border/60">
+        <span className="text-[11px] text-muted-foreground truncate flex-1" title={name}>{name}</span>
+        <button type="button" onClick={onRemove} className="p-0.5 rounded hover:bg-red-50 text-muted-foreground hover:text-red-600 shrink-0" title="Remover e escolher outro">
+          <X className="w-3 h-3" />
+        </button>
+      </div>
+    </div>
+  )
+}
+
 function isDueDateOverdue(c: Candidate) {
   if (!c.due_date) return false
   return new Date(c.due_date + 'T00:00:00') < new Date(new Date().toDateString())
+}
+
+function relativeDateStr(days: number) {
+  const d = new Date()
+  d.setDate(d.getDate() + days)
+  return d.toISOString().slice(0, 10)
+}
+
+const QUICK_DATE_OPTIONS: { label: string; days: number }[] = [
+  { label: 'Hoje', days: 0 },
+  { label: 'Amanhã', days: 1 },
+  { label: 'Próxima semana', days: 7 },
+  { label: '2 semanas', days: 14 },
+  { label: '4 semanas', days: 28 },
+]
+
+// Editor inline da Data fim, clicável direto no card do kanban — mesmo
+// stopPropagation do ColorSelect compacto (card é arrastável via dnd-kit).
+function QuickDatePopover({ value, onChange, overdue }: { value: string | null; onChange: (v: string | null) => void; overdue: boolean }) {
+  const [open, setOpen] = useState(false)
+  const stop = (e: SyntheticEvent) => e.stopPropagation()
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          onPointerDown={stop}
+          onClick={stop}
+          className={`inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-md ${overdue ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-600'}`}
+        >
+          <Calendar className="w-2.5 h-2.5 shrink-0" />
+          {value ? new Date(value + 'T00:00:00').toLocaleDateString('pt-BR') : 'Data fim'}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-52 p-2" align="start" onClick={stop} onPointerDown={stop}>
+        <div className="space-y-0.5 mb-2">
+          {QUICK_DATE_OPTIONS.map((o) => (
+            <button
+              key={o.label}
+              type="button"
+              onClick={() => { onChange(relativeDateStr(o.days)); setOpen(false) }}
+              className="w-full text-left px-2 py-1.5 rounded-md text-sm text-foreground hover:bg-surface-alt transition-colors"
+            >
+              {o.label}
+            </button>
+          ))}
+        </div>
+        <input
+          type="date"
+          value={value || ''}
+          onChange={(e) => { onChange(e.target.value || null); setOpen(false) }}
+          className="w-full px-2 py-1.5 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+        />
+        {value && (
+          <button
+            type="button"
+            onClick={() => { onChange(null); setOpen(false) }}
+            className="w-full mt-1.5 text-left px-2 py-1.5 rounded-md text-sm text-red-600 hover:bg-red-50 transition-colors"
+          >
+            Remover data
+          </button>
+        )}
+      </PopoverContent>
+    </Popover>
+  )
 }
 
 function CandidatePhoto({ candidate }: { candidate: Pick<Candidate, 'photo_url' | 'name'> }) {
@@ -179,11 +315,15 @@ function CandidatePhoto({ candidate }: { candidate: Pick<Candidate, 'photo_url' 
 }
 
 function CandidateCard({
-  candidate, onOpen, assigneeName,
+  candidate, onOpen, assigneeName, cardPrefs, jobOpeningOptions, onJobOpeningChange, onDueDateChange,
 }: {
   candidate: Candidate
   onOpen: (c: Candidate) => void
   assigneeName: string | undefined
+  cardPrefs: CardFieldPrefs
+  jobOpeningOptions: ColorSelectOption[]
+  onJobOpeningChange: (candidateId: string, jobOpeningId: string) => void
+  onDueDateChange: (candidateId: string, value: string | null) => void
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: candidate.id })
   const { accent } = getStageColors(candidate.stage)
@@ -213,9 +353,14 @@ function CandidateCard({
       <div className="p-2.5 space-y-1.5">
         <p className="text-[13px] font-semibold text-foreground truncate">{candidate.name}</p>
         <div className="flex items-center gap-1 flex-wrap">
-          <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-md bg-[#CCFBF1] text-[#0D9488] truncate max-w-full">
-            {candidate.job_openings?.role_title || 'Vaga removida'}
-          </span>
+          <ColorSelect
+            compact
+            variant="pill"
+            value={candidate.job_opening_id}
+            onChange={(v) => onJobOpeningChange(candidate.id, v)}
+            options={jobOpeningOptions}
+            placeholder={candidate.job_openings?.role_title || 'Vaga removida'}
+          />
           <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-md ${
             candidate.source === 'manual' ? 'bg-slate-100 text-slate-600' : 'bg-[#EDE9FE] text-[#7C3AED]'
           }`}>
@@ -231,8 +376,9 @@ function CandidateCard({
             ))}
           </div>
         )}
-        {candidate.candidate_tags.some((ct) => ct.tags) && (
+        {cardPrefs.tags && candidate.candidate_tags.some((ct) => ct.tags) && (
           <div className="flex items-center gap-1 flex-wrap">
+            <Tag className="w-2.5 h-2.5 text-muted-foreground shrink-0" />
             {candidate.candidate_tags.filter((ct) => ct.tags).map((ct) => (
               <span
                 key={ct.tags!.id}
@@ -244,34 +390,43 @@ function CandidateCard({
             ))}
           </div>
         )}
-        {(assigneeName || candidate.due_date || attachmentCount(candidate) > 0) && (
-          <div className="flex items-center justify-between gap-1.5">
-            <div className="flex items-center gap-1 flex-wrap min-w-0">
-              {assigneeName && (
-                <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-600 truncate max-w-full" title={assigneeName}>
-                  {assigneeName}
-                </span>
-              )}
-              {candidate.due_date && (
-                <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-md ${dueOverdue ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-600'}`}>
-                  {new Date(candidate.due_date + 'T00:00:00').toLocaleDateString('pt-BR')}
+        {(() => {
+          const showAssignee = cardPrefs.responsavel && !!assigneeName
+          const showDueDate = cardPrefs.dataFim
+          const showAttach = cardPrefs.anexos && attachmentCount(candidate) > 0
+          if (!showAssignee && !showDueDate && !showAttach) return null
+          return (
+            <div className="flex items-center justify-between gap-1.5">
+              <div className="flex items-center gap-1 flex-wrap min-w-0">
+                {showAssignee && (
+                  <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-600 truncate max-w-full" title={assigneeName}>
+                    {assigneeName}
+                  </span>
+                )}
+                {showDueDate && (
+                  <QuickDatePopover
+                    value={candidate.due_date}
+                    onChange={(v) => onDueDateChange(candidate.id, v)}
+                    overdue={dueOverdue}
+                  />
+                )}
+              </div>
+              {showAttach && (
+                <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-amber-100 text-amber-700 flex items-center gap-0.5 shrink-0">
+                  <Paperclip className="w-2.5 h-2.5" /> {attachmentCount(candidate)}
                 </span>
               )}
             </div>
-            {attachmentCount(candidate) > 0 && (
-              <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-amber-100 text-amber-700 flex items-center gap-0.5 shrink-0">
-                <Paperclip className="w-2.5 h-2.5" /> {attachmentCount(candidate)}
-              </span>
-            )}
-          </div>
-        )}
+          )
+        })()}
       </div>
     </div>
   )
 }
 
 function StageColumn({
-  stage, label, candidates, onOpen, onAddClick, addDisabled, assigneeNames,
+  stage, label, candidates, onOpen, onAddClick, addDisabled, assigneeNames, cardPrefs,
+  jobOpeningOptions, onJobOpeningChange, onDueDateChange,
 }: {
   stage: Stage
   label: string
@@ -280,6 +435,10 @@ function StageColumn({
   onAddClick: () => void
   addDisabled: boolean
   assigneeNames: Map<string, string>
+  cardPrefs: CardFieldPrefs
+  jobOpeningOptions: ColorSelectOption[]
+  onJobOpeningChange: (candidateId: string, jobOpeningId: string) => void
+  onDueDateChange: (candidateId: string, value: string | null) => void
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: stage })
   const { accent, bg } = getStageColors(stage)
@@ -303,6 +462,10 @@ function StageColumn({
           <CandidateCard
             key={c.id} candidate={c} onOpen={onOpen}
             assigneeName={c.assignee_id ? assigneeNames.get(c.assignee_id) : undefined}
+            cardPrefs={cardPrefs}
+            jobOpeningOptions={jobOpeningOptions}
+            onJobOpeningChange={onJobOpeningChange}
+            onDueDateChange={onDueDateChange}
           />
         ))}
         <button
@@ -328,6 +491,8 @@ export default function RhCandidatos() {
   const [startDateDraft, setStartDateDraft] = useState('')
   const [dueDateDraft, setDueDateDraft] = useState('')
   const [assigneeDraft, setAssigneeDraft] = useState('')
+  const [jobOpeningDraft, setJobOpeningDraft] = useState('')
+  const [cardPrefs, setCardPrefs] = useState<CardFieldPrefs>(loadCardPrefs)
   const [createOpen, setCreateOpen] = useState(false)
   const [promoteCandidate, setPromoteCandidate] = useState<Candidate | null>(null)
   const [promoteEmploymentType, setPromoteEmploymentType] = useState<EmploymentType>('clt')
@@ -362,7 +527,7 @@ export default function RhCandidatos() {
   const { data: jobOpenings = [] } = useQuery<JobOpening[]>({
     queryKey: ['rh-job-openings-by-store', storeId],
     queryFn: async () => {
-      let query = supabase.from('job_openings').select('id, role_title, status, stores(name)').order('role_title')
+      let query = supabase.from('job_openings').select('id, role_title, status, stores(name), job_roles(color)').order('role_title')
       if (storeId) query = query.eq('store_id', storeId)
       const { data, error } = await query
       if (error) throw error
@@ -376,7 +541,7 @@ export default function RhCandidatos() {
     queryFn: async () => {
       let query = supabase
         .from('candidates')
-        .select('id, job_opening_id, name, age, whatsapp, stage, source, photo_url, resume_url, notes, start_date, due_date, assignee_id, created_at, stage_started_at, job_openings!inner(id, role_title, status, store_id), candidate_answers(value, form_fields(field_key, label, field_type, show_on_card)), candidate_tags(tags(id, name, color))')
+        .select('id, job_opening_id, name, age, whatsapp, stage, source, photo_url, resume_url, notes, start_date, due_date, assignee_id, created_at, stage_started_at, job_openings!inner(id, role_title, status, store_id, job_roles(color)), candidate_answers(value, form_fields(field_key, label, field_type, show_on_card)), candidate_tags(tags(id, name, color))')
         .order('created_at', { ascending: false })
       if (storeId) query = query.eq('job_openings.store_id', storeId)
       const { data, error } = await query
@@ -386,16 +551,41 @@ export default function RhCandidatos() {
     staleTime: 15 * 1000,
   })
 
-  const { data: systemUsers = [] } = useQuery<{ id: string; full_name: string | null; email: string }[]>({
+  const { data: systemUsers = [] } = useQuery<SystemUser[]>({
     queryKey: ['rh-system-users'],
     queryFn: async () => {
       const { data, error } = await supabase.rpc('get_system_users')
       if (error) throw error
-      return (data || []) as { id: string; full_name: string | null; email: string }[]
+      return (data || []) as SystemUser[]
     },
     staleTime: 5 * 60 * 1000,
   })
   const assigneeNames = useMemo(() => new Map(systemUsers.map((u) => [u.id, u.full_name || u.email])), [systemUsers])
+  // Responsável só pode ser alguém com acesso ao RH (admin/administrativo ou
+  // permissão granular can_manage_rh) — mesma regra de has_rh_access() no
+  // backend. Colaborador de loja (role=salao sem a permissão) fica de fora.
+  const rhAssignableUsers = useMemo(
+    () => systemUsers.filter((u) => u.role === 'admin' || u.role === 'administrativo' || u.permissions?.can_manage_rh === true),
+    [systemUsers]
+  )
+
+  const { data: allJobOpenings = [] } = useQuery<JobOpening[]>({
+    queryKey: ['rh-job-openings-all'],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('job_openings').select('id, role_title, status, stores(name), job_roles(color)').order('role_title')
+      if (error) throw error
+      return (data || []) as unknown as JobOpening[]
+    },
+    staleTime: 30 * 1000,
+  })
+  const jobOpeningOptions = useMemo<ColorSelectOption[]>(
+    () => allJobOpenings.map((j) => ({
+      value: j.id,
+      label: `${j.role_title}${j.stores?.name ? ` — ${j.stores.name}` : ''}${j.status === 'fechada' ? ' (fechada)' : ''}`,
+      color: j.job_roles?.color || DEFAULT_VAGA_COLOR,
+    })),
+    [allJobOpenings]
+  )
 
   const { data: rhTags = [] } = useQuery<{ id: string; name: string; color: string }[]>({
     queryKey: ['rh-tags'],
@@ -406,6 +596,41 @@ export default function RhCandidatos() {
     },
     staleTime: 30 * 1000,
   })
+
+  // Chave própria (não 'rh-form-fields', usada em Formulario.tsx com select
+  // mais amplo) — evita os dois componentes disputarem o formato do cache.
+  // is_system_field=false só: nome/whatsapp não são orientados por
+  // candidate_answers (colunas dedicadas) e vaga_id já tem badge própria
+  // sempre visível — alternar o show_on_card desses 3 nunca muda o card.
+  const { data: formFields = [] } = useQuery<{ id: string; label: string; show_on_card: boolean }[]>({
+    queryKey: ['rh-form-fields-toggle'],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('form_fields').select('id, label, show_on_card').eq('is_system_field', false).order('sort_order')
+      if (error) throw error
+      return (data || []) as { id: string; label: string; show_on_card: boolean }[]
+    },
+    staleTime: 30 * 1000,
+  })
+
+  const toggleFormFieldCard = useMutation({
+    mutationFn: async ({ id, showOnCard }: { id: string; showOnCard: boolean }) => {
+      const { error } = await supabase.from('form_fields').update({ show_on_card: showOnCard }).eq('id', id)
+      if (error) throw error
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['rh-form-fields-toggle'] })
+      queryClient.invalidateQueries({ queryKey: ['rh-candidates', storeId] })
+    },
+    onError: (err) => toast.error(`Erro ao atualizar campo: ${err instanceof Error ? err.message : 'desconhecido'}`),
+  })
+
+  function updateCardPref(key: keyof CardFieldPrefs, value: boolean) {
+    setCardPrefs((prev) => {
+      const next = { ...prev, [key]: value }
+      localStorage.setItem(CARD_PREFS_STORAGE_KEY, JSON.stringify(next))
+      return next
+    })
+  }
 
   const { data: activity = [] } = useQuery<ActivityRow[]>({
     queryKey: ['rh-candidate-activity', detailCandidate?.id],
@@ -484,53 +709,42 @@ export default function RhCandidatos() {
     onError: (err) => toast.error(`Erro ao promover: ${err instanceof Error ? err.message : 'desconhecido'}`),
   })
 
-  const updateNotes = useMutation({
-    mutationFn: async ({ id, notes }: { id: string; notes: string }) => {
-      const { error } = await supabase.from('candidates').update({ notes: notes.trim() || null }).eq('id', id)
+  // Vaga/Data início/Data fim/Responsável/Observações são editados como
+  // rascunho local e só persistem quando o usuário clica em "Salvar
+  // Alterações" — um único UPDATE, em vez de um botão por campo.
+  const saveCandidateChanges = useMutation({
+    mutationFn: async ({ id, patch }: {
+      id: string
+      patch: { job_opening_id: string; start_date: string | null; due_date: string | null; assignee_id: string | null; notes: string | null }
+    }) => {
+      const { error } = await supabase.from('candidates').update(patch).eq('id', id)
       if (error) throw error
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['rh-candidates', storeId] })
-      toast.success('Observações salvas')
+      toast.success('Alterações salvas')
     },
+    onError: (err) => toast.error(`Erro ao salvar alterações: ${err instanceof Error ? err.message : 'desconhecido'}`),
+  })
+
+  // Edição direta no card do kanban (Vaga/Data fim) — aplica na hora, sem
+  // botão de salvar, igual arrastar de etapa ou alternar tag.
+  const quickUpdateCandidate = useMutation({
+    mutationFn: async ({ id, patch }: { id: string; patch: Record<string, unknown> }) => {
+      const { error } = await supabase.from('candidates').update(patch).eq('id', id)
+      if (error) throw error
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['rh-candidates', storeId] }),
     onError: (err) => toast.error(`Erro ao salvar: ${err instanceof Error ? err.message : 'desconhecido'}`),
   })
 
-  const updateStartDate = useMutation({
-    mutationFn: async ({ id, startDate }: { id: string; startDate: string }) => {
-      const { error } = await supabase.from('candidates').update({ start_date: startDate || null }).eq('id', id)
-      if (error) throw error
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['rh-candidates', storeId] })
-      toast.success('Data início salva')
-    },
-    onError: (err) => toast.error(`Erro ao salvar data início: ${err instanceof Error ? err.message : 'desconhecido'}`),
-  })
+  function handleCardJobOpeningChange(candidateId: string, jobOpeningId: string) {
+    quickUpdateCandidate.mutate({ id: candidateId, patch: { job_opening_id: jobOpeningId } })
+  }
 
-  const updateDueDate = useMutation({
-    mutationFn: async ({ id, dueDate }: { id: string; dueDate: string }) => {
-      const { error } = await supabase.from('candidates').update({ due_date: dueDate || null }).eq('id', id)
-      if (error) throw error
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['rh-candidates', storeId] })
-      toast.success('Data fim salva')
-    },
-    onError: (err) => toast.error(`Erro ao salvar data fim: ${err instanceof Error ? err.message : 'desconhecido'}`),
-  })
-
-  const updateAssignee = useMutation({
-    mutationFn: async ({ id, assigneeId }: { id: string; assigneeId: string }) => {
-      const { error } = await supabase.from('candidates').update({ assignee_id: assigneeId || null }).eq('id', id)
-      if (error) throw error
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['rh-candidates', storeId] })
-      toast.success('Responsável salvo')
-    },
-    onError: (err) => toast.error(`Erro ao salvar responsável: ${err instanceof Error ? err.message : 'desconhecido'}`),
-  })
+  function handleCardDueDateChange(candidateId: string, value: string | null) {
+    quickUpdateCandidate.mutate({ id: candidateId, patch: { due_date: value } })
+  }
 
   const toggleTag = useMutation({
     mutationFn: async ({ candidateId, tagId, checked }: { candidateId: string; tagId: string; checked: boolean }) => {
@@ -618,6 +832,7 @@ export default function RhCandidatos() {
     setStartDateDraft(c.start_date || '')
     setDueDateDraft(c.due_date || '')
     setAssigneeDraft(c.assignee_id || '')
+    setJobOpeningDraft(c.job_opening_id)
   }
 
   function closeDetail() {
@@ -626,6 +841,7 @@ export default function RhCandidatos() {
     setStartDateDraft('')
     setDueDateDraft('')
     setAssigneeDraft('')
+    setJobOpeningDraft('')
   }
 
   function handleDragStart(event: DragStartEvent) {
@@ -706,6 +922,44 @@ export default function RhCandidatos() {
               <Zap className="w-4 h-4" />
               <span className="hidden sm:inline">Automações</span>
             </Link>
+            <Popover>
+              <PopoverTrigger asChild>
+                <button
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border text-sm font-medium hover:bg-surface-alt transition-colors"
+                  title="Personalizar campos exibidos no card"
+                >
+                  <SlidersHorizontal className="w-4 h-4" />
+                  <span className="hidden sm:inline">Personalizar cartão</span>
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-72" align="end">
+                <p className="text-[11px] font-semibold text-muted-foreground uppercase mb-2">Elementos do card</p>
+                <div className="space-y-2.5 mb-4">
+                  {CARD_PREF_LABELS.map(([key, label]) => (
+                    <label key={key} className="flex items-center justify-between gap-3 cursor-pointer">
+                      <span className="text-sm text-foreground">{label}</span>
+                      <Switch checked={cardPrefs[key]} onCheckedChange={(v) => updateCardPref(key, v)} />
+                    </label>
+                  ))}
+                </div>
+                {formFields.length > 0 && (
+                  <>
+                    <p className="text-[11px] font-semibold text-muted-foreground uppercase mb-2">Campos do formulário</p>
+                    <div className="space-y-2.5 max-h-56 overflow-y-auto">
+                      {formFields.map((f) => (
+                        <label key={f.id} className="flex items-center justify-between gap-3 cursor-pointer">
+                          <span className="text-sm text-foreground truncate">{f.label}</span>
+                          <Switch
+                            checked={f.show_on_card}
+                            onCheckedChange={(v) => toggleFormFieldCard.mutate({ id: f.id, showOnCard: v })}
+                          />
+                        </label>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </PopoverContent>
+            </Popover>
             <button
               onClick={openCreate}
               disabled={jobOpenings.length === 0}
@@ -738,6 +992,10 @@ export default function RhCandidatos() {
                   onAddClick={openCreate}
                   addDisabled={jobOpenings.length === 0}
                   assigneeNames={assigneeNames}
+                  cardPrefs={cardPrefs}
+                  jobOpeningOptions={jobOpeningOptions}
+                  onJobOpeningChange={handleCardJobOpeningChange}
+                  onDueDateChange={handleCardDueDateChange}
                 />
               ))}
             </div>
@@ -900,22 +1158,33 @@ export default function RhCandidatos() {
 
               <div>
                 <label className="block text-sm font-medium text-foreground mb-1">Etapa</label>
-                <select
+                <ColorSelect
+                  variant="dot"
                   value={detailCandidate.stage}
-                  onChange={(e) => {
-                    const stage = e.target.value as Stage
+                  onChange={(value) => {
+                    const stage = value as Stage
                     requestStageChange(detailCandidate, stage)
                     if (stage !== 'contratado' || promotedIds.has(detailCandidate.id)) {
                       setDetailCandidate({ ...detailCandidate, stage })
                     }
                   }}
-                  className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                >
-                  {ALL_COLUMNS.map((col) => (
-                    <option key={col.stage} value={col.stage}>{col.label}</option>
-                  ))}
-                </select>
+                  options={ALL_COLUMNS.map((col) => ({ value: col.stage, label: col.label, color: getStageColors(col.stage).accent }))}
+                />
                 <p className="text-[11px] text-muted-foreground mt-1">Alternativa ao arrastar no kanban — útil no mobile.</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1">Vaga</label>
+                <ColorSelect
+                  variant="pill"
+                  value={jobOpeningDraft}
+                  onChange={setJobOpeningDraft}
+                  options={allJobOpenings.map((j) => ({
+                    value: j.id,
+                    label: `${j.role_title}${j.stores?.name ? ` — ${j.stores.name}` : ''}${j.status === 'fechada' ? ' (fechada)' : ''}`,
+                    color: j.job_roles?.color || DEFAULT_VAGA_COLOR,
+                  }))}
+                />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -924,17 +1193,11 @@ export default function RhCandidatos() {
                   <input ref={detailPhotoInputRef} type="file" accept="image/*" className="hidden"
                     onChange={(e) => { const f = e.target.files?.[0]; if (f) handleDetailPhotoChange(f) }} />
                   {detailCandidate.photo_url ? (
-                    <div className="flex items-center gap-1.5">
-                      <a href={detailCandidate.photo_url} target="_blank" rel="noopener noreferrer"
-                        className="flex-1 flex items-center gap-1.5 px-3 py-2 rounded-lg border border-border text-sm text-foreground hover:bg-surface-alt min-w-0">
-                        <ImageIcon className="w-4 h-4 shrink-0" /> <span className="truncate">Ver foto</span>
-                      </a>
-                      <button type="button" onClick={() => updateAttachment.mutate({ id: detailCandidate.id, field: 'photo_url', url: null })}
-                        className="p-2 rounded-lg border border-border text-muted-foreground hover:text-red-600 hover:border-red-200 hover:bg-red-50 transition-colors shrink-0"
-                        title="Remover foto e escolher outra">
-                        <X className="w-4 h-4" />
-                      </button>
-                    </div>
+                    <AttachmentCard
+                      url={detailCandidate.photo_url}
+                      kind="image"
+                      onRemove={() => updateAttachment.mutate({ id: detailCandidate.id, field: 'photo_url', url: null })}
+                    />
                   ) : (
                     <button type="button" onClick={() => detailPhotoInputRef.current?.click()} disabled={uploadingPhoto}
                       className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border border-dashed border-border text-sm text-muted-foreground hover:bg-surface-alt disabled:opacity-60">
@@ -947,17 +1210,11 @@ export default function RhCandidatos() {
                   <input ref={detailResumeInputRef} type="file" accept=".pdf,.doc,.docx" className="hidden"
                     onChange={(e) => { const f = e.target.files?.[0]; if (f) handleDetailResumeChange(f) }} />
                   {detailCandidate.resume_url ? (
-                    <div className="flex items-center gap-1.5">
-                      <a href={detailCandidate.resume_url} target="_blank" rel="noopener noreferrer"
-                        className="flex-1 flex items-center gap-1.5 px-3 py-2 rounded-lg border border-border text-sm text-foreground hover:bg-surface-alt min-w-0">
-                        <FileText className="w-4 h-4 shrink-0" /> <span className="truncate">Ver currículo</span>
-                      </a>
-                      <button type="button" onClick={() => updateAttachment.mutate({ id: detailCandidate.id, field: 'resume_url', url: null })}
-                        className="p-2 rounded-lg border border-border text-muted-foreground hover:text-red-600 hover:border-red-200 hover:bg-red-50 transition-colors shrink-0"
-                        title="Remover currículo e escolher outro">
-                        <X className="w-4 h-4" />
-                      </button>
-                    </div>
+                    <AttachmentCard
+                      url={detailCandidate.resume_url}
+                      kind="doc"
+                      onRemove={() => updateAttachment.mutate({ id: detailCandidate.id, field: 'resume_url', url: null })}
+                    />
                   ) : (
                     <button type="button" onClick={() => detailResumeInputRef.current?.click()} disabled={uploadingResume}
                       className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border border-dashed border-border text-sm text-muted-foreground hover:bg-surface-alt disabled:opacity-60">
@@ -996,13 +1253,6 @@ export default function RhCandidatos() {
                     onChange={(e) => setStartDateDraft(e.target.value)}
                     className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                   />
-                  <button
-                    onClick={() => updateStartDate.mutate({ id: detailCandidate.id, startDate: startDateDraft })}
-                    disabled={updateStartDate.isPending}
-                    className="mt-1.5 px-3 py-1.5 rounded-lg border border-border text-xs font-medium hover:bg-surface-alt disabled:opacity-70"
-                  >
-                    {updateStartDate.isPending ? 'Salvando...' : 'Salvar data início'}
-                  </button>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-1">Data fim</label>
@@ -1012,13 +1262,6 @@ export default function RhCandidatos() {
                     onChange={(e) => setDueDateDraft(e.target.value)}
                     className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                   />
-                  <button
-                    onClick={() => updateDueDate.mutate({ id: detailCandidate.id, dueDate: dueDateDraft })}
-                    disabled={updateDueDate.isPending}
-                    className="mt-1.5 px-3 py-1.5 rounded-lg border border-border text-xs font-medium hover:bg-surface-alt disabled:opacity-70"
-                  >
-                    {updateDueDate.isPending ? 'Salvando...' : 'Salvar data fim'}
-                  </button>
                 </div>
                 <div className="col-span-2">
                   <label className="block text-sm font-medium text-foreground mb-1">Responsável</label>
@@ -1028,17 +1271,10 @@ export default function RhCandidatos() {
                     className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                   >
                     <option value="">Sem responsável</option>
-                    {systemUsers.map((u) => (
+                    {rhAssignableUsers.map((u) => (
                       <option key={u.id} value={u.id}>{u.full_name || u.email}</option>
                     ))}
                   </select>
-                  <button
-                    onClick={() => updateAssignee.mutate({ id: detailCandidate.id, assigneeId: assigneeDraft })}
-                    disabled={updateAssignee.isPending}
-                    className="mt-1.5 px-3 py-1.5 rounded-lg border border-border text-xs font-medium hover:bg-surface-alt disabled:opacity-70"
-                  >
-                    {updateAssignee.isPending ? 'Salvando...' : 'Salvar responsável'}
-                  </button>
                 </div>
               </div>
 
@@ -1094,14 +1330,34 @@ export default function RhCandidatos() {
                   className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none"
                   placeholder="Anotações sobre a entrevista, observações gerais..."
                 />
-                <button
-                  onClick={() => updateNotes.mutate({ id: detailCandidate.id, notes: notesDraft })}
-                  disabled={updateNotes.isPending}
-                  className="mt-2 px-4 py-2 rounded-lg btn-action text-sm font-medium disabled:opacity-70"
-                >
-                  {updateNotes.isPending ? 'Salvando...' : 'Salvar observações'}
-                </button>
               </div>
+
+              {(() => {
+                const hasDraftChanges =
+                  jobOpeningDraft !== detailCandidate.job_opening_id ||
+                  startDateDraft !== (detailCandidate.start_date || '') ||
+                  dueDateDraft !== (detailCandidate.due_date || '') ||
+                  assigneeDraft !== (detailCandidate.assignee_id || '') ||
+                  notesDraft !== (detailCandidate.notes || '')
+                return (
+                  <button
+                    onClick={() => saveCandidateChanges.mutate({
+                      id: detailCandidate.id,
+                      patch: {
+                        job_opening_id: jobOpeningDraft,
+                        start_date: startDateDraft || null,
+                        due_date: dueDateDraft || null,
+                        assignee_id: assigneeDraft || null,
+                        notes: notesDraft.trim() || null,
+                      },
+                    })}
+                    disabled={saveCandidateChanges.isPending || !hasDraftChanges}
+                    className="w-full px-4 py-2.5 rounded-lg btn-action text-sm font-medium disabled:opacity-50"
+                  >
+                    {saveCandidateChanges.isPending ? 'Salvando...' : 'Salvar Alterações'}
+                  </button>
+                )
+              })()}
             </div>
           </div>
         </div>
