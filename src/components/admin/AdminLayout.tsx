@@ -78,8 +78,8 @@ function SidebarNavItem({ item, isActive, onClick }: { item: NavItem; isActive: 
       onClick={onClick}
       className={`relative flex items-center gap-3 px-3 py-[7px] rounded-md text-[13px] transition-all duration-150 ${
         isActive
-          ? 'bg-white/[0.09] text-white font-medium'
-          : 'text-white/45 hover:text-white/80 hover:bg-white/[0.05] font-normal'
+          ? 'bg-sidebar-accent text-sidebar-accent-foreground font-medium'
+          : 'text-sidebar-foreground/55 hover:text-sidebar-foreground/85 hover:bg-sidebar-foreground/[0.05] font-normal'
       }`}
     >
       {isActive && (
@@ -89,7 +89,7 @@ function SidebarNavItem({ item, isActive, onClick }: { item: NavItem; isActive: 
       )}
       <Icon
         className={`w-[15px] h-[15px] flex-shrink-0 transition-colors duration-150 ${
-          isActive ? 'text-[hsl(38,90%,58%)]' : 'text-white/30'
+          isActive ? 'text-[hsl(38,90%,58%)]' : 'text-sidebar-foreground/40'
         }`}
       />
       <span className="truncate">{item.label}</span>
@@ -136,26 +136,26 @@ function SidebarContent({ onNavClick }: { onNavClick?: () => void }) {
   return (
     <>
       {/* Brand header */}
-      <div className="px-4 pt-4 pb-3.5 border-b border-white/[0.07]">
+      <div className="px-4 pt-4 pb-3.5 border-b border-sidebar-border">
         <div className="flex items-center justify-between gap-2">
           <Link
             to={homePath}
             onClick={onNavClick}
             className="flex items-center gap-3 min-w-0"
           >
-            <div className="w-8 h-8 rounded-lg bg-white/[0.07] flex items-center justify-center flex-shrink-0 ring-1 ring-white/[0.08]">
+            <div className="w-8 h-8 rounded-lg bg-sidebar-foreground/[0.07] flex items-center justify-center flex-shrink-0 ring-1 ring-sidebar-foreground/[0.08]">
               <img src={logo} alt="Rei dos Cachos" className="h-5 w-auto" />
             </div>
             <div className="min-w-0">
-              <p className="text-[13px] font-semibold text-white leading-tight truncate">
+              <p className="text-[13px] font-semibold text-sidebar-foreground leading-tight truncate">
                 Rei dos Cachos
               </p>
-              <p className="text-[10px] text-white/30 leading-tight tracking-[0.15em] uppercase mt-[2px]">
+              <p className="text-[10px] text-sidebar-foreground/40 leading-tight tracking-[0.15em] uppercase mt-[2px]">
                 Admin
               </p>
             </div>
           </Link>
-          <ThemeToggle className="flex-shrink-0 p-1.5 rounded-md text-white/20 hover:text-white/55 hover:bg-white/[0.06] transition-all duration-150" />
+          <ThemeToggle className="flex-shrink-0 p-1.5 rounded-md text-sidebar-foreground/35 hover:text-sidebar-foreground/70 hover:bg-sidebar-foreground/[0.06] transition-all duration-150" />
         </div>
       </div>
 
@@ -171,8 +171,8 @@ function SidebarContent({ onNavClick }: { onNavClick?: () => void }) {
                 onClick={() => toggle(group.label)}
                 className={`w-full flex items-center justify-between px-3 py-2 rounded-md transition-all duration-150 ${
                   hasActive && !isOpen
-                    ? 'text-[hsl(38,90%,58%)] bg-white/[0.06]'
-                    : 'text-white/35 hover:text-white/60 hover:bg-white/[0.04]'
+                    ? 'text-[hsl(38,90%,58%)] bg-sidebar-foreground/[0.06]'
+                    : 'text-sidebar-foreground/45 hover:text-sidebar-foreground/70 hover:bg-sidebar-foreground/[0.04]'
                 }`}
               >
                 <span className="text-[11px] font-semibold uppercase tracking-[0.14em]">
@@ -203,13 +203,13 @@ function SidebarContent({ onNavClick }: { onNavClick?: () => void }) {
       </nav>
 
       {/* Footer */}
-      <div className="px-2 pb-4 pt-2 border-t border-white/[0.07]">
+      <div className="px-2 pb-4 pt-2 border-t border-sidebar-border">
         <Link
           to="/catalogo"
           onClick={onNavClick}
-          className="flex items-center gap-3 px-3 py-[7px] rounded-md text-[13px] text-white/30 hover:text-white/60 hover:bg-white/[0.05] transition-all duration-150"
+          className="flex items-center gap-3 px-3 py-[7px] rounded-md text-[13px] text-sidebar-foreground/40 hover:text-sidebar-foreground/70 hover:bg-sidebar-foreground/[0.05] transition-all duration-150"
         >
-          <ExternalLink className="w-[15px] h-[15px] flex-shrink-0 text-white/20" />
+          <ExternalLink className="w-[15px] h-[15px] flex-shrink-0 text-sidebar-foreground/30" />
           <span>Ver Site</span>
         </Link>
       </div>
@@ -222,8 +222,8 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
   const { role } = useAuth()
   const homePath = role === 'admin' ? '/admin/catalogo' : '/admin/rh/candidatos'
 
-  const sidebarBg = 'bg-[hsl(218,18%,11%)]'
-  const borderColor = 'border-white/[0.07]'
+  const sidebarBg = 'bg-sidebar'
+  const borderColor = 'border-sidebar-border'
 
   return (
     <div className="min-h-screen bg-background flex">
@@ -236,18 +236,18 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
 
       {/* Mobile Header */}
       <header
-        className={`lg:hidden fixed top-0 inset-x-0 z-40 ${sidebarBg} text-white h-14 flex items-center justify-between px-4 border-b ${borderColor}`}
+        className={`lg:hidden fixed top-0 inset-x-0 z-40 ${sidebarBg} text-sidebar-foreground h-14 flex items-center justify-between px-4 border-b ${borderColor}`}
       >
         <Link to={homePath} className="flex items-center gap-2.5">
           <img src={logo} alt="Rei dos Cachos" className="h-7 w-auto" />
-          <span className="text-[13px] font-semibold text-white">Admin</span>
+          <span className="text-[13px] font-semibold text-sidebar-foreground">Admin</span>
         </Link>
         <div className="flex items-center gap-1">
-          <ThemeToggle className="p-2 rounded-lg text-white/30 hover:text-white/70 hover:bg-white/10 transition-colors" />
+          <ThemeToggle className="p-2 rounded-lg text-sidebar-foreground/40 hover:text-sidebar-foreground/80 hover:bg-sidebar-foreground/10 transition-colors" />
           <button
             onClick={() => setMobileOpen(!mobileOpen)}
             aria-label="Menu de navegação"
-            className="p-2 rounded-lg hover:bg-white/10 transition-colors text-white"
+            className="p-2 rounded-lg hover:bg-sidebar-foreground/10 transition-colors text-sidebar-foreground"
           >
             {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
@@ -262,7 +262,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
             onClick={() => setMobileOpen(false)}
           />
           <div
-            className={`lg:hidden fixed top-14 left-0 bottom-0 z-50 ${sidebarBg} text-white w-60 flex flex-col border-r ${borderColor}`}
+            className={`lg:hidden fixed top-14 left-0 bottom-0 z-50 ${sidebarBg} text-sidebar-foreground w-60 flex flex-col border-r ${borderColor}`}
           >
             <SidebarContent onNavClick={() => setMobileOpen(false)} />
           </div>

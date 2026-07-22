@@ -909,15 +909,6 @@ export default function RhCandidatos() {
             <p className="text-sm text-muted-foreground mt-1">Kanban do processo seletivo por unidade</p>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
-            <StyledSelect
-              variant="inline"
-              icon={<StoreIcon className="w-4 h-4 text-muted-foreground shrink-0" />}
-              value={storeId}
-              onChange={setStoreId}
-              options={stores.map((s) => ({ value: s.id, label: s.name }))}
-              emptyLabel="Todas as unidades"
-              placeholder="Todas as unidades"
-            />
             <Link
               to="/admin/rh/automacoes"
               className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border text-sm font-medium hover:bg-surface-alt transition-colors"
@@ -974,6 +965,26 @@ export default function RhCandidatos() {
               <span className="hidden sm:inline">Cadastrar candidato</span>
             </button>
           </div>
+        </div>
+        <div className="px-4 sm:px-6 flex gap-1 border-t border-border overflow-x-auto scrollbar-none">
+          <button onClick={() => setStoreId('')}
+            className={`flex items-center gap-1.5 px-3 py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+              storeId === ''
+                ? 'border-gold text-foreground'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}>
+            <StoreIcon className="w-4 h-4" />Todas as unidades
+          </button>
+          {stores.map((s) => (
+            <button key={s.id} onClick={() => setStoreId(s.id)}
+              className={`flex items-center gap-1.5 px-3 py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+                storeId === s.id
+                  ? 'border-gold text-foreground'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
+              }`}>
+              {s.name}
+            </button>
+          ))}
         </div>
       </div>
 
