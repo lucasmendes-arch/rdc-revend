@@ -8,6 +8,8 @@ import {
 } from '@dnd-kit/core'
 import { supabase } from '@/lib/supabase'
 import AdminLayout from '@/components/admin/AdminLayout'
+import StyledSelect from '@/components/ui/styled-select'
+import { useAdminTheme } from '@/contexts/AdminThemeContext'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import ProcessoDetailModal from '@/components/dp/ProcessoDetailModal'
 import {
@@ -19,12 +21,11 @@ import type { Processo } from '@/lib/dpTypes'
 interface Store { id: string; name: string }
 
 function ProcessoCard({ processo, onOpen }: { processo: Processo; onOpen: (p: Processo) => void }) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: processo.id })
+  // Sem `transform` aqui — ver comentário equivalente em CandidateCard
+  // (src/pages/rh/Candidatos.tsx): só o DragOverlay deve seguir o cursor.
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: processo.id })
   const col = getStageColumn(processo.employment_type, processo.current_stage)
-  const style = {
-    ...(transform ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`, zIndex: 10 } : null),
-    borderLeftColor: col?.accent,
-  }
+  const style = { borderLeftColor: col?.accent }
   return (
     <div
       ref={setNodeRef}
@@ -38,7 +39,7 @@ function ProcessoCard({ processo, onOpen }: { processo: Processo; onOpen: (p: Pr
     >
       <p className="text-[13px] font-semibold text-foreground truncate">{processo.candidates?.name || 'Candidato removido'}</p>
       <div className="flex items-center gap-1 flex-wrap">
-        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-md bg-[#CCFBF1] text-[#0D9488] truncate max-w-full">
+        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-md bg-teal-100 text-teal-700 dark:bg-teal-500/20 dark:text-teal-300 truncate max-w-full">
           {processo.role_title}
         </span>
         <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-md bg-surface-alt text-muted-foreground truncate max-w-full">
@@ -57,6 +58,10 @@ function StageColumnView({
   onOpen: (p: Processo) => void
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: column.stage })
+  const { isDark } = useAdminTheme()
+  // Modo dark: pastel sólido (pensado pra fundo claro) vira tingimento
+  // translúcido do accent — mesma regra de src/pages/rh/Candidatos.tsx.
+  const columnBg = isDark ? `${column.accent}1A` : column.bg
   return (
     <section className="w-56 shrink-0 space-y-2">
       <div className="flex items-center gap-1.5 px-1">
@@ -68,7 +73,7 @@ function StageColumnView({
       </div>
       <div
         ref={setNodeRef}
-        style={{ backgroundColor: column.bg, borderColor: isOver ? column.accent : undefined }}
+        style={{ backgroundColor: columnBg, borderColor: isOver ? column.accent : undefined }}
         className={`space-y-2 min-h-[80px] rounded-2xl border p-1.5 transition-colors ${isOver ? '' : 'border-dashed border-border/70'}`}
       >
         {processos.map((p) => (
@@ -205,19 +210,15 @@ export default function DpContratacao() {
             <p className="text-sm text-muted-foreground mt-1">Admissão pós-contratação, por tipo de vínculo</p>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
-            <div className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-border bg-background">
-              <StoreIcon className="w-4 h-4 text-muted-foreground" />
-              <select
-                value={storeId}
-                onChange={(e) => setStoreId(e.target.value)}
-                className="bg-transparent text-sm font-medium text-foreground focus:outline-none"
-              >
-                <option value="">Todas as unidades</option>
-                {stores.map((s) => (
-                  <option key={s.id} value={s.id}>{s.name}</option>
-                ))}
-              </select>
-            </div>
+            <StyledSelect
+              variant="inline"
+              icon={<StoreIcon className="w-4 h-4 text-muted-foreground shrink-0" />}
+              value={storeId}
+              onChange={setStoreId}
+              options={stores.map((s) => ({ value: s.id, label: s.name }))}
+              emptyLabel="Todas as unidades"
+              placeholder="Todas as unidades"
+            />
             <button
               onClick={() => setShowFinalizados((v) => !v)}
               className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border text-sm font-medium hover:bg-surface-alt transition-colors"
@@ -257,7 +258,7 @@ export default function DpContratacao() {
                 />
               ))}
             </div>
-            <DragOverlay>
+            <DragOverlay dropAnimation={null}>
               {activeProcesso ? (
                 <div
                   className="bg-white rounded-lg border border-border/60 border-l-4 shadow-lg p-2.5 w-56"

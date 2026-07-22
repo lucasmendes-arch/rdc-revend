@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabase'
 import { Loader, Plus, Briefcase, Pencil, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import AdminLayout from '@/components/admin/AdminLayout'
+import StyledSelect from '@/components/ui/styled-select'
 import {
   JobRoleFieldsForm,
   EMPTY_JOB_ROLE_FIELDS,
@@ -289,30 +290,23 @@ export default function RhVagas() {
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-foreground mb-1">Unidade *</label>
-                <select
+                <StyledSelect
                   value={form.store_id}
-                  onChange={(e) => setForm({ ...form, store_id: e.target.value })}
-                  className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                >
-                  <option value="" disabled>Selecione a unidade</option>
-                  {stores.map((s) => (
-                    <option key={s.id} value={s.id}>{s.name}</option>
-                  ))}
-                </select>
+                  onChange={(v) => setForm({ ...form, store_id: v })}
+                  options={stores.map((s) => ({ value: s.id, label: s.name }))}
+                  placeholder="Selecione a unidade"
+                />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-foreground mb-1">Cargo (catálogo)</label>
-                <select
+                <StyledSelect
                   value={form.job_role_id}
-                  onChange={(e) => handleSelectRole(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                >
-                  <option value="">Preencher manualmente</option>
-                  {jobRoles.map((r) => (
-                    <option key={r.id} value={r.id}>{r.title}</option>
-                  ))}
-                </select>
+                  onChange={handleSelectRole}
+                  options={jobRoles.map((r) => ({ value: r.id, label: r.title }))}
+                  emptyLabel="Preencher manualmente"
+                  placeholder="Preencher manualmente"
+                />
                 <p className="text-xs text-muted-foreground mt-1">Selecionar um cargo preenche os campos abaixo — dá pra ajustar depois.</p>
               </div>
 

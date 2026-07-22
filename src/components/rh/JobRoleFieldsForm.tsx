@@ -1,3 +1,5 @@
+import StyledSelect from '@/components/ui/styled-select'
+
 export interface JobRoleFieldsValue {
   description: string
   contract_type: string
@@ -122,23 +124,19 @@ export function JobRoleFieldsForm({ value, onChange }: JobRoleFieldsFormProps) {
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className={labelClass}>Tipo de contrato</label>
-          <select
+          <StyledSelect
             value={value.contract_type}
-            onChange={(e) => onChange({ contract_type: e.target.value })}
-            className={inputClass}
-          >
-            <option value="">Selecione</option>
-            {Object.entries(CONTRACT_TYPE_LABELS).map(([k, label]) => (
-              <option key={k} value={k}>{label}</option>
-            ))}
-          </select>
+            onChange={(v) => onChange({ contract_type: v })}
+            options={Object.entries(CONTRACT_TYPE_LABELS).map(([k, label]) => ({ value: k, label }))}
+            emptyLabel="Selecione"
+            searchable={false}
+          />
         </div>
         <div>
           <label className={labelClass}>Tipo de remuneração</label>
-          <select
+          <StyledSelect
             value={value.compensation_type}
-            onChange={(e) => {
-              const compensation_type = e.target.value
+            onChange={(compensation_type) => {
               const nextShowFixed = compensation_type === 'fixa' || compensation_type === 'mista'
               const nextShowVariable = compensation_type === 'variavel' || compensation_type === 'mista'
               onChange({
@@ -147,13 +145,10 @@ export function JobRoleFieldsForm({ value, onChange }: JobRoleFieldsFormProps) {
                 ...(nextShowVariable ? {} : { variable_percentage: '', variable_basis: '' }),
               })
             }}
-            className={inputClass}
-          >
-            <option value="">Selecione</option>
-            {Object.entries(COMPENSATION_TYPE_LABELS).map(([k, label]) => (
-              <option key={k} value={k}>{label}</option>
-            ))}
-          </select>
+            options={Object.entries(COMPENSATION_TYPE_LABELS).map(([k, label]) => ({ value: k, label }))}
+            emptyLabel="Selecione"
+            searchable={false}
+          />
         </div>
       </div>
 

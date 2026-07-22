@@ -5,6 +5,7 @@ import { Loader, Users, Store as StoreIcon, Plus, X } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { formatPhone } from '@/lib/phone'
 import AdminLayout from '@/components/admin/AdminLayout'
+import StyledSelect from '@/components/ui/styled-select'
 import ProcessoDetailModal from '@/components/dp/ProcessoDetailModal'
 import { EMPLOYMENT_TYPE_LABELS, type EmploymentType } from '@/lib/dpConstants'
 import type { Processo } from '@/lib/dpTypes'
@@ -161,31 +162,24 @@ export default function DpColaboradores() {
             <p className="text-sm text-muted-foreground mt-1">Colaboradores ativos (já efetivados)</p>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
-            <div className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-border bg-background">
-              <StoreIcon className="w-4 h-4 text-muted-foreground" />
-              <select
-                value={storeId}
-                onChange={(e) => setStoreId(e.target.value)}
-                className="bg-transparent text-sm font-medium text-foreground focus:outline-none"
-              >
-                <option value="">Todas as unidades</option>
-                {stores.map((s) => (
-                  <option key={s.id} value={s.id}>{s.name}</option>
-                ))}
-              </select>
-            </div>
-            <div className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-border bg-background">
-              <select
-                value={employmentType}
-                onChange={(e) => setEmploymentType(e.target.value as EmploymentType | '')}
-                className="bg-transparent text-sm font-medium text-foreground focus:outline-none"
-              >
-                <option value="">Todos os vínculos</option>
-                {(Object.keys(EMPLOYMENT_TYPE_LABELS) as EmploymentType[]).map((tv) => (
-                  <option key={tv} value={tv}>{EMPLOYMENT_TYPE_LABELS[tv]}</option>
-                ))}
-              </select>
-            </div>
+            <StyledSelect
+              variant="inline"
+              icon={<StoreIcon className="w-4 h-4 text-muted-foreground shrink-0" />}
+              value={storeId}
+              onChange={setStoreId}
+              options={stores.map((s) => ({ value: s.id, label: s.name }))}
+              emptyLabel="Todas as unidades"
+              placeholder="Todas as unidades"
+            />
+            <StyledSelect
+              variant="inline"
+              value={employmentType}
+              onChange={(v) => setEmploymentType(v as EmploymentType | '')}
+              options={(Object.keys(EMPLOYMENT_TYPE_LABELS) as EmploymentType[]).map((tv) => ({ value: tv, label: EMPLOYMENT_TYPE_LABELS[tv] }))}
+              emptyLabel="Todos os vínculos"
+              placeholder="Todos os vínculos"
+              searchable={false}
+            />
             <button
               onClick={openCreate}
               className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg btn-action text-sm font-medium transition-colors"
@@ -240,7 +234,7 @@ export default function DpColaboradores() {
                       <td className="px-4 py-3 text-sm text-muted-foreground">{p.role_title}</td>
                       <td className="px-4 py-3 text-sm text-muted-foreground hidden sm:table-cell">{p.stores?.name || '—'}</td>
                       <td className="px-4 py-3 text-sm hidden md:table-cell">
-                        <span className="px-2 py-0.5 rounded-md bg-[#CCFBF1] text-[#0D9488] text-xs font-medium">
+                        <span className="px-2 py-0.5 rounded-md bg-teal-100 text-teal-700 dark:bg-teal-500/20 dark:text-teal-300 text-xs font-medium">
                           {EMPLOYMENT_TYPE_LABELS[p.employment_type]}
                         </span>
                       </td>
@@ -330,44 +324,33 @@ export default function DpColaboradores() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-1">Cargo *</label>
-                  <select
+                  <StyledSelect
                     value={createForm.role_title}
-                    onChange={(e) => setCreateForm({ ...createForm, role_title: e.target.value })}
-                    className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                  >
-                    <option value="">Selecione...</option>
-                    {jobRoles.map((r) => (
-                      <option key={r.id} value={r.title}>{r.title}</option>
-                    ))}
-                  </select>
+                    onChange={(v) => setCreateForm({ ...createForm, role_title: v })}
+                    options={jobRoles.map((r) => ({ value: r.title, label: r.title }))}
+                    placeholder="Selecione..."
+                  />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-1">Unidade *</label>
-                  <select
+                  <StyledSelect
                     value={createForm.store_id}
-                    onChange={(e) => setCreateForm({ ...createForm, store_id: e.target.value })}
-                    className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                  >
-                    <option value="">Selecione...</option>
-                    {stores.map((s) => (
-                      <option key={s.id} value={s.id}>{s.name}</option>
-                    ))}
-                  </select>
+                    onChange={(v) => setCreateForm({ ...createForm, store_id: v })}
+                    options={stores.map((s) => ({ value: s.id, label: s.name }))}
+                    placeholder="Selecione..."
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-1">Tipo de vínculo *</label>
-                  <select
+                  <StyledSelect
                     value={createForm.employment_type}
-                    onChange={(e) => setCreateForm({ ...createForm, employment_type: e.target.value as EmploymentType })}
-                    className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                  >
-                    {(Object.keys(EMPLOYMENT_TYPE_LABELS) as EmploymentType[]).map((tv) => (
-                      <option key={tv} value={tv}>{EMPLOYMENT_TYPE_LABELS[tv]}</option>
-                    ))}
-                  </select>
+                    onChange={(v) => setCreateForm({ ...createForm, employment_type: v as EmploymentType })}
+                    options={(Object.keys(EMPLOYMENT_TYPE_LABELS) as EmploymentType[]).map((tv) => ({ value: tv, label: EMPLOYMENT_TYPE_LABELS[tv] }))}
+                    searchable={false}
+                  />
                 </div>
               </div>
 

@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import { useImageUpload } from '@/hooks/useImageUpload'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import StyledSelect from '@/components/ui/styled-select'
 import {
   EMPLOYMENT_TYPE_LABELS, DOCUMENT_CHECKLIST_LABELS, DOCUMENT_STATUS_LABELS, CONTRACT_TYPE_LABELS,
   type DocumentStatus, type ContractType, type StageColumn,
@@ -234,15 +235,13 @@ export default function ProcessoDetailModal({ processo, onClose, estagio }: Proc
               {documentRows.map((doc) => (
                 <div key={doc.id} className="flex items-center justify-between gap-3 py-1.5 border-b border-border/50 last:border-0">
                   <span className="text-sm text-foreground truncate">{DOCUMENT_CHECKLIST_LABELS[doc.document_type] || doc.document_type}</span>
-                  <select
+                  <StyledSelect
+                    variant="xs"
                     value={doc.status}
-                    onChange={(e) => updateDocumentStatus.mutate({ id: doc.id, status: e.target.value as DocumentStatus })}
-                    className="px-2 py-1 rounded-lg border border-border bg-background text-foreground text-xs focus:outline-none focus:ring-2 focus:ring-ring shrink-0"
-                  >
-                    {(Object.keys(DOCUMENT_STATUS_LABELS) as DocumentStatus[]).map((s) => (
-                      <option key={s} value={s}>{DOCUMENT_STATUS_LABELS[s]}</option>
-                    ))}
-                  </select>
+                    onChange={(v) => updateDocumentStatus.mutate({ id: doc.id, status: v as DocumentStatus })}
+                    options={(Object.keys(DOCUMENT_STATUS_LABELS) as DocumentStatus[]).map((s) => ({ value: s, label: DOCUMENT_STATUS_LABELS[s] }))}
+                    searchable={false}
+                  />
                 </div>
               ))}
               <button
@@ -300,15 +299,12 @@ export default function ProcessoDetailModal({ processo, onClose, estagio }: Proc
               ))}
               <div className="border border-border rounded-lg p-3 space-y-2">
                 <p className="text-xs font-semibold text-muted-foreground uppercase">Registrar contrato</p>
-                <select
+                <StyledSelect
                   value={contractForm.contract_type}
-                  onChange={(e) => setContractForm({ ...contractForm, contract_type: e.target.value as ContractType })}
-                  className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                >
-                  {(Object.keys(CONTRACT_TYPE_LABELS) as ContractType[]).map((tc) => (
-                    <option key={tc} value={tc}>{CONTRACT_TYPE_LABELS[tc]}</option>
-                  ))}
-                </select>
+                  onChange={(v) => setContractForm({ ...contractForm, contract_type: v as ContractType })}
+                  options={(Object.keys(CONTRACT_TYPE_LABELS) as ContractType[]).map((tc) => ({ value: tc, label: CONTRACT_TYPE_LABELS[tc] }))}
+                  searchable={false}
+                />
                 <div className="grid grid-cols-3 gap-2">
                   <div>
                     <label className="block text-[11px] text-muted-foreground mb-1">Assinatura</label>
@@ -373,15 +369,12 @@ export default function ProcessoDetailModal({ processo, onClose, estagio }: Proc
             {estagio.mode === 'kanban' ? (
               <div className="py-2 space-y-2">
                 <label className="block text-sm font-medium text-foreground mb-1">Etapa atual</label>
-                <select
+                <StyledSelect
                   value={processo.current_stage}
-                  onChange={(e) => estagio.onChangeStage(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                >
-                  {estagio.columns.map((col) => (
-                    <option key={col.stage} value={col.stage}>{col.label}</option>
-                  ))}
-                </select>
+                  onChange={estagio.onChangeStage}
+                  options={estagio.columns.map((col) => ({ value: col.stage, label: col.label }))}
+                  searchable={false}
+                />
                 <p className="text-[11px] text-muted-foreground">Alternativa ao arrastar no kanban — útil no mobile.</p>
               </div>
             ) : (

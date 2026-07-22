@@ -9,6 +9,7 @@ import {
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import AdminLayout from '@/components/admin/AdminLayout'
+import StyledSelect from '@/components/ui/styled-select'
 
 // ============================================================
 // Tipos e constantes
@@ -275,28 +276,37 @@ function ActionConfigEditor({
 }) {
   if (actionType === 'change_stage') {
     return (
-      <select value={(config.stage as string) || ''} onChange={(e) => onChange({ stage: e.target.value })} className={inputClass}>
-        <option value="">Selecione a etapa</option>
-        {STAGE_OPTIONS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
-      </select>
+      <StyledSelect
+        value={(config.stage as string) || ''}
+        onChange={(v) => onChange({ stage: v })}
+        options={STAGE_OPTIONS}
+        emptyLabel="Selecione a etapa"
+      />
     )
   }
   if (actionType === 'add_tag' || actionType === 'remove_tag') {
     return (
-      <select value={(config.tag_id as string) || ''} onChange={(e) => onChange({ tag_id: e.target.value })} className={inputClass}>
-        <option value="">Selecione a tag</option>
-        {tags.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
-      </select>
+      <StyledSelect
+        value={(config.tag_id as string) || ''}
+        onChange={(v) => onChange({ tag_id: v })}
+        options={tags.map((t) => ({ value: t.id, label: t.name }))}
+        emptyLabel="Selecione a tag"
+      />
     )
   }
   if (actionType === 'change_due_date') {
     const mode = (config.mode as string) || 'relative_days'
     return (
       <div className="flex gap-2">
-        <select value={mode} onChange={(e) => onChange({ mode: e.target.value, days: config.days })} className={inputClass}>
-          <option value="relative_days">Dias a partir de agora</option>
-          <option value="clear">Limpar prazo</option>
-        </select>
+        <StyledSelect
+          value={mode}
+          onChange={(v) => onChange({ mode: v, days: config.days })}
+          options={[
+            { value: 'relative_days', label: 'Dias a partir de agora' },
+            { value: 'clear', label: 'Limpar prazo' },
+          ]}
+          searchable={false}
+        />
         {mode === 'relative_days' && (
           <input
             type="number" min={0} placeholder="dias" value={(config.days as number) ?? ''}
@@ -311,24 +321,26 @@ function ActionConfigEditor({
     const clear = Boolean(config.clear)
     return (
       <div className="flex gap-2 items-center">
-        <select
+        <StyledSelect
           value={clear ? '__clear__' : (config.assignee_id as string) || ''}
-          onChange={(e) => onChange(e.target.value === '__clear__' ? { clear: true } : { assignee_id: e.target.value })}
-          className={inputClass}
-        >
-          <option value="">Selecione o responsável</option>
-          <option value="__clear__">Remover responsável</option>
-          {systemUsers.map((u) => <option key={u.id} value={u.id}>{u.full_name || u.email}</option>)}
-        </select>
+          onChange={(v) => onChange(v === '__clear__' ? { clear: true } : { assignee_id: v })}
+          options={[
+            { value: '__clear__', label: 'Remover responsável' },
+            ...systemUsers.map((u) => ({ value: u.id, label: u.full_name || u.email })),
+          ]}
+          emptyLabel="Selecione o responsável"
+        />
       </div>
     )
   }
   if (actionType === 'send_whatsapp') {
     return (
-      <select value={(config.template_id as string) || ''} onChange={(e) => onChange({ template_id: e.target.value })} className={inputClass}>
-        <option value="">Selecione o modelo</option>
-        {templates.filter((t) => t.is_active).map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
-      </select>
+      <StyledSelect
+        value={(config.template_id as string) || ''}
+        onChange={(v) => onChange({ template_id: v })}
+        options={templates.filter((t) => t.is_active).map((t) => ({ value: t.id, label: t.name }))}
+        emptyLabel="Selecione o modelo"
+      />
     )
   }
   // add_comment
@@ -480,17 +492,22 @@ function AutomationEditorModal({
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className={labelClass}>Gatilho</label>
-              <select value={form.trigger_type} onChange={(e) => setForm({ ...form, trigger_type: e.target.value as TriggerType, trigger_stage: '' })} className={inputClass}>
-                {Object.entries(TRIGGER_TYPE_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-              </select>
+              <StyledSelect
+                value={form.trigger_type}
+                onChange={(v) => setForm({ ...form, trigger_type: v as TriggerType, trigger_stage: '' })}
+                options={Object.entries(TRIGGER_TYPE_LABELS).map(([value, label]) => ({ value, label }))}
+                searchable={false}
+              />
             </div>
             {form.trigger_type === 'stage_changed' && (
               <div>
                 <label className={labelClass}>Etapa</label>
-                <select value={form.trigger_stage} onChange={(e) => setForm({ ...form, trigger_stage: e.target.value })} className={inputClass}>
-                  <option value="">Selecione</option>
-                  {STAGE_OPTIONS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
-                </select>
+                <StyledSelect
+                  value={form.trigger_stage}
+                  onChange={(v) => setForm({ ...form, trigger_stage: v })}
+                  options={STAGE_OPTIONS}
+                  emptyLabel="Selecione"
+                />
               </div>
             )}
           </div>
@@ -505,12 +522,20 @@ function AutomationEditorModal({
             <div className="space-y-2">
               {form.trigger_conditions.map((c, i) => (
                 <div key={i} className="flex gap-1.5 items-center">
-                  <select value={c.field} onChange={(e) => updateCondition(i, { field: e.target.value as ConditionField })} className={`${inputClass} flex-1`}>
-                    {Object.entries(CONDITION_FIELD_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-                  </select>
-                  <select value={c.op} onChange={(e) => updateCondition(i, { op: e.target.value as ConditionOp })} className={`${inputClass} flex-1`}>
-                    {Object.entries(CONDITION_OP_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-                  </select>
+                  <StyledSelect
+                    value={c.field}
+                    onChange={(v) => updateCondition(i, { field: v as ConditionField })}
+                    options={Object.entries(CONDITION_FIELD_LABELS).map(([value, label]) => ({ value, label }))}
+                    className="flex-1"
+                    searchable={false}
+                  />
+                  <StyledSelect
+                    value={c.op}
+                    onChange={(v) => updateCondition(i, { op: v as ConditionOp })}
+                    options={Object.entries(CONDITION_OP_LABELS).map(([value, label]) => ({ value, label }))}
+                    className="flex-1"
+                    searchable={false}
+                  />
                   <input type="text" value={c.value} onChange={(e) => updateCondition(i, { value: e.target.value })} className={`${inputClass} flex-1`} placeholder="valor" />
                   <button onClick={() => removeCondition(i)} className="p-1.5 text-muted-foreground hover:text-red-600 shrink-0"><X className="w-4 h-4" /></button>
                 </div>
@@ -530,9 +555,12 @@ function AutomationEditorModal({
                 <div key={i} className="p-2.5 rounded-lg border border-border bg-surface-alt/40 space-y-2">
                   <div className="flex gap-1.5 items-center">
                     <span className="text-xs font-mono text-muted-foreground shrink-0">{i + 1}.</span>
-                    <select value={a.action_type} onChange={(e) => updateAction(i, { action_type: e.target.value as ActionType, action_config: {} })} className={`${inputClass} flex-1`}>
-                      {Object.entries(ACTION_TYPE_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-                    </select>
+                    <StyledSelect
+                      value={a.action_type}
+                      onChange={(v) => updateAction(i, { action_type: v as ActionType, action_config: {} })}
+                      options={Object.entries(ACTION_TYPE_LABELS).map(([value, label]) => ({ value, label }))}
+                      className="flex-1"
+                    />
                     <button onClick={() => removeAction(i)} className="p-1.5 text-muted-foreground hover:text-red-600 shrink-0"><X className="w-4 h-4" /></button>
                   </div>
                   <ActionConfigEditor

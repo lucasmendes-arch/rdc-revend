@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabase'
 import { Loader, Plus, IdCard, Pencil, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import AdminLayout from '@/components/admin/AdminLayout'
+import StyledSelect from '@/components/ui/styled-select'
 import {
   JobRoleFieldsForm,
   EMPTY_JOB_ROLE_FIELDS,
@@ -312,16 +313,13 @@ export default function RhCargos() {
 
               <div>
                 <label className="block text-sm font-medium text-foreground mb-1">Grau de Escolaridade (opcional)</label>
-                <select
+                <StyledSelect
                   value={form.education_level}
-                  onChange={(e) => setForm({ ...form, education_level: e.target.value })}
-                  className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                >
-                  <option value="">Não especificado</option>
-                  {Object.entries(EDUCATION_LEVEL_LABELS).map(([k, label]) => (
-                    <option key={k} value={k}>{label}</option>
-                  ))}
-                </select>
+                  onChange={(v) => setForm({ ...form, education_level: v })}
+                  options={Object.entries(EDUCATION_LEVEL_LABELS).map(([k, label]) => ({ value: k, label }))}
+                  emptyLabel="Não especificado"
+                  placeholder="Não especificado"
+                />
               </div>
             </div>
 

@@ -1,6 +1,7 @@
 import { useRef } from 'react'
 import { Image as ImageIcon, FileText, Loader, X, FileSearch } from 'lucide-react'
 import { formatPhone } from '@/lib/phone'
+import StyledSelect from '@/components/ui/styled-select'
 import type { JobRoleDescriptiveRow } from './JobRoleFieldsForm'
 
 export type FieldType = 'texto' | 'numero' | 'telefone' | 'select' | 'checkbox' | 'data' | 'upload_imagem' | 'upload_arquivo'
@@ -63,19 +64,16 @@ export default function FormFieldRenderer({
     return (
       <div>
         {labelNode}
-        <select
+        <StyledSelect
           value={value}
-          onChange={(e) => onChange(e.target.value)}
+          onChange={onChange}
           disabled={readOnly}
-          className={inputClass}
-        >
-          <option value="" disabled>{field.placeholder || 'Selecione a vaga'}</option>
-          {jobOpenings.map((j) => (
-            <option key={j.id} value={j.id}>
-              {j.role_title}{j.status === 'fechada' ? ' (banco de currículos)' : ''}
-            </option>
-          ))}
-        </select>
+          placeholder={field.placeholder || 'Selecione a vaga'}
+          options={jobOpenings.map((j) => ({
+            value: j.id,
+            label: `${j.role_title}${j.status === 'fechada' ? ' (banco de currículos)' : ''}`,
+          }))}
+        />
         {value && onViewJobDetails && (
           <button
             type="button"
@@ -93,12 +91,13 @@ export default function FormFieldRenderer({
     return (
       <div>
         {labelNode}
-        <select value={value} onChange={(e) => onChange(e.target.value)} disabled={readOnly} className={inputClass}>
-          <option value="" disabled>{field.placeholder || 'Selecione'}</option>
-          {(field.options || []).map((opt) => (
-            <option key={opt} value={opt}>{opt}</option>
-          ))}
-        </select>
+        <StyledSelect
+          value={value}
+          onChange={onChange}
+          disabled={readOnly}
+          placeholder={field.placeholder || 'Selecione'}
+          options={(field.options || []).map((opt) => ({ value: opt, label: opt }))}
+        />
       </div>
     )
   }

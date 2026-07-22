@@ -9,6 +9,7 @@ import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, v
 import { CSS } from '@dnd-kit/utilities'
 import { supabase } from '@/lib/supabase'
 import AdminLayout from '@/components/admin/AdminLayout'
+import StyledSelect from '@/components/ui/styled-select'
 import FormFieldRenderer, { FieldType, FormFieldConfig } from '@/components/rh/FormFieldRenderer'
 
 interface FieldRow extends FormFieldConfig {
@@ -231,16 +232,13 @@ function BuildFieldCard({
               </div>
               <div>
                 <label className="block text-xs font-semibold text-muted-foreground uppercase mb-1">Tipo</label>
-                <select
+                <StyledSelect
                   value={field.field_type}
                   disabled={field.is_system_field}
-                  onChange={(e) => onFieldUpdate(field.id, { field_type: e.target.value })}
-                  className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-60"
-                >
-                  {Object.entries(TYPE_LABELS).map(([value, label]) => (
-                    <option key={value} value={value}>{label}</option>
-                  ))}
-                </select>
+                  onChange={(v) => onFieldUpdate(field.id, { field_type: v })}
+                  options={Object.entries(TYPE_LABELS).map(([value, label]) => ({ value, label }))}
+                  searchable={false}
+                />
                 {field.is_system_field && <p className="text-[11px] text-muted-foreground mt-1">Campo de sistema — tipo travado.</p>}
               </div>
             </div>
@@ -386,27 +384,22 @@ export default function RhFormulario() {
             <p className="text-sm text-muted-foreground mt-1">Clique em uma pergunta pra editar — é a visão exata de como o candidato vê o formulário</p>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
-            <div className="flex items-center gap-1.5 rounded-lg border border-border bg-background overflow-hidden">
-              <select
-                value={effectivePreviewSlug}
-                onChange={(e) => setPreviewStoreSlug(e.target.value)}
-                className="bg-transparent pl-3 py-2 text-sm font-medium text-foreground focus:outline-none"
-              >
-                {stores.map((s) => (
-                  <option key={s.id} value={s.slug}>{s.name}</option>
-                ))}
-              </select>
-              <a
-                href={effectivePreviewSlug ? `/candidatura/${effectivePreviewSlug}` : '#'}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium border-l border-border hover:bg-surface-alt transition-colors ${!effectivePreviewSlug ? 'pointer-events-none opacity-50' : ''}`}
-                title="Abrir formulário público em nova aba"
-              >
-                <ExternalLink className="w-4 h-4" />
-                <span className="hidden sm:inline">Abrir formulário</span>
-              </a>
-            </div>
+            <StyledSelect
+              variant="inline"
+              value={effectivePreviewSlug}
+              onChange={setPreviewStoreSlug}
+              options={stores.map((s) => ({ value: s.slug, label: s.name }))}
+            />
+            <a
+              href={effectivePreviewSlug ? `/candidatura/${effectivePreviewSlug}` : '#'}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-lg border border-border text-sm font-medium hover:bg-surface-alt transition-colors ${!effectivePreviewSlug ? 'pointer-events-none opacity-50' : ''}`}
+              title="Abrir formulário público em nova aba"
+            >
+              <ExternalLink className="w-4 h-4" />
+              <span className="hidden sm:inline">Abrir formulário</span>
+            </a>
             <button onClick={() => setCreateOpen(true)} className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg btn-action text-sm font-medium transition-colors">
               <Plus className="w-4 h-4" />
               <span className="hidden sm:inline">Nova pergunta</span>
@@ -452,15 +445,12 @@ export default function RhFormulario() {
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-foreground mb-1">Tipo *</label>
-                <select
+                <StyledSelect
                   value={createForm.field_type}
-                  onChange={(e) => setCreateForm({ ...createForm, field_type: e.target.value as FieldType })}
-                  className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                >
-                  {Object.entries(TYPE_LABELS).map(([value, label]) => (
-                    <option key={value} value={value}>{label}</option>
-                  ))}
-                </select>
+                  onChange={(v) => setCreateForm({ ...createForm, field_type: v as FieldType })}
+                  options={Object.entries(TYPE_LABELS).map(([value, label]) => ({ value, label }))}
+                  searchable={false}
+                />
               </div>
 
               <div>

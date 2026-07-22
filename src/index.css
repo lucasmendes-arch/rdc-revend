@@ -169,6 +169,37 @@
 .dark .divide-gray-200 > * + * {
   border-color: hsl(var(--border));
 }
+.dark .bg-slate-50,
+.dark .bg-slate-100 {
+  background-color: hsl(var(--muted));
+}
+.dark .text-slate-600,
+.dark .text-slate-500 {
+  color: hsl(var(--muted-foreground));
+}
+.dark .text-slate-400 {
+  color: hsl(218 10% 48%);
+}
+.dark .bg-red-50,
+.dark .hover\:bg-red-50:hover {
+  background-color: hsl(0 40% 18%);
+}
+.dark .bg-red-100 {
+  background-color: hsl(0 45% 20%);
+}
+.dark .text-red-600,
+.dark .hover\:text-red-600:hover {
+  color: hsl(0 75% 72%);
+}
+.dark .text-red-700 {
+  color: hsl(0 75% 78%);
+}
+.dark .bg-amber-100 {
+  background-color: hsl(38 55% 18%);
+}
+.dark .text-amber-700 {
+  color: hsl(38 85% 72%);
+}
 
 /* Recharts chart surface in dark mode */
 .dark .recharts-cartesian-grid line {

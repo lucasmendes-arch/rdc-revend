@@ -15,9 +15,11 @@ import { useImageUpload } from '@/hooks/useImageUpload'
 import { useFileUpload } from '@/hooks/useFileUpload'
 import AdminLayout from '@/components/admin/AdminLayout'
 import ColorSelect, { type ColorSelectOption } from '@/components/rh/ColorSelect'
+import StyledSelect from '@/components/ui/styled-select'
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
 import { Switch } from '@/components/ui/switch'
 import { EMPLOYMENT_TYPE_LABELS, EMPLOYMENT_TYPE_OPTIONS, type EmploymentType } from '@/lib/dpConstants'
+import { useAdminTheme } from '@/contexts/AdminThemeContext'
 
 type Stage =
   | 'pendente' | 'conversa_iniciada' | 'entrevista_marcada' | 'no_show'
@@ -325,13 +327,14 @@ function CandidateCard({
   onJobOpeningChange: (candidateId: string, jobOpeningId: string) => void
   onDueDateChange: (candidateId: string, value: string | null) => void
 }) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: candidate.id })
+  // Sem `transform` aqui: quem "voa" com o cursor é só o DragOverlay. O
+  // original fica parado no lugar, só esmaecido (isDragging) — aplicar o
+  // transform nos dois ao mesmo tempo duplicava o movimento e criava um
+  // rastro visível quando os dois perdiam sincronia num arraste rápido.
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: candidate.id })
   const { accent } = getStageColors(candidate.stage)
   const dueOverdue = isDueDateOverdue(candidate)
-  const style = {
-    ...(transform ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`, zIndex: 10 } : null),
-    borderLeftColor: accent,
-  }
+  const style = { borderLeftColor: accent }
 
   return (
     <div
@@ -362,7 +365,7 @@ function CandidateCard({
             placeholder={candidate.job_openings?.role_title || 'Vaga removida'}
           />
           <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-md ${
-            candidate.source === 'manual' ? 'bg-slate-100 text-slate-600' : 'bg-[#EDE9FE] text-[#7C3AED]'
+            candidate.source === 'manual' ? 'bg-slate-100 text-slate-600' : 'bg-violet-100 text-violet-700 dark:bg-violet-500/20 dark:text-violet-300'
           }`}>
             {candidate.source === 'manual' ? 'Manual' : 'Formulário'}
           </span>
@@ -441,7 +444,12 @@ function StageColumn({
   onDueDateChange: (candidateId: string, value: string | null) => void
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: stage })
+  const { isDark } = useAdminTheme()
   const { accent, bg } = getStageColors(stage)
+  // Modo dark: os pastéis sólidos (pensados pra fundo claro) viram um bloco
+  // quase branco sobre o painel escuro — troca por um tingimento translúcido
+  // do próprio accent, que se funde ao fundo escuro em vez de destoar dele.
+  const columnBg = isDark ? `${accent}1A` : bg
   return (
     <section className="w-56 shrink-0 space-y-2">
       <div className="flex items-center gap-1.5 px-1">
@@ -455,7 +463,7 @@ function StageColumn({
       </div>
       <div
         ref={setNodeRef}
-        style={{ backgroundColor: bg, borderColor: isOver ? accent : undefined }}
+        style={{ backgroundColor: columnBg, borderColor: isOver ? accent : undefined }}
         className={`space-y-2 min-h-[80px] rounded-2xl border p-1.5 transition-colors ${isOver ? '' : 'border-dashed border-border/70'}`}
       >
         {candidates.map((c) => (
@@ -901,19 +909,15 @@ export default function RhCandidatos() {
             <p className="text-sm text-muted-foreground mt-1">Kanban do processo seletivo por unidade</p>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
-            <div className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-border bg-background">
-              <StoreIcon className="w-4 h-4 text-muted-foreground" />
-              <select
-                value={storeId}
-                onChange={(e) => setStoreId(e.target.value)}
-                className="bg-transparent text-sm font-medium text-foreground focus:outline-none"
-              >
-                <option value="">Todas as unidades</option>
-                {stores.map((s) => (
-                  <option key={s.id} value={s.id}>{s.name}</option>
-                ))}
-              </select>
-            </div>
+            <StyledSelect
+              variant="inline"
+              icon={<StoreIcon className="w-4 h-4 text-muted-foreground shrink-0" />}
+              value={storeId}
+              onChange={setStoreId}
+              options={stores.map((s) => ({ value: s.id, label: s.name }))}
+              emptyLabel="Todas as unidades"
+              placeholder="Todas as unidades"
+            />
             <Link
               to="/admin/rh/automacoes"
               className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border text-sm font-medium hover:bg-surface-alt transition-colors"
@@ -999,7 +1003,7 @@ export default function RhCandidatos() {
                 />
               ))}
             </div>
-            <DragOverlay>
+            <DragOverlay dropAnimation={null}>
               {activeCandidate ? (
                 <div
                   className="bg-white rounded-lg border border-border/60 border-l-4 shadow-lg overflow-hidden w-56"
@@ -1031,17 +1035,14 @@ export default function RhCandidatos() {
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-foreground mb-1">Vaga *</label>
-                <select
+                <StyledSelect
                   value={createForm.job_opening_id}
-                  onChange={(e) => setCreateForm({ ...createForm, job_opening_id: e.target.value })}
-                  className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                >
-                  {jobOpenings.map((j) => (
-                    <option key={j.id} value={j.id}>
-                      {j.role_title}{!storeId && j.stores?.name ? ` — ${j.stores.name}` : ''}{j.status === 'fechada' ? ' (fechada)' : ''}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(v) => setCreateForm({ ...createForm, job_opening_id: v })}
+                  options={jobOpenings.map((j) => ({
+                    value: j.id,
+                    label: `${j.role_title}${!storeId && j.stores?.name ? ` — ${j.stores.name}` : ''}${j.status === 'fechada' ? ' (fechada)' : ''}`,
+                  }))}
+                />
               </div>
 
               <div>
@@ -1265,16 +1266,13 @@ export default function RhCandidatos() {
                 </div>
                 <div className="col-span-2">
                   <label className="block text-sm font-medium text-foreground mb-1">Responsável</label>
-                  <select
+                  <StyledSelect
                     value={assigneeDraft}
-                    onChange={(e) => setAssigneeDraft(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                  >
-                    <option value="">Sem responsável</option>
-                    {rhAssignableUsers.map((u) => (
-                      <option key={u.id} value={u.id}>{u.full_name || u.email}</option>
-                    ))}
-                  </select>
+                    onChange={setAssigneeDraft}
+                    options={rhAssignableUsers.map((u) => ({ value: u.id, label: u.full_name || u.email }))}
+                    emptyLabel="Sem responsável"
+                    placeholder="Sem responsável"
+                  />
                 </div>
               </div>
 
@@ -1373,15 +1371,13 @@ export default function RhCandidatos() {
               Selecione o tipo de vínculo — o candidato passa a ser gerenciado no módulo Departamento Pessoal, mantendo o histórico de recrutamento.
             </p>
             <label className="block text-sm font-medium text-foreground mb-1">Tipo de vínculo *</label>
-            <select
+            <StyledSelect
               value={promoteEmploymentType}
-              onChange={(e) => setPromoteEmploymentType(e.target.value as EmploymentType)}
-              className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring mb-5"
-            >
-              {EMPLOYMENT_TYPE_OPTIONS.map((tv) => (
-                <option key={tv} value={tv}>{EMPLOYMENT_TYPE_LABELS[tv]}</option>
-              ))}
-            </select>
+              onChange={(v) => setPromoteEmploymentType(v as EmploymentType)}
+              options={EMPLOYMENT_TYPE_OPTIONS.map((tv) => ({ value: tv, label: EMPLOYMENT_TYPE_LABELS[tv] }))}
+              className="mb-5"
+              searchable={false}
+            />
             <div className="flex gap-3">
               <button
                 onClick={() => promoteToDp.mutate({ id: promoteCandidate.id, employmentType: promoteEmploymentType })}
