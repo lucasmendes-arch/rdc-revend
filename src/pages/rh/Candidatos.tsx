@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import {
   Loader, Plus, User, Phone, FileText, Image as ImageIcon, X, Paperclip,
-  Store as StoreIcon, Zap, AlertTriangle, SlidersHorizontal, Calendar, Tag,
+  Store as StoreIcon, Zap, AlertTriangle, SlidersHorizontal, Calendar, Tag, Filter,
 } from 'lucide-react'
 import {
   DndContext, DragOverlay, PointerSensor, KeyboardSensor, useSensor, useSensors,
@@ -23,9 +23,9 @@ import { useAdminTheme } from '@/contexts/AdminThemeContext'
 
 type Stage =
   | 'pendente' | 'conversa_iniciada' | 'entrevista_marcada' | 'no_show'
-  | 'decisao_necessaria' | 'selecionado' | 'em_formacao' | 'em_contratacao'
+  | 'decisao_necessaria' | 'selecionado'
   | 'contratado' | 'concluido_arquivado'
-  | 'descartado' | 'banco_de_talentos' | 'sem_contratacao'
+  | 'descartado' | 'banco_de_talentos'
 
 interface Store { id: string; name: string }
 // Cor da vaga vem do cargo vinculado (job_roles.color) — vaga manual sem
@@ -81,9 +81,8 @@ function getAnswerValue(c: Candidate, fieldKey: string): string | undefined {
 const STAGE_LABEL_BY_VALUE: Record<string, string> = {
   pendente: 'Pendente', conversa_iniciada: 'Conversa Iniciada', entrevista_marcada: 'Entrevista Marcada',
   no_show: 'No-show', decisao_necessaria: 'Decisão Necessária', selecionado: 'Selecionado',
-  em_formacao: 'Em Formação', em_contratacao: 'Em Contratação', contratado: 'Contratado',
+  contratado: 'Contratado',
   concluido_arquivado: 'Arquivado', descartado: 'Descartado', banco_de_talentos: 'Banco de Talentos',
-  sem_contratacao: 'Sem Contratação',
 }
 
 // Descrição curta de uma linha de candidate_stage_history — agora um log de
@@ -120,6 +119,12 @@ function formatAnswerValue(a: CandidateAnswer): string {
 // Ordem de exibição das colunas — pedida explicitamente pelo usuário, com as
 // saídas intercaladas no fluxo (não mais agrupadas à parte). Continuam
 // aceitando drop vindo de qualquer coluna, sem transição restrita.
+// 'sem_contratacao', 'em_formacao' e 'em_contratacao' removidas do banco por
+// completo em 2026-07-22 (pedido do usuário, sem uso real). 'contratado'
+// voltou a ser coluna (também 2026-07-22) — soltar um card nela dispara o
+// popup de contratação (ver requestStageChange), igual ao botão "Contratar"
+// no card/modal de detalhe; a etapa em si só é gravada de fato pela RPC
+// promote_candidate_to_dp quando o popup é confirmado, nunca direto.
 const ALL_COLUMNS: { stage: Stage; label: string }[] = [
   { stage: 'pendente', label: 'Pendente' },
   { stage: 'conversa_iniciada', label: 'Conversa Iniciada' },
@@ -128,10 +133,7 @@ const ALL_COLUMNS: { stage: Stage; label: string }[] = [
   { stage: 'decisao_necessaria', label: 'Decisão Necessária' },
   { stage: 'selecionado', label: 'Selecionado' },
   { stage: 'descartado', label: 'Descartado' },
-  { stage: 'em_formacao', label: 'Em Formação' },
-  { stage: 'em_contratacao', label: 'Em Contratação' },
   { stage: 'banco_de_talentos', label: 'Banco de Talentos' },
-  { stage: 'sem_contratacao', label: 'Sem Contratação' },
   { stage: 'contratado', label: 'Contratado' },
   { stage: 'concluido_arquivado', label: 'Arquivado' },
 ]
@@ -174,13 +176,10 @@ const STAGE_COLORS: Record<Stage, { accent: string; bg: string }> = {
   no_show: { accent: '#D97706', bg: '#FEF3C7' },
   decisao_necessaria: { accent: '#EA580C', bg: '#FFEDD5' },
   selecionado: { accent: '#65A30D', bg: '#ECFCCB' },
-  em_formacao: { accent: '#16A34A', bg: '#DCFCE7' },
-  em_contratacao: { accent: '#059669', bg: '#D1FAE5' },
   contratado: { accent: '#0D9488', bg: '#CCFBF1' },
   concluido_arquivado: { accent: '#78716C', bg: '#F5F5F4' },
   descartado: { accent: '#DC2626', bg: '#FEE2E2' },
   banco_de_talentos: { accent: '#7C3AED', bg: '#EDE9FE' },
-  sem_contratacao: { accent: '#DB2777', bg: '#FCE7F3' },
 }
 
 function getStageColors(stage: Stage) {
@@ -249,6 +248,7 @@ const QUICK_DATE_OPTIONS: { label: string; days: number }[] = [
   { label: 'Próxima semana', days: 7 },
   { label: '2 semanas', days: 14 },
   { label: '4 semanas', days: 28 },
+  { label: '45 dias', days: 45 },
 ]
 
 // Editor inline da Data fim, clicável direto no card do kanban — mesmo
@@ -464,7 +464,7 @@ function StageColumn({
       <div
         ref={setNodeRef}
         style={{ backgroundColor: columnBg, borderColor: isOver ? accent : undefined }}
-        className={`space-y-2 min-h-[80px] rounded-2xl border p-1.5 transition-colors ${isOver ? '' : 'border-dashed border-border/70'}`}
+        className={`space-y-2 min-h-[80px] max-h-[calc(100vh-280px)] overflow-y-auto scrollbar-thin rounded-2xl border p-1.5 transition-colors ${isOver ? '' : 'border-dashed border-border/70'}`}
       >
         {candidates.map((c) => (
           <CandidateCard
@@ -500,7 +500,12 @@ export default function RhCandidatos() {
   const [dueDateDraft, setDueDateDraft] = useState('')
   const [assigneeDraft, setAssigneeDraft] = useState('')
   const [jobOpeningDraft, setJobOpeningDraft] = useState('')
+  const [showAllActivity, setShowAllActivity] = useState(false)
   const [cardPrefs, setCardPrefs] = useState<CardFieldPrefs>(loadCardPrefs)
+  const [filterRoleTitle, setFilterRoleTitle] = useState('')
+  const [filterTagId, setFilterTagId] = useState('')
+  const [filterDueDate, setFilterDueDate] = useState<'' | 'hoje' | 'atrasado' | 'sem_prazo'>('')
+  const [filterAssigneeId, setFilterAssigneeId] = useState('')
   const [createOpen, setCreateOpen] = useState(false)
   const [promoteCandidate, setPromoteCandidate] = useState<Candidate | null>(null)
   const [promoteEmploymentType, setPromoteEmploymentType] = useState<EmploymentType>('clt')
@@ -595,6 +600,18 @@ export default function RhCandidatos() {
     [allJobOpenings]
   )
 
+  // Filtro por cargo agrupa por role_title (não por job_opening_id) — "só as
+  // recepcionistas" deve valer pra todas as unidades, não uma vaga específica.
+  // Cor vem da primeira vaga encontrada com aquele título (mesmo cargo,
+  // mesma cor na prática — job_roles.color é compartilhado entre vagas).
+  const roleTitleOptions = useMemo<ColorSelectOption[]>(() => {
+    const colorByTitle = new Map<string, string>()
+    allJobOpenings.forEach((j) => {
+      if (!colorByTitle.has(j.role_title)) colorByTitle.set(j.role_title, j.job_roles?.color || DEFAULT_VAGA_COLOR)
+    })
+    return Array.from(colorByTitle.entries()).map(([title, color]) => ({ value: title, label: title, color }))
+  }, [allJobOpenings])
+
   const { data: rhTags = [] } = useQuery<{ id: string; name: string; color: string }[]>({
     queryKey: ['rh-tags'],
     queryFn: async () => {
@@ -668,15 +685,31 @@ export default function RhCandidatos() {
   })
   const promotedIds = useMemo(() => new Set(promotedRows.map((r) => r.candidate_id)), [promotedRows])
 
+  const activeFilterCount = [filterRoleTitle, filterTagId, filterDueDate, filterAssigneeId].filter(Boolean).length
+
+  const filteredCandidates = useMemo(() => {
+    if (activeFilterCount === 0) return candidates
+    const todayStr = new Date().toISOString().slice(0, 10)
+    return candidates.filter((c) => {
+      if (filterRoleTitle && c.job_openings?.role_title !== filterRoleTitle) return false
+      if (filterTagId && !c.candidate_tags.some((t) => t.tags?.id === filterTagId)) return false
+      if (filterAssigneeId && c.assignee_id !== filterAssigneeId) return false
+      if (filterDueDate === 'hoje' && c.due_date !== todayStr) return false
+      if (filterDueDate === 'atrasado' && !(c.due_date && c.due_date < todayStr)) return false
+      if (filterDueDate === 'sem_prazo' && c.due_date) return false
+      return true
+    })
+  }, [candidates, activeFilterCount, filterRoleTitle, filterTagId, filterAssigneeId, filterDueDate])
+
   const candidatesByStage = useMemo(() => {
     const map = new Map<Stage, Candidate[]>()
     ALL_COLUMNS.forEach((col) => map.set(col.stage, []))
-    candidates.forEach((c) => {
+    filteredCandidates.forEach((c) => {
       if (c.stage === 'contratado' && promotedIds.has(c.id)) return
       map.get(c.stage)?.push(c)
     })
     return map
-  }, [candidates, promotedIds])
+  }, [filteredCandidates, promotedIds])
 
   const updateStage = useMutation({
     mutationFn: async ({ id, stage }: { id: string; stage: Stage }) => {
@@ -731,6 +764,7 @@ export default function RhCandidatos() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['rh-candidates', storeId] })
       toast.success('Alterações salvas')
+      closeDetail()
     },
     onError: (err) => toast.error(`Erro ao salvar alterações: ${err instanceof Error ? err.message : 'desconhecido'}`),
   })
@@ -841,6 +875,7 @@ export default function RhCandidatos() {
     setDueDateDraft(c.due_date || '')
     setAssigneeDraft(c.assignee_id || '')
     setJobOpeningDraft(c.job_opening_id)
+    setShowAllActivity(false)
   }
 
   function closeDetail() {
@@ -850,6 +885,7 @@ export default function RhCandidatos() {
     setDueDateDraft('')
     setAssigneeDraft('')
     setJobOpeningDraft('')
+    setShowAllActivity(false)
   }
 
   function handleDragStart(event: DragStartEvent) {
@@ -917,6 +953,85 @@ export default function RhCandidatos() {
               <Zap className="w-4 h-4" />
               <span className="hidden sm:inline">Automações</span>
             </Link>
+            <Popover>
+              <PopoverTrigger asChild>
+                <button
+                  className="relative flex items-center gap-2 px-3 py-2 rounded-lg border border-border text-sm font-medium hover:bg-surface-alt transition-colors"
+                  title="Filtrar candidatos"
+                >
+                  <Filter className="w-4 h-4" />
+                  <span className="hidden sm:inline">Filtros</span>
+                  {activeFilterCount > 0 && (
+                    <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-gold text-[10px] font-bold text-white flex items-center justify-center">
+                      {activeFilterCount}
+                    </span>
+                  )}
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-72" align="end">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-[11px] font-semibold text-muted-foreground uppercase">Filtrar por</p>
+                  {activeFilterCount > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => { setFilterRoleTitle(''); setFilterTagId(''); setFilterDueDate(''); setFilterAssigneeId('') }}
+                      className="text-[11px] font-medium text-accent hover:underline"
+                    >
+                      Limpar filtros
+                    </button>
+                  )}
+                </div>
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-[11px] text-muted-foreground mb-1">Cargo / Vaga</label>
+                    <ColorSelect
+                      variant="pill"
+                      value={filterRoleTitle}
+                      onChange={setFilterRoleTitle}
+                      options={roleTitleOptions}
+                      emptyLabel="Todos os cargos"
+                      placeholder="Todos os cargos"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] text-muted-foreground mb-1">Tag</label>
+                    <ColorSelect
+                      variant="pill"
+                      value={filterTagId}
+                      onChange={setFilterTagId}
+                      options={rhTags.map((t) => ({ value: t.id, label: t.name, color: t.color }))}
+                      emptyLabel="Todas as tags"
+                      placeholder="Todas as tags"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] text-muted-foreground mb-1">Data fim</label>
+                    <StyledSelect
+                      value={filterDueDate}
+                      onChange={(v) => setFilterDueDate(v as typeof filterDueDate)}
+                      options={[
+                        { value: 'hoje', label: 'Hoje' },
+                        { value: 'atrasado', label: 'Atrasado' },
+                        { value: 'sem_prazo', label: 'Sem prazo' },
+                      ]}
+                      emptyLabel="Todos"
+                      placeholder="Todos"
+                      searchable={false}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] text-muted-foreground mb-1">Responsável</label>
+                    <StyledSelect
+                      value={filterAssigneeId}
+                      onChange={setFilterAssigneeId}
+                      options={rhAssignableUsers.map((u) => ({ value: u.id, label: u.full_name || u.email }))}
+                      emptyLabel="Todos"
+                      placeholder="Todos"
+                    />
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
             <Popover>
               <PopoverTrigger asChild>
                 <button
@@ -996,7 +1111,7 @@ export default function RhCandidatos() {
           </div>
         ) : (
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-            <div className="flex gap-3 overflow-x-auto pb-2">
+            <div className="flex gap-3 overflow-x-auto scrollbar-thin pb-2">
               {ALL_COLUMNS.map((col) => (
                 <StageColumn
                   key={col.stage}
@@ -1046,12 +1161,14 @@ export default function RhCandidatos() {
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-foreground mb-1">Vaga *</label>
-                <StyledSelect
+                <ColorSelect
+                  variant="pill"
                   value={createForm.job_opening_id}
                   onChange={(v) => setCreateForm({ ...createForm, job_opening_id: v })}
                   options={jobOpenings.map((j) => ({
                     value: j.id,
                     label: `${j.role_title}${!storeId && j.stores?.name ? ` — ${j.stores.name}` : ''}${j.status === 'fechada' ? ' (fechada)' : ''}`,
+                    color: j.job_roles?.color || DEFAULT_VAGA_COLOR,
                   }))}
                 />
               </div>
@@ -1094,19 +1211,37 @@ export default function RhCandidatos() {
                   <label className="block text-sm font-medium text-foreground mb-1">Foto</label>
                   <input ref={photoInputRef} type="file" accept="image/*" className="hidden"
                     onChange={(e) => setCreatePhotoFile(e.target.files?.[0] ?? null)} />
-                  <button type="button" onClick={() => photoInputRef.current?.click()}
-                    className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border border-dashed border-border text-sm text-muted-foreground hover:bg-surface-alt">
-                    <ImageIcon className="w-4 h-4" /> {createPhotoFile ? createPhotoFile.name.slice(0, 14) : 'Selecionar'}
-                  </button>
+                  <div className="flex items-center gap-1.5">
+                    <button type="button" onClick={() => photoInputRef.current?.click()}
+                      className="flex-1 min-w-0 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border border-dashed border-border text-sm text-muted-foreground hover:bg-surface-alt">
+                      <ImageIcon className="w-4 h-4 shrink-0" /> <span className="truncate">{createPhotoFile ? createPhotoFile.name.slice(0, 14) : 'Selecionar'}</span>
+                    </button>
+                    {createPhotoFile && (
+                      <button type="button" title="Remover arquivo"
+                        onClick={() => { setCreatePhotoFile(null); if (photoInputRef.current) photoInputRef.current.value = '' }}
+                        className="p-2 rounded-lg border border-border text-muted-foreground hover:bg-surface-alt shrink-0">
+                        <X className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-1">Currículo</label>
                   <input ref={resumeInputRef} type="file" accept=".pdf,.doc,.docx" className="hidden"
                     onChange={(e) => setCreateResumeFile(e.target.files?.[0] ?? null)} />
-                  <button type="button" onClick={() => resumeInputRef.current?.click()}
-                    className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border border-dashed border-border text-sm text-muted-foreground hover:bg-surface-alt">
-                    <FileText className="w-4 h-4" /> {createResumeFile ? createResumeFile.name.slice(0, 14) : 'Selecionar'}
-                  </button>
+                  <div className="flex items-center gap-1.5">
+                    <button type="button" onClick={() => resumeInputRef.current?.click()}
+                      className="flex-1 min-w-0 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border border-dashed border-border text-sm text-muted-foreground hover:bg-surface-alt">
+                      <FileText className="w-4 h-4 shrink-0" /> <span className="truncate">{createResumeFile ? createResumeFile.name.slice(0, 14) : 'Selecionar'}</span>
+                    </button>
+                    {createResumeFile && (
+                      <button type="button" title="Remover arquivo"
+                        onClick={() => { setCreateResumeFile(null); if (resumeInputRef.current) resumeInputRef.current.value = '' }}
+                        className="p-2 rounded-lg border border-border text-muted-foreground hover:bg-surface-alt shrink-0">
+                        <X className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -1132,7 +1267,7 @@ export default function RhCandidatos() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-foreground/40 backdrop-blur-sm" onClick={closeDetail} />
           <div className="relative bg-card rounded-2xl shadow-2xl border border-border p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
-            <div className="flex items-start justify-between mb-5">
+            <div className="flex items-center justify-between mb-5">
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 rounded-full overflow-hidden shrink-0 bg-surface-alt border border-border flex items-center justify-center">
                   {detailCandidate.photo_url ? (
@@ -1141,14 +1276,29 @@ export default function RhCandidatos() {
                     <User className="w-5 h-5 text-muted-foreground" />
                   )}
                 </div>
-                <div>
-                  <h2 className="text-lg font-bold text-foreground">{detailCandidate.name}</h2>
-                  <p className="text-xs text-muted-foreground">{detailCandidate.job_openings?.role_title}</p>
+                <div className="min-w-0">
+                  <h2 className="text-lg font-bold text-foreground truncate">{detailCandidate.name}</h2>
+                  <p className="text-xs text-muted-foreground truncate">{detailCandidate.job_openings?.role_title}</p>
                 </div>
               </div>
-              <button onClick={closeDetail} className="p-1.5 rounded-lg hover:bg-surface-alt text-muted-foreground">
-                <X className="w-4 h-4" />
-              </button>
+              <div className="flex items-center gap-1.5 shrink-0">
+                {!promotedIds.has(detailCandidate.id) && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPromoteCandidate(detailCandidate)
+                      setPromoteEmploymentType('clt')
+                    }}
+                    title="Contratar candidato"
+                    className="px-2.5 py-1.5 rounded-lg bg-teal-600 hover:bg-teal-700 text-white text-xs font-medium transition-colors"
+                  >
+                    Contratar
+                  </button>
+                )}
+                <button onClick={closeDetail} className="p-1.5 rounded-lg hover:bg-surface-alt text-muted-foreground">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
             </div>
 
             <div className="space-y-4">
@@ -1164,7 +1314,17 @@ export default function RhCandidatos() {
                 </div>
                 <div>
                   <p className="text-[11px] font-semibold text-muted-foreground uppercase">WhatsApp</p>
-                  <p className="text-foreground flex items-center gap-1"><Phone className="w-3.5 h-3.5" /> {detailCandidate.whatsapp}</p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard.writeText(detailCandidate.whatsapp)
+                      toast.success('Número copiado')
+                    }}
+                    className="text-foreground flex items-center gap-1 hover:underline"
+                    title="Clique para copiar"
+                  >
+                    <Phone className="w-3.5 h-3.5" /> {detailCandidate.whatsapp}
+                  </button>
                 </div>
               </div>
 
@@ -1313,19 +1473,32 @@ export default function RhCandidatos() {
 
               <div>
                 <label className="block text-sm font-medium text-foreground mb-1.5">Atividade</label>
-                <div className="space-y-1.5 max-h-48 overflow-y-auto bg-surface-alt rounded-lg p-3">
+                <div className="space-y-1.5 bg-surface-alt rounded-lg p-3">
                   {activity.length === 0 ? (
                     <p className="text-xs text-muted-foreground">Sem atividade registrada.</p>
                   ) : (
-                    activity.map((row) => (
-                      <div key={row.id} className="flex items-start justify-between gap-3 text-xs">
-                        <span className="text-foreground">
-                          {describeActivity(row)}
-                          {row.automation_id && <span className="ml-1.5 text-[10px] font-semibold px-1 py-0.5 rounded bg-violet-100 text-violet-700">automação</span>}
-                        </span>
-                        <span className="text-muted-foreground shrink-0">{new Date(row.changed_at).toLocaleString('pt-BR')}</span>
+                    <>
+                      <div className={showAllActivity ? 'space-y-1.5 max-h-48 overflow-y-auto' : 'space-y-1.5'}>
+                        {(showAllActivity ? activity : activity.slice(0, 3)).map((row) => (
+                          <div key={row.id} className="flex items-start justify-between gap-3 text-xs">
+                            <span className="text-foreground">
+                              {describeActivity(row)}
+                              {row.automation_id && <span className="ml-1.5 text-[10px] font-semibold px-1 py-0.5 rounded bg-violet-100 text-violet-700">automação</span>}
+                            </span>
+                            <span className="text-muted-foreground shrink-0">{new Date(row.changed_at).toLocaleString('pt-BR')}</span>
+                          </div>
+                        ))}
                       </div>
-                    ))
+                      {!showAllActivity && activity.length > 3 && (
+                        <button
+                          type="button"
+                          onClick={() => setShowAllActivity(true)}
+                          className="text-xs font-semibold text-primary hover:underline"
+                        >
+                          Ver mais
+                        </button>
+                      )}
+                    </>
                   )}
                 </div>
               </div>
@@ -1373,8 +1546,14 @@ export default function RhCandidatos() {
       )}
 
       {/* Modal: promoção pro Departamento Pessoal (transição RH → DP) */}
+      {/* z-50 (não z-60): igual ao modal de detalhe — o Popover dos selects
+          (StyledSelect/ColorSelect) usa z-50 fixo; com z-60 aqui, a lista de
+          opções do "Tipo de vínculo" renderizava escondida atrás do card
+          deste modal (z maior sempre vence, mesmo com o popover no fim do
+          DOM). Ordem de renderização no JSX (depois do modal de detalhe) já
+          garante que este empilha por cima mesmo com o mesmo z-index. */}
       {promoteCandidate && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-foreground/40 backdrop-blur-sm" onClick={() => setPromoteCandidate(null)} />
           <div className="relative bg-card rounded-2xl shadow-2xl border border-border p-6 w-full max-w-sm">
             <h2 className="text-lg font-bold text-foreground mb-1">Contratar {promoteCandidate.name}</h2>
@@ -1395,7 +1574,7 @@ export default function RhCandidatos() {
                 disabled={promoteToDp.isPending}
                 className="flex-1 px-4 py-2.5 rounded-lg btn-action font-medium disabled:opacity-70 transition-colors"
               >
-                {promoteToDp.isPending ? 'Contratando...' : 'Confirmar contratação'}
+                {promoteToDp.isPending ? 'Contratando...' : 'Confirmar'}
               </button>
               <button onClick={() => setPromoteCandidate(null)} className="flex-1 px-4 py-2.5 rounded-lg border border-border bg-card text-foreground font-medium hover:bg-accent">
                 Cancelar
