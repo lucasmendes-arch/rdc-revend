@@ -40,4 +40,20 @@ export interface ContractRow {
   signature_date: string | null
   term_start: string | null
   term_end: string | null
+  file_url: string | null
+}
+
+export interface ContractPersonalData {
+  process_id: string
+  cpf: string | null
+  rg: string | null
+  birth_date: string | null
+  marital_status: string | null
+  nationality: string
+  address: string | null
+  email: string | null
+  bank_name: string | null
+  bank_agency: string | null
+  bank_account: string | null
+  pix_key: string | null
 }

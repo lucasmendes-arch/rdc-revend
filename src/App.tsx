@@ -63,6 +63,7 @@ const CandidaturaPublica = lazy(() => import("./pages/rh/CandidaturaPublica"));
 // módulo DP (lazy)
 const DpContratacao = lazy(() => import("./pages/dp/Contratacao"));
 const DpColaboradores = lazy(() => import("./pages/dp/Colaboradores"));
+const DpGerarContrato = lazy(() => import("./pages/dp/GerarContrato"));
 
 // módulo estoque (lazy)
 const EstoqueContagem = lazy(() => import("./pages/estoque/Contagem"));
@@ -163,6 +164,7 @@ const App = () => (
                     <Route path="/admin/rh/automacoes" element={<RhAutomacoes />} />
                     <Route path="/admin/dp/contratacao" element={<DpContratacao />} />
                     <Route path="/admin/dp/colaboradores" element={<DpColaboradores />} />
+                    <Route path="/admin/dp/contratos" element={<DpGerarContrato />} />
                   </Route>
                 </Route>
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

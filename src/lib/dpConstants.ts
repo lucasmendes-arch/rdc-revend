@@ -107,10 +107,52 @@ export const DOCUMENT_STATUS_LABELS: Record<DocumentStatus, string> = {
   aprovado: 'Aprovado',
 }
 
-export type ContractType = 'formacao' | 'prestacao_servico' | 'clt'
+export type ContractType = 'formacao' | 'prestacao_servico' | 'clt' | 'desligamento_formacao'
 
 export const CONTRACT_TYPE_LABELS: Record<ContractType, string> = {
   formacao: 'Contrato de formação',
   prestacao_servico: 'Prestação de serviço',
   clt: 'CLT',
+  desligamento_formacao: 'Desligamento do curso',
+}
+
+// Mesma regra usada pela edge function generate-contract (não há template de
+// CLT ainda — geração automática fica restrita a MEI). Mantida aqui só pra
+// dar um preview ao usuário antes de gerar; a fonte de verdade real do
+// contract_type gravado é sempre a resolução feita no servidor.
+// 'desligamento_formacao' não entra aqui — não é uma etapa "de repouso"
+// (como formação/prestação), é disparado automaticamente pelo evento de
+// desligamento durante a formação (trigger em employee_processes, ver
+// migration 20260722000005), não por um current_stage estável.
+export function resolveAutoContractType(employmentType: EmploymentType, currentStage: string): ContractType | null {
+  if (employmentType !== 'mei') return null
+  return ['contrato_formacao', 'formacao', 'decisao_formacao'].includes(currentStage)
+    ? 'formacao'
+    : 'prestacao_servico'
+}
+
+export type ContractDataField =
+  | 'cpf' | 'rg' | 'birth_date' | 'marital_status' | 'nationality' | 'address' | 'email'
+  | 'bank_name' | 'bank_agency' | 'bank_account' | 'pix_key'
+
+export const CONTRACT_DATA_FIELD_LABELS: Record<ContractDataField, string> = {
+  cpf: 'CPF', rg: 'RG', birth_date: 'Data de nascimento', marital_status: 'Estado civil',
+  nationality: 'Nacionalidade', address: 'Endereço completo', email: 'E-mail',
+  bank_name: 'Banco', bank_agency: 'Agência', bank_account: 'Conta', pix_key: 'Chave PIX',
+}
+
+// 'formacao' confirmado com os templates reais (Contrato de Formação +
+// Desligamento, 2026-07-22) — não precisa de RG/estado civil/nacionalidade/
+// dados bancários (curso gratuito, sem vínculo, sem pagamento), mas precisa
+// de e-mail. 'prestacao_servico' continua um chute (sem template real ainda
+// — "por partes", próxima rodada). 'desligamento_formacao' não pede nada
+// além do que 'formacao' já exige (reaproveita CPF/nome já preenchidos).
+export const REQUIRED_CONTRACT_DATA_FIELDS: Record<ContractType, ContractDataField[]> = {
+  formacao: ['cpf', 'birth_date', 'address', 'email'],
+  prestacao_servico: [
+    'cpf', 'rg', 'birth_date', 'marital_status', 'nationality', 'address',
+    'bank_name', 'bank_agency', 'bank_account', 'pix_key',
+  ],
+  clt: [],
+  desligamento_formacao: [],
 }

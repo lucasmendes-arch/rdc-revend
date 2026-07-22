@@ -22,6 +22,7 @@ interface SystemUser {
   permissions: Record<string, boolean> | null
   store_id: string | null
   store_name: string | null
+  whatsapp_number: string | null
 }
 
 interface StoreOption {
@@ -1200,6 +1201,8 @@ function SystemUserSidePanel({
   const queryClient = useQueryClient()
   const [nameValue, setNameValue] = useState(user.full_name ?? '')
   const [editingName, setEditingName] = useState(false)
+  const [whatsappValue, setWhatsappValue] = useState(user.whatsapp_number ?? '')
+  const [editingWhatsapp, setEditingWhatsapp] = useState(false)
   const [selectedRole, setSelectedRole] = useState(user.role)
   const [selectedStoreId, setSelectedStoreId] = useState(user.store_id ?? '')
 
@@ -1219,6 +1222,22 @@ function SystemUserSidePanel({
     onSuccess: () => {
       toast.success('Nome atualizado')
       setEditingName(false)
+      queryClient.invalidateQueries({ queryKey: ['admin-system-users'] })
+    },
+    onError: (err: any) => toast.error('Erro: ' + (err?.message || 'desconhecido')),
+  })
+
+  const whatsappMutation = useMutation({
+    mutationFn: async (whatsapp: string) => {
+      const { error } = await supabase.rpc('admin_set_user_whatsapp', {
+        p_user_id:  user.id,
+        p_whatsapp: whatsapp,
+      })
+      if (error) throw error
+    },
+    onSuccess: () => {
+      toast.success('WhatsApp atualizado')
+      setEditingWhatsapp(false)
       queryClient.invalidateQueries({ queryKey: ['admin-system-users'] })
     },
     onError: (err: any) => toast.error('Erro: ' + (err?.message || 'desconhecido')),
@@ -1294,6 +1313,39 @@ function SystemUserSidePanel({
               </div>
             ) : (
               <p className="text-sm font-medium text-zinc-800">{user.full_name || <span className="text-zinc-400 italic">Não informado</span>}</p>
+            )}
+          </div>
+
+          {/* WhatsApp — usado pra notificar quando o usuário é responsável por
+              um candidato e um contrato é gerado automaticamente (DP). */}
+          <div className="px-5 py-4 border-b border-zinc-200">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-[11px] font-bold text-zinc-400 uppercase tracking-widest">WhatsApp</h3>
+              {!editingWhatsapp ? (
+                <button onClick={() => { setWhatsappValue(user.whatsapp_number ?? ''); setEditingWhatsapp(true) }}
+                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium text-zinc-600 hover:bg-zinc-100 border border-zinc-200 transition-colors">
+                  <Edit2 className="w-3.5 h-3.5" />Editar
+                </button>
+              ) : (
+                <button onClick={() => setEditingWhatsapp(false)}
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium text-zinc-400 hover:bg-zinc-50 transition-colors">
+                  <X className="w-3.5 h-3.5" />Cancelar
+                </button>
+              )}
+            </div>
+            {editingWhatsapp ? (
+              <div className="flex gap-2">
+                <input type="tel" value={whatsappValue} onChange={e => setWhatsappValue(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && whatsappMutation.mutate(whatsappValue)}
+                  className="flex-1 px-3 py-2 text-sm rounded-lg border border-zinc-200 bg-white focus:outline-none focus:ring-2 focus:ring-zinc-400"
+                  placeholder="(27) 99999-9999" autoFocus />
+                <button onClick={() => whatsappMutation.mutate(whatsappValue)} disabled={whatsappMutation.isPending}
+                  className="px-3 py-2 rounded-lg bg-zinc-900 text-white text-sm font-medium disabled:opacity-50 hover:bg-zinc-700 transition-colors">
+                  {whatsappMutation.isPending ? <Loader className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                </button>
+              </div>
+            ) : (
+              <p className="text-sm font-medium text-zinc-800">{user.whatsapp_number || <span className="text-zinc-400 italic">Não informado</span>}</p>
             )}
           </div>
 

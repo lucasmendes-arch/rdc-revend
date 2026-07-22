@@ -398,3 +398,6 @@ verify_jwt = false
 
 [functions.send-automation-whatsapp]
 verify_jwt = false
+
+[functions.generate-contract-automation]
+verify_jwt = false

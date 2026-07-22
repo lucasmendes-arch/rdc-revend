@@ -20,12 +20,43 @@ import type { Processo } from '@/lib/dpTypes'
 
 interface Store { id: string; name: string }
 
-function ProcessoCard({ processo, onOpen }: { processo: Processo; onOpen: (p: Processo) => void }) {
+// Mesmo default de src/pages/rh/Candidatos.tsx (DEFAULT_VAGA_COLOR) — cargo
+// sem correspondência em job_roles (renomeado/removido após a promoção, ou
+// vaga manual sem cargo vinculado) cai nesse teal padrão.
+const DEFAULT_ROLE_COLOR = '#0D9488'
+
+// Mesmo visual do card de Candidatos (src/pages/rh/Candidatos.tsx) — foto no
+// topo, borda esquerda colorida pela etapa, badges de cargo/unidade. Duplica
+// os pequenos helpers de apresentação em vez de importar da página de RH
+// (mesmo padrão já usado pelas duas páginas pra `initials`/cores de etapa).
+function initials(name: string) {
+  const parts = name.trim().split(/\s+/).filter(Boolean)
+  if (parts.length === 0) return '?'
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+}
+
+function ProcessoPhoto({ name, photoUrl }: { name: string; photoUrl: string | null | undefined }) {
+  return (
+    <div className="h-[120px] w-full bg-slate-100 shrink-0">
+      {photoUrl ? (
+        <img src={photoUrl} alt="" className="w-full h-full object-cover" />
+      ) : (
+        <div className="w-full h-full flex items-center justify-center">
+          <span className="text-lg font-bold text-slate-400">{initials(name)}</span>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function ProcessoCard({ processo, onOpen, roleColor }: { processo: Processo; onOpen: (p: Processo) => void; roleColor: string }) {
   // Sem `transform` aqui — ver comentário equivalente em CandidateCard
   // (src/pages/rh/Candidatos.tsx): só o DragOverlay deve seguir o cursor.
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: processo.id })
   const col = getStageColumn(processo.employment_type, processo.current_stage)
   const style = { borderLeftColor: col?.accent }
+  const name = processo.candidates?.name || 'Candidato removido'
   return (
     <div
       ref={setNodeRef}
@@ -33,29 +64,37 @@ function ProcessoCard({ processo, onOpen }: { processo: Processo; onOpen: (p: Pr
       {...listeners}
       {...attributes}
       onClick={() => !isDragging && onOpen(processo)}
-      className={`bg-white rounded-lg border border-border/60 border-l-4 shadow-[0_1px_2px_rgba(0,0,0,0.06)] p-2.5 space-y-1.5 cursor-grab active:cursor-grabbing touch-none select-none ${
+      className={`bg-white rounded-lg border border-border/60 border-l-4 shadow-[0_1px_2px_rgba(0,0,0,0.06)] overflow-hidden cursor-grab active:cursor-grabbing touch-none select-none ${
         isDragging ? 'opacity-50' : ''
       }`}
     >
-      <p className="text-[13px] font-semibold text-foreground truncate">{processo.candidates?.name || 'Candidato removido'}</p>
-      <div className="flex items-center gap-1 flex-wrap">
-        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-md bg-teal-100 text-teal-700 dark:bg-teal-500/20 dark:text-teal-300 truncate max-w-full">
-          {processo.role_title}
-        </span>
-        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-md bg-surface-alt text-muted-foreground truncate max-w-full">
-          {processo.stores?.name || '—'}
-        </span>
+      <ProcessoPhoto name={name} photoUrl={processo.candidates?.photo_url} />
+      <div className="p-2.5 space-y-1.5">
+        <p className="text-[13px] font-semibold text-foreground truncate">{name}</p>
+        <div className="flex items-center gap-1 flex-wrap">
+          {/* Mesma lógica de cor de cargo do kanban de Candidatos (ColorSelect
+              compact/pill: job_roles.color) — aqui é estático (não editável no
+              card do DP), casado por título já que employee_processes guarda
+              só o snapshot do nome do cargo, sem FK pra job_roles. */}
+          <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-md truncate max-w-full" style={{ backgroundColor: roleColor, color: '#fff' }}>
+            {processo.role_title}
+          </span>
+          <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-md bg-surface-alt text-muted-foreground truncate max-w-full">
+            {processo.stores?.name || '—'}
+          </span>
+        </div>
       </div>
     </div>
   )
 }
 
 function StageColumnView({
-  column, processos, onOpen,
+  column, processos, onOpen, roleColorByTitle,
 }: {
   column: StageColumn
   processos: Processo[]
   onOpen: (p: Processo) => void
+  roleColorByTitle: Map<string, string>
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: column.stage })
   const { isDark } = useAdminTheme()
@@ -74,10 +113,10 @@ function StageColumnView({
       <div
         ref={setNodeRef}
         style={{ backgroundColor: columnBg, borderColor: isOver ? column.accent : undefined }}
-        className={`space-y-2 min-h-[80px] rounded-2xl border p-1.5 transition-colors ${isOver ? '' : 'border-dashed border-border/70'}`}
+        className={`space-y-2 min-h-[80px] max-h-[calc(100vh-280px)] overflow-y-auto scrollbar-thin rounded-2xl border p-1.5 transition-colors ${isOver ? '' : 'border-dashed border-border/70'}`}
       >
         {processos.map((p) => (
-          <ProcessoCard key={p.id} processo={p} onOpen={onOpen} />
+          <ProcessoCard key={p.id} processo={p} onOpen={onOpen} roleColor={roleColorByTitle.get(p.role_title) || DEFAULT_ROLE_COLOR} />
         ))}
       </div>
     </section>
@@ -86,13 +125,13 @@ function StageColumnView({
 
 type ViewFilter = EmploymentType | 'todos'
 
-const VIEW_OPTIONS: ViewFilter[] = [...EMPLOYMENT_TYPE_OPTIONS, 'todos']
+const VIEW_OPTIONS: ViewFilter[] = ['todos', ...EMPLOYMENT_TYPE_OPTIONS]
 const VIEW_LABELS: Record<ViewFilter, string> = { ...EMPLOYMENT_TYPE_LABELS, todos: 'Todos' }
 
 export default function DpContratacao() {
   const queryClient = useQueryClient()
   const [storeId, setStoreId] = useState('')
-  const [employmentType, setEmploymentType] = useState<ViewFilter>('clt')
+  const [employmentType, setEmploymentType] = useState<ViewFilter>('todos')
   const [showFinalizados, setShowFinalizados] = useState(false)
   const [activeProcesso, setActiveProcesso] = useState<Processo | null>(null)
   const [detailProcesso, setDetailProcesso] = useState<Processo | null>(null)
@@ -102,6 +141,20 @@ export default function DpContratacao() {
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(KeyboardSensor)
   )
+
+  // Cor do badge de cargo — mesma fonte de verdade do kanban de Candidatos
+  // (job_roles.color), casada por título já que employee_processes não tem
+  // FK pra job_roles (só guarda role_title como snapshot da promoção).
+  const { data: jobRoles = [] } = useQuery<{ title: string; color: string }[]>({
+    queryKey: ['dp-job-roles-colors'],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('job_roles').select('title, color')
+      if (error) throw error
+      return (data || []) as { title: string; color: string }[]
+    },
+    staleTime: 5 * 60 * 1000,
+  })
+  const roleColorByTitle = useMemo(() => new Map(jobRoles.map((r) => [r.title, r.color])), [jobRoles])
 
   const { data: stores = [] } = useQuery<Store[]>({
     queryKey: ['dp-stores'],
@@ -248,23 +301,27 @@ export default function DpContratacao() {
           </div>
         ) : (
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-            <div className="flex gap-3 overflow-x-auto pb-2">
+            <div className="flex gap-3 overflow-x-auto scrollbar-thin pb-2">
               {columns.map((col) => (
                 <StageColumnView
                   key={col.stage}
                   column={col}
                   processos={processosByStage.get(col.stage) || []}
                   onOpen={setDetailProcesso}
+                  roleColorByTitle={roleColorByTitle}
                 />
               ))}
             </div>
             <DragOverlay dropAnimation={null}>
               {activeProcesso ? (
                 <div
-                  className="bg-white rounded-lg border border-border/60 border-l-4 shadow-lg p-2.5 w-56"
+                  className="bg-white rounded-lg border border-border/60 border-l-4 shadow-lg overflow-hidden w-56"
                   style={{ borderLeftColor: getStageColumn(activeProcesso.employment_type, activeProcesso.current_stage)?.accent }}
                 >
-                  <p className="text-[13px] font-semibold text-foreground truncate">{activeProcesso.candidates?.name}</p>
+                  <ProcessoPhoto name={activeProcesso.candidates?.name || ''} photoUrl={activeProcesso.candidates?.photo_url} />
+                  <div className="p-2.5">
+                    <p className="text-[13px] font-semibold text-foreground truncate">{activeProcesso.candidates?.name}</p>
+                  </div>
                 </div>
               ) : null}
             </DragOverlay>

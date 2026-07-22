@@ -94,7 +94,7 @@ export default function ProcessoDetailModal({ processo, onClose, estagio }: Proc
     queryFn: async () => {
       const { data, error } = await supabase
         .from('employee_contracts')
-        .select('id, contract_type, signature_date, term_start, term_end')
+        .select('id, contract_type, signature_date, term_start, term_end, file_url')
         .eq('process_id', processo.id)
         .order('created_at', { ascending: false })
       if (error) throw error
@@ -292,7 +292,19 @@ export default function ProcessoDetailModal({ processo, onClose, estagio }: Proc
             <div className="space-y-3 py-2">
               {contractRows.map((c) => (
                 <div key={c.id} className="text-sm bg-surface-alt rounded-lg p-2.5 space-y-0.5">
-                  <p className="font-medium text-foreground">{CONTRACT_TYPE_LABELS[c.contract_type]}</p>
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="font-medium text-foreground">{CONTRACT_TYPE_LABELS[c.contract_type]}</p>
+                    {c.file_url && (
+                      <a
+                        href={c.file_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs font-medium text-accent hover:underline shrink-0"
+                      >
+                        Abrir contrato
+                      </a>
+                    )}
+                  </div>
                   <p className="text-[11px] text-muted-foreground">Assinatura: {formatDateBR(c.signature_date)}</p>
                   <p className="text-[11px] text-muted-foreground">Vigência: {formatDateBR(c.term_start)} — {formatDateBR(c.term_end)}</p>
                 </div>

@@ -58,6 +58,7 @@ Perfil do usuário. Criado automaticamente por trigger ao registrar em `auth.use
 | assigned_seller_id | uuid | YES | NULL | sellers.id |
 | store_id | uuid | YES | NULL | stores.id |
 | permissions | jsonb | NO | `'{}'` | — |
+| whatsapp_number | text | YES | NULL | — |
 
 > `customer_segment` válidos: `'network_partner'`, `'wholesale_buyer'`. NULL = não classificado (legado pendente de revisão). Source of truth da segmentação comercial do cliente.
 > `price_list_id` FK para `price_lists`. NULL = sem tabela especial, usa `catalog_products.price`. Quando preenchida e lista ativa, o sistema usa preços de `price_list_items` no catálogo e no checkout.
@@ -69,6 +70,7 @@ Perfil do usuário. Criado automaticamente por trigger ao registrar em `auth.use
 > `permissions` (jsonb, DEFAULT `'{}'`, desde `20260420000002`): permissões granulares por usuário, além do `role`. Chave em uso: `can_edit_orders` (boolean) — exigida por `admin_update_order` mesmo para admins. Alterada só via RPC `admin_set_user_permission` (admin-only); retornada por `get_system_users`.
 > **Módulo de Estoque:** `store_id` (FK `stores.id`) vincula um colaborador `role='salao'` à sua loja física — opcional (NULL = só acessa o módulo de venda, não o de contagem de estoque). Unificado com o antigo role `'estoque'` em 2026-07-02 (D-23): não existe mais `role='estoque'`, colaborador de loja física é sempre `salao` + `store_id`. Ver função `is_estoque()` (nome mantido por compatibilidade, mas checa `role='salao'`) e `my_store_id()`.
 > **`role='administrativo'`** (desde `20260720000001`): tipo de acesso de escritório com RH+DP (mesmo `has_rh_access()` de admin) e Estoque completo (Contagem, Pedidos, Relatório, Estoque Atual, Histórico, Config — mesmo `has_full_stock_access()` de admin, todas as lojas, sem `store_id` fixo). Não tem nenhum outro poder de admin (catálogo geral, pedidos comerciais, usuários, tabelas de preço, credenciais WhatsApp — essa última continua `is_admin()`-only). Atribuído via `admin_set_user_role` (admin-only); `store_id` sempre `NULL` pra esse role.
+> `whatsapp_number` (`20260722000004`): WhatsApp de contato interno — usado pra notificar o usuário quando ele é `candidates.assignee_id` (responsável) de um candidato cujo contrato foi gerado automaticamente (DP). **Não confundir com `auth_phone`** (login de parceiros de rede, semântica totalmente diferente). Editável via RPC `admin_set_user_whatsapp` (admin-only), retornado por `get_system_users`.
 
 ---
 
@@ -230,8 +232,12 @@ Lojas físicas para o módulo de contagem/reposição (não confundir com `picku
 | type | text | NO | — | — |
 | is_active | boolean | NO | `true` | — |
 | created_at | timestamptz | NO | `now()` | — |
+| legal_name | text | YES | NULL | — |
+| cnpj | text | YES | NULL | — |
+| legal_address | text | YES | NULL | — |
 
 > `type` válidos: `'central'`, `'satellite'`. Slugs alinhados com `pickup_units` (mesmos valores: `linhares`, `serra`, `teixeira`, `colatina`, `sao-gabriel`), mas **sem FK física** entre as duas tabelas — `pickup_units` é pública/checkout, `stores` é autenticada/operacional. Ver D-20 em `docs/decisions.md`.
+> `legal_name`/`cnpj`/`legal_address` (`20260722000004`): dados jurídicos da unidade como "INSTITUIDORA" nos contratos gerados automaticamente (DP) — placeholders `{{razao_social}}`/`{{cnpj}}`/`{{endereco}}`. Muda por unidade (confirmado com o usuário — não é um dado único da empresa). Nullable até serem preenchidos com os dados reais das 5 lojas.
 > RLS: admin gerencia tudo; qualquer colaborador com acesso ao módulo de estoque (`is_estoque()`) lê todas as lojas (não só a própria).
 
 ---
@@ -1034,7 +1040,7 @@ Checklist de documentos de admissão — fixa por `employment_type`, definida em
 ---
 
 ### `employee_contracts`
-Contrato(s) do processo de admissão — normalmente 0 ou 1 linha por processo, cadastro manual na aba "Contrato" do card.
+Contrato(s) do processo de admissão — normalmente 0 ou 1 linha por processo/tipo. Nasce de três jeitos: cadastro manual na aba "Contrato" do card (`file_url` fica `NULL`), geração manual via `/admin/dp/contratos` (edge function `generate-contract`), ou geração **automática** disparada por trigger no banco quando o processo entra em formação / é desligado durante a formação (edge function `generate-contract-automation`, `20260722000005`).
 
 | Coluna | Tipo | Nullable | Default | FK |
 |--------|------|----------|---------|-----|
@@ -1047,9 +1053,74 @@ Contrato(s) do processo de admissão — normalmente 0 ou 1 linha por processo, 
 | term_end | date | YES | NULL | — |
 | created_at | timestamptz | NO | `now()` | — |
 
-> `contract_type` válidos: `'formacao'`, `'prestacao_servico'`, `'clt'`.
-> `file_url` fica `NULL` nesta etapa — mesma ressalva de upload de `employee_documents`.
+> `contract_type` válidos: `'formacao'`, `'prestacao_servico'`, `'clt'`, `'desligamento_formacao'` (`20260722000004`). Só `formacao`/`desligamento_formacao` têm template real configurado em `contract_templates` hoje (confirmados lendo os 2 Google Docs em 2026-07-22) — `prestacao_servico` continua um chute sem template real ("por partes", próxima rodada), `clt` não tem template nenhum (100% manual).
+> `file_url`: `NULL` quando cadastrado manualmente. Quando gerado (manual ou automático), guarda o **`webViewLink` do Google Doc direto** (não é mais um caminho de Storage — decisão do usuário de simplificar, sem exportar PDF nem subir pro Supabase Storage). Acesso é controlado pelo compartilhamento do próprio Google Drive, não pelo banco.
 > RLS: `has_rh_access()` pra tudo (`authenticated`).
+
+---
+
+### `employee_contract_data`
+Dados pessoais do colaborador necessários pro corpo do contrato — não existem em `candidates` nem em `employee_processes`, que só guardam nome/whatsapp/foto. 1:1 com o processo, preenchido na aba "Dados para contrato" de `/admin/dp/contratos`. Criada em `20260722000001`, campos confirmados/ajustados em `20260722000004` a partir dos templates reais de formação/desligamento.
+
+| Coluna | Tipo | Nullable | Default | FK |
+|--------|------|----------|---------|-----|
+| process_id | uuid | NO (PK) | — | employee_processes.id (ON DELETE CASCADE) |
+| cpf | text | YES | NULL | — |
+| rg | text | YES | NULL | — |
+| birth_date | date | YES | NULL | — |
+| marital_status | text | YES | NULL | — |
+| nationality | text | NO | `'brasileira'` | — |
+| address | text | YES | NULL | — |
+| email | text | YES | NULL | — |
+| bank_name | text | YES | NULL | — |
+| bank_agency | text | YES | NULL | — |
+| bank_account | text | YES | NULL | — |
+| pix_key | text | YES | NULL | — |
+| updated_at | timestamptz | NO | `now()` | — |
+
+> `address` é texto livre (endereço completo), sem campos separados por rua/bairro/cidade.
+> `email` (`20260722000004`): exigido pelo Contrato de Formação (`{{email}}`) — não existia em lugar nenhum do sistema antes.
+> Campos exigidos por `contract_type` ficam em `src/lib/dpConstants.ts` (`REQUIRED_CONTRACT_DATA_FIELDS`), duplicado nas edge functions (Deno não compartilha build com o frontend). Formação confirmada não precisa de `rg`/`marital_status`/`nationality`/dados bancários (curso gratuito, sem vínculo, sem pagamento) — esses campos continuam existindo na tabela só porque `prestacao_servico` (ainda sem template real) provavelmente vai precisar deles.
+> RLS: `has_rh_access()` pra tudo (`authenticated`).
+
+---
+
+### `contract_templates`
+Mapeia `contract_type` → documento template no Google Drive usado por `generate-contract`/`generate-contract-automation`. Editável sem precisar de deploy da edge function. Criada em `20260722000001`.
+
+| Coluna | Tipo | Nullable | Default | FK |
+|--------|------|----------|---------|-----|
+| id | uuid | NO | `gen_random_uuid()` | — |
+| contract_type | text | NO (UNIQUE) | — | — |
+| google_doc_id | text | NO | — | — |
+| is_active | boolean | NO | `true` | — |
+| updated_at | timestamptz | NO | `now()` | — |
+
+> `contract_type` válidos: `'formacao'`, `'prestacao_servico'`, `'clt'`, `'desligamento_formacao'`. Hoje só `formacao`/`desligamento_formacao` têm linha real (`20260722000004`, IDs dos Google Docs confirmados lendo os documentos direto no Drive); `prestacao_servico`/`clt` ficam sem linha até templates reais serem fornecidos.
+> RLS: `SELECT` via `has_rh_access()` (todo o RH lê); `INSERT`/`UPDATE`/`DELETE` só `is_admin()` (config sensível — mesmo padrão de restrição de `store_whatsapp_credentials`).
+
+---
+
+### `internal_config`
+Config interna sem exposição via API — hoje só guarda o segredo compartilhado (`contract_automation_secret`) entre o trigger de `employee_processes`/`employee_contract_data` e a edge function `generate-contract-automation` (header `x-automation-secret`). Criada em `20260722000005`.
+
+| Coluna | Tipo | Nullable | Default | FK |
+|--------|------|----------|---------|-----|
+| key | text | NO (PK) | — | — |
+| value | text | NO | — | — |
+| updated_at | timestamptz | NO | `now()` | — |
+
+> RLS habilitado **sem nenhuma policy** — nem `authenticated` nem `anon` conseguem ler/escrever, só `service_role` (que sempre bypassa RLS). Valor gerado na própria migration (`gen_random_uuid()` concatenado, já que `pgcrypto`/`gen_random_bytes` não está habilitado neste projeto), nunca aparece em texto plano em nenhum arquivo versionado.
+
+---
+
+### Automação: geração de contrato de Formação/Desligamento (`20260722000005`)
+Dois triggers em `employee_processes`/`employee_contract_data` chamam `net.http_post` (pg_net, mesmo padrão de `20260719000003_rh_automation_whatsapp_queue.sql`) pra `generate-contract-automation` sempre que:
+1. `employee_processes.current_stage` vira `'contrato_formacao'` (INSERT ou mudança de fato) — intent `'formacao'`.
+2. `employee_processes.current_stage` vira `'encerrado'` vindo de `'contrato_formacao'`/`'formacao'`/`'decisao_formacao'` — intent `'desligamento_formacao'`.
+3. `employee_contract_data` é criado/atualizado enquanto o processo já está em `'contrato_formacao'` — intent `'formacao'` (resolve o problema de **timing**: no momento em que a etapa muda, CPF/endereço/e-mail normalmente ainda não foram preenchidos).
+
+Os 3 gatilhos disparam sem checar nada além do `employment_type='mei'`/etapa — toda a idempotência (já existe contrato desse tipo? faltam campos obrigatórios?) é responsabilidade da edge function, que responde `200 {skipped:true, reason}` em vez de erro nesses casos (esperado, já que o gatilho é intencionalmente redundante).
 
 ---
 

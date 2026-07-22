@@ -5,7 +5,7 @@ import {
   Menu, X, ExternalLink, Tag, DollarSign,
   Megaphone, UserCheck, BadgeDollarSign, ChevronRight,
   ClipboardList, Briefcase, KanbanSquare, ListChecks, IdCard, Contact,
-  Boxes,
+  Boxes, FileSignature,
 } from 'lucide-react'
 import logo from '@/assets/logo-rei-dos-cachos.png'
 import { ThemeToggle } from '@/components/ui/ThemeToggle'
@@ -55,6 +55,7 @@ const rhNavGroup: { label: string; items: NavItem[] } = {
     { label: 'Candidatos', path: '/admin/rh/candidatos', icon: KanbanSquare },
     { label: 'Contratação', path: '/admin/dp/contratacao', icon: ClipboardList },
     { label: 'Colaboradores', path: '/admin/dp/colaboradores', icon: Contact },
+    { label: 'Gerar Contrato', path: '/admin/dp/contratos', icon: FileSignature },
     { label: 'Cargos', path: '/admin/rh/cargos', icon: IdCard },
     { label: 'Formulário', path: '/admin/rh/formulario', icon: ListChecks },
   ],
