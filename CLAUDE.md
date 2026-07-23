@@ -76,3 +76,8 @@ As áreas abaixo estão em **feature freeze permanente**. Nenhuma alteração se
 | Edge functions | `supabase/functions/` |
 | Migrations | `supabase/migrations/` |
 | Contrato create-order | `docs/create-order-contract.md` |
+| Checkup de segurança | `docs/security-checkup-2026-07-23.md` |
+
+> Ver `docs/security-checkup-2026-07-23.md` para o status do checkup de segurança
+> (Fase 1 aplicada, com 2 ressalvas abertas — `send-order-whatsapp` e o deploy do
+> `webhook-mercadopago`; Fases 2-4 pendentes).

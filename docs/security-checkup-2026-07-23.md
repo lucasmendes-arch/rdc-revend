@@ -10,6 +10,52 @@ a chave anon pública** (que qualquer visitante já obtém do bundle do frontend
 
 ---
 
+## Status de implementação
+
+*Atualizado em 2026-07-23. As correções da Fase 1 estão no commit `fc82a8d`.*
+
+- ⚠️ **Fase 1 (S-01 a S-04)** — implementada e commitada em `fc82a8d` (2026-07-23),
+  **com 2 ressalvas abaixo**. Não está inteiramente fechada.
+  - ✅ **S-01** `get_system_users()` corrigida (migration `20260723000002`: REVOKE de
+    PUBLIC/anon, guarda `is_admin()`, convertida pra plpgsql) + `get_assignable_rh_users()`
+    criada. Migration aplicada em produção; frontend (Candidatos, Automações,
+    DP/Contratação) migrado pra RPC nova. **Verificado:** chamada anon devolve 401.
+  - ✅ **S-02** `upload-product-image` com auth por pasta + allowlist de MIME/pasta,
+    teto de tamanho e rate limit por IP. Deployada. **Verificado:** 401/400 nas sondagens.
+  - ⚠️ **S-03** parcial — `notify-stock-count` e `notify-replenishment` com
+    `getUser()` + checagem de role, deployadas e verificadas (401).
+    **`send-order-whatsapp` NÃO foi corrigida** — segue deployada com o bypass
+    (checa só a presença do header `Authorization`). É código morto no `main`
+    (zero chamadores; o único uso histórico era o checkout do cliente final, num
+    worktree antigo), e a decisão apagar-ou-blindar está em aberto com o humano.
+    Se for blindar, a guarda correta é "dono do pedido", **não** `is_admin()`.
+  - ⚠️ **S-04** código commitado mas **NÃO deployado**. `webhook-mercadopago`
+    continua rodando a versão antiga, fail-open, aceitando webhook sem verificar
+    assinatura. Motivo: `MERCADOPAGO_WEBHOOK_SECRET` não existe nos secrets do
+    projeto — deployar o fail-closed rejeitaria toda confirmação de pagamento.
+    Destravar com `supabase secrets set MERCADOPAGO_WEBHOOK_SECRET=<segredo do
+    painel MP>` e só então `supabase functions deploy webhook-mercadopago`.
+    A comparação em tempo constante (`_shared/timingSafe.ts`) já está ativa em
+    `generate-contract-automation`, essa sim deployada.
+- ⏳ **Fase 2 (itens 5-10)** — PENDENTE
+  - Build TypeScript quebrado (5 erros)
+  - LojasDadosModal — RPC `admin_set_store_legal_data`
+  - `npm audit fix` (dompurify, brace-expansion)
+  - `callEdgeFunction` rotacionando refresh token
+  - Trigger de contrato disparando em todo save
+  - URL do Supabase hardcoded nos triggers
+- ⏳ **Fase 3 (itens 11-14)** — PENDENTE
+- ⏳ **Fase 4 (itens 15-17)** — PENDENTE (backlog)
+
+**Não coberto por nenhuma fase, anotado durante a Fase 1:** `is_admin()`,
+`has_rh_access()` e `has_full_stock_access()` não têm `REVOKE ... FROM PUBLIC`.
+Deixadas de fora de propósito — são chamadas dentro de policies de RLS, e revogar
+de `anon` pode quebrar leitura pública em tabelas cuja policy as avalia. Só
+devolvem um booleano sobre o próprio chamador (risco baixo), mas merece uma
+passada testada à parte.
+
+---
+
 ## Resumo executivo
 
 | Severidade | Qtd | Situação |
