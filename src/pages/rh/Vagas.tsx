@@ -90,6 +90,17 @@ export default function RhVagas() {
     staleTime: 5 * 60 * 1000,
   })
 
+  // Toda lista de vagas do RH usa o prefixo ['rh-job-openings', ...] — a de
+  // Candidatos é ['rh-job-openings', 'by-store'|'all', ...]. Invalidar só o
+  // prefixo cobre todas de uma vez (inclusive as desmontadas, que refazem o
+  // fetch ao montar); sem isso a vaga nova só aparecia no cadastro de
+  // candidato depois de recarregar a página. 'rh-job-roles' entra porque a
+  // tela Cargos mostra a contagem de vagas por cargo.
+  function invalidateJobOpenings() {
+    queryClient.invalidateQueries({ queryKey: ['rh-job-openings'] })
+    queryClient.invalidateQueries({ queryKey: ['rh-job-roles'] })
+  }
+
   const saveMutation = useMutation({
     mutationFn: async ({ id, payload }: { id: string | null; payload: typeof EMPTY_FORM }) => {
       const data = toPayload(payload)
@@ -102,7 +113,7 @@ export default function RhVagas() {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['rh-job-openings'] })
+      invalidateJobOpenings()
       toast.success(editingId ? 'Vaga atualizada' : 'Vaga criada')
       closeModal()
     },
@@ -114,7 +125,7 @@ export default function RhVagas() {
       const { error } = await supabase.from('job_openings').update({ status }).eq('id', id)
       if (error) throw error
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['rh-job-openings'] }),
+    onSuccess: () => invalidateJobOpenings(),
     onError: (err) => toast.error(`Erro: ${err instanceof Error ? err.message : 'desconhecido'}`),
   })
 
@@ -124,7 +135,7 @@ export default function RhVagas() {
       if (error) throw error
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['rh-job-openings'] })
+      invalidateJobOpenings()
       toast.success('Vaga excluída')
       setDeleteConfirm(null)
     },

@@ -74,6 +74,15 @@ interface Candidate {
   candidate_tags: CandidateTag[]
 }
 
+// Campos que o modal de detalhe edita como rascunho (um único UPDATE).
+interface CandidateDraftPatch {
+  job_opening_id: string
+  start_date: string | null
+  due_date: string | null
+  assignee_id: string | null
+  notes: string | null
+}
+
 function getAnswerValue(c: Candidate, fieldKey: string): string | undefined {
   return c.candidate_answers.find((a) => a.form_fields?.field_key === fieldKey)?.value
 }
@@ -538,7 +547,7 @@ export default function RhCandidatos() {
   // storeId === '' é a view "Todas as unidades" — default de abertura da
   // tela, sem auto-selecionar a primeira loja.
   const { data: jobOpenings = [] } = useQuery<JobOpening[]>({
-    queryKey: ['rh-job-openings-by-store', storeId],
+    queryKey: ['rh-job-openings', 'by-store', storeId],
     queryFn: async () => {
       let query = supabase.from('job_openings').select('id, role_title, status, stores(name), job_roles(color)').order('role_title')
       if (storeId) query = query.eq('store_id', storeId)
@@ -584,7 +593,7 @@ export default function RhCandidatos() {
   )
 
   const { data: allJobOpenings = [] } = useQuery<JobOpening[]>({
-    queryKey: ['rh-job-openings-all'],
+    queryKey: ['rh-job-openings', 'all'],
     queryFn: async () => {
       const { data, error } = await supabase.from('job_openings').select('id, role_title, status, stores(name), job_roles(color)').order('role_title')
       if (error) throw error
@@ -732,8 +741,16 @@ export default function RhCandidatos() {
     onSettled: () => queryClient.invalidateQueries({ queryKey: ['rh-candidates', storeId] }),
   })
 
+  // `patch` chega preenchido quando a promoção parte do modal de detalhe com
+  // rascunho pendente — grava antes da RPC, que lê `job_opening_id` do
+  // candidato pra resolver loja/cargo do processo (trocar a vaga no rascunho
+  // precisa valer já nesta promoção).
   const promoteToDp = useMutation({
-    mutationFn: async ({ id, employmentType }: { id: string; employmentType: EmploymentType }) => {
+    mutationFn: async ({ id, employmentType, patch }: { id: string; employmentType: EmploymentType; patch?: CandidateDraftPatch }) => {
+      if (patch) {
+        const { error: patchError } = await supabase.from('candidates').update(patch).eq('id', id)
+        if (patchError) throw patchError
+      }
       const { error } = await supabase.rpc('promote_candidate_to_dp', {
         p_candidate_id: id,
         p_employment_type: employmentType,
@@ -755,10 +772,7 @@ export default function RhCandidatos() {
   // rascunho local e só persistem quando o usuário clica em "Salvar
   // Alterações" — um único UPDATE, em vez de um botão por campo.
   const saveCandidateChanges = useMutation({
-    mutationFn: async ({ id, patch }: {
-      id: string
-      patch: { job_opening_id: string; start_date: string | null; due_date: string | null; assignee_id: string | null; notes: string | null }
-    }) => {
+    mutationFn: async ({ id, patch }: { id: string; patch: CandidateDraftPatch }) => {
       const { error } = await supabase.from('candidates').update(patch).eq('id', id)
       if (error) throw error
     },
@@ -887,6 +901,31 @@ export default function RhCandidatos() {
     setAssigneeDraft('')
     setJobOpeningDraft('')
     setShowAllActivity(false)
+  }
+
+  // Patch dos campos que o modal de detalhe edita como rascunho — usado tanto
+  // pelo botão "Salvar Alterações" quanto pela promoção pro DP, que fecha o
+  // modal e descartaria silenciosamente o que estivesse pendente (era assim
+  // que um "Responsável" escolhido na mesma visita se perdia: o card chegava
+  // no kanban de Contratação como "Sem responsável").
+  function detailDraftPatch(): CandidateDraftPatch {
+    return {
+      job_opening_id: jobOpeningDraft,
+      start_date: startDateDraft || null,
+      due_date: dueDateDraft || null,
+      assignee_id: assigneeDraft || null,
+      notes: notesDraft.trim() || null,
+    }
+  }
+
+  function hasDetailDraftChanges(c: Candidate) {
+    return (
+      jobOpeningDraft !== c.job_opening_id ||
+      startDateDraft !== (c.start_date || '') ||
+      dueDateDraft !== (c.due_date || '') ||
+      assigneeDraft !== (c.assignee_id || '') ||
+      notesDraft !== (c.notes || '')
+    )
   }
 
   function handleDragStart(event: DragStartEvent) {
@@ -1516,23 +1555,12 @@ export default function RhCandidatos() {
               </div>
 
               {(() => {
-                const hasDraftChanges =
-                  jobOpeningDraft !== detailCandidate.job_opening_id ||
-                  startDateDraft !== (detailCandidate.start_date || '') ||
-                  dueDateDraft !== (detailCandidate.due_date || '') ||
-                  assigneeDraft !== (detailCandidate.assignee_id || '') ||
-                  notesDraft !== (detailCandidate.notes || '')
+                const hasDraftChanges = hasDetailDraftChanges(detailCandidate)
                 return (
                   <button
                     onClick={() => saveCandidateChanges.mutate({
                       id: detailCandidate.id,
-                      patch: {
-                        job_opening_id: jobOpeningDraft,
-                        start_date: startDateDraft || null,
-                        due_date: dueDateDraft || null,
-                        assignee_id: assigneeDraft || null,
-                        notes: notesDraft.trim() || null,
-                      },
+                      patch: detailDraftPatch(),
                     })}
                     disabled={saveCandidateChanges.isPending || !hasDraftChanges}
                     className="w-full px-4 py-2.5 rounded-lg btn-action text-sm font-medium disabled:opacity-50"
@@ -1571,7 +1599,15 @@ export default function RhCandidatos() {
             />
             <div className="flex gap-3">
               <button
-                onClick={() => promoteToDp.mutate({ id: promoteCandidate.id, employmentType: promoteEmploymentType })}
+                onClick={() => promoteToDp.mutate({
+                  id: promoteCandidate.id,
+                  employmentType: promoteEmploymentType,
+                  // Só quando a promoção sai do modal de detalhe do mesmo
+                  // candidato — pelo drag no kanban não há rascunho nenhum.
+                  patch: detailCandidate && detailCandidate.id === promoteCandidate.id && hasDetailDraftChanges(detailCandidate)
+                    ? detailDraftPatch()
+                    : undefined,
+                })}
                 disabled={promoteToDp.isPending}
                 className="flex-1 px-4 py-2.5 rounded-lg btn-action font-medium disabled:opacity-70 transition-colors"
               >
