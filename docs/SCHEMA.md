@@ -802,7 +802,7 @@ Candidato a uma vaga (`job_openings`). Um candidato pertence a exatamente uma va
 | assignee_id | uuid | YES | NULL | auth.users.id (ON DELETE SET NULL) |
 | due_date_reached_processed_at | timestamptz | YES | NULL | — |
 
-> `stage` válidos (13 — funil sugerido + 3 "saídas" que aceitam drop vindo de qualquer etapa, sem transição restrita no CHECK): `pendente`, `conversa_iniciada`, `entrevista_marcada`, `no_show`, `decisao_necessaria`, `selecionado`, `em_formacao`, `em_contratacao`, `contratado`, `concluido_arquivado`, `descartado`, `banco_de_talentos`, `sem_contratacao`.
+> `stage` válidos (11 — funil sugerido + "saídas" que aceitam drop vindo de qualquer etapa, sem transição restrita no CHECK): `pendente`, `conversa_iniciada`, `entrevista_marcada`, `no_show`, `decisao_necessaria`, `selecionado`, `em_teste`, `contratado`, `concluido_arquivado`, `descartado`, `banco_de_talentos`. `em_formacao`/`em_contratacao`/`sem_contratacao` foram **removidos** (`20260722000002`/`20260722000003`); `em_teste` foi adicionado depois de `selecionado` em `20260723000003`.
 > `source` válidos: `'formulario'` (via `/candidatura/:slug`), `'manual'` (cadastro direto no Kanban).
 > `age` é **nullable** (mudou de NOT NULL pra nullable em `20260718000001`): candidatos do formulário público não gravam idade aqui — vira resposta dinâmica em `candidate_answers` (chave `idade`, seed não-sistema). Cadastro manual no Kanban continua preenchendo a coluna normalmente. UI (`Candidatos.tsx`) mostra `age` com fallback pra resposta dinâmica quando `NULL`.
 > `stage_started_at`: quando o candidato entrou na etapa **atual** — mantido sozinho pelo trigger `trg_candidates_set_updated_at` toda vez que `stage` muda (sem UPDATE manual). Não tem mais relação com prazo/atraso (ver nota abaixo) — hoje é só rastro informativo.
@@ -859,7 +859,7 @@ Motor de automações genérico (Fase 3) — substitui as 8 regras do ClickUp (W
 | created_by | uuid | YES | NULL | auth.users.id (ON DELETE SET NULL) |
 | created_at / updated_at | timestamptz | NO | `now()` | — |
 
-> `trigger_type` válidos: `'candidate_created'`, `'stage_changed'`, `'due_date_reached'`. `trigger_stage` (mesmos 13 valores de `candidates.stage`) é obrigatório só quando `trigger_type='stage_changed'` (CHECK composto `automations_trigger_stage_required`).
+> `trigger_type` válidos: `'candidate_created'`, `'stage_changed'`, `'due_date_reached'`. `trigger_stage` (mesmos 11 valores de `candidates.stage`) é obrigatório só quando `trigger_type='stage_changed'` (CHECK composto `automations_trigger_stage_required`).
 > `trigger_conditions`: array AND-combinado, ex. `[{"field":"job_opening.role_title","op":"eq","value":"Vendedor"}]`. Whitelist fixa de `field` (`evaluate_automation_conditions`): `candidate.age`, `candidate.stage`, `job_opening.role_title`, `store.name`, `store.slug`. `op`: `eq`, `neq`, `gt`, `gte`, `lt`, `lte`, `in`, `contains`. Campo fora da whitelist falha fechado (condição nunca casa).
 
 **`automation_actions`**: `id` uuid PK, `automation_id` uuid NOT NULL → automations.id (ON DELETE CASCADE), `sort_order` int, `action_type` text NOT NULL, `action_config` jsonb NOT NULL DEFAULT `'{}'`, `created_at`.
@@ -1819,7 +1819,7 @@ Acessível por: `authenticated`.
 | candidate_stage_history | event_type | `'stage_change'`, `'tag_added'`, `'tag_removed'`, `'due_date_changed'`, `'assignee_changed'`, `'whatsapp_sent'`, `'comment_added'`, `'automation_error'` |
 | candidate_tags | source | `'manual'`, `'automation'` |
 | automations | trigger_type | `'candidate_created'`, `'stage_changed'`, `'due_date_reached'` |
-| automations | trigger_stage | mesmos 13 valores de `candidates.stage`, obrigatório só quando `trigger_type='stage_changed'` |
+| automations | trigger_stage | mesmos 11 valores de `candidates.stage`, obrigatório só quando `trigger_type='stage_changed'` |
 | automation_actions | action_type | `'change_stage'`, `'add_tag'`, `'remove_tag'`, `'change_due_date'`, `'change_assignee'`, `'send_whatsapp'`, `'add_comment'` |
 | automation_whatsapp_queue | status | `'pending'`, `'processing'`, `'sent'`, `'failed'` |
 | crm_events | event_type | `'visitou'`, `'visualizou_produto'`, `'adicionou_carrinho'`, `'iniciou_checkout'`, `'comprou'`, `'abandonou'`, `'user_registered'`, `'purchase_completed'`, `'cart_abandoned'`, `'checkout_abandoned'`, `'order_created'`, `'tag_added'`, `'inactivity_detected'`, `'profile_completed'`, `'profile_synced'` |

@@ -10,6 +10,8 @@ import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, v
 import { CSS } from '@dnd-kit/utilities'
 import AdminLayout from '@/components/admin/AdminLayout'
 import StyledSelect from '@/components/ui/styled-select'
+import ColorSelect from '@/components/rh/ColorSelect'
+import { STAGE_SELECT_OPTIONS, stageAccent, stageLabel } from '@/lib/rhStages'
 
 // ============================================================
 // Tipos e constantes
@@ -46,22 +48,6 @@ interface WhatsappTemplate { id: string; name: string; body: string; is_active: 
 interface RhStore { id: string; name: string; slug: string }
 interface SystemUser { id: string; full_name: string | null }
 interface CredentialStatus { configured: boolean; is_active: boolean; uazapi_url: string | null; token_last4: string | null; updated_at: string | null }
-
-const STAGE_OPTIONS: { value: string; label: string }[] = [
-  { value: 'pendente', label: 'Pendente' },
-  { value: 'conversa_iniciada', label: 'Conversa Iniciada' },
-  { value: 'entrevista_marcada', label: 'Entrevista Marcada' },
-  { value: 'no_show', label: 'No-show' },
-  { value: 'decisao_necessaria', label: 'Decisão Necessária' },
-  { value: 'selecionado', label: 'Selecionado' },
-  { value: 'descartado', label: 'Descartado' },
-  { value: 'em_formacao', label: 'Em Formação' },
-  { value: 'em_contratacao', label: 'Em Contratação' },
-  { value: 'banco_de_talentos', label: 'Banco de Talentos' },
-  { value: 'sem_contratacao', label: 'Sem Contratação' },
-  { value: 'contratado', label: 'Contratado' },
-  { value: 'concluido_arquivado', label: 'Arquivado' },
-]
 
 const TRIGGER_TYPE_LABELS: Record<TriggerType, string> = {
   candidate_created: 'Candidato criado',
@@ -211,8 +197,19 @@ function AutomationCard({
           <span className="font-medium text-sm text-foreground truncate">{automation.name}</span>
           <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-surface-alt text-muted-foreground shrink-0">
             {TRIGGER_TYPE_LABELS[automation.trigger_type]}
-            {automation.trigger_stage ? `: ${STAGE_OPTIONS.find((s) => s.value === automation.trigger_stage)?.label}` : ''}
           </span>
+          {automation.trigger_stage && (
+            // Etapa sempre com a cor dela (mesma paleta do kanban) — etapa
+            // que não existe mais no banco cai no estilo neutro.
+            <span
+              className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md shrink-0 truncate"
+              style={stageAccent(automation.trigger_stage)
+                ? { backgroundColor: `${stageAccent(automation.trigger_stage)}22`, color: stageAccent(automation.trigger_stage)! }
+                : { backgroundColor: 'var(--surface-alt)', color: 'var(--muted-foreground)' }}
+            >
+              {stageLabel(automation.trigger_stage)}
+            </span>
+          )}
         </button>
         <button
           onClick={onToggleActive}
@@ -276,11 +273,12 @@ function ActionConfigEditor({
 }) {
   if (actionType === 'change_stage') {
     return (
-      <StyledSelect
+      <ColorSelect
+        variant="dot"
         value={(config.stage as string) || ''}
         onChange={(v) => onChange({ stage: v })}
-        options={STAGE_OPTIONS}
-        emptyLabel="Selecione a etapa"
+        options={STAGE_SELECT_OPTIONS}
+        placeholder="Selecione a etapa"
       />
     )
   }
@@ -505,11 +503,12 @@ function AutomationEditorModal({
             {form.trigger_type === 'stage_changed' && (
               <div>
                 <label className={labelClass}>Etapa</label>
-                <StyledSelect
+                <ColorSelect
+                  variant="dot"
                   value={form.trigger_stage}
                   onChange={(v) => setForm({ ...form, trigger_stage: v })}
-                  options={STAGE_OPTIONS}
-                  emptyLabel="Selecione"
+                  options={STAGE_SELECT_OPTIONS}
+                  placeholder="Selecione"
                 />
               </div>
             )}

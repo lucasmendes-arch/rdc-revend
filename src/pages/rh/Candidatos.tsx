@@ -20,12 +20,7 @@ import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover
 import { Switch } from '@/components/ui/switch'
 import { EMPLOYMENT_TYPE_LABELS, EMPLOYMENT_TYPE_OPTIONS, type EmploymentType } from '@/lib/dpConstants'
 import { useAdminTheme } from '@/contexts/AdminThemeContext'
-
-type Stage =
-  | 'pendente' | 'conversa_iniciada' | 'entrevista_marcada' | 'no_show'
-  | 'decisao_necessaria' | 'selecionado'
-  | 'contratado' | 'concluido_arquivado'
-  | 'descartado' | 'banco_de_talentos'
+import { STAGE_COLUMNS, STAGE_SELECT_OPTIONS, getStageColors, stageLabel, type Stage } from '@/lib/rhStages'
 
 interface Store { id: string; name: string }
 // Cor da vaga vem do cargo vinculado (job_roles.color) — vaga manual sem
@@ -87,13 +82,6 @@ function getAnswerValue(c: Candidate, fieldKey: string): string | undefined {
   return c.candidate_answers.find((a) => a.form_fields?.field_key === fieldKey)?.value
 }
 
-const STAGE_LABEL_BY_VALUE: Record<string, string> = {
-  pendente: 'Pendente', conversa_iniciada: 'Conversa Iniciada', entrevista_marcada: 'Entrevista Marcada',
-  no_show: 'No-show', decisao_necessaria: 'Decisão Necessária', selecionado: 'Selecionado',
-  contratado: 'Contratado',
-  concluido_arquivado: 'Arquivado', descartado: 'Descartado', banco_de_talentos: 'Banco de Talentos',
-}
-
 // Descrição curta de uma linha de candidate_stage_history — agora um log de
 // atividade genérico (Fase 3 do motor de automações), não só mudança de etapa.
 function describeActivity(row: { event_type: string; previous_stage: string | null; new_stage: string | null; metadata: Record<string, unknown> }): string {
@@ -101,7 +89,7 @@ function describeActivity(row: { event_type: string; previous_stage: string | nu
   switch (row.event_type) {
     case 'stage_change':
       return row.previous_stage
-        ? `Mudou de "${STAGE_LABEL_BY_VALUE[row.previous_stage] || row.previous_stage}" para "${STAGE_LABEL_BY_VALUE[row.new_stage || ''] || row.new_stage}"`
+        ? `Mudou de "${stageLabel(row.previous_stage)}" para "${stageLabel(row.new_stage)}"`
         : 'Candidatura criada'
     case 'tag_added': return `Tag adicionada: ${m.tag_name || '—'}`
     case 'tag_removed': return `Tag removida: ${m.tag_name || '—'}`
@@ -124,28 +112,6 @@ function formatAnswerValue(a: CandidateAnswer): string {
   }
   return a.value
 }
-
-// Ordem de exibição das colunas — pedida explicitamente pelo usuário, com as
-// saídas intercaladas no fluxo (não mais agrupadas à parte). Continuam
-// aceitando drop vindo de qualquer coluna, sem transição restrita.
-// 'sem_contratacao', 'em_formacao' e 'em_contratacao' removidas do banco por
-// completo em 2026-07-22 (pedido do usuário, sem uso real). 'contratado'
-// voltou a ser coluna (também 2026-07-22) — soltar um card nela dispara o
-// popup de contratação (ver requestStageChange), igual ao botão "Contratar"
-// no card/modal de detalhe; a etapa em si só é gravada de fato pela RPC
-// promote_candidate_to_dp quando o popup é confirmado, nunca direto.
-const ALL_COLUMNS: { stage: Stage; label: string }[] = [
-  { stage: 'pendente', label: 'Pendente' },
-  { stage: 'conversa_iniciada', label: 'Conversa Iniciada' },
-  { stage: 'entrevista_marcada', label: 'Entrevista Marcada' },
-  { stage: 'no_show', label: 'No-show' },
-  { stage: 'decisao_necessaria', label: 'Decisão Necessária' },
-  { stage: 'selecionado', label: 'Selecionado' },
-  { stage: 'descartado', label: 'Descartado' },
-  { stage: 'banco_de_talentos', label: 'Banco de Talentos' },
-  { stage: 'contratado', label: 'Contratado' },
-  { stage: 'concluido_arquivado', label: 'Arquivado' },
-]
 
 const EMPTY_CREATE_FORM = { job_opening_id: '', name: '', age: '', whatsapp: '' }
 
@@ -171,28 +137,6 @@ function loadCardPrefs(): CardFieldPrefs {
   } catch {
     return DEFAULT_CARD_PREFS
   }
-}
-
-// Uma cor própria por etapa (não por grupo) — mas seguindo uma progressão:
-// tons frios/neutros no início do funil, amarelo/laranja nos pontos de
-// atenção (no-show, decisão necessária), rampa de verde ganhando força
-// conforme aproxima do sucesso, cinza-quente no arquivamento neutro, e a
-// família vermelho/rosa/violeta nas 3 saídas (cada uma com tom distinto).
-const STAGE_COLORS: Record<Stage, { accent: string; bg: string }> = {
-  pendente: { accent: '#64748B', bg: '#F1F5F9' },
-  conversa_iniciada: { accent: '#2563EB', bg: '#DBEAFE' },
-  entrevista_marcada: { accent: '#0284C7', bg: '#E0F2FE' },
-  no_show: { accent: '#D97706', bg: '#FEF3C7' },
-  decisao_necessaria: { accent: '#EA580C', bg: '#FFEDD5' },
-  selecionado: { accent: '#65A30D', bg: '#ECFCCB' },
-  contratado: { accent: '#0D9488', bg: '#CCFBF1' },
-  concluido_arquivado: { accent: '#78716C', bg: '#F5F5F4' },
-  descartado: { accent: '#DC2626', bg: '#FEE2E2' },
-  banco_de_talentos: { accent: '#7C3AED', bg: '#EDE9FE' },
-}
-
-function getStageColors(stage: Stage) {
-  return STAGE_COLORS[stage]
 }
 
 function initials(name: string) {
@@ -713,7 +657,7 @@ export default function RhCandidatos() {
 
   const candidatesByStage = useMemo(() => {
     const map = new Map<Stage, Candidate[]>()
-    ALL_COLUMNS.forEach((col) => map.set(col.stage, []))
+    STAGE_COLUMNS.forEach((col) => map.set(col.stage, []))
     filteredCandidates.forEach((c) => {
       if (c.stage === 'contratado' && promotedIds.has(c.id)) return
       map.get(c.stage)?.push(c)
@@ -1152,7 +1096,7 @@ export default function RhCandidatos() {
         ) : (
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
             <div className="flex gap-3 overflow-x-auto scrollbar-thin pb-2">
-              {ALL_COLUMNS.map((col) => (
+              {STAGE_COLUMNS.map((col) => (
                 <StageColumn
                   key={col.stage}
                   stage={col.stage}
@@ -1380,7 +1324,7 @@ export default function RhCandidatos() {
                       setDetailCandidate({ ...detailCandidate, stage })
                     }
                   }}
-                  options={ALL_COLUMNS.map((col) => ({ value: col.stage, label: col.label, color: getStageColors(col.stage).accent }))}
+                  options={STAGE_SELECT_OPTIONS}
                 />
                 <p className="text-[11px] text-muted-foreground mt-1">Alternativa ao arrastar no kanban — útil no mobile.</p>
               </div>
