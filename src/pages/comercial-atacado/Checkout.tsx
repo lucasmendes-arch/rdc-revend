@@ -1,15 +1,14 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, Check, Loader, ShoppingCart, Sparkles, MapPin, Minus, Plus, Zap, Store, Truck } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, Loader, ShoppingCart, MapPin, Minus, Plus, Zap, Store, Truck } from 'lucide-react';
 import { useCart } from '@/contexts/CartContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { useActiveUpsell } from '@/hooks/useUpsell';
 import { supabase } from '@/lib/supabase';
 import { useTrackInitiateCheckout } from '@/hooks/useSessionTracking';
 import { isValidDocument } from '@/utils/validateDocument';
 import { toast } from 'sonner';
 
-type Step = 1 | 2 | 3 | 4;
+type Step = 1 | 2 | 3;
 
 interface ProfileData {
   full_name: string | null
@@ -28,9 +27,8 @@ interface ProfileData {
 const Checkout = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { items: cart, total: cartTotal, clearCart, addItem, count: cartCount, minOrderValue } = useCart();
+  const { items: cart, total: cartTotal, clearCart, count: cartCount, minOrderValue } = useCart();
   const trackInitiateCheckout = useTrackInitiateCheckout();
-  const { data: upsellOffer } = useActiveUpsell();
 
   const [couponCode, setCouponCode] = useState('');
   const [couponDiscount, setCouponDiscount] = useState(0);
@@ -41,8 +39,6 @@ const Checkout = () => {
   const [step, setStep] = useState<Step>(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [upsellAdded, setUpsellAdded] = useState(false);
-  const [upsellSkipped, setUpsellSkipped] = useState(false);
   const [profileLoaded, setProfileLoaded] = useState(false);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [initialProfile, setInitialProfile] = useState<Partial<ProfileData>>({});
@@ -127,11 +123,7 @@ const Checkout = () => {
 
   if (cart.length === 0 && !loading) return null;
 
-  // Check if upsell product is already in cart
-  const upsellInCart = upsellOffer?.product ? cart.some(i => i.id === upsellOffer.product!.id) : false;
-  const showUpsellStep = upsellOffer?.product && !upsellInCart && !upsellAdded && !upsellSkipped;
-
-  // Shipping = 20% of subtotal (cartTotal already includes upsell if added via addItem)
+  // Shipping = 20% of subtotal
   const shippingEstimate = Math.round(cartTotal * 0.20 * 100) / 100;
   // network_partner: frete sempre 0 (transporte próprio da rede)
   const shippingValue = (deliveryMethod === 'pickup' || isNetworkPartner) ? 0 : (couponType === 'free_shipping' ? 0 : shippingEstimate);
@@ -153,29 +145,12 @@ const Checkout = () => {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleAddUpsell = () => {
-    if (!upsellOffer?.product) return;
-    addItem({
-      id: upsellOffer.product.id,
-      name: upsellOffer.product.name,
-      price: upsellOffer.discounted_price,
-      image: upsellOffer.product.main_image,
-    }, upsellOffer.quantity || 1);
-    setUpsellAdded(true);
-    setStep(3);
-  };
-
   const isAddressValid = !!(
     formData.cep && formData.cep.length >= 9 &&
     formData.street && formData.number &&
     formData.neighborhood && formData.city &&
     formData.state && formData.state.length === 2
   );
-
-  const handleSkipUpsell = () => {
-    setUpsellSkipped(true);
-    setStep(3);
-  };
 
   const handleNext = () => {
     setError('');
@@ -184,12 +159,8 @@ const Checkout = () => {
         setError(`Pedido minimo: R$ ${minOrderValue}. Seu total: R$ ${cartTotal.toFixed(2)}`);
         return;
       }
-      if (showUpsellStep) {
-        setStep(2);
-      } else {
-        setStep(3);
-      }
-    } else if (step === 3) {
+      setStep(2);
+    } else if (step === 2) {
       if (!formData.customer_name.trim() || !formData.customer_whatsapp.trim() || !formData.customer_email.trim() || !formData.customer_document.trim()) {
         setError('Preencha os dados do cliente (Nome, WhatsApp, E-mail, Documento).');
         return;
@@ -211,13 +182,12 @@ const Checkout = () => {
         setError('WhatsApp precisa ter no minimo 11 digitos (com DDD).');
         return;
       }
-      setStep(4);
+      setStep(3);
     }
   };
 
   const handleBack = () => {
-    if (step === 4) setStep(3);
-    else if (step === 3) setStep(showUpsellStep && !upsellAdded && !upsellSkipped ? 2 : 1);
+    if (step === 3) setStep(2);
     else if (step === 2) setStep(1);
   };
   
@@ -398,9 +368,8 @@ const Checkout = () => {
   // ========================================================================
   const steps = [
     { num: 1, label: 'Resumo' },
-    { num: 2, label: 'Oferta' },
-    { num: 3, label: 'Entrega' },
-    { num: 4, label: 'Pagamento' },
+    { num: 2, label: 'Entrega' },
+    { num: 3, label: 'Pagamento' },
   ];
 
   return (
@@ -529,104 +498,9 @@ const Checkout = () => {
         )}
 
         {/* ================================================================ */}
-        {/* STEP 2: UPSELL OFFER */}
+        {/* STEP 2: DELIVERY & SUBMIT */}
         {/* ================================================================ */}
-        {step === 2 && upsellOffer?.product && (
-          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div className="relative bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] overflow-hidden border border-amber-100">
-
-              {/* Premium Top Strip */}
-              <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-amber-300 via-gold to-amber-500"></div>
-
-              <div className="p-6 sm:p-8">
-                <div className="flex items-center justify-center gap-2 mb-6 text-amber-500">
-                  <Zap className="w-5 h-5 fill-amber-500" />
-                  <span className="font-bold tracking-widest uppercase text-xs sm:text-sm">Oferta Especial Desbloqueada</span>
-                </div>
-
-                <div className="flex flex-col sm:flex-row items-center gap-6 sm:gap-8 mb-8">
-                  {/* Product Image Focus */}
-                  <div className="relative w-40 h-40 sm:w-48 sm:h-48 flex-shrink-0">
-                    <div className="absolute inset-0 bg-gold/5 rounded-2xl -rotate-3 transform origin-bottom-left"></div>
-                    {upsellOffer.product.main_image ? (
-                      <img
-                        src={upsellOffer.product.main_image}
-                        alt={upsellOffer.product.name}
-                        className="relative w-full h-full object-cover rounded-2xl shadow-lg border-2 border-white z-10"
-                      />
-                    ) : (
-                      <div className="relative w-full h-full bg-surface-alt rounded-2xl shadow-lg border-2 border-white z-10 flex items-center justify-center">
-                        <Sparkles className="w-8 h-8 text-gold/30" />
-                      </div>
-                    )}
-
-                    {/* Discount Badge Floating */}
-                    <div className="absolute -top-3 -right-3 z-20 bg-green-500 text-white font-black text-sm px-3 py-1.5 rounded-full shadow-md transform rotate-6">
-                      -{Math.round((1 - upsellOffer.discounted_price / upsellOffer.product.price) * 100)}%
-                    </div>
-                  </div>
-
-                  {/* Content */}
-                  <div className="flex-1 text-center sm:text-left">
-                    <h3 className="text-xl sm:text-2xl font-black text-foreground mb-2 leading-tight">
-                      {upsellOffer.title}
-                    </h3>
-                    <p className="text-base font-medium text-foreground/80 mb-3">
-                      {upsellOffer.product.name}
-                    </p>
-
-                    {upsellOffer.description && (
-                      <p className="text-sm text-muted-foreground mb-5 leading-relaxed">
-                        {upsellOffer.description}
-                      </p>
-                    )}
-
-                    <div className="flex flex-row flex-wrap items-baseline gap-2 sm:gap-4 justify-center sm:justify-start">
-                      <span className="text-sm font-medium text-muted-foreground line-through decoration-red-500/50 whitespace-nowrap">
-                        De R$ {upsellOffer.product.price.toFixed(2)} {upsellOffer.quantity > 1 ? 'cada' : ''}
-                      </span>
-                      <div className="flex flex-row items-baseline gap-1 whitespace-nowrap">
-                        <span className="text-xl sm:text-2xl font-bold text-foreground">{upsellOffer.quantity > 1 ? `${upsellOffer.quantity}x` : 'Por'}</span>
-                        <span className="text-3xl sm:text-4xl font-black gradient-gold-text">
-                          R$ {upsellOffer.discounted_price.toFixed(2)}
-                        </span>
-                        {upsellOffer.quantity > 1 && <span className="text-sm font-medium text-foreground ml-1">cada</span>}
-                      </div>
-                    </div>
-                    {upsellOffer.quantity > 1 && (
-                      <p className="text-center sm:text-left text-sm font-bold text-foreground mt-2">
-                        Total: R$ {(upsellOffer.discounted_price * upsellOffer.quantity).toFixed(2)}
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                {/* Actions */}
-                <div className="flex flex-col items-center gap-4">
-                  <button
-                    onClick={handleAddUpsell}
-                    className="w-full sm:w-auto min-w-[280px] flex items-center justify-center gap-2 py-4 px-8 rounded-full font-bold text-base bg-amber-500 hover:bg-amber-600 outline-none focus:ring-4 focus:ring-amber-500/30 text-white shadow-[0_4px_20px_rgba(245,158,11,0.4)] transition-all hover:-translate-y-0.5"
-                  >
-                    <ShoppingCart className="w-5 h-5" />
-                    Sim, Adicionar ao Pedido
-                  </button>
-
-                  <button
-                    onClick={handleSkipUpsell}
-                    className="text-sm font-medium text-muted-foreground hover:text-foreground underline decoration-transparent hover:decoration-border transition-all"
-                  >
-                    Nao, obrigado. Quero apenas finalizar o que já escolhi.
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ================================================================ */}
-        {/* STEP 3: DELIVERY & SUBMIT */}
-        {/* ================================================================ */}
-        {step === 3 && (
+        {step === 2 && (
           <div className="space-y-6">
             {/* Pre-filled Client Info (read-only summary) */}
             {/* Progressive Profiling: Only show inputs for missing fields or if editing */}
@@ -974,12 +848,6 @@ const Checkout = () => {
                 <span>R$ {cartTotal.toFixed(2)}</span>
               </div>
 
-              {upsellAdded && upsellOffer?.product && (
-                <div className="flex items-center justify-between text-sm text-green-600 font-medium">
-                  <span>{upsellOffer.quantity > 1 ? `${upsellOffer.quantity}x ` : ''}{upsellOffer.title}</span>
-                  <span>+ R$ {(upsellOffer.discounted_price * (upsellOffer.quantity || 1)).toFixed(2)}</span>
-                </div>
-              )}
               <div className="flex flex-col text-slate-600 bg-slate-50 p-2 rounded">
                 <div className="flex items-center justify-between text-sm">
                   <span>Frete</span>
@@ -1047,9 +915,9 @@ const Checkout = () => {
         )}
 
         {/* ================================================================ */}
-        {/* STEP 4: PAYMENT */}
+        {/* STEP 3: PAYMENT */}
         {/* ================================================================ */}
-        {step === 4 && (
+        {step === 3 && (
           <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
             <div className="bg-white rounded-2xl p-5 sm:p-6 shadow-card">
               <h2 className="text-lg font-bold text-foreground mb-6 flex items-center gap-2">

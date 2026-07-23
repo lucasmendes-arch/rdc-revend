@@ -37,7 +37,6 @@ const AdminPedidos = lazy(() => import("./pages/comercial-atacado/admin/Pedidos"
 const AdminClientes = lazy(() => import("./pages/comercial-atacado/admin/Clientes"));
 const AdminEstoque = lazy(() => import("./pages/comercial-atacado/admin/DisponibilidadeCatalogo"));
 const AdminCategorias = lazy(() => import("./pages/comercial-atacado/admin/Categorias"));
-const AdminUpsell = lazy(() => import("./pages/comercial-atacado/admin/Upsell"));
 const AdminNewOrder = lazy(() => import("./pages/comercial-atacado/admin/NewOrder"));
 const AdminEditOrder = lazy(() => import("./pages/comercial-atacado/admin/EditOrder"));
 const AdminVendedores = lazy(() => import("./pages/comercial-atacado/admin/Vendedores"));
@@ -131,7 +130,6 @@ const App = () => (
                     <Route path="/admin/estoque" element={<AdminEstoque />} />
                     <Route path="/admin/usuarios" element={<AdminUsuarios />} />
                     <Route path="/admin/categorias" element={<AdminCategorias />} />
-                    <Route path="/admin/upsell" element={<AdminUpsell />} />
                     <Route path="/admin/financeiro" element={<AdminFinanceiro />} />
                     <Route path="/admin/marketing" element={<AdminMarketing />} />
                     <Route path="/admin/vendedores" element={<AdminVendedores />} />

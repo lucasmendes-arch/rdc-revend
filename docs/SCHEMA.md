@@ -426,7 +426,7 @@ Cupons de desconto.
 ---
 
 ### `upsell_offers`
-Ofertas de upsell associadas a produtos.
+Ofertas de upsell associadas a produtos. **Feature removida em 2026-07-22** (bug de divergência de cobrança no `create-order`, ver `private-docs/memory.md` — em vez de corrigir, o upsell inteiro foi retirado do Checkout/admin). Tabela mantida dormente (histórico), nada no código lê/escreve mais nela.
 
 | Coluna | Tipo | Nullable | Default | FK |
 |--------|------|----------|---------|-----|
