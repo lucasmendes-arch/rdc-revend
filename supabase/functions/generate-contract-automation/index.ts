@@ -9,6 +9,7 @@ import {
   getGoogleAccessToken, findOrCreateFolder, copyTemplate, replacePlaceholders, getWebViewLink,
   decomposeDatePtBR, formatDateBR, todayISO, addDaysISO, resolveUnitFolderName, type FieldMap,
 } from '../_shared/googleDrive.ts'
+import { timingSafeEqual } from '../_shared/timingSafe.ts'
 
 declare const Deno: { env: { get(k: string): string | undefined } }
 
@@ -127,7 +128,10 @@ serve(async (req: Request) => {
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405)
 
   const expectedSecret = Deno.env.get('CONTRACT_AUTOMATION_SECRET')
-  if (!expectedSecret || req.headers.get('x-automation-secret') !== expectedSecret) {
+  const providedSecret = req.headers.get('x-automation-secret')
+  // Comparação em tempo constante (checkup 2026-07-23) — `!==` vaza pelo
+  // tempo de resposta quantos caracteres do prefixo o atacante acertou.
+  if (!expectedSecret || !providedSecret || !timingSafeEqual(providedSecret, expectedSecret)) {
     return json({ error: 'Forbidden' }, 403)
   }
 

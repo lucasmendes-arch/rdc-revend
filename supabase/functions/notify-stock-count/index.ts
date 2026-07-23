@@ -1,4 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
+// @ts-expect-error Deno import
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 // Notifica via WhatsApp (UAZAPI) quando a loja CENTRAL confirma uma contagem
 // de estoque. Chamada pelo frontend (Confirmacao.tsx) logo após
@@ -40,10 +42,41 @@ serve(async (req) => {
   }
 
   try {
+    // Autenticação de verdade — checar só a presença do header (como era até
+    // o checkup de 2026-07-23) não autentica nada: a chave anon é pública e é
+    // um JWT válido, então passava direto e o resto do handler rodava com
+    // service role. getUser() valida o token contra o Auth.
     const authHeader = req.headers.get('authorization');
     if (!authHeader) {
-      return new Response(JSON.stringify({ error: 'Missing Authorization header' }), {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const userClient = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_ANON_KEY')!,
+      { global: { headers: { Authorization: authHeader } } }
+    );
+    const { data: { user }, error: authErr } = await userClient.auth.getUser();
+    if (authErr || !user) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Só quem opera o módulo de Estoque — mesma união que EstoqueRoute deixa
+    // entrar: is_estoque() = role 'salao' (ver 20260702000015) e
+    // has_full_stock_access() = admin + administrativo.
+    const [{ data: isEstoque }, { data: hasFullStock }] = await Promise.all([
+      userClient.rpc('is_estoque'),
+      userClient.rpc('has_full_stock_access'),
+    ]);
+    if (!isEstoque && !hasFullStock) {
+      return new Response(JSON.stringify({ error: 'Acesso negado' }), {
+        status: 403,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }

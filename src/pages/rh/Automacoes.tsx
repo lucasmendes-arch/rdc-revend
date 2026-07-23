@@ -44,7 +44,7 @@ interface AutomationAction {
 interface RhTag { id: string; name: string; slug: string; color: string }
 interface WhatsappTemplate { id: string; name: string; body: string; is_active: boolean }
 interface RhStore { id: string; name: string; slug: string }
-interface SystemUser { id: string; full_name: string | null; email: string; role: string }
+interface SystemUser { id: string; full_name: string | null }
 interface CredentialStatus { configured: boolean; is_active: boolean; uazapi_url: string | null; token_last4: string | null; updated_at: string | null }
 
 const STAGE_OPTIONS: { value: string; label: string }[] = [
@@ -326,7 +326,7 @@ function ActionConfigEditor({
           onChange={(v) => onChange(v === '__clear__' ? { clear: true } : { assignee_id: v })}
           options={[
             { value: '__clear__', label: 'Remover responsável' },
-            ...systemUsers.map((u) => ({ value: u.id, label: u.full_name || u.email })),
+            ...systemUsers.map((u) => ({ value: u.id, label: u.full_name || 'Sem nome' })),
           ]}
           emptyLabel="Selecione o responsável"
         />
@@ -387,9 +387,12 @@ function AutomationEditorModal({
       return (data || []) as WhatsappTemplate[]
     },
   })
+  // get_assignable_rh_users() devolve só id + nome, já filtrado por
+  // has_rh_access() no servidor — get_system_users() virou admin-only no
+  // checkup de 2026-07-23 (expunha e-mail/WhatsApp de toda a equipe).
   const { data: systemUsers = [] } = useQuery<SystemUser[]>({
-    queryKey: ['rh-system-users'], queryFn: async () => {
-      const { data, error } = await supabase.rpc('get_system_users')
+    queryKey: ['rh-assignable-users'], queryFn: async () => {
+      const { data, error } = await supabase.rpc('get_assignable_rh_users')
       if (error) throw error
       return (data || []) as SystemUser[]
     },

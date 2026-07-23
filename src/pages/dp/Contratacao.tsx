@@ -19,7 +19,7 @@ import {
 import type { Processo } from '@/lib/dpTypes'
 
 interface Store { id: string; name: string }
-interface SystemUser { id: string; full_name: string | null; email: string; role: string; permissions: { can_manage_rh?: boolean } | null }
+interface AssignableUser { id: string; full_name: string | null }
 
 // Mesmo default de src/pages/rh/Candidatos.tsx (DEFAULT_VAGA_COLOR) — cargo
 // sem correspondência em job_roles (renomeado/removido após a promoção, ou
@@ -57,7 +57,7 @@ function ProcessoCard({
   processo: Processo
   onOpen: (p: Processo) => void
   roleColor: string
-  assignableUsers: SystemUser[]
+  assignableUsers: AssignableUser[]
   onAssigneeChange: (candidateId: string, assigneeId: string | null) => void
 }) {
   // Sem `transform` aqui — ver comentário equivalente em CandidateCard
@@ -97,7 +97,7 @@ function ProcessoCard({
             variant="xs"
             value={processo.candidates.assignee_id ?? ''}
             onChange={(v) => onAssigneeChange(processo.candidates!.id, v || null)}
-            options={assignableUsers.map((u) => ({ value: u.id, label: u.full_name || u.email }))}
+            options={assignableUsers.map((u) => ({ value: u.id, label: u.full_name || 'Sem nome' }))}
             emptyLabel="Sem responsável"
             placeholder="Sem responsável"
             className="w-full"
@@ -115,7 +115,7 @@ function StageColumnView({
   processos: Processo[]
   onOpen: (p: Processo) => void
   roleColorByTitle: Map<string, string>
-  assignableUsers: SystemUser[]
+  assignableUsers: AssignableUser[]
   onAssigneeChange: (candidateId: string, assigneeId: string | null) => void
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: column.stage })
@@ -195,19 +195,18 @@ export default function DpContratacao() {
 
   // Responsável — mesmo dado de candidates.assignee_id já usado no RH
   // (Candidatos.tsx), só que agora editável direto no card do DP também.
-  const { data: systemUsers = [] } = useQuery<SystemUser[]>({
-    queryKey: ['rh-system-users'],
+  // get_assignable_rh_users() já aplica o filtro de has_rh_access() no
+  // servidor e devolve só id + nome — get_system_users() virou admin-only
+  // no checkup de 2026-07-23 (expunha e-mail/WhatsApp de toda a equipe).
+  const { data: assignableUsers = [] } = useQuery<AssignableUser[]>({
+    queryKey: ['rh-assignable-users'],
     queryFn: async () => {
-      const { data, error } = await supabase.rpc('get_system_users')
+      const { data, error } = await supabase.rpc('get_assignable_rh_users')
       if (error) throw error
-      return (data || []) as SystemUser[]
+      return (data || []) as AssignableUser[]
     },
     staleTime: 5 * 60 * 1000,
   })
-  const assignableUsers = useMemo(
-    () => systemUsers.filter((u) => u.role === 'admin' || u.role === 'administrativo' || u.permissions?.can_manage_rh === true),
-    [systemUsers]
-  )
 
   const updateAssignee = useMutation({
     mutationFn: async ({ candidateId, assigneeId }: { candidateId: string; assigneeId: string | null }) => {

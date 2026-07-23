@@ -43,7 +43,7 @@ interface CandidateAnswer {
   form_fields: { field_key: string; label: string; field_type: string; show_on_card: boolean } | null
 }
 interface CandidateTag { tags: { id: string; name: string; color: string } | null }
-interface SystemUser { id: string; full_name: string | null; email: string; role: string; permissions: { can_manage_rh?: boolean } | null }
+interface AssignableUser { id: string; full_name: string | null }
 interface ActivityRow {
   id: string
   event_type: string
@@ -564,22 +564,23 @@ export default function RhCandidatos() {
     staleTime: 15 * 1000,
   })
 
-  const { data: systemUsers = [] } = useQuery<SystemUser[]>({
-    queryKey: ['rh-system-users'],
+  // Responsável só pode ser alguém com acesso ao RH (admin/administrativo ou
+  // permissão granular can_manage_rh) — mesma regra de has_rh_access(). Esse
+  // filtro agora é aplicado no servidor por get_assignable_rh_users(), que
+  // devolve só id + nome; get_system_users() virou admin-only no checkup de
+  // 2026-07-23 (expunha e-mail/WhatsApp de toda a equipe).
+  const { data: rhAssignableUsers = [] } = useQuery<AssignableUser[]>({
+    queryKey: ['rh-assignable-users'],
     queryFn: async () => {
-      const { data, error } = await supabase.rpc('get_system_users')
+      const { data, error } = await supabase.rpc('get_assignable_rh_users')
       if (error) throw error
-      return (data || []) as SystemUser[]
+      return (data || []) as AssignableUser[]
     },
     staleTime: 5 * 60 * 1000,
   })
-  const assigneeNames = useMemo(() => new Map(systemUsers.map((u) => [u.id, u.full_name || u.email])), [systemUsers])
-  // Responsável só pode ser alguém com acesso ao RH (admin/administrativo ou
-  // permissão granular can_manage_rh) — mesma regra de has_rh_access() no
-  // backend. Colaborador de loja (role=salao sem a permissão) fica de fora.
-  const rhAssignableUsers = useMemo(
-    () => systemUsers.filter((u) => u.role === 'admin' || u.role === 'administrativo' || u.permissions?.can_manage_rh === true),
-    [systemUsers]
+  const assigneeNames = useMemo(
+    () => new Map(rhAssignableUsers.map((u) => [u.id, u.full_name || 'Sem nome'])),
+    [rhAssignableUsers]
   )
 
   const { data: allJobOpenings = [] } = useQuery<JobOpening[]>({
@@ -1024,7 +1025,7 @@ export default function RhCandidatos() {
                     <StyledSelect
                       value={filterAssigneeId}
                       onChange={setFilterAssigneeId}
-                      options={rhAssignableUsers.map((u) => ({ value: u.id, label: u.full_name || u.email }))}
+                      options={rhAssignableUsers.map((u) => ({ value: u.id, label: u.full_name || 'Sem nome' }))}
                       emptyLabel="Todos"
                       placeholder="Todos"
                     />
@@ -1440,7 +1441,7 @@ export default function RhCandidatos() {
                   <StyledSelect
                     value={assigneeDraft}
                     onChange={setAssigneeDraft}
-                    options={rhAssignableUsers.map((u) => ({ value: u.id, label: u.full_name || u.email }))}
+                    options={rhAssignableUsers.map((u) => ({ value: u.id, label: u.full_name || 'Sem nome' }))}
                     emptyLabel="Sem responsável"
                     placeholder="Sem responsável"
                   />

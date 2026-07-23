@@ -1,12 +1,17 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { timingSafeEqual } from '../_shared/timingSafe.ts'
 
 // HMAC-SHA256 signature verification for MercadoPago webhooks
 async function verifySignature(req: Request, dataId: string): Promise<boolean> {
   const secret = Deno.env.get('MERCADOPAGO_WEBHOOK_SECRET')
+  // Fail-closed. Até o checkup de 2026-07-23 isto retornava `true` quando o
+  // segredo não estava configurado — se a variável sumisse do ambiente
+  // (rotação, recriação do projeto, deploy novo), o endpoint passava a
+  // aceitar confirmação de pagamento forjada, sem verificar assinatura.
   if (!secret) {
-    console.warn('MERCADOPAGO_WEBHOOK_SECRET not set — skipping signature check')
-    return true
+    console.error('MERCADOPAGO_WEBHOOK_SECRET não configurado — rejeitando webhook')
+    return false
   }
 
   const xSignature = req.headers.get('x-signature')
@@ -52,8 +57,10 @@ async function verifySignature(req: Request, dataId: string): Promise<boolean> {
     .map(b => b.toString(16).padStart(2, '0'))
     .join('')
 
-  if (computed !== v1) {
-    console.error('Webhook signature mismatch. Expected:', computed, 'Got:', v1)
+  if (!timingSafeEqual(computed, v1)) {
+    // Não logar `computed`: é a assinatura válida derivada do segredo, e os
+    // logs da edge function são legíveis no Dashboard.
+    console.error('Webhook signature mismatch for request-id:', xRequestId)
     return false
   }
 
