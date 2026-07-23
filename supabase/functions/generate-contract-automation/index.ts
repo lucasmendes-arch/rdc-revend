@@ -7,7 +7,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import {
   getGoogleAccessToken, findOrCreateFolder, copyTemplate, replacePlaceholders, getWebViewLink,
-  decomposeDatePtBR, formatDateBR, todayISO, addDaysISO, type FieldMap,
+  decomposeDatePtBR, formatDateBR, todayISO, addDaysISO, resolveUnitFolderName, type FieldMap,
 } from '../_shared/googleDrive.ts'
 
 declare const Deno: { env: { get(k: string): string | undefined } }
@@ -19,11 +19,11 @@ function json(body: unknown, status = 200) {
 type Intent = 'formacao' | 'desligamento_formacao'
 
 const REQUIRED_FIELDS: Record<Intent, string[]> = {
-  formacao: ['cpf', 'birth_date', 'address', 'email'],
+  formacao: ['cpf', 'birth_date', 'address'],
   desligamento_formacao: [],
 }
 
-interface StoreRow { name: string; legal_name: string | null; cnpj: string | null; legal_address: string | null }
+interface StoreRow { name: string; slug: string; legal_name: string | null; cnpj: string | null; legal_address: string | null }
 
 function buildFormacaoFieldMap(input: {
   store: StoreRow
@@ -36,15 +36,18 @@ function buildFormacaoFieldMap(input: {
   const { store, candidateName, candidateWhatsapp, contractData, termStart, termEnd } = input
   const { dia, mes, ano } = decomposeDatePtBR(todayISO())
   return {
-    '{{razao_social}}': store.legal_name || '',
-    '{{cnpj}}': store.cnpj || '',
-    '{{endereco}}': store.legal_address || '',
-    '{{nome_completo}}': candidateName,
-    '{{cpf}}': (contractData.cpf as string) || '',
-    '{{data_nascimento}}': formatDateBR((contractData.birth_date as string) || null),
-    '{{endereco_completo}}': (contractData.address as string) || '',
-    '{{telefone_whatsapp}}': candidateWhatsapp,
-    '{{email}}': (contractData.email as string) || '',
+    // Placeholders reais confirmados baixando o .txt do doc gerado
+    // (2026-07-23) — a leitura via "natural language representation" tinha
+    // escondido os sufixos _salao/_profissional. Ver plano da feature.
+    '{{razao_social_salao}}': store.legal_name || '',
+    '{{cnpj_salao}}': store.cnpj || '',
+    '{{endereco_salao}}': store.legal_address || '',
+    '{{nome_profissional}}': candidateName,
+    '{{cpf_profissional}}': (contractData.cpf as string) || '',
+    '{{data_nascimento_profissional}}': formatDateBR((contractData.birth_date as string) || null),
+    '{{endereco_profissional}}': (contractData.address as string) || '',
+    '{{telefone_profissional}}': candidateWhatsapp,
+    '{{email_profissional}}': (contractData.email as string) || '',
     '{{local}}': store.name,
     '{{dia_assinatura}}': dia,
     '{{mes_assinatura}}': mes,
@@ -138,7 +141,7 @@ serve(async (req: Request) => {
 
     const { data: processo, error: processoErr } = await serviceClient
       .from('employee_processes')
-      .select('id, store_id, candidates(name, whatsapp, assignee_id), stores(name, legal_name, cnpj, legal_address)')
+      .select('id, store_id, candidates(name, whatsapp, assignee_id), stores(name, slug, legal_name, cnpj, legal_address)')
       .eq('id', process_id)
       .single()
     if (processoErr || !processo) return json({ error: 'Processo não encontrado' }, 404)
@@ -176,10 +179,10 @@ serve(async (req: Request) => {
     if (!rootFolderId) return json({ error: 'Pasta raiz de contratos no Drive não configurada' }, 500)
 
     const candidateName = processo.candidates?.name ?? ''
-    const store = (processo.stores ?? { name: '', legal_name: null, cnpj: null, legal_address: null }) as StoreRow
+    const store = (processo.stores ?? { name: '', slug: '', legal_name: null, cnpj: null, legal_address: null }) as StoreRow
 
     const accessToken = await getGoogleAccessToken()
-    const unitFolderId = await findOrCreateFolder(accessToken, store.name, rootFolderId)
+    const unitFolderId = await findOrCreateFolder(accessToken, resolveUnitFolderName(store.slug, store.name), rootFolderId)
     const candidateFolderId = await findOrCreateFolder(accessToken, candidateName, unitFolderId)
 
     let fieldMap: FieldMap

@@ -143,12 +143,14 @@ export const CONTRACT_DATA_FIELD_LABELS: Record<ContractDataField, string> = {
 
 // 'formacao' confirmado com os templates reais (Contrato de Formação +
 // Desligamento, 2026-07-22) — não precisa de RG/estado civil/nacionalidade/
-// dados bancários (curso gratuito, sem vínculo, sem pagamento), mas precisa
-// de e-mail. 'prestacao_servico' continua um chute (sem template real ainda
-// — "por partes", próxima rodada). 'desligamento_formacao' não pede nada
-// além do que 'formacao' já exige (reaproveita CPF/nome já preenchidos).
+// dados bancários (curso gratuito, sem vínculo, sem pagamento). E-mail
+// existe como campo (o template tem {{email}}) mas o usuário confirmou que
+// não é obrigatório pra gerar — fica em branco no doc se não preenchido.
+// 'prestacao_servico' continua um chute (sem template real ainda — "por
+// partes", próxima rodada). 'desligamento_formacao' não pede nada além do
+// que 'formacao' já exige (reaproveita CPF/nome já preenchidos).
 export const REQUIRED_CONTRACT_DATA_FIELDS: Record<ContractType, ContractDataField[]> = {
-  formacao: ['cpf', 'birth_date', 'address', 'email'],
+  formacao: ['cpf', 'birth_date', 'address'],
   prestacao_servico: [
     'cpf', 'rg', 'birth_date', 'marital_status', 'nationality', 'address',
     'bank_name', 'bank_agency', 'bank_account', 'pix_key',

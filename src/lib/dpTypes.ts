@@ -17,7 +17,7 @@ export interface Processo {
   training_applicable: boolean
   training_completed: boolean
   created_at: string
-  candidates: { id: string; name: string; whatsapp: string; photo_url: string | null } | null
+  candidates: { id: string; name: string; whatsapp: string; photo_url: string | null; assignee_id: string | null } | null
   stores: { name: string } | null
 }
 

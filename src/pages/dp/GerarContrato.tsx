@@ -1,10 +1,11 @@
 import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Loader, Search, FileSignature, Store as StoreIcon } from 'lucide-react'
+import { Loader, Search, FileSignature, Store as StoreIcon, Building2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import AdminLayout from '@/components/admin/AdminLayout'
 import StyledSelect from '@/components/ui/styled-select'
 import GerarContratoModal from '@/components/dp/GerarContratoModal'
+import LojasDadosModal from '@/components/dp/LojasDadosModal'
 import { EMPLOYMENT_TYPE_LABELS, resolveAutoContractType, CONTRACT_TYPE_LABELS } from '@/lib/dpConstants'
 import type { Processo } from '@/lib/dpTypes'
 
@@ -37,6 +38,7 @@ export default function DpGerarContrato() {
   const [search, setSearch] = useState('')
   const [storeId, setStoreId] = useState('')
   const [selected, setSelected] = useState<Processo | null>(null)
+  const [lojasOpen, setLojasOpen] = useState(false)
 
   const { data: stores = [] } = useQuery<Store[]>({
     queryKey: ['dp-stores'],
@@ -53,7 +55,7 @@ export default function DpGerarContrato() {
     queryFn: async () => {
       let query = supabase
         .from('employee_processes')
-        .select('id, candidate_id, employment_type, store_id, role_title, current_stage, status, started_at, activated_at, onboarding_completed, training_applicable, training_completed, created_at, candidates(id, name, whatsapp, photo_url), stores(name)')
+        .select('id, candidate_id, employment_type, store_id, role_title, current_stage, status, started_at, activated_at, onboarding_completed, training_applicable, training_completed, created_at, candidates(id, name, whatsapp, photo_url, assignee_id), stores(name)')
         .in('status', ['em_andamento', 'ativo'])
         .order('started_at', { ascending: false })
       if (storeId) query = query.eq('store_id', storeId)
@@ -78,6 +80,14 @@ export default function DpGerarContrato() {
             <p className="text-sm text-muted-foreground mt-1">Geração automática dos contratos de formação e prestação de serviço</p>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
+            <button
+              onClick={() => setLojasOpen(true)}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border text-sm font-medium hover:bg-surface-alt transition-colors"
+              title="Razão social, CNPJ e endereço por unidade"
+            >
+              <Building2 className="w-4 h-4" />
+              <span className="hidden sm:inline">Dados das lojas</span>
+            </button>
             <div className="relative">
               <Search className="w-4 h-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
               <input
@@ -161,6 +171,7 @@ export default function DpGerarContrato() {
       </div>
 
       {selected && <GerarContratoModal processo={selected} onClose={() => setSelected(null)} />}
+      {lojasOpen && <LojasDadosModal onClose={() => setLojasOpen(false)} />}
     </AdminLayout>
   )
 }

@@ -4,7 +4,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import {
   getGoogleAccessToken, findOrCreateFolder, copyTemplate, replacePlaceholders, getWebViewLink,
-  decomposeDatePtBR, formatDateBR, todayISO, addDaysISO, type FieldMap,
+  decomposeDatePtBR, formatDateBR, todayISO, addDaysISO, resolveUnitFolderName, type FieldMap,
 } from '../_shared/googleDrive.ts'
 
 declare const Deno: { env: { get(k: string): string | undefined } }
@@ -36,7 +36,7 @@ type ContractType = 'formacao' | 'prestacao_servico'
 // porque edge functions (Deno) não compartilham build com o frontend;
 // manter os dois em sincronia se a regra mudar.
 const REQUIRED_FIELDS_BY_TYPE: Record<ContractType, string[]> = {
-  formacao: ['cpf', 'birth_date', 'address', 'email'],
+  formacao: ['cpf', 'birth_date', 'address'],
   // 'prestacao_servico' ainda não tem template real confirmado — fora de
   // escopo desta rodada ("por partes"). Mantido só pra não quebrar a
   // resolução de contractType existente.
@@ -44,7 +44,7 @@ const REQUIRED_FIELDS_BY_TYPE: Record<ContractType, string[]> = {
 }
 
 function buildFormacaoFieldMap(input: {
-  store: { legal_name: string | null; cnpj: string | null; legal_address: string | null; name: string }
+  store: { legal_name: string | null; cnpj: string | null; legal_address: string | null; name: string; slug: string }
   candidateName: string
   candidateWhatsapp: string
   contractData: Record<string, unknown>
@@ -54,15 +54,18 @@ function buildFormacaoFieldMap(input: {
   const { store, candidateName, candidateWhatsapp, contractData, termStart, termEnd } = input
   const { dia, mes, ano } = decomposeDatePtBR(todayISO())
   return {
-    '{{razao_social}}': store.legal_name || '',
-    '{{cnpj}}': store.cnpj || '',
-    '{{endereco}}': store.legal_address || '',
-    '{{nome_completo}}': candidateName,
-    '{{cpf}}': (contractData.cpf as string) || '',
-    '{{data_nascimento}}': formatDateBR((contractData.birth_date as string) || null),
-    '{{endereco_completo}}': (contractData.address as string) || '',
-    '{{telefone_whatsapp}}': candidateWhatsapp,
-    '{{email}}': (contractData.email as string) || '',
+    // Placeholders reais confirmados baixando o .txt do doc gerado
+    // (2026-07-23) — a leitura via "natural language representation" tinha
+    // escondido os sufixos _salao/_profissional. Ver plano da feature.
+    '{{razao_social_salao}}': store.legal_name || '',
+    '{{cnpj_salao}}': store.cnpj || '',
+    '{{endereco_salao}}': store.legal_address || '',
+    '{{nome_profissional}}': candidateName,
+    '{{cpf_profissional}}': (contractData.cpf as string) || '',
+    '{{data_nascimento_profissional}}': formatDateBR((contractData.birth_date as string) || null),
+    '{{endereco_profissional}}': (contractData.address as string) || '',
+    '{{telefone_profissional}}': candidateWhatsapp,
+    '{{email_profissional}}': (contractData.email as string) || '',
     '{{local}}': store.name,
     '{{dia_assinatura}}': dia,
     '{{mes_assinatura}}': mes,
@@ -110,7 +113,7 @@ serve(async (req: Request) => {
 
     const { data: processo, error: processoErr } = await serviceClient
       .from('employee_processes')
-      .select('id, employment_type, current_stage, role_title, candidates(name, whatsapp), stores(name, legal_name, cnpj, legal_address)')
+      .select('id, employment_type, current_stage, role_title, candidates(name, whatsapp), stores(name, slug, legal_name, cnpj, legal_address)')
       .eq('id', process_id)
       .single()
     if (processoErr || !processo) return json({ error: 'Processo não encontrado' }, 404, req)
@@ -163,10 +166,10 @@ serve(async (req: Request) => {
     if (!rootFolderId) return json({ error: 'Pasta raiz de contratos no Drive não configurada' }, 500, req)
 
     const candidateName = processo.candidates?.name ?? ''
-    const store = processo.stores ?? { name: '', legal_name: null, cnpj: null, legal_address: null }
+    const store = processo.stores ?? { name: '', slug: '', legal_name: null, cnpj: null, legal_address: null }
 
     const accessToken = await getGoogleAccessToken()
-    const unitFolderId = await findOrCreateFolder(accessToken, store.name, rootFolderId)
+    const unitFolderId = await findOrCreateFolder(accessToken, resolveUnitFolderName(store.slug, store.name), rootFolderId)
     const candidateFolderId = await findOrCreateFolder(accessToken, candidateName, unitFolderId)
 
     const docName = `${candidateName} - Contrato de Formação`

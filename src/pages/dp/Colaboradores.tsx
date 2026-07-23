@@ -85,7 +85,7 @@ export default function DpColaboradores() {
     queryFn: async () => {
       let query = supabase
         .from('employee_processes')
-        .select('id, candidate_id, employment_type, store_id, role_title, current_stage, status, started_at, activated_at, onboarding_completed, training_applicable, training_completed, created_at, candidates(id, name, whatsapp, photo_url), stores(name)')
+        .select('id, candidate_id, employment_type, store_id, role_title, current_stage, status, started_at, activated_at, onboarding_completed, training_applicable, training_completed, created_at, candidates(id, name, whatsapp, photo_url, assignee_id), stores(name)')
         .eq('status', 'ativo')
         .order('activated_at', { ascending: false })
       if (storeId) query = query.eq('store_id', storeId)

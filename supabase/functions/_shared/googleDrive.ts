@@ -3,38 +3,49 @@
 // (automático, disparado por trigger no banco via pg_net). Primeira vez que
 // este projeto usa uma pasta _shared/ — justificado pela duplicação real
 // entre as 2 functions.
-// @ts-expect-error Deno import
-import { SignJWT, importPKCS8 } from 'https://esm.sh/jose@5'
 
 declare const Deno: { env: { get(k: string): string | undefined } }
 
-export async function getGoogleAccessToken(): Promise<string> {
-  const clientEmail = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_EMAIL')
-  const privateKeyRaw = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY')
-  if (!clientEmail || !privateKeyRaw) {
-    throw new Error('Credenciais da service account do Google não configuradas')
-  }
-  const privateKeyPem = privateKeyRaw.includes('\\n') ? privateKeyRaw.replace(/\\n/g, '\n') : privateKeyRaw
-  const privateKey = await importPKCS8(privateKeyPem, 'RS256')
+// Pastas "Unidade X" já existem no Drive (criadas manualmente antes desta
+// automação) — o nome nem sempre é "Unidade " + stores.name (ex: loja
+// "Teixeira de Freitas" → pasta "Unidade Teixeira", não "Unidade Teixeira
+// de Freitas"). Mapeado por slug (mais estável que name) em 2026-07-23
+// depois de conferir os nomes reais das pastas no Drive.
+const UNIT_FOLDER_NAME_BY_SLUG: Record<string, string> = {
+  linhares: 'Unidade Linhares',
+  serra: 'Unidade Serra',
+  teixeira: 'Unidade Teixeira',
+  colatina: 'Unidade Colatina',
+  'sao-gabriel': 'Unidade São Gabriel da Palha',
+}
 
-  const now = Math.floor(Date.now() / 1000)
-  const assertion = await new SignJWT({
-    scope: 'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/documents',
-  })
-    .setProtectedHeader({ alg: 'RS256', typ: 'JWT' })
-    .setIssuer(clientEmail)
-    .setSubject(clientEmail)
-    .setAudience('https://oauth2.googleapis.com/token')
-    .setIssuedAt(now)
-    .setExpirationTime(now + 3600)
-    .sign(privateKey)
+export function resolveUnitFolderName(slug: string, storeName: string): string {
+  return UNIT_FOLDER_NAME_BY_SLUG[slug] || `Unidade ${storeName}`
+}
+
+// Autenticação via OAuth (refresh token de uma conta pessoal do Google),
+// não service account — service account não tem cota própria de
+// armazenamento numa conta pessoal (sem Google Workspace/Shared Drive), e
+// falha com "storage quota exceeded" ao tentar copiar/criar arquivo (erro
+// real encontrado testando com um processo real em 2026-07-22). Refresh
+// token gerado uma vez via OAuth Playground, nunca expira sozinho (só se
+// revogado manualmente ou sem uso por 6 meses).
+export async function getGoogleAccessToken(): Promise<string> {
+  const clientId = Deno.env.get('GOOGLE_OAUTH_CLIENT_ID')
+  const clientSecret = Deno.env.get('GOOGLE_OAUTH_CLIENT_SECRET')
+  const refreshToken = Deno.env.get('GOOGLE_OAUTH_REFRESH_TOKEN')
+  if (!clientId || !clientSecret || !refreshToken) {
+    throw new Error('Credenciais OAuth do Google não configuradas')
+  }
 
   const res = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
-      grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
-      assertion,
+      grant_type: 'refresh_token',
+      client_id: clientId,
+      client_secret: clientSecret,
+      refresh_token: refreshToken,
     }),
   })
   if (!res.ok) {

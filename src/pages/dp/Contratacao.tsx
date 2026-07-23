@@ -19,6 +19,7 @@ import {
 import type { Processo } from '@/lib/dpTypes'
 
 interface Store { id: string; name: string }
+interface SystemUser { id: string; full_name: string | null; email: string; role: string; permissions: { can_manage_rh?: boolean } | null }
 
 // Mesmo default de src/pages/rh/Candidatos.tsx (DEFAULT_VAGA_COLOR) — cargo
 // sem correspondência em job_roles (renomeado/removido após a promoção, ou
@@ -50,7 +51,15 @@ function ProcessoPhoto({ name, photoUrl }: { name: string; photoUrl: string | nu
   )
 }
 
-function ProcessoCard({ processo, onOpen, roleColor }: { processo: Processo; onOpen: (p: Processo) => void; roleColor: string }) {
+function ProcessoCard({
+  processo, onOpen, roleColor, assignableUsers, onAssigneeChange,
+}: {
+  processo: Processo
+  onOpen: (p: Processo) => void
+  roleColor: string
+  assignableUsers: SystemUser[]
+  onAssigneeChange: (candidateId: string, assigneeId: string | null) => void
+}) {
   // Sem `transform` aqui — ver comentário equivalente em CandidateCard
   // (src/pages/rh/Candidatos.tsx): só o DragOverlay deve seguir o cursor.
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: processo.id })
@@ -83,18 +92,31 @@ function ProcessoCard({ processo, onOpen, roleColor }: { processo: Processo; onO
             {processo.stores?.name || '—'}
           </span>
         </div>
+        {processo.candidates && (
+          <StyledSelect
+            variant="xs"
+            value={processo.candidates.assignee_id ?? ''}
+            onChange={(v) => onAssigneeChange(processo.candidates!.id, v || null)}
+            options={assignableUsers.map((u) => ({ value: u.id, label: u.full_name || u.email }))}
+            emptyLabel="Sem responsável"
+            placeholder="Sem responsável"
+            className="w-full"
+          />
+        )}
       </div>
     </div>
   )
 }
 
 function StageColumnView({
-  column, processos, onOpen, roleColorByTitle,
+  column, processos, onOpen, roleColorByTitle, assignableUsers, onAssigneeChange,
 }: {
   column: StageColumn
   processos: Processo[]
   onOpen: (p: Processo) => void
   roleColorByTitle: Map<string, string>
+  assignableUsers: SystemUser[]
+  onAssigneeChange: (candidateId: string, assigneeId: string | null) => void
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: column.stage })
   const { isDark } = useAdminTheme()
@@ -116,7 +138,12 @@ function StageColumnView({
         className={`space-y-2 min-h-[80px] max-h-[calc(100vh-280px)] overflow-y-auto scrollbar-thin rounded-2xl border p-1.5 transition-colors ${isOver ? '' : 'border-dashed border-border/70'}`}
       >
         {processos.map((p) => (
-          <ProcessoCard key={p.id} processo={p} onOpen={onOpen} roleColor={roleColorByTitle.get(p.role_title) || DEFAULT_ROLE_COLOR} />
+          <ProcessoCard
+            key={p.id} processo={p} onOpen={onOpen}
+            roleColor={roleColorByTitle.get(p.role_title) || DEFAULT_ROLE_COLOR}
+            assignableUsers={assignableUsers}
+            onAssigneeChange={onAssigneeChange}
+          />
         ))}
       </div>
     </section>
@@ -166,6 +193,31 @@ export default function DpContratacao() {
     staleTime: 5 * 60 * 1000,
   })
 
+  // Responsável — mesmo dado de candidates.assignee_id já usado no RH
+  // (Candidatos.tsx), só que agora editável direto no card do DP também.
+  const { data: systemUsers = [] } = useQuery<SystemUser[]>({
+    queryKey: ['rh-system-users'],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('get_system_users')
+      if (error) throw error
+      return (data || []) as SystemUser[]
+    },
+    staleTime: 5 * 60 * 1000,
+  })
+  const assignableUsers = useMemo(
+    () => systemUsers.filter((u) => u.role === 'admin' || u.role === 'administrativo' || u.permissions?.can_manage_rh === true),
+    [systemUsers]
+  )
+
+  const updateAssignee = useMutation({
+    mutationFn: async ({ candidateId, assigneeId }: { candidateId: string; assigneeId: string | null }) => {
+      const { error } = await supabase.from('candidates').update({ assignee_id: assigneeId }).eq('id', candidateId)
+      if (error) throw error
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['dp-processos'] }),
+    onError: (err) => toast.error(`Erro ao atualizar responsável: ${err instanceof Error ? err.message : 'desconhecido'}`),
+  })
+
   const processosQueryKey = ['dp-processos', storeId, employmentType, showFinalizados]
 
   const { data: processos = [], isLoading } = useQuery<Processo[]>({
@@ -173,7 +225,7 @@ export default function DpContratacao() {
     queryFn: async () => {
       let query = supabase
         .from('employee_processes')
-        .select('id, candidate_id, employment_type, store_id, role_title, current_stage, status, started_at, activated_at, onboarding_completed, training_applicable, training_completed, created_at, candidates(id, name, whatsapp, photo_url), stores(name)')
+        .select('id, candidate_id, employment_type, store_id, role_title, current_stage, status, started_at, activated_at, onboarding_completed, training_applicable, training_completed, created_at, candidates(id, name, whatsapp, photo_url, assignee_id), stores(name)')
         .order('started_at', { ascending: false })
       if (employmentType !== 'todos') query = query.eq('employment_type', employmentType)
       if (storeId) query = query.eq('store_id', storeId)
@@ -309,6 +361,8 @@ export default function DpContratacao() {
                   processos={processosByStage.get(col.stage) || []}
                   onOpen={setDetailProcesso}
                   roleColorByTitle={roleColorByTitle}
+                  assignableUsers={assignableUsers}
+                  onAssigneeChange={(candidateId, assigneeId) => updateAssignee.mutate({ candidateId, assigneeId })}
                 />
               ))}
             </div>
