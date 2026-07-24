@@ -4,11 +4,17 @@ import { formatPhone } from '@/lib/phone'
 import StyledSelect from '@/components/ui/styled-select'
 import type { JobRoleDescriptiveRow } from './JobRoleFieldsForm'
 
-export type FieldType = 'texto' | 'numero' | 'telefone' | 'select' | 'checkbox' | 'data' | 'upload_imagem' | 'upload_arquivo'
+export type FieldType = 'texto' | 'texto_longo' | 'numero' | 'telefone' | 'select' | 'checkbox' | 'data' | 'upload_imagem' | 'upload_imagens' | 'upload_arquivo'
 
 // Resposta de checkbox (múltipla escolha) grava as opções marcadas juntas
 // numa string só, já que candidate_answers.value é sempre texto simples.
+// Reaproveitado por upload_imagens (múltiplas imagens) pelo mesmo motivo.
 export const CHECKBOX_DELIM = '; '
+
+// upload_imagens: limite de imagens por pergunta (perguntas de certificados
+// costumam ter mais de um documento, mas sem limite viraria um upload
+// ilimitado dentro de um campo pensado pra poucos arquivos).
+export const MAX_MULTI_UPLOAD = 5
 
 export interface FormFieldConfig {
   id: string
@@ -129,6 +135,68 @@ export default function FormFieldRenderer({
     )
   }
 
+  if (field.field_type === 'upload_imagens') {
+    const urls = value ? value.split(CHECKBOX_DELIM) : []
+    const atLimit = urls.length >= MAX_MULTI_UPLOAD
+
+    function removeAt(index: number) {
+      onChange(urls.filter((_, i) => i !== index).join(CHECKBOX_DELIM))
+    }
+
+    return (
+      <div>
+        {labelNode}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          disabled={readOnly}
+          onChange={(e) => {
+            const file = e.target.files?.[0]
+            if (file && onUploadFile) onUploadFile(file)
+            e.target.value = ''
+          }}
+        />
+        {urls.length > 0 && (
+          <div className="grid grid-cols-3 gap-2 mb-2">
+            {urls.map((url, i) => (
+              <div key={url + i} className="relative rounded-lg border border-border overflow-hidden group">
+                <a href={url} target="_blank" rel="noopener noreferrer" className="block h-16 w-full bg-surface-alt">
+                  <img src={url} alt="" className="w-full h-full object-cover" />
+                </a>
+                {!readOnly && (
+                  <button
+                    type="button"
+                    onClick={() => removeAt(i)}
+                    className="absolute top-0.5 right-0.5 p-0.5 rounded-full bg-black/60 text-white hover:bg-red-600 transition-colors"
+                    title="Remover imagem"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+        {!readOnly && !atLimit && (
+          <button
+            type="button"
+            disabled={uploading}
+            onClick={() => fileInputRef.current?.click()}
+            className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border border-dashed border-border text-sm text-muted-foreground hover:bg-surface-alt disabled:opacity-60"
+          >
+            {uploading ? <Loader className="w-4 h-4 animate-spin" /> : <ImageIcon className="w-4 h-4" />}
+            {uploading ? 'Enviando...' : `Adicionar imagem (${urls.length}/${MAX_MULTI_UPLOAD})`}
+          </button>
+        )}
+        {readOnly && urls.length === 0 && (
+          <p className="text-sm text-muted-foreground">Nenhuma imagem enviada</p>
+        )}
+      </div>
+    )
+  }
+
   if (field.field_type === 'upload_imagem' || field.field_type === 'upload_arquivo') {
     const isImage = field.field_type === 'upload_imagem'
     return (
@@ -173,6 +241,22 @@ export default function FormFieldRenderer({
             {uploading ? 'Enviando...' : 'Selecionar arquivo'}
           </button>
         )}
+      </div>
+    )
+  }
+
+  if (field.field_type === 'texto_longo') {
+    return (
+      <div>
+        {labelNode}
+        <textarea
+          rows={4}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          disabled={readOnly}
+          placeholder={field.placeholder}
+          className={`${inputClass} resize-none`}
+        />
       </div>
     )
   }

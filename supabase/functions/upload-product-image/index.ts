@@ -53,6 +53,7 @@ const ALLOWED_FOLDERS: Record<string, { public: boolean; types: Record<string, s
   'lookbook':           { public: false, types: IMAGE_TYPES, maxBytes: 5 * MB },
   'candidates/photos':  { public: true,  types: IMAGE_TYPES, maxBytes: 5 * MB },
   'candidates/resumes': { public: true,  types: DOC_TYPES,   maxBytes: 10 * MB },
+  'candidates/certificates': { public: true, types: IMAGE_TYPES, maxBytes: 5 * MB },
 }
 
 function jsonResponse(req: Request, body: unknown, status = 200) {

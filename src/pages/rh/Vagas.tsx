@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
-import { Loader, Plus, Briefcase, Pencil, Trash2 } from 'lucide-react'
+import { Loader, Plus, Briefcase, Pencil, Trash2, Store as StoreIcon } from 'lucide-react'
 import { toast } from 'sonner'
 import AdminLayout from '@/components/admin/AdminLayout'
 import StyledSelect from '@/components/ui/styled-select'
@@ -48,6 +48,7 @@ function toPayload(form: typeof EMPTY_FORM) {
 
 export default function RhVagas() {
   const queryClient = useQueryClient()
+  const [storeId, setStoreId] = useState<string>('')
   const [modalOpen, setModalOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState(EMPTY_FORM)
@@ -197,6 +198,8 @@ export default function RhVagas() {
     saveMutation.mutate({ id: editingId, payload: form })
   }
 
+  const filteredJobOpenings = storeId ? jobOpenings.filter((j) => j.store_id === storeId) : jobOpenings
+
   return (
     <AdminLayout>
       <div className="bg-card border-b border-border sticky top-0 z-30">
@@ -214,6 +217,26 @@ export default function RhVagas() {
             <span className="hidden sm:inline">Nova Vaga</span>
           </button>
         </div>
+        <div className="px-4 sm:px-6 flex gap-1 border-t border-border overflow-x-auto scrollbar-none">
+          <button onClick={() => setStoreId('')}
+            className={`flex items-center gap-1.5 px-3 py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+              storeId === ''
+                ? 'border-gold text-foreground'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}>
+            <StoreIcon className="w-4 h-4" />Todas as unidades
+          </button>
+          {stores.map((s) => (
+            <button key={s.id} onClick={() => setStoreId(s.id)}
+              className={`flex items-center gap-1.5 px-3 py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+                storeId === s.id
+                  ? 'border-gold text-foreground'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
+              }`}>
+              {s.name}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="px-4 sm:px-6 py-8">
@@ -222,10 +245,12 @@ export default function RhVagas() {
             <Loader className="w-8 h-8 animate-spin text-gold-text mx-auto mb-4" />
             <p className="text-muted-foreground">Carregando vagas...</p>
           </div>
-        ) : jobOpenings.length === 0 ? (
+        ) : filteredJobOpenings.length === 0 ? (
           <div className="text-center py-16">
             <Briefcase className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
-            <p className="text-muted-foreground font-medium">Nenhuma vaga cadastrada.</p>
+            <p className="text-muted-foreground font-medium">
+              {jobOpenings.length === 0 ? 'Nenhuma vaga cadastrada.' : 'Nenhuma vaga cadastrada nesta unidade.'}
+            </p>
             <p className="text-sm text-muted-foreground mt-1">Clique em "Nova Vaga" para começar.</p>
           </div>
         ) : (
@@ -242,7 +267,7 @@ export default function RhVagas() {
                   </tr>
                 </thead>
                 <tbody>
-                  {jobOpenings.map((job, index) => (
+                  {filteredJobOpenings.map((job, index) => (
                     <tr key={job.id} className={`border-b border-border/40 last:border-0 ${index % 2 === 0 ? '' : 'bg-muted/30'}`}>
                       <td className="px-4 py-3 text-sm font-medium text-foreground">{job.role_title}</td>
                       <td className="px-4 py-3 text-sm text-muted-foreground">{job.stores?.name || '—'}</td>

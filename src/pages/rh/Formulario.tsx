@@ -25,12 +25,14 @@ interface JobRoleOption {
 
 const TYPE_LABELS: Record<FieldType, string> = {
   texto: 'Texto',
+  texto_longo: 'Texto longo (várias linhas)',
   numero: 'Número',
   telefone: 'Telefone',
   select: 'Seleção (uma opção)',
   checkbox: 'Múltipla escolha (várias opções)',
   data: 'Data',
   upload_imagem: 'Upload de imagem',
+  upload_imagens: 'Upload de várias imagens (até 5)',
   upload_arquivo: 'Upload de arquivo',
 }
 

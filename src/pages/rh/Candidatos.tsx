@@ -21,6 +21,7 @@ import { Switch } from '@/components/ui/switch'
 import { EMPLOYMENT_TYPE_LABELS, EMPLOYMENT_TYPE_OPTIONS, type EmploymentType } from '@/lib/dpConstants'
 import { useAdminTheme } from '@/contexts/AdminThemeContext'
 import { STAGE_COLUMNS, STAGE_SELECT_OPTIONS, getStageColors, stageLabel, type Stage } from '@/lib/rhStages'
+import { CHECKBOX_DELIM } from '@/components/rh/FormFieldRenderer'
 
 interface Store { id: string; name: string }
 // Cor da vaga vem do cargo vinculado (job_roles.color) — vaga manual sem
@@ -1387,7 +1388,15 @@ export default function RhCandidatos() {
                     {detailCandidate.candidate_answers.map((a) => (
                       <div key={a.form_fields?.field_key || a.value} className="flex items-start justify-between gap-3">
                         <span className="text-muted-foreground shrink-0">{a.form_fields?.label || '—'}</span>
-                        {a.form_fields?.field_type === 'upload_imagem' || a.form_fields?.field_type === 'upload_arquivo' ? (
+                        {a.form_fields?.field_type === 'upload_imagens' ? (
+                          <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                            {a.value.split(CHECKBOX_DELIM).map((url, i) => (
+                              <a key={url + i} href={url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                                Imagem {i + 1}
+                              </a>
+                            ))}
+                          </div>
+                        ) : a.form_fields?.field_type === 'upload_imagem' || a.form_fields?.field_type === 'upload_arquivo' ? (
                           <a href={a.value} target="_blank" rel="noopener noreferrer" className="text-right text-blue-600 hover:underline truncate">
                             Ver arquivo
                           </a>

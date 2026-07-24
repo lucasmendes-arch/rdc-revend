@@ -6,7 +6,7 @@ import { Loader, CheckCircle2, Briefcase, Info, ArrowLeft, X, Clock, Wallet } fr
 import { supabase } from '@/lib/supabase'
 import { useImageUpload } from '@/hooks/useImageUpload'
 import { useFileUpload } from '@/hooks/useFileUpload'
-import FormFieldRenderer, { FormFieldConfig, PublicJobOpening } from '@/components/rh/FormFieldRenderer'
+import FormFieldRenderer, { CHECKBOX_DELIM, FormFieldConfig, PublicJobOpening } from '@/components/rh/FormFieldRenderer'
 import { contractTypeLabel, compensationTypeLabel } from '@/components/rh/JobRoleFieldsForm'
 import logo from '@/assets/logo-rei-dos-cachos.png'
 
@@ -97,10 +97,16 @@ export default function CandidaturaPublica() {
   async function handleUpload(field: FormFieldConfig, file: File) {
     setUploadingKey(field.field_key)
     try {
-      const url = field.field_type === 'upload_imagem'
-        ? await uploadPhoto(file, 'candidates/photos')
-        : await uploadResume(file, 'candidates/resumes')
-      setAnswers((prev) => ({ ...prev, [field.field_key]: url }))
+      const url = field.field_type === 'upload_arquivo'
+        ? await uploadResume(file, 'candidates/resumes')
+        : await uploadPhoto(file, field.field_type === 'upload_imagens' ? 'candidates/certificates' : 'candidates/photos')
+      setAnswers((prev) => {
+        if (field.field_type === 'upload_imagens') {
+          const existing = prev[field.field_key] ? prev[field.field_key].split(CHECKBOX_DELIM) : []
+          return { ...prev, [field.field_key]: [...existing, url].join(CHECKBOX_DELIM) }
+        }
+        return { ...prev, [field.field_key]: url }
+      })
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Erro no upload do arquivo')
     } finally {
@@ -275,7 +281,7 @@ export default function CandidaturaPublica() {
                   {viewingJob.variable_percentage != null && (
                     <div>
                       <p className="text-[11px] font-semibold text-muted-foreground uppercase">Variável</p>
-                      <p className="text-foreground">{viewingJob.variable_percentage}%{viewingJob.variable_basis ? ` — ${viewingJob.variable_basis}` : ''}</p>
+                      <p className="text-foreground">Até {viewingJob.variable_percentage}%{viewingJob.variable_basis ? ` — ${viewingJob.variable_basis}` : ''}</p>
                     </div>
                   )}
                 </div>
@@ -298,10 +304,10 @@ export default function CandidaturaPublica() {
                 </div>
               )}
 
-              {viewingJob.description && (
+              {viewingJob.benefits && (
                 <div>
-                  <p className="text-[11px] font-semibold text-muted-foreground uppercase mb-1">Descrição</p>
-                  <p className="text-foreground whitespace-pre-line">{viewingJob.description}</p>
+                  <p className="text-[11px] font-semibold text-muted-foreground uppercase mb-1">Benefícios</p>
+                  <p className="text-foreground whitespace-pre-line">{viewingJob.benefits}</p>
                 </div>
               )}
               {viewingJob.requirements && (
@@ -310,10 +316,10 @@ export default function CandidaturaPublica() {
                   <p className="text-foreground whitespace-pre-line">{viewingJob.requirements}</p>
                 </div>
               )}
-              {viewingJob.benefits && (
+              {viewingJob.description && (
                 <div>
-                  <p className="text-[11px] font-semibold text-muted-foreground uppercase mb-1">Benefícios</p>
-                  <p className="text-foreground whitespace-pre-line">{viewingJob.benefits}</p>
+                  <p className="text-[11px] font-semibold text-muted-foreground uppercase mb-1">Descrição</p>
+                  <p className="text-foreground whitespace-pre-line">{viewingJob.description}</p>
                 </div>
               )}
 
