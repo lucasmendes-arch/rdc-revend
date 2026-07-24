@@ -21,8 +21,10 @@ interface StyledSelectProps {
   className?: string
   // default = campo de formulário full-width. inline = filtro compacto de
   // cabeçalho (ícone + borda própria, sem precisar de wrapper externo).
-  // xs = select minúsculo embutido em linha de tabela/lista.
-  variant?: 'default' | 'inline' | 'xs'
+  // xs = select minúsculo embutido em linha de tabela/lista. pill = badge
+  // sem borda (mesmo visual de ColorSelect compact), pra selects embutidos
+  // em card de kanban ao lado de outros badges (ex.: responsável).
+  variant?: 'default' | 'inline' | 'xs' | 'pill'
   icon?: ReactNode
   searchable?: boolean
 }
@@ -31,6 +33,7 @@ const TRIGGER_CLASS: Record<NonNullable<StyledSelectProps['variant']>, string> =
   default: 'w-full flex items-center gap-1.5 px-3 py-2 rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-60 disabled:cursor-not-allowed',
   inline: 'flex items-center gap-1.5 px-3 py-2 rounded-lg border border-border bg-background text-foreground disabled:opacity-60 disabled:cursor-not-allowed',
   xs: 'inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-border bg-background text-foreground text-xs shrink-0 disabled:opacity-60 disabled:cursor-not-allowed',
+  pill: 'inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-600 text-[10px] font-medium shrink-0 max-w-full disabled:opacity-60 disabled:cursor-not-allowed',
 }
 
 // Dropdown neutro (sem cor por opção), mesmo padrão visual do ColorSelect
@@ -57,10 +60,10 @@ export default function StyledSelect({
           className={`${TRIGGER_CLASS[variant]} ${className || ''}`}
         >
           {icon}
-          <span className={`truncate text-left flex-1 min-w-0 ${variant !== 'xs' ? 'text-sm' : ''} ${selected ? '' : 'text-muted-foreground'}`}>
+          <span className={`truncate text-left flex-1 min-w-0 ${variant === 'xs' || variant === 'pill' ? '' : 'text-sm'} ${selected ? '' : 'text-muted-foreground'}`}>
             {selected?.label || placeholder}
           </span>
-          <ChevronDown className={`shrink-0 opacity-50 ${variant === 'xs' ? 'w-3 h-3' : 'w-3.5 h-3.5'}`} />
+          <ChevronDown className={`shrink-0 opacity-50 ${variant === 'pill' ? 'w-2.5 h-2.5' : variant === 'xs' ? 'w-3 h-3' : 'w-3.5 h-3.5'}`} />
         </button>
       </PopoverTrigger>
       <PopoverContent className="w-64 p-0" align="start" onClick={stop} onPointerDown={stop}>

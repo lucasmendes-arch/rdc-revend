@@ -1007,7 +1007,7 @@ Módulo Departamento Pessoal (DP) — assume o candidato a partir do momento em 
 > `role_title` é snapshot de `job_openings.role_title` no momento da promoção (mesmo padrão de `job_openings` copiando de `job_roles`).
 > `current_stage` válidos dependem de `employment_type` (CHECK composto `employee_processes_current_stage_valid`):
 > - `clt`: `contratacao → experiencia → decisao → (efetivado | encerrado)`
-> - `mei`: `contrato_formacao → formacao → decisao_formacao → contratacao → acompanhamento_90d → (efetivado | encerrado)` — `contrato_formacao`/`formacao`/`decisao_formacao` só acontecem quando `job_roles.requires_experience = false` pro cargo da vaga do candidato; `promote_candidate_to_dp` decide o `current_stage` inicial sozinho (`contrato_formacao` se não exige experiência, `contratacao` direto se exige) — ver `job_roles.requires_experience`.
+> - `mei`: `formacao → decisao_formacao → contratacao → acompanhamento_90d → (efetivado | encerrado)` — `formacao`/`decisao_formacao` (rótulo no frontend: "Curso de Formação"/"Decisão (Formação)") só acontecem quando `job_roles.requires_experience = false` pro cargo da vaga do candidato; `promote_candidate_to_dp` decide o `current_stage` inicial sozinho (`formacao` se não exige experiência, `contratacao` direto se exige) — ver `job_roles.requires_experience`. Etapa `contrato_formacao` removida em `20260724000003` (`formacao` virou a etapa inicial da trilha).
 > - `contratacao` é uma etapa única que concentra o **checklist** de documentos + exame admissional (`employee_documents`, item `aso_admissional`) + assinatura de contrato (aba própria, `employee_contracts`) + onboarding/treinamento (`onboarding_completed`/`training_completed` abaixo) — não são etapas de kanban separadas.
 > `onboarding_completed`: institucional, mesmo checklist pra todo `employment_type`. `training_applicable`/`training_completed`: treinamento técnico só aplicável a determinados cargos (ex: recepcionista) — cabeleireiro sem experiência já cobre a parte técnica em `formacao` (`mei_sem_experiencia`), então `training_applicable` normalmente vira `false` nesse caso. Ambas editáveis manualmente na aba "Documentos" do card — não fazem parte do CHECK de `current_stage`, são só um checklist de apoio.
 > `status` válidos: `'em_andamento'`, `'ativo'`, `'encerrado'` — sincronizado automaticamente por trigger (`trg_employee_processes_sync_status`) a partir de `current_stage`: `efetivado` → `ativo` (+ `activated_at`), `encerrado` → `encerrado`, qualquer outro → `em_andamento`. Não editar `status` direto — mude `current_stage`.
@@ -1019,7 +1019,7 @@ Módulo Departamento Pessoal (DP) — assume o candidato a partir do momento em 
 ---
 
 ### `employee_documents`
-Checklist de documentos de admissão — fixa por `employment_type`, definida em código (`src/lib/dpConstants.ts`, espelhada na RPC `promote_candidate_to_dp`), populada automaticamente na promoção. Não configurável nesta etapa.
+Checklist de documentos de admissão que são de fato **arquivo escaneado** — fixa por `employment_type`, definida em código (`src/lib/dpConstants.ts`, espelhada na RPC `promote_candidate_to_dp`), populada automaticamente na promoção. Não configurável nesta etapa.
 
 | Coluna | Tipo | Nullable | Default | FK |
 |--------|------|----------|---------|-----|
@@ -1031,10 +1031,10 @@ Checklist de documentos de admissão — fixa por `employment_type`, definida em
 | created_at | timestamptz | NO | `now()` | — |
 | updated_at | timestamptz | NO | `now()` | — |
 
-> `document_type` válidos (união das duas checklists): `rg_cpf`, `comprovante_residencia`, `ctps`, `pis_pasep`, `titulo_eleitor`, `comprovante_escolaridade`, `foto_3x4`, `aso_admissional`, `dados_bancarios`, `cnpj_ccmei`.
-> Checklist CLT (9 itens): todos exceto `cnpj_ccmei`. Checklist MEI sem/com experiência (5 itens, iguais pros dois): `rg_cpf`, `comprovante_residencia`, `cnpj_ccmei`, `dados_bancarios`, `foto_3x4`.
+> `document_type` válidos: `ctps`, `pis_pasep`, `titulo_eleitor`, `comprovante_escolaridade`, `aso_admissional`.
+> Checklist CLT (5 itens, todos os válidos acima). Checklist MEI: nenhum item — os 4 que tinha (`rg_cpf`, `comprovante_residencia`, `cnpj_ccmei`, `dados_bancarios`) viraram campos de texto em `employee_contract_data` (`20260724000004`, ver abaixo). `foto_3x4` removida em `20260724000003` (candidato já tem `candidates.photo_url`).
 > `status` válidos: `'pendente'`, `'enviado'`, `'aprovado'`.
-> `file_url` fica `NULL` nesta etapa — upload real pro R2 é fora de escopo (UI é stub, "Anexar arquivo" desabilitado).
+> `file_url`: upload real pro R2 (reaproveita a pasta `candidates/resumes` já liberada na edge function `upload-product-image` — criar pasta própria exigiria redeploy + ajuste do gate de autenticação, que hoje é Estoque, não RH).
 > RLS: `has_rh_access()` pra tudo (`authenticated`).
 
 ---
@@ -1060,13 +1060,14 @@ Contrato(s) do processo de admissão — normalmente 0 ou 1 linha por processo/t
 ---
 
 ### `employee_contract_data`
-Dados pessoais do colaborador necessários pro corpo do contrato — não existem em `candidates` nem em `employee_processes`, que só guardam nome/whatsapp/foto. 1:1 com o processo, preenchido na aba "Dados para contrato" de `/admin/dp/contratos`. Criada em `20260722000001`, campos confirmados/ajustados em `20260722000004` a partir dos templates reais de formação/desligamento.
+Dados pessoais do colaborador necessários pro corpo do contrato — não existem em `candidates` nem em `employee_processes`, que só guardam nome/whatsapp/foto. 1:1 com o processo. Criada em `20260722000001`, campos confirmados/ajustados em `20260722000004` a partir dos templates reais de formação/desligamento. Editável em dois lugares que apontam pra mesma tabela (mesma chave de query `['dp-contract-data', processId]`, sem duplicação): a aba "Dados para contrato" de `/admin/dp/contratos` (formulário completo, todos os campos) e a aba "Documentos" do card de Contratação (`cpf`/`rg`/`address`/`pix_key`/`cnpj`, aplicação imediata por campo — `20260724000004`, substituiu os itens de checklist `rg_cpf`/`comprovante_residencia`/`dados_bancarios`/`cnpj_ccmei` de `employee_documents`).
 
 | Coluna | Tipo | Nullable | Default | FK |
 |--------|------|----------|---------|-----|
 | process_id | uuid | NO (PK) | — | employee_processes.id (ON DELETE CASCADE) |
 | cpf | text | YES | NULL | — |
 | rg | text | YES | NULL | — |
+| cnpj | text | YES | NULL | — |
 | birth_date | date | YES | NULL | — |
 | marital_status | text | YES | NULL | — |
 | nationality | text | NO | `'brasileira'` | — |
@@ -1079,6 +1080,8 @@ Dados pessoais do colaborador necessários pro corpo do contrato — não existe
 | updated_at | timestamptz | NO | `now()` | — |
 
 > `address` é texto livre (endereço completo), sem campos separados por rua/bairro/cidade.
+> `cnpj` (`20260724000004`): só relevante pra `employment_type='mei'` (card exibe o campo condicionalmente); sem uso em template de contrato ainda, mas já tem casa própria em vez de ficar solto num `employee_documents.value` inexistente.
+> `cpf`/`cnpj`: campo restrito a dígitos no frontend (11/14 respectivamente), sem máscara de pontuação salva.
 > `email` (`20260722000004`): exigido pelo Contrato de Formação (`{{email}}`) — não existia em lugar nenhum do sistema antes.
 > Campos exigidos por `contract_type` ficam em `src/lib/dpConstants.ts` (`REQUIRED_CONTRACT_DATA_FIELDS`), duplicado nas edge functions (Deno não compartilha build com o frontend). Formação confirmada não precisa de `rg`/`marital_status`/`nationality`/dados bancários (curso gratuito, sem vínculo, sem pagamento) — esses campos continuam existindo na tabela só porque `prestacao_servico` (ainda sem template real) provavelmente vai precisar deles.
 > RLS: `has_rh_access()` pra tudo (`authenticated`).

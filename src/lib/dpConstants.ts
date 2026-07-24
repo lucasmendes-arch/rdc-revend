@@ -11,8 +11,9 @@
 // "MEI com/sem experiência". Experiência é característica do CARGO
 // (job_roles.requires_experience), não uma escolha manual aqui: o backend
 // (promote_candidate_to_dp) decide sozinho se o processo nasce em
-// 'contrato_formacao' (cargo sem experiência exigida) ou direto em
-// 'contratacao', a partir do cargo da vaga do candidato.
+// 'formacao' (cargo sem experiência exigida) ou direto em 'contratacao', a
+// partir do cargo da vaga do candidato. Etapa 'contrato_formacao' removida
+// (20260724000003) — 'formacao' passou a ser a etapa inicial da trilha.
 export type EmploymentType = 'clt' | 'mei'
 
 export const EMPLOYMENT_TYPE_LABELS: Record<EmploymentType, string> = {
@@ -43,12 +44,11 @@ export const STAGE_COLUMNS_BY_EMPLOYMENT_TYPE: Record<EmploymentType, StageColum
     { stage: 'encerrado', label: 'Encerrado', accent: '#DC2626', bg: '#FEE2E2' },
   ],
   // União dos dois fluxos possíveis — processos de cargo sem experiência
-  // exigida passam por contrato_formacao/formacao/decisao_formacao antes de
-  // 'contratacao'; processos de cargo com experiência exigida nascem direto
-  // em 'contratacao'. Os dois tipos passam por acompanhamento_90d.
+  // exigida passam por formacao/decisao_formacao antes de 'contratacao';
+  // processos de cargo com experiência exigida nascem direto em
+  // 'contratacao'. Os dois tipos passam por acompanhamento_90d.
   mei: [
-    { stage: 'contrato_formacao', label: 'Contrato de Formação', accent: '#64748B', bg: '#F1F5F9' },
-    { stage: 'formacao', label: 'Formação', accent: '#7C3AED', bg: '#EDE9FE' },
+    { stage: 'formacao', label: 'Curso de Formação', accent: '#7C3AED', bg: '#EDE9FE' },
     { stage: 'decisao_formacao', label: 'Decisão (Formação)', accent: '#EA580C', bg: '#FFEDD5' },
     { stage: 'contratacao', label: 'Contratação', accent: '#2563EB', bg: '#DBEAFE' },
     { stage: 'acompanhamento_90d', label: 'Acompanhamento 90d', accent: '#65A30D', bg: '#ECFCCB' },
@@ -69,34 +69,31 @@ export function getStageColumn(employmentType: EmploymentType, stage: string): S
 // (validado em Contratacao.tsx) — as colunas exclusivas do outro tipo
 // ficam visíveis mas não são destino válido.
 export const ALL_STAGE_COLUMNS: StageColumn[] = [
-  STAGE_COLUMNS_BY_EMPLOYMENT_TYPE.mei[0], // contrato_formacao
-  STAGE_COLUMNS_BY_EMPLOYMENT_TYPE.mei[1], // formacao
-  STAGE_COLUMNS_BY_EMPLOYMENT_TYPE.mei[2], // decisao_formacao
+  STAGE_COLUMNS_BY_EMPLOYMENT_TYPE.mei[0], // formacao
+  STAGE_COLUMNS_BY_EMPLOYMENT_TYPE.mei[1], // decisao_formacao
   STAGE_COLUMNS_BY_EMPLOYMENT_TYPE.clt[0], // contratacao (compartilhada)
   STAGE_COLUMNS_BY_EMPLOYMENT_TYPE.clt[1], // experiencia
   STAGE_COLUMNS_BY_EMPLOYMENT_TYPE.clt[2], // decisao
-  STAGE_COLUMNS_BY_EMPLOYMENT_TYPE.mei[4], // acompanhamento_90d
+  STAGE_COLUMNS_BY_EMPLOYMENT_TYPE.mei[3], // acompanhamento_90d
   STAGE_COLUMNS_BY_EMPLOYMENT_TYPE.clt[3], // efetivado (compartilhada)
   STAGE_COLUMNS_BY_EMPLOYMENT_TYPE.clt[4], // encerrado (compartilhada)
 ]
 
-// Checklist fixa de documentos — mesmos slugs em src/lib/dpConstants.ts e no
-// CHECK/RPC do banco. MEI sem/com experiência usam a mesma lista.
+// Checklist fixa de documentos — só o que é de fato um arquivo escaneado.
+// `foto_3x4` removida (20260724000003) — o candidato já tem foto de perfil
+// (candidates.photo_url) trazida do funil de RH, redundante pedir de novo.
+// `rg_cpf`/`comprovante_residencia`/`dados_bancarios`/`cnpj_ccmei` removidos
+// (20260724000004) — viraram campos de texto (rg/cpf/address/pix_key/cnpj em
+// employee_contract_data), não fazem mais parte deste checklist de arquivo.
 export type DocumentSlug =
-  | 'rg_cpf' | 'comprovante_residencia' | 'ctps' | 'pis_pasep' | 'titulo_eleitor'
-  | 'comprovante_escolaridade' | 'foto_3x4' | 'aso_admissional' | 'dados_bancarios' | 'cnpj_ccmei'
+  | 'ctps' | 'pis_pasep' | 'titulo_eleitor' | 'comprovante_escolaridade' | 'aso_admissional'
 
 export const DOCUMENT_CHECKLIST_LABELS: Record<DocumentSlug, string> = {
-  rg_cpf: 'RG e CPF',
-  comprovante_residencia: 'Comprovante de residência',
   ctps: 'Carteira de Trabalho (CTPS)',
   pis_pasep: 'PIS/PASEP',
   titulo_eleitor: 'Título de eleitor',
   comprovante_escolaridade: 'Comprovante de escolaridade',
-  foto_3x4: 'Foto 3x4',
   aso_admissional: 'Exame admissional (ASO)',
-  dados_bancarios: 'Dados bancários',
-  cnpj_ccmei: 'Cartão CNPJ (CCMEI)',
 }
 
 export type DocumentStatus = 'pendente' | 'enviado' | 'aprovado'
@@ -126,17 +123,17 @@ export const CONTRACT_TYPE_LABELS: Record<ContractType, string> = {
 // migration 20260722000005), não por um current_stage estável.
 export function resolveAutoContractType(employmentType: EmploymentType, currentStage: string): ContractType | null {
   if (employmentType !== 'mei') return null
-  return ['contrato_formacao', 'formacao', 'decisao_formacao'].includes(currentStage)
+  return ['formacao', 'decisao_formacao'].includes(currentStage)
     ? 'formacao'
     : 'prestacao_servico'
 }
 
 export type ContractDataField =
-  | 'cpf' | 'rg' | 'birth_date' | 'marital_status' | 'nationality' | 'address' | 'email'
+  | 'cpf' | 'rg' | 'cnpj' | 'birth_date' | 'marital_status' | 'nationality' | 'address' | 'email'
   | 'bank_name' | 'bank_agency' | 'bank_account' | 'pix_key'
 
 export const CONTRACT_DATA_FIELD_LABELS: Record<ContractDataField, string> = {
-  cpf: 'CPF', rg: 'RG', birth_date: 'Data de nascimento', marital_status: 'Estado civil',
+  cpf: 'CPF', rg: 'RG', cnpj: 'CNPJ', birth_date: 'Data de nascimento', marital_status: 'Estado civil',
   nationality: 'Nacionalidade', address: 'Endereço completo', email: 'E-mail',
   bank_name: 'Banco', bank_agency: 'Agência', bank_account: 'Conta', pix_key: 'Chave PIX',
 }

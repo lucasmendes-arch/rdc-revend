@@ -3,6 +3,12 @@
 // ProcessoDetailModal.
 import type { EmploymentType, DocumentSlug, DocumentStatus, ContractType } from '@/lib/dpConstants'
 
+export interface ProcessoCandidateAnswer {
+  value: string
+  form_fields: { field_key: string; label: string; field_type: string; show_on_card: boolean } | null
+}
+export interface ProcessoCandidateTag { tags: { id: string; name: string; color: string } | null }
+
 export interface Processo {
   id: string
   candidate_id: string
@@ -17,7 +23,21 @@ export interface Processo {
   training_applicable: boolean
   training_completed: boolean
   created_at: string
-  candidates: { id: string; name: string; whatsapp: string; photo_url: string | null; assignee_id: string | null } | null
+  candidates: {
+    id: string
+    name: string
+    age: number | null
+    whatsapp: string
+    photo_url: string | null
+    assignee_id: string | null
+    source: 'formulario' | 'manual'
+    notes: string | null
+    start_date: string | null
+    due_date: string | null
+    resume_url: string | null
+    candidate_answers: ProcessoCandidateAnswer[]
+    candidate_tags: ProcessoCandidateTag[]
+  } | null
   stores: { name: string } | null
 }
 
@@ -32,6 +52,7 @@ export interface DocumentRow {
   id: string
   document_type: DocumentSlug
   status: DocumentStatus
+  file_url: string | null
 }
 
 export interface ContractRow {
@@ -47,6 +68,7 @@ export interface ContractPersonalData {
   process_id: string
   cpf: string | null
   rg: string | null
+  cnpj: string | null
   birth_date: string | null
   marital_status: string | null
   nationality: string
