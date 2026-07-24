@@ -22,7 +22,10 @@ export interface Processo {
   onboarding_completed: boolean
   training_applicable: boolean
   training_completed: boolean
+  drive_folder_url: string | null
+  experience_renewed_at: string | null
   created_at: string
+  updated_at: string
   candidates: {
     id: string
     name: string

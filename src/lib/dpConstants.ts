@@ -46,12 +46,12 @@ export const STAGE_COLUMNS_BY_EMPLOYMENT_TYPE: Record<EmploymentType, StageColum
   // União dos dois fluxos possíveis — processos de cargo sem experiência
   // exigida passam por formacao/decisao_formacao antes de 'contratacao';
   // processos de cargo com experiência exigida nascem direto em
-  // 'contratacao'. Os dois tipos passam por acompanhamento_90d.
+  // 'contratacao'. Etapa 'acompanhamento_90d' removida (20260724000006) —
+  // 'contratacao' leva direto pra efetivado/encerrado.
   mei: [
     { stage: 'formacao', label: 'Curso de Formação', accent: '#7C3AED', bg: '#EDE9FE' },
     { stage: 'decisao_formacao', label: 'Decisão (Formação)', accent: '#EA580C', bg: '#FFEDD5' },
     { stage: 'contratacao', label: 'Contratação', accent: '#2563EB', bg: '#DBEAFE' },
-    { stage: 'acompanhamento_90d', label: 'Acompanhamento 90d', accent: '#65A30D', bg: '#ECFCCB' },
     { stage: 'efetivado', label: 'Efetivado', accent: '#16A34A', bg: '#DCFCE7' },
     { stage: 'encerrado', label: 'Encerrado', accent: '#DC2626', bg: '#FEE2E2' },
   ],
@@ -61,20 +61,64 @@ export function getStageColumn(employmentType: EmploymentType, stage: string): S
   return STAGE_COLUMNS_BY_EMPLOYMENT_TYPE[employmentType].find((c) => c.stage === stage)
 }
 
+const DAY_MS = 24 * 60 * 60 * 1000
+
+type ExperienceProcess = {
+  employment_type: EmploymentType
+  activated_at: string | null
+  experience_renewed_at?: string | null
+}
+
+export interface ExperienceInfo {
+  label: string
+  endDate: Date
+}
+
+// Tag + prazo do período de experiência exibidos ao lado do nome em
+// Colaboradores.tsx e no header do ProcessoDetailModal — activated_at é
+// sempre meia-noite UTC (RPC/promoção só recebem a data, sem hora), então
+// somar dias inteiros preserva isso.
+// - MEI: janela única e informal de 90d (não existe mais etapa de kanban
+//   pra isso, ver 20260724000006), sem renovação — dispara sozinha.
+// - CLT: contrato de experiência real de 45d, renovável uma vez por mais
+//   45d via botão no card (experience_renewed_at) — janela final de 90d
+//   contados da efetivação, não 45d contados da renovação (mesmo teto do
+//   MEI, só que em 2 tags separadas: "1/2" antes de renovar, "2/2" depois).
+export function getExperienceInfo(p: ExperienceProcess): ExperienceInfo | null {
+  if (!p.activated_at) return null
+  const activatedMs = new Date(p.activated_at).getTime()
+  if (p.employment_type === 'mei') {
+    return { label: 'Exp. 90d', endDate: new Date(activatedMs + 90 * DAY_MS) }
+  }
+  if (p.employment_type === 'clt') {
+    if (p.experience_renewed_at) {
+      return { label: 'Exp. 45d 2/2', endDate: new Date(activatedMs + 90 * DAY_MS) }
+    }
+    return { label: 'Exp. 45d 1/2', endDate: new Date(activatedMs + 45 * DAY_MS) }
+  }
+  return null
+}
+
+// Só controla se a tag ainda deve aparecer (janela corrente) — a data em si
+// continua exibida na coluna "Fim Experiência" mesmo depois de vencida, não
+// é regra de negócio crítica, só um aviso visual.
+export function isExperienceTagActive(p: ExperienceProcess): boolean {
+  const info = getExperienceInfo(p)
+  return !!info && Date.now() < info.endDate.getTime()
+}
+
 // União ordenada das colunas de CLT + MEI, pra visão combinada "Todos" —
 // segue o funil geral (formação exclusiva do MEI primeiro, contratação
-// compartilhada, experiência/decisão exclusivas do CLT, acompanhamento
-// exclusivo do MEI, efetivado/encerrado compartilhados). Um processo só
-// pode ser arrastado entre colunas do seu próprio employment_type
-// (validado em Contratacao.tsx) — as colunas exclusivas do outro tipo
-// ficam visíveis mas não são destino válido.
+// compartilhada, experiência/decisão exclusivas do CLT, efetivado/encerrado
+// compartilhados). Um processo só pode ser arrastado entre colunas do seu
+// próprio employment_type (validado em Contratacao.tsx) — as colunas
+// exclusivas do outro tipo ficam visíveis mas não são destino válido.
 export const ALL_STAGE_COLUMNS: StageColumn[] = [
   STAGE_COLUMNS_BY_EMPLOYMENT_TYPE.mei[0], // formacao
   STAGE_COLUMNS_BY_EMPLOYMENT_TYPE.mei[1], // decisao_formacao
   STAGE_COLUMNS_BY_EMPLOYMENT_TYPE.clt[0], // contratacao (compartilhada)
   STAGE_COLUMNS_BY_EMPLOYMENT_TYPE.clt[1], // experiencia
   STAGE_COLUMNS_BY_EMPLOYMENT_TYPE.clt[2], // decisao
-  STAGE_COLUMNS_BY_EMPLOYMENT_TYPE.mei[3], // acompanhamento_90d
   STAGE_COLUMNS_BY_EMPLOYMENT_TYPE.clt[3], // efetivado (compartilhada)
   STAGE_COLUMNS_BY_EMPLOYMENT_TYPE.clt[4], // encerrado (compartilhada)
 ]

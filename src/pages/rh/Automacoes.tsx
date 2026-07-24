@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
+import { useEscapeToClose } from '@/hooks/useEscapeToClose'
 import { toast } from 'sonner'
 import { Loader, Plus, Zap, Tag as TagIcon, MessageSquare, KeyRound, Pencil, Trash2, GripVertical, X } from 'lucide-react'
 import {
@@ -362,6 +363,7 @@ function AutomationEditorModal({
   automation: Automation | null
   onClose: () => void
 }) {
+  useEscapeToClose(onClose)
   const queryClient = useQueryClient()
   const isEdit = !!automation
   const [form, setForm] = useState(automation ? {
@@ -593,6 +595,8 @@ function AutomationsTab() {
   const [editing, setEditing] = useState<Automation | null | 'new'>(null)
   const [deleteConfirm, setDeleteConfirm] = useState<Automation | null>(null)
 
+  useEscapeToClose(() => setDeleteConfirm(null), !!deleteConfirm)
+
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }))
 
   const { data: automations = [], isLoading } = useQuery<Automation[]>({
@@ -710,6 +714,9 @@ function TagsTab() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState(EMPTY_TAG)
   const [deleteConfirm, setDeleteConfirm] = useState<RhTag | null>(null)
+
+  useEscapeToClose(closeModal, modalOpen)
+  useEscapeToClose(() => setDeleteConfirm(null), !!deleteConfirm)
 
   const { data: tags = [], isLoading } = useQuery<RhTag[]>({
     queryKey: ['rh-tags'],
@@ -838,6 +845,9 @@ function TemplatesTab() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState(EMPTY_TEMPLATE)
   const [deleteConfirm, setDeleteConfirm] = useState<WhatsappTemplate | null>(null)
+
+  useEscapeToClose(closeModal, modalOpen)
+  useEscapeToClose(() => setDeleteConfirm(null), !!deleteConfirm)
 
   const { data: templates = [], isLoading } = useQuery<WhatsappTemplate[]>({
     queryKey: ['rh-whatsapp-templates'],
@@ -975,6 +985,7 @@ function TemplatesTab() {
 // ============================================================
 
 function CredentialEditModal({ store, onClose }: { store: RhStore; onClose: () => void }) {
+  useEscapeToClose(onClose)
   const queryClient = useQueryClient()
   const [url, setUrl] = useState('')
   const [token, setToken] = useState('')

@@ -7,16 +7,40 @@ import { buttonVariants } from "@/components/ui/button";
 
 export type CalendarProps = React.ComponentProps<typeof DayPicker>;
 
-function Calendar({ className, classNames, showOutsideDays = true, ...props }: CalendarProps) {
+function Calendar({
+  className,
+  classNames,
+  showOutsideDays = true,
+  // Sem isso, o mês exibido "pula" de tamanho dependendo de ter 4, 5 ou 6
+  // semanas — fixedWeeks sempre reserva 6 linhas, então o popover não muda
+  // de altura ao navegar entre meses.
+  fixedWeeks = true,
+  // Clicar no mês/ano do topo abre um select nativo pra pular direto pra
+  // qualquer mês/ano dentro do intervalo (em vez de só setas de mês a mês).
+  captionLayout = "dropdown-buttons",
+  fromYear = new Date().getFullYear() - 10,
+  toYear = new Date().getFullYear() + 10,
+  ...props
+}: CalendarProps) {
   return (
     <DayPicker
       showOutsideDays={showOutsideDays}
+      fixedWeeks={fixedWeeks}
+      captionLayout={captionLayout}
+      fromYear={fromYear}
+      toYear={toYear}
       className={cn("p-3", className)}
       classNames={{
         months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
         month: "space-y-4",
         caption: "flex justify-center pt-1 relative items-center",
-        caption_label: "text-sm font-medium",
+        caption_label: "text-sm font-medium inline-flex items-center gap-1 px-2 py-1 rounded-md hover:bg-surface-alt transition-colors",
+        caption_dropdowns: "flex items-center gap-1.5",
+        dropdown_month: "relative inline-flex items-center",
+        dropdown_year: "relative inline-flex items-center",
+        dropdown: "absolute inset-0 w-full cursor-pointer appearance-none opacity-0",
+        dropdown_icon: "w-2 h-2 ml-1 opacity-60",
+        vhidden: "sr-only",
         nav: "space-x-1 flex items-center",
         nav_button: cn(
           buttonVariants({ variant: "outline" }),

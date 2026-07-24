@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { X } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import { useEscapeToClose } from '@/hooks/useEscapeToClose'
 
 interface StoreLegalData {
   id: string
@@ -75,6 +76,8 @@ function StoreRow({ store }: { store: StoreLegalData }) {
 // por unidade (confirmado com o usuário), sem tela de admin dedicada até
 // agora — só usado aqui, na página de geração de contrato.
 export default function LojasDadosModal({ onClose }: { onClose: () => void }) {
+  useEscapeToClose(onClose)
+
   const { data: stores = [], isLoading } = useQuery<StoreLegalData[]>({
     queryKey: ['dp-stores-legal-data'],
     queryFn: async () => {

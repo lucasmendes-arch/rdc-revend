@@ -6,16 +6,32 @@ import { supabase } from '@/lib/supabase'
 import { formatPhone } from '@/lib/phone'
 import AdminLayout from '@/components/admin/AdminLayout'
 import StyledSelect from '@/components/ui/styled-select'
+import { DateField } from '@/components/ui/date-field'
 import ProcessoDetailModal from '@/components/dp/ProcessoDetailModal'
-import { EMPLOYMENT_TYPE_LABELS, type EmploymentType } from '@/lib/dpConstants'
+import { EMPLOYMENT_TYPE_LABELS, isExperienceTagActive, getExperienceInfo, type EmploymentType } from '@/lib/dpConstants'
 import type { Processo } from '@/lib/dpTypes'
+import { useEscapeToClose } from '@/hooks/useEscapeToClose'
 
 interface Store { id: string; name: string }
 interface JobRoleOption { id: string; title: string }
 
+// activated_at é timestamptz, mas gravado sempre à meia-noite UTC (RPC recebe
+// só a data, sem hora — ver register_existing_employee). Formatar no fuso
+// local do navegador rola a data pra trás em fusos negativos (Brasil, UTC-3):
+// meia-noite UTC de 09/07 vira 08/07 21h local. Forçar timeZone: 'UTC' lê de
+// volta o mesmo dia que foi gravado, independente do fuso de quem visualiza.
 function formatDateBR(iso: string | null) {
   if (!iso) return '—'
-  return new Date(iso).toLocaleDateString('pt-BR')
+  return new Date(iso).toLocaleDateString('pt-BR', { timeZone: 'UTC' })
+}
+
+// updated_at é timestamp real (trg_employee_processes_sync_status seta
+// now() a cada INSERT/UPDATE) — ao contrário de activated_at, tem hora que
+// faz sentido de verdade, então formata no fuso local de quem vê (sem UTC).
+function formatDateTimeBR(iso: string) {
+  return new Date(iso).toLocaleString('pt-BR', {
+    day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
+  })
 }
 
 function initials(name: string) {
@@ -51,7 +67,7 @@ const EMPTY_CREATE_FORM = {
 // Papel de visualização/gestão do colaborador já efetivado — sem
 // drag-and-drop de etapas de admissão (isso é o kanban de Contratação).
 // A única transição de estado possível aqui é encerrar o vínculo.
-export default function DpColaboradores() {
+export default function DpParceiros() {
   const queryClient = useQueryClient()
   const [storeId, setStoreId] = useState('')
   const [employmentType, setEmploymentType] = useState<EmploymentType | ''>('')
@@ -59,6 +75,9 @@ export default function DpColaboradores() {
   const [confirmEncerrar, setConfirmEncerrar] = useState<Processo | null>(null)
   const [createOpen, setCreateOpen] = useState(false)
   const [createForm, setCreateForm] = useState(EMPTY_CREATE_FORM)
+
+  useEscapeToClose(() => setConfirmEncerrar(null), !!confirmEncerrar)
+  useEscapeToClose(closeCreate, createOpen)
 
   const { data: stores = [] } = useQuery<Store[]>({
     queryKey: ['dp-stores'],
@@ -80,12 +99,12 @@ export default function DpColaboradores() {
     staleTime: 5 * 60 * 1000,
   })
 
-  const { data: colaboradores = [], isLoading } = useQuery<Processo[]>({
-    queryKey: ['dp-colaboradores-ativos', storeId, employmentType],
+  const { data: parceiros = [], isLoading } = useQuery<Processo[]>({
+    queryKey: ['dp-parceiros-ativos', storeId, employmentType],
     queryFn: async () => {
       let query = supabase
         .from('employee_processes')
-        .select('id, candidate_id, employment_type, store_id, role_title, current_stage, status, started_at, activated_at, onboarding_completed, training_applicable, training_completed, created_at, candidates(id, name, age, whatsapp, photo_url, assignee_id, source, notes, start_date, due_date, resume_url, candidate_answers(value, form_fields(field_key, label, field_type, show_on_card)), candidate_tags(tags(id, name, color))), stores(name)')
+        .select('id, candidate_id, employment_type, store_id, role_title, current_stage, status, started_at, activated_at, onboarding_completed, training_applicable, training_completed, drive_folder_url, experience_renewed_at, created_at, updated_at, candidates(id, name, age, whatsapp, photo_url, assignee_id, source, notes, start_date, due_date, resume_url, candidate_answers(value, form_fields(field_key, label, field_type, show_on_card)), candidate_tags(tags(id, name, color))), stores(name)')
         .eq('status', 'ativo')
         .order('activated_at', { ascending: false })
       if (storeId) query = query.eq('store_id', storeId)
@@ -102,7 +121,7 @@ export default function DpColaboradores() {
       if (error) throw error
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['dp-colaboradores-ativos'] })
+      queryClient.invalidateQueries({ queryKey: ['dp-parceiros-ativos'] })
       queryClient.invalidateQueries({ queryKey: ['dp-processos'] })
       toast.success('Vínculo encerrado')
       setDetailProcesso(null)
@@ -128,8 +147,8 @@ export default function DpColaboradores() {
       if (error) throw error
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['dp-colaboradores-ativos'] })
-      toast.success('Colaborador cadastrado')
+      queryClient.invalidateQueries({ queryKey: ['dp-parceiros-ativos'] })
+      toast.success('Parceiro cadastrado')
       closeCreate()
     },
     onError: (err) => toast.error(`Erro ao cadastrar: ${err instanceof Error ? err.message : 'desconhecido'}`),
@@ -158,19 +177,10 @@ export default function DpColaboradores() {
       <div className="bg-card border-b border-border sticky top-0 z-30">
         <div className="px-4 sm:px-6 py-4 flex items-center justify-between gap-4 flex-wrap">
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-foreground">Colaboradores</h1>
-            <p className="text-sm text-muted-foreground mt-1">Colaboradores ativos (já efetivados)</p>
+            <h1 className="text-xl sm:text-2xl font-bold text-foreground">Parceiros</h1>
+            <p className="text-sm text-muted-foreground mt-1">Parceiros ativos (já efetivados)</p>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
-            <StyledSelect
-              variant="inline"
-              icon={<StoreIcon className="w-4 h-4 text-muted-foreground shrink-0" />}
-              value={storeId}
-              onChange={setStoreId}
-              options={stores.map((s) => ({ value: s.id, label: s.name }))}
-              emptyLabel="Todas as unidades"
-              placeholder="Todas as unidades"
-            />
             <StyledSelect
               variant="inline"
               value={employmentType}
@@ -185,9 +195,31 @@ export default function DpColaboradores() {
               className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg btn-action text-sm font-medium transition-colors"
             >
               <Plus className="w-4 h-4" />
-              <span className="hidden sm:inline">Cadastrar colaborador</span>
+              <span className="hidden sm:inline">Cadastrar parceiro</span>
             </button>
           </div>
+        </div>
+        {/* Mesma aba de unidades de src/pages/rh/Candidatos.tsx e
+            src/pages/dp/Contratacao.tsx — substitui o dropdown de unidade. */}
+        <div className="px-4 sm:px-6 flex gap-1 border-t border-border overflow-x-auto scrollbar-none">
+          <button onClick={() => setStoreId('')}
+            className={`flex items-center gap-1.5 px-3 py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+              storeId === ''
+                ? 'border-gold text-foreground'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}>
+            <StoreIcon className="w-4 h-4" />Todas as unidades
+          </button>
+          {stores.map((s) => (
+            <button key={s.id} onClick={() => setStoreId(s.id)}
+              className={`flex items-center gap-1.5 px-3 py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+                storeId === s.id
+                  ? 'border-gold text-foreground'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
+              }`}>
+              {s.name}
+            </button>
+          ))}
         </div>
       </div>
 
@@ -195,14 +227,14 @@ export default function DpColaboradores() {
         {isLoading ? (
           <div className="text-center py-16">
             <Loader className="w-8 h-8 animate-spin text-gold-text mx-auto mb-4" />
-            <p className="text-muted-foreground">Carregando colaboradores...</p>
+            <p className="text-muted-foreground">Carregando parceiros...</p>
           </div>
-        ) : colaboradores.length === 0 ? (
+        ) : parceiros.length === 0 ? (
           <div className="text-center py-16">
             <Users className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
-            <p className="text-muted-foreground font-medium">Nenhum colaborador ativo encontrado.</p>
+            <p className="text-muted-foreground font-medium">Nenhum parceiro ativo encontrado.</p>
             <p className="text-sm text-muted-foreground mt-1">
-              Colaboradores aparecem aqui assim que efetivados no kanban de Contratação, ou cadastre direto quem já está ativo.
+              Parceiros aparecem aqui assim que efetivados no kanban de Contratação, ou cadastre direto quem já está ativo.
             </p>
           </div>
         ) : (
@@ -216,10 +248,12 @@ export default function DpColaboradores() {
                     <th className="px-4 py-3 text-left text-sm font-semibold text-foreground hidden sm:table-cell">Unidade</th>
                     <th className="px-4 py-3 text-left text-sm font-semibold text-foreground hidden md:table-cell">Vínculo</th>
                     <th className="px-4 py-3 text-left text-sm font-semibold text-foreground hidden lg:table-cell">Efetivado em</th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-foreground hidden lg:table-cell">Fim Experiência</th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-foreground hidden xl:table-cell">Última Atualização</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {colaboradores.map((p, index) => (
+                  {parceiros.map((p, index) => (
                     <tr
                       key={p.id}
                       onClick={() => setDetailProcesso(p)}
@@ -228,17 +262,37 @@ export default function DpColaboradores() {
                       <td className="px-4 py-3 text-sm font-medium text-foreground">
                         <div className="flex items-center gap-2.5">
                           <AvatarBubble name={p.candidates?.name || '?'} photoUrl={p.candidates?.photo_url} />
-                          {p.candidates?.name || 'Candidato removido'}
+                          <span>{p.candidates?.name || 'Candidato removido'}</span>
+                          {isExperienceTagActive(p) ? (
+                            <span
+                              className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300 shrink-0"
+                              title="Período de experiência em andamento"
+                            >
+                              {getExperienceInfo(p)?.label}
+                            </span>
+                          ) : (
+                            <span
+                              className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300 shrink-0"
+                              title="Período de experiência concluído"
+                            >
+                              Ativo
+                            </span>
+                          )}
                         </div>
                       </td>
                       <td className="px-4 py-3 text-sm text-muted-foreground">{p.role_title}</td>
                       <td className="px-4 py-3 text-sm text-muted-foreground hidden sm:table-cell">{p.stores?.name || '—'}</td>
-                      <td className="px-4 py-3 text-sm hidden md:table-cell">
-                        <span className="px-2 py-0.5 rounded-md bg-teal-100 text-teal-700 dark:bg-teal-500/20 dark:text-teal-300 text-xs font-medium">
-                          {EMPLOYMENT_TYPE_LABELS[p.employment_type]}
-                        </span>
+                      <td className="px-4 py-3 text-sm text-muted-foreground hidden md:table-cell">
+                        {EMPLOYMENT_TYPE_LABELS[p.employment_type]}
                       </td>
                       <td className="px-4 py-3 text-sm text-muted-foreground hidden lg:table-cell">{formatDateBR(p.activated_at)}</td>
+                      <td className="px-4 py-3 text-sm text-muted-foreground hidden lg:table-cell">
+                        {(() => {
+                          const info = getExperienceInfo(p)
+                          return info ? info.endDate.toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : '—'
+                        })()}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-muted-foreground hidden xl:table-cell">{formatDateTimeBR(p.updated_at)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -265,7 +319,7 @@ export default function DpColaboradores() {
           <div className="relative bg-card rounded-2xl shadow-2xl border border-border p-6 w-full max-w-sm">
             <h2 className="text-lg font-bold text-foreground mb-1">Encerrar vínculo?</h2>
             <p className="text-sm text-muted-foreground mb-5">
-              {confirmEncerrar.candidates?.name} sai da lista de colaboradores ativos. O registro é mantido, não é apagado.
+              {confirmEncerrar.candidates?.name} sai da lista de parceiros ativos. O registro é mantido, não é apagado.
             </p>
             <div className="flex gap-3">
               <button
@@ -289,13 +343,13 @@ export default function DpColaboradores() {
           <div className="absolute inset-0 bg-foreground/40 backdrop-blur-sm" onClick={closeCreate} />
           <div className="relative bg-card rounded-2xl shadow-2xl border border-border p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-5">
-              <h2 className="text-xl font-bold text-foreground">Cadastrar colaborador</h2>
+              <h2 className="text-xl font-bold text-foreground">Cadastrar parceiro</h2>
               <button onClick={closeCreate} className="p-1.5 rounded-lg hover:bg-surface-alt text-muted-foreground">
                 <X className="w-4 h-4" />
               </button>
             </div>
             <p className="text-xs text-muted-foreground mb-4">
-              Para quem já está ativo na empresa e nunca passou pelo funil de recrutamento do RH. Entra direto como colaborador efetivado.
+              Para quem já está ativo na empresa e nunca passou pelo funil de recrutamento do RH. Entra direto como parceiro efetivado.
             </p>
 
             <div className="space-y-4">
@@ -356,11 +410,9 @@ export default function DpColaboradores() {
 
               <div>
                 <label className="block text-sm font-medium text-foreground mb-1">Efetivado desde</label>
-                <input
-                  type="date"
+                <DateField
                   value={createForm.activated_at}
-                  onChange={(e) => setCreateForm({ ...createForm, activated_at: e.target.value })}
-                  className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                  onChange={(v) => setCreateForm({ ...createForm, activated_at: v || todayISO() })}
                 />
               </div>
             </div>

@@ -11,6 +11,7 @@ import {
   useDraggable, useDroppable, closestCenter, type DragEndEvent, type DragStartEvent,
 } from '@dnd-kit/core'
 import { supabase } from '@/lib/supabase'
+import { useEscapeToClose } from '@/hooks/useEscapeToClose'
 import { useImageUpload } from '@/hooks/useImageUpload'
 import { useFileUpload } from '@/hooks/useFileUpload'
 import AdminLayout from '@/components/admin/AdminLayout'
@@ -470,6 +471,10 @@ export default function RhCandidatos() {
   const resumeInputRef = useRef<HTMLInputElement>(null)
   const detailPhotoInputRef = useRef<HTMLInputElement>(null)
   const detailResumeInputRef = useRef<HTMLInputElement>(null)
+
+  useEscapeToClose(closeCreate, createOpen)
+  useEscapeToClose(closeDetail, !!detailCandidate)
+  useEscapeToClose(() => setPromoteCandidate(null), !!promoteCandidate)
 
   const { upload: uploadPhoto, uploading: uploadingPhoto } = useImageUpload()
   const { upload: uploadResume, uploading: uploadingResume } = useFileUpload()
