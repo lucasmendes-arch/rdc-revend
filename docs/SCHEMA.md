@@ -1000,14 +1000,19 @@ Módulo Departamento Pessoal (DP) — assume o candidato a partir do momento em 
 | onboarding_completed | boolean | NO | `false` | — |
 | training_applicable | boolean | NO | `true` | — |
 | training_completed | boolean | NO | `false` | — |
+| drive_folder_url | text | YES | NULL | — |
+| experience_renewed_at | timestamptz | YES | NULL | — |
 | created_at | timestamptz | NO | `now()` | — |
 | updated_at | timestamptz | NO | `now()` | — |
+
+> `drive_folder_url` (`20260724000007`): link da pasta do Drive do colaborador, editado na aba Documentos do card (`ProcessoDetailModal.tsx`) — referência interna, não valida formato.
+> `experience_renewed_at` (`20260724000008`): carimbo da renovação do contrato de experiência CLT (45d → +45d, teto de 90d desde `activated_at`), setado pelo botão "Renovar experiência" no card. Não se aplica a MEI (janela única de 90d, sem renovação formal). Ver `getExperienceInfo`/`isExperienceTagActive` em `src/lib/dpConstants.ts` — calcula a tag exibida ("Exp. 45d 1/2" → "Exp. 45d 2/2" → "Ativo" pra CLT; "Exp. 90d" → "Ativo" pra MEI) sem gravar a data de fim, só o carimbo de renovação.
 
 > `employment_type` válidos: `'clt'`, `'mei'` (`20260718000015` — antes existia `mei_sem_experiencia`/`mei_com_experiencia`, removido: não há diferença de tipo de contratação entre os dois, experiência é característica do **cargo**, não uma escolha manual na promoção).
 > `role_title` é snapshot de `job_openings.role_title` no momento da promoção (mesmo padrão de `job_openings` copiando de `job_roles`).
 > `current_stage` válidos dependem de `employment_type` (CHECK composto `employee_processes_current_stage_valid`):
 > - `clt`: `contratacao → experiencia → decisao → (efetivado | encerrado)`
-> - `mei`: `formacao → decisao_formacao → contratacao → acompanhamento_90d → (efetivado | encerrado)` — `formacao`/`decisao_formacao` (rótulo no frontend: "Curso de Formação"/"Decisão (Formação)") só acontecem quando `job_roles.requires_experience = false` pro cargo da vaga do candidato; `promote_candidate_to_dp` decide o `current_stage` inicial sozinho (`formacao` se não exige experiência, `contratacao` direto se exige) — ver `job_roles.requires_experience`. Etapa `contrato_formacao` removida em `20260724000003` (`formacao` virou a etapa inicial da trilha).
+> - `mei`: `formacao → decisao_formacao → contratacao → (efetivado | encerrado)` — `formacao`/`decisao_formacao` (rótulo no frontend: "Curso de Formação"/"Decisão (Formação)") só acontecem quando `job_roles.requires_experience = false` pro cargo da vaga do candidato; `promote_candidate_to_dp` decide o `current_stage` inicial sozinho (`formacao` se não exige experiência, `contratacao` direto se exige) — ver `job_roles.requires_experience`. Etapa `contrato_formacao` removida em `20260724000003` (`formacao` virou a etapa inicial da trilha). Etapa `acompanhamento_90d` removida em `20260724000006` (`contratacao` leva direto pra efetivado/encerrado).
 > - `contratacao` é uma etapa única que concentra o **checklist** de documentos + exame admissional (`employee_documents`, item `aso_admissional`) + assinatura de contrato (aba própria, `employee_contracts`) + onboarding/treinamento (`onboarding_completed`/`training_completed` abaixo) — não são etapas de kanban separadas.
 > `onboarding_completed`: institucional, mesmo checklist pra todo `employment_type`. `training_applicable`/`training_completed`: treinamento técnico só aplicável a determinados cargos (ex: recepcionista) — cabeleireiro sem experiência já cobre a parte técnica em `formacao` (`mei_sem_experiencia`), então `training_applicable` normalmente vira `false` nesse caso. Ambas editáveis manualmente na aba "Documentos" do card — não fazem parte do CHECK de `current_stage`, são só um checklist de apoio.
 > `status` válidos: `'em_andamento'`, `'ativo'`, `'encerrado'` — sincronizado automaticamente por trigger (`trg_employee_processes_sync_status`) a partir de `current_stage`: `efetivado` → `ativo` (+ `activated_at`), `encerrado` → `encerrado`, qualquer outro → `em_andamento`. Não editar `status` direto — mude `current_stage`.

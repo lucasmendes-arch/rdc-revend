@@ -230,7 +230,7 @@ export default function EstoqueHistorico() {
                 <tr className="border-b border-border bg-surface-alt">
                   <th className="w-8"></th>
                   <th className="px-4 py-2.5 text-left text-xs font-semibold text-foreground">Loja</th>
-                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-foreground">Colaborador</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-foreground">Parceiro</th>
                   <th className="px-4 py-2.5 text-center text-xs font-semibold text-foreground">Status</th>
                   <th className="px-4 py-2.5 text-left text-xs font-semibold text-foreground">Criada em</th>
                   <th className="px-4 py-2.5 text-left text-xs font-semibold text-foreground">Confirmada em</th>

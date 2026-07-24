@@ -21,6 +21,7 @@ import {
   type EmploymentType, type StageColumn,
 } from '@/lib/dpConstants'
 import type { Processo } from '@/lib/dpTypes'
+import { useEscapeToClose } from '@/hooks/useEscapeToClose'
 
 interface Store { id: string; name: string }
 interface AssignableUser { id: string; full_name: string | null }
@@ -343,6 +344,8 @@ export default function DpContratacao() {
   const [confirmEncerrar, setConfirmEncerrar] = useState<Processo | null>(null)
   const [cardPrefs, setCardPrefs] = useState<CardFieldPrefs>(loadCardPrefs)
 
+  useEscapeToClose(() => setConfirmEncerrar(null), !!confirmEncerrar)
+
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(KeyboardSensor)
@@ -422,7 +425,7 @@ export default function DpContratacao() {
     queryFn: async () => {
       let query = supabase
         .from('employee_processes')
-        .select('id, candidate_id, employment_type, store_id, role_title, current_stage, status, started_at, activated_at, onboarding_completed, training_applicable, training_completed, created_at, candidates(id, name, age, whatsapp, photo_url, assignee_id, source, notes, start_date, due_date, resume_url, candidate_answers(value, form_fields(field_key, label, field_type, show_on_card)), candidate_tags(tags(id, name, color))), stores(name)')
+        .select('id, candidate_id, employment_type, store_id, role_title, current_stage, status, started_at, activated_at, onboarding_completed, training_applicable, training_completed, drive_folder_url, experience_renewed_at, created_at, candidates(id, name, age, whatsapp, photo_url, assignee_id, source, notes, start_date, due_date, resume_url, candidate_answers(value, form_fields(field_key, label, field_type, show_on_card)), candidate_tags(tags(id, name, color))), stores(name)')
         .order('started_at', { ascending: false })
       if (employmentType !== 'todos') query = query.eq('employment_type', employmentType)
       if (storeId) query = query.eq('store_id', storeId)

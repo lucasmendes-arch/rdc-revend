@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
+import { useEscapeToClose } from '@/hooks/useEscapeToClose'
 import { Loader, Plus, Briefcase, Pencil, Trash2, Store as StoreIcon } from 'lucide-react'
 import { toast } from 'sonner'
 import AdminLayout from '@/components/admin/AdminLayout'
@@ -53,6 +54,9 @@ export default function RhVagas() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState(EMPTY_FORM)
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
+
+  useEscapeToClose(closeModal, modalOpen)
+  useEscapeToClose(() => setDeleteConfirm(null), !!deleteConfirm)
 
   const { data: stores = [] } = useQuery<Store[]>({
     queryKey: ['rh-stores'],

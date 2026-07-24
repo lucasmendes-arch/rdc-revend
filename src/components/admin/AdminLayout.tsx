@@ -45,7 +45,7 @@ const navGroups: { label: string; items: NavItem[] }[] = [
 
 // RH+DP tem acesso restrito (admin ou permissão can_manage_rh) — grupo
 // separado, só aparece na sidebar pra quem tem acesso. Ordem segue o funil:
-// Vagas → Candidatos → Contratação (kanban de admissão) → Colaboradores
+// Vagas → Candidatos → Contratação (kanban de admissão) → Parceiros
 // (ativos) → itens de configuração (Cargos, Formulário). Automações é
 // acessado direto pela tela de Candidatos, não fica na sidebar.
 const rhNavGroup: { label: string; items: NavItem[] } = {
@@ -54,7 +54,7 @@ const rhNavGroup: { label: string; items: NavItem[] } = {
     { label: 'Vagas', path: '/admin/rh/vagas', icon: Briefcase },
     { label: 'Candidatos', path: '/admin/rh/candidatos', icon: KanbanSquare },
     { label: 'Contratação', path: '/admin/dp/contratacao', icon: ClipboardList },
-    { label: 'Colaboradores', path: '/admin/dp/colaboradores', icon: Contact },
+    { label: 'Parceiros', path: '/admin/dp/colaboradores', icon: Contact },
     { label: 'Gerar Contrato', path: '/admin/dp/contratos', icon: FileSignature },
     { label: 'Cargos', path: '/admin/rh/cargos', icon: IdCard },
     { label: 'Formulário', path: '/admin/rh/formulario', icon: ListChecks },

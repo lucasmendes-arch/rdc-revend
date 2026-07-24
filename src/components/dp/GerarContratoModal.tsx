@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { X, FileText } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import { useEscapeToClose } from '@/hooks/useEscapeToClose'
 import {
   CONTRACT_TYPE_LABELS, resolveAutoContractType, REQUIRED_CONTRACT_DATA_FIELDS,
   CONTRACT_DATA_FIELD_LABELS, type ContractDataField,
@@ -14,9 +15,14 @@ const EMPTY_DATA_FORM = {
   address: '', email: '', bank_name: '', bank_agency: '', bank_account: '', pix_key: '',
 }
 
+// term_start/term_end são `date` (sem hora) — new Date(iso) as interpreta
+// como meia-noite UTC, e formatar no fuso local rola a data pra trás em
+// fusos negativos (Brasil, UTC-3). timeZone: 'UTC' lê de volta o mesmo dia
+// gravado, independente do fuso de quem vê (mesmo bug do formatCalendarDateBR
+// em ProcessoDetailModal.tsx).
 function formatDateBR(iso: string | null) {
   if (!iso) return '—'
-  return new Date(iso).toLocaleDateString('pt-BR')
+  return new Date(iso).toLocaleDateString('pt-BR', { timeZone: 'UTC' })
 }
 
 interface GerarContratoModalProps {
@@ -25,6 +31,7 @@ interface GerarContratoModalProps {
 }
 
 export default function GerarContratoModal({ processo, onClose }: GerarContratoModalProps) {
+  useEscapeToClose(onClose)
   const queryClient = useQueryClient()
   const [dataForm, setDataForm] = useState(EMPTY_DATA_FORM)
   const [termStart, setTermStart] = useState('')

@@ -8,6 +8,7 @@ import {
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { supabase } from '@/lib/supabase'
+import { useEscapeToClose } from '@/hooks/useEscapeToClose'
 import AdminLayout from '@/components/admin/AdminLayout'
 import StyledSelect from '@/components/ui/styled-select'
 import FormFieldRenderer, { FieldType, FormFieldConfig } from '@/components/rh/FormFieldRenderer'
@@ -259,6 +260,9 @@ export default function RhFormulario() {
   const [createForm, setCreateForm] = useState(EMPTY_CREATE_FORM)
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [deleteConfirm, setDeleteConfirm] = useState<FieldRow | null>(null)
+
+  useEscapeToClose(closeCreate, createOpen)
+  useEscapeToClose(() => setDeleteConfirm(null), !!deleteConfirm)
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),

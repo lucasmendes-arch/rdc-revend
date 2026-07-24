@@ -1,17 +1,18 @@
 import { useEffect, useRef, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { X, Phone, Camera, FileText, Image as ImageIcon, Tag, ChevronDown, ChevronRight, Paperclip, Calendar as CalendarIcon } from 'lucide-react'
+import { X, Phone, Camera, FileText, Image as ImageIcon, Tag, ChevronDown, ChevronRight, Paperclip, FolderOpen, ExternalLink, Check } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
+import { useEscapeToClose } from '@/hooks/useEscapeToClose'
 import { useImageUpload } from '@/hooks/useImageUpload'
 import { useFileUpload } from '@/hooks/useFileUpload'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import StyledSelect from '@/components/ui/styled-select'
-import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
-import { Calendar } from '@/components/ui/calendar'
+import { DateField } from '@/components/ui/date-field'
 import {
   EMPLOYMENT_TYPE_LABELS, DOCUMENT_CHECKLIST_LABELS, DOCUMENT_STATUS_LABELS, CONTRACT_TYPE_LABELS,
+  isExperienceTagActive, getExperienceInfo,
   type DocumentStatus, type ContractType, type StageColumn,
 } from '@/lib/dpConstants'
 import type { Processo, TimelineEntry, DocumentRow, ContractRow, ContractPersonalData } from '@/lib/dpTypes'
@@ -21,6 +22,29 @@ const EMPTY_CONTRACT_FORM = { contract_type: 'clt' as ContractType, signature_da
 function formatDateBR(iso: string | null) {
   if (!iso) return '—'
   return new Date(iso).toLocaleDateString('pt-BR')
+}
+
+// Datas "puras" (sem hora significativa): colunas `date` (signature_date,
+// term_start, term_end) ou timestamptz gravado sempre à meia-noite UTC
+// (activated_at, via RPC que só recebe a data). new Date(iso) interpreta os
+// dois casos como meia-noite UTC — formatar no fuso local rola a data pra
+// trás em fusos negativos (Brasil, UTC-3: 09/07 vira 08/07 21h). timeZone:
+// 'UTC' lê de volta o mesmo dia gravado, independente do fuso de quem vê.
+function formatCalendarDateBR(iso: string | null) {
+  if (!iso) return '—'
+  return new Date(iso).toLocaleDateString('pt-BR', { timeZone: 'UTC' })
+}
+
+// Sinaliza campo preenchido na aba Documentos (Dados pessoais + Pasta do
+// Drive) — só um indicador visual de "ok, já tem algo aqui", não valida
+// formato/conteúdo.
+function FieldLabel({ text, filled }: { text: string; filled: boolean }) {
+  return (
+    <label className="flex items-center gap-1 text-[11px] font-semibold text-muted-foreground uppercase mb-1.5">
+      {text}
+      {filled && <Check className="w-3 h-3 text-muted-foreground/50" />}
+    </label>
+  )
 }
 
 function initials(name: string) {
@@ -51,62 +75,6 @@ function formatAnswerValue(a: { value: string; form_fields: { field_type: string
   return a.value
 }
 
-function parseISODate(v: string | null | undefined): Date | undefined {
-  if (!v) return undefined
-  const [y, m, d] = v.split('-').map(Number)
-  if (!y || !m || !d) return undefined
-  return new Date(y, m - 1, d)
-}
-
-function toISODate(d: Date): string {
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${y}-${m}-${day}`
-}
-
-// Substitui o <input type="date"> nativo (calendário do sistema operacional,
-// visual inconsistente entre navegadores) pelo componente Calendar do design
-// system (react-day-picker já no projeto, só nunca tinha sido usado em
-// lugar nenhum) — mesmo popover+trigger dos outros selects do modal.
-function DateField({ value, onChange, placeholder = 'Selecionar data' }: { value: string | null; onChange: (v: string | null) => void; placeholder?: string }) {
-  const [open, setOpen] = useState(false)
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <button
-          type="button"
-          className="w-full flex items-center gap-2 px-3 py-2 rounded-lg border border-border bg-background text-foreground text-sm hover:bg-surface-alt transition-colors"
-        >
-          <CalendarIcon className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-          <span className={value ? 'text-foreground' : 'text-muted-foreground'}>
-            {value ? new Date(value + 'T00:00:00').toLocaleDateString('pt-BR') : placeholder}
-          </span>
-        </button>
-      </PopoverTrigger>
-      <PopoverContent className="w-auto p-0" align="start">
-        <Calendar
-          mode="single"
-          selected={parseISODate(value)}
-          onSelect={(d) => { onChange(d ? toISODate(d) : null); setOpen(false) }}
-          initialFocus
-        />
-        {value && (
-          <div className="border-t border-border p-2">
-            <button
-              type="button"
-              onClick={() => { onChange(null); setOpen(false) }}
-              className="w-full text-center px-2 py-1.5 rounded-md text-sm text-red-600 hover:bg-red-50 transition-colors"
-            >
-              Remover data
-            </button>
-          </div>
-        )}
-      </PopoverContent>
-    </Popover>
-  )
-}
-
 // Linha compacta de anexo (nome do arquivo clicável) — sem thumbnail grande,
 // só o essencial: abrir e trocar/remover.
 function AttachmentLine({ url, onRemove }: { url: string; onRemove: () => void }) {
@@ -134,6 +102,7 @@ interface ProcessoDetailModalProps {
 }
 
 export default function ProcessoDetailModal({ processo, onClose, estagio }: ProcessoDetailModalProps) {
+  useEscapeToClose(onClose)
   const { user } = useAuth()
   const queryClient = useQueryClient()
   const [detailTab, setDetailTab] = useState('recrutamento')
@@ -143,6 +112,9 @@ export default function ProcessoDetailModal({ processo, onClose, estagio }: Proc
   const [resumeUrl, setResumeUrl] = useState(processo.candidates?.resume_url ?? null)
   const [rhHistoryOpen, setRhHistoryOpen] = useState(false)
   const [rhNotesOpen, setRhNotesOpen] = useState(false)
+  const [driveDraft, setDriveDraft] = useState(processo.drive_folder_url ?? '')
+  const [ageDraft, setAgeDraft] = useState(processo.candidates?.age?.toString() ?? '')
+  const [experienceRenewedAt, setExperienceRenewedAt] = useState(processo.experience_renewed_at)
   const [uploadTargetDocId, setUploadTargetDocId] = useState<string | null>(null)
   // `processo` é um snapshot do array da query do kanban, capturado quando o
   // modal abriu — não se atualiza sozinho depois de um `invalidateQueries`
@@ -180,7 +152,7 @@ export default function ProcessoDetailModal({ processo, onClose, estagio }: Proc
     onSuccess: (url) => {
       setPhotoUrl(url)
       queryClient.invalidateQueries({ queryKey: ['dp-processos'] })
-      queryClient.invalidateQueries({ queryKey: ['dp-colaboradores-ativos'] })
+      queryClient.invalidateQueries({ queryKey: ['dp-parceiros-ativos'] })
       toast.success('Foto atualizada')
     },
     onError: (err) => toast.error(`Erro no upload: ${err instanceof Error ? err.message : 'desconhecido'}`),
@@ -194,7 +166,7 @@ export default function ProcessoDetailModal({ processo, onClose, estagio }: Proc
     onSuccess: () => {
       setPhotoUrl(null)
       queryClient.invalidateQueries({ queryKey: ['dp-processos'] })
-      queryClient.invalidateQueries({ queryKey: ['dp-colaboradores-ativos'] })
+      queryClient.invalidateQueries({ queryKey: ['dp-parceiros-ativos'] })
     },
     onError: (err) => toast.error(`Erro ao remover: ${err instanceof Error ? err.message : 'desconhecido'}`),
   })
@@ -208,7 +180,7 @@ export default function ProcessoDetailModal({ processo, onClose, estagio }: Proc
     onSuccess: (url) => {
       setResumeUrl(url)
       queryClient.invalidateQueries({ queryKey: ['dp-processos'] })
-      queryClient.invalidateQueries({ queryKey: ['dp-colaboradores-ativos'] })
+      queryClient.invalidateQueries({ queryKey: ['dp-parceiros-ativos'] })
     },
     onError: (err) => toast.error(`Erro no upload: ${err instanceof Error ? err.message : 'desconhecido'}`),
   })
@@ -247,7 +219,7 @@ export default function ProcessoDetailModal({ processo, onClose, estagio }: Proc
         setCandidateDraft((prev) => ({ ...prev, [field]: value }))
       }
       queryClient.invalidateQueries({ queryKey: ['dp-processos'] })
-      queryClient.invalidateQueries({ queryKey: ['dp-colaboradores-ativos'] })
+      queryClient.invalidateQueries({ queryKey: ['dp-parceiros-ativos'] })
     },
     onError: (err) => toast.error(`Erro ao salvar: ${err instanceof Error ? err.message : 'desconhecido'}`),
   })
@@ -376,9 +348,68 @@ export default function ProcessoDetailModal({ processo, onClose, estagio }: Proc
     onSuccess: (patch) => {
       setChecklist((prev) => ({ ...prev, ...patch }))
       queryClient.invalidateQueries({ queryKey: ['dp-processos'] })
-      queryClient.invalidateQueries({ queryKey: ['dp-colaboradores-ativos'] })
+      queryClient.invalidateQueries({ queryKey: ['dp-parceiros-ativos'] })
     },
     onError: (err) => toast.error(`Erro ao atualizar checklist: ${err instanceof Error ? err.message : 'desconhecido'}`),
+  })
+
+  // Aplica no blur, mesmo padrão dos campos de "Dados pessoais" logo abaixo
+  // (updatePersonalData) — sem botão de salvar próprio.
+  const updateDriveFolder = useMutation({
+    mutationFn: async (value: string | null) => {
+      const { error } = await supabase.from('employee_processes').update({ drive_folder_url: value }).eq('id', processo.id)
+      if (error) throw error
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['dp-processos'] })
+      queryClient.invalidateQueries({ queryKey: ['dp-parceiros-ativos'] })
+    },
+    onError: (err) => toast.error(`Erro ao salvar: ${err instanceof Error ? err.message : 'desconhecido'}`),
+  })
+
+  // Cadastro retroativo (register_existing_employee) nunca pediu idade —
+  // fica editável aqui pra quem entrou assim (ou pra corrigir qualquer
+  // colaborador depois). Mesmo padrão de aplicar no blur, sem botão próprio.
+  const updateAge = useMutation({
+    mutationFn: async (value: number | null) => {
+      const { error } = await supabase.from('candidates').update({ age: value }).eq('id', processo.candidate_id)
+      if (error) throw error
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['dp-processos'] })
+      queryClient.invalidateQueries({ queryKey: ['dp-parceiros-ativos'] })
+    },
+    onError: (err) => toast.error(`Erro ao salvar: ${err instanceof Error ? err.message : 'desconhecido'}`),
+  })
+
+  function handleAgeBlur() {
+    const trimmed = ageDraft.trim()
+    if (!trimmed) { updateAge.mutate(null); return }
+    const parsed = parseInt(trimmed, 10)
+    if (isNaN(parsed) || parsed <= 0) {
+      toast.error('Idade inválida')
+      setAgeDraft(processo.candidates?.age?.toString() ?? '')
+      return
+    }
+    updateAge.mutate(parsed)
+  }
+
+  // Renovação do contrato de experiência CLT (45d → mais 45d, teto de 90d
+  // contados da efetivação) — ato manual, só faz sentido uma vez.
+  const renewExperience = useMutation({
+    mutationFn: async () => {
+      const now = new Date().toISOString()
+      const { error } = await supabase.from('employee_processes').update({ experience_renewed_at: now }).eq('id', processo.id)
+      if (error) throw error
+      return now
+    },
+    onSuccess: (now) => {
+      setExperienceRenewedAt(now)
+      queryClient.invalidateQueries({ queryKey: ['dp-processos'] })
+      queryClient.invalidateQueries({ queryKey: ['dp-parceiros-ativos'] })
+      toast.success('Experiência renovada por mais 45 dias')
+    },
+    onError: (err) => toast.error(`Erro ao renovar: ${err instanceof Error ? err.message : 'desconhecido'}`),
   })
 
   const createContract = useMutation({
@@ -455,7 +486,30 @@ export default function ProcessoDetailModal({ processo, onClose, estagio }: Proc
               </span>
             </button>
             <div className="min-w-0">
-              <h2 className="text-lg font-bold text-foreground truncate">{processo.candidates?.name}</h2>
+              <div className="flex items-center gap-2 min-w-0">
+                <h2 className="text-lg font-bold text-foreground truncate">{processo.candidates?.name}</h2>
+                {isExperienceTagActive(processo) ? (
+                  <span
+                    className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300 shrink-0"
+                    title="Período de experiência em andamento"
+                  >
+                    {getExperienceInfo(processo)?.label}
+                  </span>
+                ) : (
+                  // "Ativo" só faz sentido pra quem já é colaborador de fato
+                  // (estagio.mode === 'ativo') — no kanban de Contratação
+                  // (mode 'kanban') o processo ainda não tem activated_at,
+                  // então essa tag ficaria enganosa (parece efetivado sem ser).
+                  estagio.mode === 'ativo' && (
+                    <span
+                      className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300 shrink-0"
+                      title="Período de experiência concluído"
+                    >
+                      Ativo
+                    </span>
+                  )
+                )}
+              </div>
               <p className="text-xs text-muted-foreground truncate">
                 {processo.role_title} · {processo.stores?.name} · {EMPLOYMENT_TYPE_LABELS[processo.employment_type]}
               </p>
@@ -528,14 +582,26 @@ export default function ProcessoDetailModal({ processo, onClose, estagio }: Proc
                 ) : (
                   <div className="flex items-center justify-between gap-3 flex-wrap">
                     <p className="text-sm text-foreground">
-                      Efetivado em <span className="font-medium">{formatDateBR(processo.activated_at)}</span>
+                      Efetivado em <span className="font-medium">{formatCalendarDateBR(processo.activated_at)}</span>
                     </p>
-                    <button
-                      onClick={estagio.onEncerrar}
-                      className="px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white text-sm font-medium transition-colors"
-                    >
-                      Encerrar vínculo
-                    </button>
+                    <div className="flex items-center gap-2">
+                      {processo.employment_type === 'clt' && !experienceRenewedAt && (
+                        <button
+                          onClick={() => renewExperience.mutate()}
+                          disabled={renewExperience.isPending}
+                          title="Renova o contrato de experiência por mais 45 dias (teto de 90d desde a efetivação)"
+                          className="px-3 py-1.5 rounded-lg border border-border text-sm font-medium hover:bg-surface-alt transition-colors disabled:opacity-70"
+                        >
+                          {renewExperience.isPending ? 'Renovando...' : 'Renovar experiência (+45d)'}
+                        </button>
+                      )}
+                      <button
+                        onClick={estagio.onEncerrar}
+                        className="px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white text-sm font-medium transition-colors"
+                      >
+                        Encerrar vínculo
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
@@ -546,7 +612,16 @@ export default function ProcessoDetailModal({ processo, onClose, estagio }: Proc
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
                   <p className="text-[11px] font-semibold text-muted-foreground uppercase mb-0.5">Idade</p>
-                  <p className="text-foreground">{processo.candidates?.age ? `${processo.candidates.age} anos` : '—'}</p>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    min={1}
+                    value={ageDraft}
+                    onChange={(e) => setAgeDraft(e.target.value)}
+                    onBlur={handleAgeBlur}
+                    placeholder="—"
+                    className="w-20 px-2 py-1 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                  />
                 </div>
                 <div>
                   <p className="text-[11px] font-semibold text-muted-foreground uppercase mb-0.5">Origem</p>
@@ -743,10 +818,37 @@ export default function ProcessoDetailModal({ processo, onClose, estagio }: Proc
             />
             <div className="space-y-6 py-3">
               <div>
+                <label className="flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground uppercase mb-1.5">
+                  <FolderOpen className="w-3 h-3" /> Pasta do Drive
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="url"
+                    value={driveDraft}
+                    onChange={(e) => setDriveDraft(e.target.value)}
+                    onBlur={() => updateDriveFolder.mutate(driveDraft.trim() || null)}
+                    placeholder="https://drive.google.com/drive/folders/..."
+                    className="flex-1 min-w-0 px-3 py-2 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                  />
+                  {driveDraft.trim() && (
+                    <a
+                      href={driveDraft.trim()}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-2 rounded-lg border border-border text-muted-foreground hover:bg-surface-alt hover:text-foreground shrink-0"
+                      title="Abrir pasta"
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                    </a>
+                  )}
+                </div>
+              </div>
+
+              <div className="border-t border-border/60 pt-4">
                 <p className="text-[11px] font-semibold text-muted-foreground uppercase mb-3">Dados pessoais</p>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-[11px] font-semibold text-muted-foreground uppercase mb-1.5">RG</label>
+                    <FieldLabel text="RG" filled={!!personalDraft.rg.trim()} />
                     <input
                       value={personalDraft.rg}
                       onChange={(e) => setPersonalDraft((p) => ({ ...p, rg: e.target.value }))}
@@ -756,7 +858,7 @@ export default function ProcessoDetailModal({ processo, onClose, estagio }: Proc
                     />
                   </div>
                   <div>
-                    <label className="block text-[11px] font-semibold text-muted-foreground uppercase mb-1.5">CPF</label>
+                    <FieldLabel text="CPF" filled={!!personalDraft.cpf.trim()} />
                     <input
                       value={personalDraft.cpf}
                       onChange={(e) => setPersonalDraft((p) => ({ ...p, cpf: e.target.value.replace(/\D/g, '').slice(0, 11) }))}
@@ -768,7 +870,7 @@ export default function ProcessoDetailModal({ processo, onClose, estagio }: Proc
                   </div>
                   {processo.employment_type === 'mei' && (
                     <div>
-                      <label className="block text-[11px] font-semibold text-muted-foreground uppercase mb-1.5">CNPJ</label>
+                      <FieldLabel text="CNPJ" filled={!!personalDraft.cnpj.trim()} />
                       <input
                         value={personalDraft.cnpj}
                         onChange={(e) => setPersonalDraft((p) => ({ ...p, cnpj: e.target.value.replace(/\D/g, '').slice(0, 14) }))}
@@ -780,7 +882,7 @@ export default function ProcessoDetailModal({ processo, onClose, estagio }: Proc
                     </div>
                   )}
                   <div>
-                    <label className="block text-[11px] font-semibold text-muted-foreground uppercase mb-1.5">Endereço</label>
+                    <FieldLabel text="Endereço" filled={!!personalDraft.address.trim()} />
                     <input
                       value={personalDraft.address}
                       onChange={(e) => setPersonalDraft((p) => ({ ...p, address: e.target.value }))}
@@ -789,7 +891,7 @@ export default function ProcessoDetailModal({ processo, onClose, estagio }: Proc
                     />
                   </div>
                   <div>
-                    <label className="block text-[11px] font-semibold text-muted-foreground uppercase mb-1.5">E-mail</label>
+                    <FieldLabel text="E-mail" filled={!!personalDraft.email.trim()} />
                     <input
                       type="email"
                       value={personalDraft.email}
@@ -799,7 +901,7 @@ export default function ProcessoDetailModal({ processo, onClose, estagio }: Proc
                     />
                   </div>
                   <div>
-                    <label className="block text-[11px] font-semibold text-muted-foreground uppercase mb-1.5">Chave PIX</label>
+                    <FieldLabel text="Chave PIX" filled={!!personalDraft.pix_key.trim()} />
                     <input
                       value={personalDraft.pix_key}
                       onChange={(e) => setPersonalDraft((p) => ({ ...p, pix_key: e.target.value }))}
@@ -880,8 +982,8 @@ export default function ProcessoDetailModal({ processo, onClose, estagio }: Proc
                       </a>
                     )}
                   </div>
-                  <p className="text-[11px] text-muted-foreground">Assinatura: {formatDateBR(c.signature_date)}</p>
-                  <p className="text-[11px] text-muted-foreground">Vigência: {formatDateBR(c.term_start)} — {formatDateBR(c.term_end)}</p>
+                  <p className="text-[11px] text-muted-foreground">Assinatura: {formatCalendarDateBR(c.signature_date)}</p>
+                  <p className="text-[11px] text-muted-foreground">Vigência: {formatCalendarDateBR(c.term_start)} — {formatCalendarDateBR(c.term_end)}</p>
                 </div>
               ))}
               <div className="border border-border rounded-lg p-3 space-y-3">

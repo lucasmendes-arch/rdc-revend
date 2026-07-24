@@ -182,7 +182,7 @@ export default function EstoqueContagem() {
             <div>
               <p className="text-[11px] font-bold text-amber-700 uppercase tracking-wide">Nova contagem</p>
               <h2 className="text-base font-bold text-foreground">Quem está contando?</h2>
-              <p className="text-xs text-muted-foreground mt-1">Esse nome fica registrado na contagem, no campo Colaborador.</p>
+              <p className="text-xs text-muted-foreground mt-1">Esse nome fica registrado na contagem, no campo Parceiro.</p>
             </div>
             <input
               type="text"
