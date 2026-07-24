@@ -217,7 +217,7 @@ Estoque por produto.
 | created_at | timestamptz | NO | `now()` | — |
 | updated_at | timestamptz | NO | `now()` | — |
 
-> Estoque global único por produto, sincronizado via Google Sheets (`sync-google-sheets`). **Fonte de verdade ativa do checkout**: `create-order` (feature freeze) lê `inventory.quantity` para validar disponibilidade e chama `decrement_stock()` a cada pedido — não é só uma tabela de exibição. **Não pode ser desligado/substituído** sem revisar `create-order` (ver D-21 em `docs/decisions.md`). Sem relação com o módulo de estoque por loja abaixo (`stores`/`stock_counts`/`replenishment_orders`), que é aditivo e desacoplado.
+> Estoque global único por produto. **Fonte de verdade ativa do checkout**: `create-order` (feature freeze) lê `inventory.quantity` para validar disponibilidade e chama `decrement_stock()` a cada pedido — não é só uma tabela de exibição. Desde 2026-07-24 (D-26), `quantity` é atualizado por `confirm_stock_count()` sempre que a contagem confirmada é da loja central (Linhares, `stores.type='central'`) — é de lá que o checkout B2B despacha os pedidos, então é a única unidade cuja contagem física alimenta `inventory`. Loja satélite (varejo local) continua sem tocar em `inventory`, só gera `replenishment_requests`. O sync com Google Sheets (`sync-google-sheets`) foi desativado na UI (`/admin/estoque`) mas a edge function continua no repo, sem uso. Edição manual pontual continua possível em `/admin/estoque` (ajuste emergencial — sobrescrita na próxima contagem de Linhares confirmada). **`inventory` não pode ser desligado sem uma fonte substituta** — ver D-21/D-26 em `docs/decisions.md`; `create-order/index.ts` em si não foi alterado por essa mudança.
 
 ---
 
@@ -346,7 +346,7 @@ Pedido de reposição por produto — **substituída por `replenishment_requests
 
 > `status` válidos: `'open'`, `'picking'`, `'shipped'` (terminal). Índice único parcial `(product_id, destination_store_id) WHERE status='open'` — só um pedido aberto por produto+loja; uma nova contagem confirmada **substitui** (não soma) o `suggested_quantity` de um pedido `open` existente, e não mexe em pedidos já `picking`/`shipped`. Escrita apenas via RPCs `confirm_stock_count` e `update_replenishment_order_status` (sem policy de INSERT/UPDATE para colaborador de estoque).
 > RLS de leitura: colaborador de loja satélite só vê pedidos com `destination_store_id = my_store_id()` (a própria loja); colaborador da loja central (`stores.type='central'`, Linhares) vê pedidos com destino a qualquer loja — é quem separa e despacha. Ver D-21 em `docs/decisions.md`.
-> **Decisão fechada:** nada aqui atualiza `inventory.quantity` — e não deve. `inventory` é a fonte de disponibilidade ativa do checkout (`create-order`, feature freeze) e não pode ser desligada/substituída sem revisar esse arquivo. Ver D-21 em `docs/decisions.md`.
+> **Decisão (D-21, revisada por D-26):** contagem de loja satélite nunca atualiza `inventory.quantity` — só gera `replenishment_requests`. Contagem de loja central (Linhares) é a exceção desde 2026-07-24: `confirm_stock_count()` também faz UPSERT em `inventory` nesse caso, porque Linhares é quem despacha os pedidos do checkout B2B. `create-order/index.ts` (feature freeze) não foi alterado. Ver D-21/D-26 em `docs/decisions.md`.
 
 ---
 

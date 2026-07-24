@@ -11,6 +11,8 @@ _Última revisão: 2026-04-10_
 
 `supabase/functions/create-order/index.ts`
 
+> **Nota (2026-07-24, D-26):** a fonte de `inventory.quantity` mudou — deixou de vir só do sync do Google Sheets e passou a ser alimentada por `confirm_stock_count()` quando a contagem confirmada é de Linhares (CD, `stores.type='central'`). Esta função em si **não foi tocada** (sequência 1→21, `decrement_stock`, invariantes — tudo igual); só o que reabastece a tabela entre um pedido e outro mudou. Ver D-21/D-26 em `docs/decisions.md` e a nota da tabela `inventory` em `docs/SCHEMA.md`.
+
 ---
 
 ## Responsabilidade
