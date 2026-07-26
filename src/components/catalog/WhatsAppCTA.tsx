@@ -1,36 +1,46 @@
 import { MessageCircle } from "lucide-react";
 
+/**
+ * Convite para falar com um consultor.
+ *
+ * Era uma caixa verde com hex hardcoded (`#E8F5E9`/`#C8E6C9`), dois blobs
+ * desfocados, `font-black` e `hover:-translate-y-0.5` — e não tinha dark mode
+ * nenhum, porque nenhum daqueles valores era token.
+ *
+ * O verde ficou só onde carrega significado: o ícone do WhatsApp e o botão,
+ * que precisa do reconhecimento da marca.
+ */
 export default function WhatsAppCTA() {
   const phoneNumber = "5527996865366";
   const message = encodeURIComponent("Olá! Quero montar meu primeiro pedido no atacado e preciso de ajuda.");
   const whatsappUrl = `https://wa.me/${phoneNumber}?text=${message}`;
 
   return (
-    <div className="w-full bg-[#E8F5E9] border border-[#C8E6C9] rounded-2xl p-5 sm:p-6 mb-8 mt-4 md:mt-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-sm relative overflow-hidden">
-      {/* Decorative background element */}
-      <div className="absolute -right-10 -bottom-10 w-32 h-32 bg-green-500/10 rounded-full blur-2xl pointer-events-none" />
-      <div className="absolute -left-10 -top-10 w-32 h-32 bg-green-500/5 rounded-full blur-2xl pointer-events-none" />
-
-      <div className="flex-1 text-center md:text-left relative z-10">
-        <h3 className="text-lg sm:text-xl font-black text-green-900 mb-2 flex flex-col md:flex-row items-center gap-2 justify-center md:justify-start">
-          <MessageCircle className="w-6 h-6 text-green-600 hidden md:inline-block" />
-          Precisa de ajuda para montar seu pedido?
-        </h3>
-        <p className="text-sm sm:text-base text-green-800/80 leading-relaxed max-w-2xl">
-          Nossa equipe pode indicar o melhor kit para começar, explicar o pedido mínimo e tirar dúvidas completas sobre formas de pagamento e opções de entrega.
-        </p>
+    <div className="w-full surface-card p-5 mb-8 mt-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="flex items-start gap-3 min-w-0">
+        <div className="w-8 h-8 rounded-md bg-success-subtle border border-success-border flex items-center justify-center shrink-0">
+          <MessageCircle className="w-4 h-4 text-success" />
+        </div>
+        <div className="min-w-0">
+          <h3 className="text-[14px] font-medium text-foreground leading-tight tracking-tight">
+            Precisa de ajuda para montar o pedido?
+          </h3>
+          <p className="text-[13px] text-muted-foreground leading-relaxed mt-1 max-w-2xl">
+            A equipe indica o melhor kit para começar, explica o pedido mínimo e tira
+            dúvidas sobre pagamento e entrega.
+          </p>
+        </div>
       </div>
 
-      <div className="shrink-0 relative z-10 w-full md:w-auto">
-        <a 
-          href={whatsappUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="w-full md:w-auto px-6 py-3.5 rounded-xl bg-[#25D366] hover:bg-[#20BE5A] text-white font-bold shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all text-sm flex items-center justify-center gap-2"
-        >
-          <MessageCircle className="w-5 h-5" /> Falar com consultor
-        </a>
-      </div>
+      <a
+        href={whatsappUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="shrink-0 h-9 px-3.5 rounded-md btn-secondary text-[13px] flex items-center justify-center gap-1.5"
+      >
+        <MessageCircle className="w-3.5 h-3.5 text-success" />
+        Falar com consultor
+      </a>
     </div>
   );
 }

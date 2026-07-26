@@ -250,7 +250,7 @@ export default function AdminCategorias() {
               <button
                 onClick={handleSaveEdit}
                 disabled={updateMutation.isPending}
-                className="flex-1 px-4 py-2.5 rounded-lg btn-gold text-white font-medium disabled:opacity-70"
+                className="flex-1 px-4 py-2.5 rounded-lg btn-gold font-medium disabled:opacity-70"
               >
                 {updateMutation.isPending ? 'Salvando...' : 'Salvar'}
               </button>

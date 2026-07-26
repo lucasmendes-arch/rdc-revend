@@ -77,20 +77,19 @@ function SidebarNavItem({ item, isActive, onClick }: { item: NavItem; isActive: 
     <Link
       to={item.path}
       onClick={onClick}
-      className={`relative flex items-center gap-3 px-3 py-[7px] rounded-md text-[13px] transition-all duration-150 ${
+      aria-current={isActive ? 'page' : undefined}
+      // Mesma linha de navegação do PortalLayout: h-9, ícone 16, spine dourado.
+      // Admin e portal deixaram de ter duas sidebars com regras próprias.
+      className={`relative flex items-center gap-2.5 h-9 px-3 rounded-md text-[13px] tracking-snug transition-colors ${
         isActive
           ? 'bg-sidebar-accent text-sidebar-accent-foreground font-medium'
-          : 'text-sidebar-foreground/55 hover:text-sidebar-foreground/85 hover:bg-sidebar-foreground/[0.05] font-normal'
+          : 'text-sidebar-foreground hover:text-sidebar-accent-foreground hover:bg-sidebar-accent/60'
       }`}
     >
-      {isActive && (
-        <span className="absolute left-0 inset-y-0 flex items-center">
-          <span className="w-[2px] h-4 bg-[hsl(38,90%,58%)] rounded-r-full" />
-        </span>
-      )}
+      {isActive && <span className="nav-spine" aria-hidden />}
       <Icon
-        className={`w-[15px] h-[15px] flex-shrink-0 transition-colors duration-150 ${
-          isActive ? 'text-[hsl(38,90%,58%)]' : 'text-sidebar-foreground/40'
+        className={`w-4 h-4 shrink-0 transition-colors ${
+          isActive ? 'text-sidebar-accent-foreground' : 'text-ink-400'
         }`}
       />
       <span className="truncate">{item.label}</span>
@@ -137,26 +136,24 @@ function SidebarContent({ onNavClick }: { onNavClick?: () => void }) {
   return (
     <>
       {/* Brand header */}
-      <div className="px-4 pt-4 pb-3.5 border-b border-sidebar-border">
-        <div className="flex items-center justify-between gap-2">
+      <div className="px-3 h-14 flex items-center border-b border-sidebar-border">
+        <div className="flex items-center justify-between gap-2 w-full">
           <Link
             to={homePath}
             onClick={onNavClick}
-            className="flex items-center gap-3 min-w-0"
+            className="flex items-center gap-2.5 min-w-0 rounded-md"
           >
-            <div className="w-8 h-8 rounded-lg bg-sidebar-foreground/[0.07] flex items-center justify-center flex-shrink-0 ring-1 ring-sidebar-foreground/[0.08]">
-              <img src={logo} alt="Rei dos Cachos" className="h-5 w-auto" />
+            <div className="w-7 h-7 rounded-md border border-sidebar-border bg-background flex items-center justify-center shrink-0">
+              <img src={logo} alt="" className="h-3.5 w-auto" />
             </div>
             <div className="min-w-0">
-              <p className="text-[13px] font-semibold text-sidebar-foreground leading-tight truncate">
+              <p className="text-[13px] font-semibold text-sidebar-accent-foreground leading-none tracking-tight truncate">
                 Rei dos Cachos
               </p>
-              <p className="text-[10px] text-sidebar-foreground/40 leading-tight tracking-[0.15em] uppercase mt-[2px]">
-                Admin
-              </p>
+              <p className="eyebrow mt-1">Admin</p>
             </div>
           </Link>
-          <ThemeToggle className="flex-shrink-0 p-1.5 rounded-md text-sidebar-foreground/35 hover:text-sidebar-foreground/70 hover:bg-sidebar-foreground/[0.06] transition-all duration-150" />
+          <ThemeToggle className="shrink-0 h-8 w-8 flex items-center justify-center rounded-md text-ink-400 hover:text-sidebar-accent-foreground hover:bg-sidebar-accent transition-colors" />
         </div>
       </div>
 
@@ -170,17 +167,18 @@ function SidebarContent({ onNavClick }: { onNavClick?: () => void }) {
             <div key={group.label} className="mb-0.5">
               <button
                 onClick={() => toggle(group.label)}
-                className={`w-full flex items-center justify-between px-3 py-2 rounded-md transition-all duration-150 ${
+                aria-expanded={isOpen}
+                className={`w-full flex items-center justify-between h-8 px-3 rounded-md transition-colors ${
                   hasActive && !isOpen
-                    ? 'text-[hsl(38,90%,58%)] bg-sidebar-foreground/[0.06]'
-                    : 'text-sidebar-foreground/45 hover:text-sidebar-foreground/70 hover:bg-sidebar-foreground/[0.04]'
+                    ? 'text-sidebar-accent-foreground bg-sidebar-accent'
+                    : 'text-ink-400 hover:text-sidebar-accent-foreground hover:bg-sidebar-accent/60'
                 }`}
               >
-                <span className="text-[11px] font-semibold uppercase tracking-[0.14em]">
+                <span className="text-[11px] font-semibold uppercase tracking-eyebrow">
                   {group.label}
                 </span>
                 <ChevronRight
-                  className={`w-3 h-3 flex-shrink-0 transition-transform duration-200 ${
+                  className={`w-3 h-3 shrink-0 transition-transform duration-200 ${
                     isOpen ? 'rotate-90' : ''
                   }`}
                 />
@@ -204,14 +202,14 @@ function SidebarContent({ onNavClick }: { onNavClick?: () => void }) {
       </nav>
 
       {/* Footer */}
-      <div className="px-2 pb-4 pt-2 border-t border-sidebar-border">
+      <div className="px-2 pb-3 pt-2 border-t border-sidebar-border">
         <Link
           to="/catalogo"
           onClick={onNavClick}
-          className="flex items-center gap-3 px-3 py-[7px] rounded-md text-[13px] text-sidebar-foreground/40 hover:text-sidebar-foreground/70 hover:bg-sidebar-foreground/[0.05] transition-all duration-150"
+          className="flex items-center gap-2.5 h-9 px-3 rounded-md text-[13px] tracking-snug text-sidebar-foreground hover:text-sidebar-accent-foreground hover:bg-sidebar-accent/60 transition-colors"
         >
-          <ExternalLink className="w-[15px] h-[15px] flex-shrink-0 text-sidebar-foreground/30" />
-          <span>Ver Site</span>
+          <ExternalLink className="w-4 h-4 shrink-0 text-ink-400" />
+          <span>Ver site</span>
         </Link>
       </div>
     </>
@@ -240,17 +238,20 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
         className={`lg:hidden fixed top-0 inset-x-0 z-40 ${sidebarBg} text-sidebar-foreground h-14 flex items-center justify-between px-4 border-b ${borderColor}`}
       >
         <Link to={homePath} className="flex items-center gap-2.5">
-          <img src={logo} alt="Rei dos Cachos" className="h-7 w-auto" />
-          <span className="text-[13px] font-semibold text-sidebar-foreground">Admin</span>
+          <div className="w-7 h-7 rounded-md border border-sidebar-border flex items-center justify-center">
+            <img src={logo} alt="" className="h-3.5 w-auto" />
+          </div>
+          <span className="text-[13px] font-semibold text-sidebar-accent-foreground tracking-tight">Admin</span>
         </Link>
-        <div className="flex items-center gap-1">
-          <ThemeToggle className="p-2 rounded-lg text-sidebar-foreground/40 hover:text-sidebar-foreground/80 hover:bg-sidebar-foreground/10 transition-colors" />
+        <div className="flex items-center gap-0.5">
+          <ThemeToggle className="h-9 w-9 flex items-center justify-center rounded-md text-ink-400 hover:text-sidebar-accent-foreground hover:bg-sidebar-accent transition-colors" />
           <button
             onClick={() => setMobileOpen(!mobileOpen)}
             aria-label="Menu de navegação"
-            className="p-2 rounded-lg hover:bg-sidebar-foreground/10 transition-colors text-sidebar-foreground"
+            aria-expanded={mobileOpen}
+            className="h-9 w-9 flex items-center justify-center rounded-md text-ink-500 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
           >
-            {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            {mobileOpen ? <X className="w-[18px] h-[18px]" /> : <Menu className="w-[18px] h-[18px]" />}
           </button>
         </div>
       </header>
@@ -259,11 +260,11 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
       {mobileOpen && (
         <>
           <div
-            className="lg:hidden fixed inset-0 z-40 bg-black/60 backdrop-blur-sm"
+            className="lg:hidden fixed inset-0 z-40 bg-ink-950/45 backdrop-blur-[2px]"
             onClick={() => setMobileOpen(false)}
           />
           <div
-            className={`lg:hidden fixed top-14 left-0 bottom-0 z-50 ${sidebarBg} text-sidebar-foreground w-60 flex flex-col border-r ${borderColor}`}
+            className={`lg:hidden fixed top-14 left-0 bottom-0 z-50 ${sidebarBg} text-sidebar-foreground w-60 flex flex-col border-r ${borderColor} shadow-xl`}
           >
             <SidebarContent onNavClick={() => setMobileOpen(false)} />
           </div>

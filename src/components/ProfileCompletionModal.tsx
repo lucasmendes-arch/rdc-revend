@@ -114,7 +114,7 @@ export function ProfileCompletionModal({ userId, onClose, onComplete }: Props) {
               <span className="inline-block text-[10px] font-bold uppercase tracking-widest text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full mb-2">
                 Perfil incompleto
               </span>
-              <h2 className="text-lg font-black text-foreground leading-tight">
+              <h2 className="text-[15px] font-semibold text-foreground tracking-tight leading-tight">
                 Falta pouco para finalizar seu cadastro
               </h2>
               <p className="text-sm text-muted-foreground mt-1">
@@ -217,7 +217,7 @@ export function ProfileCompletionModal({ userId, onClose, onComplete }: Props) {
           <button
             onClick={handleSave}
             disabled={saving || loading}
-            className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold btn-gold text-white disabled:opacity-70 transition-all"
+            className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold btn-gold disabled:opacity-70 transition-all"
           >
             {saving ? (
               <Loader className="w-4 h-4 animate-spin" />

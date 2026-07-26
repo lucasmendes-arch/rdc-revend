@@ -1,678 +1,394 @@
-# Design Tokens — Rei dos Cachos B2B
+# Design Tokens — Rei dos Cachos
 
-> Referência completa do design system do projeto `rdc-revend`.  
-> Fonte de verdade: `tailwind.config.ts` + `src/index.css`.  
-> Use este arquivo para replicar a identidade visual em outros projetos.
+> Fonte de verdade: `src/index.css` (tokens) + `tailwind.config.ts` (exposição).
+> Este arquivo documenta; ele não define. Se divergirem, o CSS vence.
+
+---
+
+## 0. A direção
+
+Clean, minimalista, premium. Referências: **Loggi, Vercel, Stripe**.
+
+Cinco regras que explicam todas as decisões abaixo:
+
+1. **Uma rampa de neutro só.** `--ink-0` … `--ink-950`, fria-neutra. Não existe
+   cinza quente e cinza frio na mesma tela.
+2. **Ação primária é ink**, não dourada. O dourado saiu do botão e virou sinal
+   de marca: spine do nav ativo, badge de parceiro. É saturado justamente
+   porque é raro.
+3. **Set semântico fechado**: `success` / `warning` / `danger` / `info` /
+   `neutral`. Status novo escolhe uma família. Não se inventa cor.
+4. **Hairline faz o trabalho da sombra.** Sombra só em overlay real (dropdown,
+   modal, drawer), sempre curta e de baixa opacidade.
+5. **Sem gradiente decorativo, sem sombra colorida, sem `translate` no hover.**
+
+Tokens semânticos são *alias* da rampa (`--background: var(--ink-0)`). O dark
+mode inverte a rampa uma vez e todo o resto acompanha sozinho — inclusive o
+botão primário, que vira branco com texto preto sem nenhuma regra extra.
 
 ---
 
 ## 1. Cores
 
-O sistema usa variáveis CSS (HSL) mapeadas no Tailwind. Abaixo estão os valores literais de cada variável.
+### Rampa de neutro
 
-### Modo Light (`:root`)
-
-#### Base / Semântico
-
-| Token CSS | Valor HSL | Hex aproximado | Uso |
+| Token | Light | Dark | Papel |
 |---|---|---|---|
-| `--background` | `0 0% 100%` | `#ffffff` | Fundo geral da página |
-| `--foreground` | `220 14% 12%` | `#1b1f28` | Texto principal |
-| `--card` | `0 0% 100%` | `#ffffff` | Fundo de cards |
-| `--card-foreground` | `220 14% 12%` | `#1b1f28` | Texto dentro de cards |
-| `--popover` | `0 0% 100%` | `#ffffff` | Fundo de popovers/dropdowns |
-| `--popover-foreground` | `220 14% 12%` | `#1b1f28` | Texto de popovers |
-| `--primary` | `220 14% 12%` | `#1b1f28` | Botão primário — charcoal escuro |
-| `--primary-foreground` | `0 0% 100%` | `#ffffff` | Texto sobre botão primário |
-| `--secondary` | `40 10% 96%` | `#f5f4f2` | Fundo secundário suave (quase branco amarelado) |
-| `--secondary-foreground` | `220 14% 12%` | `#1b1f28` | Texto sobre secondary |
-| `--muted` | `40 20% 96%` | `#f6f4ef` | Fundo muted (off-white quente) |
-| `--muted-foreground` | `220 9% 46%` | `#707480` | Texto secundário / labels |
-| `--accent` | `40 20% 94%` | `#f2f0e9` | Hover backgrounds |
-| `--accent-foreground` | `220 14% 12%` | `#1b1f28` | Texto sobre accent |
-| `--destructive` | `0 84% 60%` | `#f04545` | Erros, ações destrutivas |
-| `--destructive-foreground` | `0 0% 100%` | `#ffffff` | Texto sobre destructive |
-| `--border` | `40 15% 90%` | `#e8e4dc` | Bordas padrão (quente, não cinza puro) |
-| `--input` | `40 15% 90%` | `#e8e4dc` | Borda de inputs |
-| `--ring` | `38 95% 48%` | `#f0940f` | Anel de foco (dourado) |
+| `--ink-0` | `#FFFFFF` | `#0E1015` | Fundo da página |
+| `--ink-25` | `#FCFCFD` | `#12151B` | Superfície acima do fundo |
+| `--ink-50` | `#F8F9FA` | `#171A21` | Card (dark), zebra de tabela |
+| `--ink-100` | `#F1F2F4` | `#1D212A` | Muted, hover de linha |
+| `--ink-200` | `#E6E8EB` | `#282D38` | **Hairline — a borda do sistema** |
+| `--ink-300` | `#D3D6DB` | `#3A3F4B` | Borda forte, hover de borda |
+| `--ink-400` | `#9BA1AC` | `#696F7C` | Placeholder, ícone inativo |
+| `--ink-500` | `#6E7480` | `#878E9C` | Texto secundário |
+| `--ink-600` | `#545A66` | `#A9AFBB` | Texto de apoio |
+| `--ink-700` | `#3C424D` | `#C6CBD4` | |
+| `--ink-800` | `#262A31` | `#DBDFE6` | |
+| `--ink-900` | `#16181D` | `#F2F4F7` | **Texto principal / ação primária** |
+| `--ink-950` | `#0B0D10` | `#FFFFFF` | Overlay de modal |
 
-#### Gold Brand System
+Classes Tailwind: `bg-ink-50`, `text-ink-500`, `border-ink-300`…
 
-| Token CSS | Valor HSL | Hex aproximado | Uso |
+> A rampa foi calibrada de propósito para ficar próxima do `gray-*` do Tailwind.
+> Sobraram ~200 usos legados de `gray-*`/`slate-*` nas telas admin; com a rampa
+> fria eles harmonizam sozinhos no light. A borda quente antiga (`#E8E4DC`) era
+> a origem real da sujeira visual.
+
+### Semântico base (alias da rampa)
+
+| Token | Light | Dark |
+|---|---|---|
+| `--background` | `ink-0` | `ink-0` |
+| `--foreground` | `ink-900` | `ink-900` |
+| `--card` | `ink-0` | `ink-50` |
+| `--popover` | `ink-0` | `ink-100` |
+| `--primary` | `ink-900` | `ink-900` *(= claro)* |
+| `--primary-foreground` | `ink-0` | `ink-0` *(= escuro)* |
+| `--secondary` | `ink-100` | `ink-100` |
+| `--muted` | `ink-50` | `ink-100` |
+| `--muted-foreground` | `ink-500` | `ink-500` |
+| `--accent` | `ink-100` | `ink-100` |
+| `--border` / `--input` | `ink-200` | `ink-200` |
+| `--ring` | `ink-900` | `ink-700` |
+| `--surface` | `ink-50` | `ink-25` |
+| `--surface-alt` | `ink-100` | `ink-50` |
+
+### Marca (dourado)
+
+| Token | Light | Dark | Uso |
 |---|---|---|---|
-| `--gold-start` | `38 95% 48%` | `#f0940f` | Início do gradiente dourado |
-| `--gold-end` | `36 60% 40%` | `#a36a29` | Fim do gradiente dourado |
-| `--gold-light` | `40 100% 96%` | `#fff8eb` | Fundo suave dourado (badges, highlights) |
-| `--gold-mid` | `38 90% 55%` | `#f0a524` | Tom médio dourado (ícones, destaques) |
-| `--gold-text` | `36 65% 35%` | `#926125` | Texto dourado legível |
-| `--gold-border` | `38 85% 70%` | `#f4c560` | Bordas douradas |
+| `--brand` | `#BC8329` | — | Marca sólida, uso contido |
+| `--brand-strong` | `#95601A` | claro | **Texto** dourado (contraste ≥ 4.5:1) |
+| `--brand-solid` | `#E4A02F` | — | Spine do nav, dot, indicador |
+| `--brand-subtle` | `#FDF6E9` | escuro | Fundo de badge de marca |
+| `--brand-border` | `#EBD9BB` | escuro | Borda de badge de marca |
 
-#### Surface
+Tailwind: `bg-brand`, `text-brand-strong`, `border-brand-border`…
 
-| Token CSS | Valor HSL | Hex aproximado | Uso |
-|---|---|---|---|
-| `--surface` | `210 20% 98%` | `#f7f8fa` | Off-white levemente azulado |
-| `--surface-alt` | `40 30% 97%` | `#f9f6f0` | Off-white levemente quente |
+A escala legada `gold-*` (`text-gold-text`, `ring-gold`, `bg-gold`,
+`border-gold-border` — ~170 usos) aponta para **exatamente** os mesmos tokens.
+Não é uma segunda paleta. Em código novo, preferir `brand-*`.
 
-#### Sidebar
+**Nunca** usar `--brand-solid` como cor de texto sobre branco: ele existe para
+área pequena e preenchida.
 
-| Token CSS | Valor HSL | Hex aproximado | Uso |
-|---|---|---|---|
-| `--sidebar-background` | `0 0% 98%` | `#fafafa` | Fundo sidebar (light) |
-| `--sidebar-foreground` | `240 5.3% 26.1%` | `#3d3d4a` | Texto sidebar |
-| `--sidebar-primary` | `240 5.9% 10%` | `#191a1f` | Item primário sidebar |
-| `--sidebar-primary-foreground` | `0 0% 98%` | `#fafafa` | |
-| `--sidebar-accent` | `240 4.8% 95.9%` | `#f2f2f4` | Hover sidebar |
-| `--sidebar-accent-foreground` | `240 5.9% 10%` | `#191a1f` | |
-| `--sidebar-border` | `220 13% 91%` | `#e2e5ec` | Borda sidebar |
-| `--sidebar-ring` | `217.2 91.2% 59.8%` | `#4f8ef7` | Foco sidebar |
+### Set semântico
 
----
+Cada família tem quatro papéis: `DEFAULT` (texto), `solid`, `subtle` (fundo),
+`border`.
 
-### Modo Dark (`.dark`)
+| Família | Quando usar |
+|---|---|
+| `success` | Deu certo: pago, entregue, aprovado |
+| `warning` | Alguém precisa agir agora: aguardando pagamento, doc pendente |
+| `danger` | Deu errado / encerrado sem sucesso |
+| `info` | Em movimento, sem ação pendente |
+| `neutral` | Em progresso interno ou arquivado (usa a rampa `ink`) |
 
-#### Base / Semântico
+`--destructive` é alias de `--danger-solid`, não uma quinta cor.
 
-| Token CSS | Valor HSL | Hex aproximado | Uso |
-|---|---|---|---|
-| `--background` | `218 20% 8%` | `#0f1219` | Fundo geral — azul-cinza muito escuro |
-| `--foreground` | `214 18% 88%` | `#d7dce6` | Texto principal |
-| `--card` | `218 18% 11%` | `#161c27` | Cards — levemente mais claro que o fundo |
-| `--card-foreground` | `214 18% 88%` | `#d7dce6` | |
-| `--popover` | `218 17% 13%` | `#1a2030` | Dropdowns — mais elevado que card |
-| `--popover-foreground` | `214 18% 88%` | `#d7dce6` | |
-| `--primary` | `38 90% 58%` | `#f0a930` | Botão primário no dark = dourado |
-| `--primary-foreground` | `218 20% 8%` | `#0f1219` | Texto sobre primário dark |
-| `--secondary` | `218 15% 16%` | `#1f2838` | Superfície secundária |
-| `--secondary-foreground` | `214 14% 72%` | `#adb5c5` | |
-| `--muted` | `218 15% 16%` | `#1f2838` | |
-| `--muted-foreground` | `218 10% 50%` | `#707a8a` | Texto muted no dark |
-| `--accent` | `218 15% 18%` | `#222d3f` | Hover backgrounds no dark |
-| `--accent-foreground` | `214 18% 88%` | `#d7dce6` | |
-| `--destructive` | `0 62% 50%` | `#cc3333` | |
-| `--destructive-foreground` | `0 0% 100%` | `#ffffff` | |
-| `--border` | `218 14% 18%` | `#222b3a` | Bordas no dark (quase invisíveis) |
-| `--input` | `218 14% 18%` | `#222b3a` | |
-| `--ring` | `38 90% 58%` | `#f0a930` | Foco = dourado |
-
-#### Gold Brand (dark)
-
-| Token CSS | Valor HSL | Hex aproximado | Uso |
-|---|---|---|---|
-| `--gold-start` | `38 95% 52%` | `#f49e14` | |
-| `--gold-end` | `36 62% 43%` | `#af7230` | |
-| `--gold-light` | `38 70% 14%` | `#3d2a08` | Fundo gold em dark (bem escuro) |
-| `--gold-mid` | `38 90% 58%` | `#f0a930` | |
-| `--gold-text` | `38 92% 68%` | `#f5c05a` | Texto dourado legível no dark |
-| `--gold-border` | `38 50% 30%` | `#735520` | Bordas douradas no dark |
-
-#### Surface (dark)
-
-| Token CSS | Valor HSL | Hex aproximado | Uso |
-|---|---|---|---|
-| `--surface` | `218 18% 10%` | `#131921` | |
-| `--surface-alt` | `218 20% 8%` | `#0f1219` | Igual ao background no dark |
-
-#### Sidebar (dark — sidebar do admin sempre usa dark)
-
-| Token CSS | Valor HSL | Hex aproximado | Uso |
-|---|---|---|---|
-| `--sidebar-background` | `218 18% 11%` | `#161c27` | Fundo da sidebar admin |
-| `--sidebar-foreground` | `214 18% 88%` | `#d7dce6` | |
-| `--sidebar-primary` | `38 90% 58%` | `#f0a930` | Item ativo = dourado |
-| `--sidebar-primary-foreground` | `218 20% 8%` | `#0f1219` | |
-| `--sidebar-accent` | `218 15% 16%` | `#1f2838` | Hover sidebar dark |
-| `--sidebar-accent-foreground` | `214 18% 88%` | `#d7dce6` | |
-| `--sidebar-border` | `218 14% 18%` | `#222b3a` | |
-| `--sidebar-ring` | `38 90% 58%` | `#f0a930` | |
-
----
-
-### Gradientes (variáveis CSS)
-
-```css
---gradient-gold:       linear-gradient(135deg, hsl(38, 95%, 48%), hsl(36, 60%, 40%));
---gradient-gold-hover: linear-gradient(135deg, hsl(38, 95%, 55%), hsl(36, 65%, 45%));
---gradient-hero:       linear-gradient(135deg, hsl(0, 0%, 100%) 0%, hsl(40, 30%, 97%) 100%);
---gradient-section:    linear-gradient(180deg, hsl(40, 30%, 97%) 0%, hsl(0, 0%, 100%) 100%);
-```
+> `warning` foi puxado para laranja (26°) e não amarelo, para não colidir com o
+> dourado da marca (36–38°) quando os dois aparecem na mesma tela.
 
 ---
 
 ## 2. Tipografia
 
-### Fontes
-
-Carregadas via Google Fonts (import no topo de `src/index.css`):
+**Geist** (UI) + **Geist Mono** (código/ID), via Google Fonts.
+**Playfair Display** sobrevive apenas em `/lookbook`, uma peça editorial de
+impressão — não faz parte da identidade do portal e não deve ser usada em tela
+de produto.
 
 ```css
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Playfair+Display:wght@500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500;600&family=Playfair+Display:wght@500;600;700&display=swap');
 ```
 
-| Fonte | Família CSS | Uso |
+### Tracking negativo progressivo
+
+É o detalhe que faz título grande parecer apertado e caro em vez de esparramado.
+Quanto maior o corpo, mais negativo:
+
+| Classe | Valor | Uso |
 |---|---|---|
-| **DM Sans** | `font-sans` | Fonte padrão do site inteiro — body, labels, UI |
-| **Playfair Display** | `font-display` | Títulos de marca, elementos de destaque editorial |
+| `tracking-tighter` | `-0.03em` | Display |
+| `tracking-tight` | `-0.02em` | h1–h3, título de card, valor grande |
+| `tracking-snug` | `-0.01em` | Botão, input, item de nav |
+| `tracking-normal` | `0` | Body |
+| `tracking-eyebrow` | `+0.08em` | Rótulo de seção em caixa-alta |
 
-### Configuração no Tailwind
+`h1..h4` já recebem `font-weight: 600` + tracking negativo via CSS global.
 
-```ts
-fontFamily: {
-  sans: ['DM Sans', 'system-ui', 'sans-serif'],
-  display: ['Playfair Display', 'serif'],
-}
-```
+### Escala em uso
 
-### Pesos utilizados
-
-| Peso | Uso típico |
+| Tamanho | Uso |
 |---|---|
-| 300 (light) | Raramente, texto muito suave |
-| 400 (regular) | Body text, parágrafos |
-| 500 (medium) | Labels, navegação |
-| 600 (semibold) | Subtítulos, valores de destaque |
-| 700 (bold) | Títulos `h1/h2/h3`, botões principais |
-
-Itálico: apenas DM Sans 400, para ênfase pontual.
-
-### Escala de tamanhos (Tailwind padrão — sem customização)
-
-| Classe | Tamanho | Uso típico no projeto |
-|---|---|---|
-| `text-[9px]` / `text-[10px]` | 9–10px | Micro-labels, badges de status, contadores |
-| `text-[11px]` | 11px | Labels de grupo de navegação (`UPPERCASE tracking-wide`) |
-| `text-xs` | 12px | Texto auxiliar, subtítulos de card, descrições |
-| `text-[13px]` | 13px | Itens de navegação lateral, links secundários |
-| `text-sm` | 14px | Body secundário, inputs, botões |
-| `text-base` | 16px | Body principal |
-| `text-lg` | 18px | Subtítulos |
-| `text-xl` | 20px | |
-| `text-2xl` | 24px | Títulos de seção, `CardTitle` |
-| `text-3xl` | 30px | Títulos de página |
-| `text-4xl` | 36px | Hero titles |
-
-### Convenções de tipografia notáveis
-
-- `h1`, `h2`, `h3` → `font-family: DM Sans; font-weight: 700` (via CSS global)
-- Classe utilitária `.font-display` → ativa Playfair Display
-- Navegação lateral usa `text-[11px] font-semibold uppercase tracking-[0.14em]` para grupos
-- Labels de status usam `text-[10px] font-semibold uppercase tracking-wide`
-- `-webkit-font-smoothing: antialiased` aplicado globalmente no `body`
-
----
-
-## 3. Espaçamento e Layout
-
-### Container
-
-Definido no Tailwind:
-
-```ts
-container: {
-  center: true,
-  padding: "2rem",     // 32px de padding lateral
-  screens: {
-    "2xl": "1400px",   // max-width para breakpoint 2xl
-  },
-}
-```
-
-Padrão de uso nas páginas: `container mx-auto max-w-5xl` (catálogo, hero) ou `max-w-3xl` (formulários).
-
-### Breakpoints (padrão Tailwind — sem customização)
-
-| Breakpoint | Largura | Uso no projeto |
-|---|---|---|
-| `sm:` | 640px | Ajuste de texto em hero, formulários |
-| `md:` | 768px | Layout flex row/col (hero), sidebar collapse |
-| `lg:` | 1024px | Sidebar visível, layout de 2 colunas em admin |
-| `xl:` | 1280px | Espaçamentos maiores em tabelas admin |
-| `2xl:` | 1536px | Container max-width = 1400px |
-
-### Espaçamento padrão de componentes
-
-Valores mais usados no projeto (não estão customizados no tailwind.config, são os defaults):
-
-- **Padding de card**: `p-6` (24px) via `CardContent` / `CardHeader`
-- **Padding de admin card compacto**: `p-3 lg:px-4 lg:py-3`
-- **Gap entre itens de nav**: `space-y-0.5` (2px)
-- **Gap entre cards de stats**: `gap-3` a `gap-4`
-- **Padding de botão padrão**: `h-10 px-4 py-2`
-- **Sidebar width**: `w-60` (240px)
-
----
-
-## 4. Bordas, Sombras e Raios
-
-### Border Radius
-
-Definido no Tailwind com base na variável `--radius: 0.625rem` (10px):
-
-| Classe | Cálculo | Valor real |
-|---|---|---|
-| `rounded-sm` | `calc(var(--radius) - 4px)` | **6px** |
-| `rounded-md` | `calc(var(--radius) - 2px)` | **8px** |
-| `rounded-lg` | `var(--radius)` | **10px** |
-| `rounded-xl` | `calc(var(--radius) + 4px)` | **14px** |
-| `rounded-2xl` | `calc(var(--radius) + 8px)` | **18px** |
-| `rounded-full` | nativo Tailwind | **9999px** (badges, avatares, bolinhas) |
-
-**Uso por componente:**
-- Inputs, botões: `rounded-md` (8px)
-- Cards base (`Card`): `rounded-lg` (10px)
-- Admin summary cards: `rounded-xl`
-- Painéis hero, boxes de benefícios: `rounded-2xl`
-- Badges, tags, contadores: `rounded-full`
-- Sidebar logo container: `rounded-lg`
-
-### Sombras
-
-Definidas como variáveis CSS em `src/index.css`:
-
-```css
-/* Light mode */
---shadow-gold:      0 4px 20px -4px hsl(38 95% 48% / 0.35);
---shadow-card:      0 2px 24px -4px hsl(220 14% 12% / 0.08);
---shadow-card-hover: 0 8px 40px -8px hsl(220 14% 12% / 0.16);
-
-/* Dark mode */
---shadow-gold:      0 4px 20px -4px hsl(38 90% 58% / 0.18);
---shadow-card:      0 2px 24px -4px hsl(218 20% 5% / 0.70);
---shadow-card-hover: 0 8px 40px -8px hsl(218 20% 5% / 0.90);
-```
-
-Classes utilitárias:
-```css
-.shadow-gold       { box-shadow: var(--shadow-gold); }
-.shadow-card       { box-shadow: var(--shadow-card); }
-.shadow-card-hover { box-shadow: var(--shadow-card-hover); }
-```
-
-Sombra hardcoded no hero de benefícios:
-```css
-box-shadow: 0 4px 24px rgba(217, 119, 6, 0.06);
-```
-
-`shadow-sm` do Tailwind é usado no componente `Card` base (shadcn padrão).
-
-### Bordas
-
-- **Cor padrão**: `hsl(var(--border))` → quente, levemente amarelada (não cinza puro)
-- **Espessura padrão**: `1px` (Tailwind default via `@apply border-border` em `*`)
-- **Bordas gold**: `1.5px solid hsl(var(--gold-border))`
-- **Bordas da sidebar admin**: `border-white/[0.07]` (branco 7% de opacidade — quase invisível)
-- **Bordas do portal (light)**: `border-gray-200`
-- **Active indicator na sidebar**: faixa vertical `w-[2px] h-4` com `bg-[hsl(38,90%,58%)]` (dourado)
-
----
-
-## 5. Componentes Base
-
-### Biblioteca de componentes
-
-**shadcn/ui** sobre **Radix UI** — todos os primitivos instalados.
-
-Componentes Radix instalados:
-`Accordion, AlertDialog, AspectRatio, Avatar, Checkbox, Collapsible, ContextMenu, Dialog, DropdownMenu, HoverCard, Label, Menubar, NavigationMenu, Popover, Progress, RadioGroup, ScrollArea, Select, Separator, Slider, Slot, Switch, Tabs, Toast, Toggle, ToggleGroup, Tooltip`
-
-Utilitários instalados: `class-variance-authority`, `cmdk` (Command palette), `lucide-react` (ícones), `recharts` (gráficos), `sonner` (toasts), `vaul` (drawer), `tailwindcss-animate`
-
----
-
-### Componente: Button (`src/components/ui/button.tsx`)
-
-```tsx
-import * as React from "react";
-import { Slot } from "@radix-ui/react-slot";
-import { cva, type VariantProps } from "class-variance-authority";
-import { cn } from "@/lib/utils";
-
-const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
-  {
-    variants: {
-      variant: {
-        default:     "bg-primary text-primary-foreground hover:bg-primary/90",
-        destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90",
-        outline:     "border border-input bg-background hover:bg-accent hover:text-accent-foreground",
-        secondary:   "bg-secondary text-secondary-foreground hover:bg-secondary/80",
-        ghost:       "hover:bg-accent hover:text-accent-foreground",
-        link:        "text-primary underline-offset-4 hover:underline",
-      },
-      size: {
-        default: "h-10 px-4 py-2",
-        sm:      "h-9 rounded-md px-3",
-        lg:      "h-11 rounded-md px-8",
-        icon:    "h-10 w-10",
-      },
-    },
-    defaultVariants: {
-      variant: "default",
-      size: "default",
-    },
-  },
-);
-
-export interface ButtonProps
-  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
-    VariantProps<typeof buttonVariants> {
-  asChild?: boolean;
-}
-
-const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, asChild = false, ...props }, ref) => {
-    const Comp = asChild ? Slot : "button";
-    return <Comp className={cn(buttonVariants({ variant, size, className }))} ref={ref} {...props} />;
-  },
-);
-Button.displayName = "Button";
-
-export { Button, buttonVariants };
-```
-
----
-
-### Componente: Card (`src/components/ui/card.tsx`)
-
-```tsx
-import * as React from "react";
-import { cn } from "@/lib/utils";
-
-const Card = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
-  ({ className, ...props }, ref) => (
-    <div ref={ref} className={cn("rounded-lg border bg-card text-card-foreground shadow-sm", className)} {...props} />
-  ),
-);
-Card.displayName = "Card";
-
-const CardHeader = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
-  ({ className, ...props }, ref) => (
-    <div ref={ref} className={cn("flex flex-col space-y-1.5 p-6", className)} {...props} />
-  ),
-);
-CardHeader.displayName = "CardHeader";
-
-const CardTitle = React.forwardRef<HTMLParagraphElement, React.HTMLAttributes<HTMLHeadingElement>>(
-  ({ className, ...props }, ref) => (
-    <h3 ref={ref} className={cn("text-2xl font-semibold leading-none tracking-tight", className)} {...props} />
-  ),
-);
-CardTitle.displayName = "CardTitle";
-
-const CardDescription = React.forwardRef<HTMLParagraphElement, React.HTMLAttributes<HTMLParagraphElement>>(
-  ({ className, ...props }, ref) => (
-    <p ref={ref} className={cn("text-sm text-muted-foreground", className)} {...props} />
-  ),
-);
-CardDescription.displayName = "CardDescription";
-
-const CardContent = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
-  ({ className, ...props }, ref) => (
-    <div ref={ref} className={cn("p-6 pt-0", className)} {...props} />
-  ),
-);
-CardContent.displayName = "CardContent";
-
-const CardFooter = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
-  ({ className, ...props }, ref) => (
-    <div ref={ref} className={cn("flex items-center p-6 pt-0", className)} {...props} />
-  ),
-);
-CardFooter.displayName = "CardFooter";
-
-export { Card, CardHeader, CardFooter, CardTitle, CardDescription, CardContent };
-```
-
----
-
-### Componente: Input (`src/components/ui/input.tsx`)
-
-```tsx
-import * as React from "react";
-import { cn } from "@/lib/utils";
-
-const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
-  ({ className, type, ...props }, ref) => {
-    return (
-      <input
-        type={type}
-        className={cn(
-          "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm",
-          className,
-        )}
-        ref={ref}
-        {...props}
-      />
-    );
-  },
-);
-Input.displayName = "Input";
-
-export { Input };
-```
-
----
-
-## 6. Padrões de Interface
-
-### Botões
-
-#### Botão Primário padrão (shadcn)
-- Light: `bg-primary` = charcoal `hsl(220 14% 12%)`, texto branco
-- Dark: `bg-primary` = dourado `hsl(38 90% 58%)`, texto escuro
-- Hover: `opacity 90%`
-- Classes: `bg-primary text-primary-foreground hover:bg-primary/90`
-
-#### Botão Gold (classe custom `.btn-gold`)
-```css
-background: linear-gradient(135deg, hsl(38, 95%, 48%), hsl(36, 60%, 40%));
-color: white;
-font-weight: 600;
-letter-spacing: 0.02em;
-transition: all 0.25s ease;
-box-shadow: 0 4px 20px -4px hsl(38 95% 48% / 0.35);
-```
-Hover: gradiente levemente mais claro + `translateY(-1px)` + sombra mais intensa.
-
-#### Botão Gold Outline (`.btn-gold-outline`)
-```css
-border: 1.5px solid hsl(var(--gold-border));
-color: hsl(var(--gold-text));
-background: transparent;
-font-weight: 500;
-transition: all 0.25s ease;
-```
-Hover: `background: hsl(var(--gold-light))` + borda gold-mid.
-
-#### Botão Action Dark (`.btn-action`)
-```css
-/* Light */
-background: hsl(220, 14%, 14%);
-color: white;
-
-/* Dark */
-background: hsl(218, 15%, 22%);
-color: hsl(214, 18%, 88%);
-```
-
-#### Botões contextuais inline (usados em hero / portal)
-```
-px-6 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold shadow-sm hover:shadow hover:-translate-y-0.5 transition-all text-sm
-```
-
----
-
-### Cards e Painéis
-
-#### Card shadcn base
-```
-rounded-lg border bg-card text-card-foreground shadow-sm
-```
-- Padding interno: `p-6` (header e content)
-- Título: `text-2xl font-semibold leading-none tracking-tight`
-- Descrição: `text-sm text-muted-foreground`
-
-#### Admin Summary Card
-```
-bg-card rounded-xl border border-border p-3 lg:px-4 lg:py-3 shadow-sm flex flex-col justify-between
-```
-- Label: `text-[10px] lg:text-[11px] font-semibold uppercase tracking-wide text-muted-foreground`
-- Value: `text-sm lg:text-base font-bold text-foreground`
-
-#### Painel de benefícios (hero)
-```
-bg-white rounded-2xl p-5 border border-amber-100 shadow-[0_4px_24px_rgba(217,119,6,0.06)]
-```
-
-#### Portal sidebar (light)
-```
-bg-white border-r border-gray-200
-```
-
-#### Admin sidebar (sempre dark)
-```
-bg-[hsl(218,18%,11%)] border-r border-white/[0.07]
-```
-
----
-
-### Ícones
-
-- **Biblioteca**: `lucide-react` v0.462.0
-- **Tamanho padrão nos layouts**: `w-[15px] h-[15px]` (itens de navegação)
-- **Tamanho em cards de stats**: `w-3.5 h-3.5 lg:w-4 lg:h-4`
-- **Tamanho em botões**: `w-4 h-4` (via `[&_svg]:size-4` no Button base)
-- **Tamanho em header mobile**: `w-5 h-5`
-- **Cor padrão (ativo)**: `text-[hsl(38,90%,58%)]` (dourado) na admin sidebar
-- **Cor padrão (inativo)**: `text-white/30` na admin sidebar / `text-gray-300` no portal
-- **Cor muted-foreground**: `text-muted-foreground` em cards de stats
-
----
-
-### Animações e Transições
-
-#### Keyframes customizados (`src/index.css`)
-
-```css
-@keyframes shimmer {
-  0%   { background-position: -200% center; }
-  100% { background-position: 200% center; }
-}
-
-@keyframes float-up {
-  0%, 100% { transform: translateY(0px); }
-  50%       { transform: translateY(-8px); }
-}
-
-@keyframes fade-in-up {
-  from { opacity: 0; transform: translateY(24px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-
-/* Accordion (via tailwindcss-animate) */
-@keyframes accordion-down {
-  from { height: 0 }
-  to   { height: var(--radix-accordion-content-height) }
-}
-@keyframes accordion-up {
-  from { height: var(--radix-accordion-content-height) }
-  to   { height: 0 }
-}
-```
-
-#### Classes de animação
-
-| Classe | Animação | Duração |
-|---|---|---|
-| `.animate-float` | `float-up` — flutua 8px para cima/baixo | 4s ease-in-out infinite |
-| `.animate-fade-in-up` | Aparece subindo 24px | 0.6s ease-out forwards |
-| `.animate-delay-100/200/300` | Delays escalonados | 0.1s / 0.2s / 0.3s |
-| `animate-accordion-down` | Abre accordion | 0.2s ease-out |
-| `animate-accordion-up` | Fecha accordion | 0.2s ease-out |
-
-#### Transições padrão
-
-- Maioria dos elementos interativos: `transition-all duration-150` ou `transition-colors`
-- Botões gold: `transition: all 0.25s ease`
-- Botão action: `transition: background 0.15s ease`
-- Hover em botões hero: `hover:-translate-y-0.5` + `transition-all`
-
----
-
-## 7. Observações Gerais
-
-### Classes utilitárias customizadas (`src/index.css`)
+| `text-[11px]` | Eyebrow, badge, cabeçalho de tabela |
+| `text-[12px]` | Texto auxiliar, metadados |
+| `text-[13px]` | Item de nav, célula de tabela, botão `sm` |
+| `text-sm` (14) | Body de UI, input |
+| `text-[15px]` | Título de card, título de modal, título de página compacto |
+| `text-xl`–`text-2xl` | Título de página / saudação do portal |
+
+### Utilitários
 
 | Classe | O que faz |
 |---|---|
-| `.font-display` | Aplica Playfair Display |
-| `.text-gold` | `color: hsl(var(--gold-text))` — tom dourado legível |
-| `.bg-gold-light` | Fundo dourado suave `hsl(var(--gold-light))` |
-| `.border-gold` | Borda dourada `hsl(var(--gold-border))` |
-| `.gradient-gold` | Background gradiente dourado |
-| `.gradient-gold-text` | Texto com clip de gradiente dourado (`-webkit-background-clip: text`) |
-| `.shadow-gold` | Sombra dourada suave |
-| `.shadow-card` | Sombra padrão de card |
-| `.shadow-card-hover` | Sombra de card no hover (mais intensa) |
-| `.bg-surface` / `.bg-surface-alt` | Fundos off-white (azulado / quente) |
-| `.btn-gold` | Botão gradiente dourado completo com hover |
-| `.btn-gold-outline` | Botão outline dourado |
-| `.btn-action` | Botão escuro (charcoal light / cinza no dark) |
-| `.scrollbar-none` | Remove scrollbar (carrosséis) |
-| `.scrollbar-thin` | Scrollbar fina `#cbd5e1` / hover `#94a3b8` |
-| `.animate-float` | Animação de flutuar |
-| `.animate-fade-in-up` | Fade + slide up |
-| `.animate-delay-100/200/300` | Delays de animação |
+| `.eyebrow` | Rótulo de seção completo: 11px, 600, uppercase, `+0.08em`, muted |
+| `.numeric` | `tabular-nums` + tracking `-0.01em` — **todo valor monetário e métrica** |
+| `.mono` | Geist Mono + tabular — ID de pedido, SKU, código |
 
-### Coherence layer de dark mode
-
-Em `src/index.css`, há um layer especial com seletor `.dark .bg-white`, `.dark .bg-gray-50`, etc. que remapeia classes hardcoded do Tailwind para os tokens semânticos dark, sem precisar alterar cada arquivo de página:
-
-```css
-.dark .bg-white       → hsl(var(--card))
-.dark .bg-gray-50     → hsl(218 18% 13%)
-.dark .bg-gray-100    → hsl(var(--muted))
-.dark .border-gray-*  → hsl(var(--border))
-```
-
-### Recharts (gráficos)
-
-- Grid lines no dark: `stroke: hsl(218, 14%, 18%)`
-- Tooltip no dark: fundo `hsl(var(--popover))`, borda `hsl(var(--border))`, texto `hsl(var(--foreground))`
-
-### Padrão de active indicator na sidebar
-
-Ambas as sidebars (admin e portal) usam o mesmo padrão visual de item ativo: uma faixa vertical `w-[2px] h-4` posicionada `absolute left-0` com `rounded-r-full`:
-
-```tsx
-{isActive && (
-  <span className="absolute left-0 inset-y-0 flex items-center">
-    <span className="w-[2px] h-4 bg-amber-500 rounded-r-full" />
-  </span>
-)}
-```
-
-### Padrão de badge/pill de status
-
-```
-inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-amber-200 bg-amber-100/50
-```
-Com bolinha animada: `w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse`
-
-### Padrão de ícone-container em cards de benefício
-
-```
-w-8 h-8 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center shrink-0
-```
-
-### Overlay mobile
-
-```
-fixed inset-0 z-40 bg-black/60 backdrop-blur-sm
-```
+`th`, `td`, `output`, `time` e `[data-numeric]` já recebem `tabular-nums`
+automaticamente. Número que dança de largura entre linhas é o que faz uma
+tabela parecer amadora.
 
 ---
 
-## Resumo: Personalidade Visual
+## 3. Raio e elevação
 
-O projeto tem uma estética **premium e editorial com raízes comerciais**. A paleta combina charcoal escuro (quase preto azulado) com dourado quente como cor de marca — uma dupla que remete a luxo discreto e profissionalismo. O modo light é branco com toques quentes (bordas amareladas, backgrounds off-white com tom âmbar), enquanto o modo dark usa azul-cinza profundo como fundo, mantendo o dourado como único elemento de cor saturada. A tipografia mistura DM Sans (moderna, sem serifa, muito legível) com Playfair Display (serifado editorial) para criar contraste entre o operacional e o aspiracional. Componentes são compactos e funcionais no admin, mais generosos e acolhedores no portal do cliente. A identidade não é minimalista pura — ela tem personalidade através do ouro — mas também não é exuberante: cada uso de dourado é intencional e contido.
+`--radius: 0.5rem` (8px).
+
+| Classe | Valor | Uso |
+|---|---|---|
+| `rounded-sm` | 4px | Badge de tabela, botão `xs` |
+| `rounded-md` | 6px | **Botão, input, select, item de nav** |
+| `rounded-lg` | 8px | **Card, painel** |
+| `rounded-xl` | 12px | Modal, card de mídia |
+| `rounded-2xl` | 16px | Raro |
+| `rounded-full` | — | Pill de status, avatar, contador |
+
+### Sombras
+
+```css
+--shadow-xs: 0 1px 2px 0 …/0.04          /* card estático */
+--shadow-sm: 0 1px 2px -1px, 0 1px 3px 0 /* card em hover */
+--shadow-md: 0 2px 4px -2px, 0 4px 12px  /* dropdown, popover */
+--shadow-lg: 0 8px 24px -6px             /* modal, drawer */
+```
+
+Mapeamento Tailwind (o `shadow-sm` do shadcn cai no token certo sem edição):
+
+| Classe | Token |
+|---|---|
+| `shadow-xs` / `shadow-sm` | `--shadow-xs` |
+| `shadow` / `shadow-md` | `--shadow-sm` |
+| `shadow-lg` | `--shadow-md` |
+| `shadow-xl` / `shadow-2xl` | `--shadow-lg` |
+
+Sombra colorida foi aposentada. `.shadow-gold` sobreviveu como classe (13 usos)
+mas hoje é elevação neutra.
+
+---
+
+## 4. Componentes
+
+### Button — `src/components/ui/button.tsx`
+
+Altura padrão **36px** (`h-9`), não 40px.
+
+| Variante | Visual | Uso |
+|---|---|---|
+| `default` | Ink sólido | A ação principal da tela. **Uma por tela.** |
+| `secondary` / `outline` | Branco + hairline | Par natural do ink (Cancelar, Voltar) |
+| `ghost` | Sem superfície | Terciária, toolbar, ícone |
+| `destructive` | Vermelho sólido | Exclusão confirmada |
+| `brand` | Dourado | Raro e deliberado: CTA de marca no portal. Não usar em admin/RH/DP |
+| `link` | Sublinhado | Navegação inline |
+
+Tamanhos: `xs` (28) · `sm` (32) · `default` (36) · `lg` (40) · `icon` (36) · `icon-sm` (32).
+
+### Badge — `src/components/ui/badge.tsx`
+
+Variantes: `neutral` (padrão) · `success` · `warning` · `danger` · `info` ·
+`brand` · `solid` · `outline`. Prop `dot` adiciona bolinha herdando a cor.
+
+Para status de pedido **não escolher a variante na mão** — usar
+`getOrderStatus()` (ver §5).
+
+### Card
+
+`rounded-lg` + `border-border` + `shadow-xs`. Padding `p-5`.
+`CardTitle` é **15px semibold tracking-tight** — não `text-2xl`. Título de 24px
+num card é o default do shadcn e o sinal mais óbvio de template não customizado.
+
+### Input / Textarea / StyledSelect
+
+`h-9`, `rounded-md`, hairline, `hover:border-ink-300`, foco em `ring-2 ring-ring
+ring-offset-2`. `text-base` no mobile é intencional (< 16px faz o Safari do iOS
+dar zoom); `md:text-sm` devolve a densidade no desktop.
+
+Alturas de `StyledSelect` espelham Input/Button: `default` h-9, `inline` h-8,
+`xs` h-7.
+
+### Table
+
+Cabeçalho em caixa-alta 11px, `h-9`, sem fundo cinza. Célula `px-3 py-2.5`,
+13px, `tabular-nums`. Linha separada por hairline; a tabela inteira vive sobre
+superfície branca.
+
+### Dialog
+
+Overlay `ink-950/45` + `blur-[2px]` — o contexto continua visível. Entrada em
+fade + escala 0.98 em 150ms, sem `slide-in` (modal não deve pular na tela).
+
+### Shell de página — `src/components/portal/PortalPage.tsx`
+
+Único lugar que decide largura, respiro lateral e ritmo vertical do portal.
+
+```tsx
+<PortalPage title="Bom dia, Maria" subtitle="…" badge={<Badge/>} actions={<>…</>}>
+  <PortalSection title="Resumo do mês">…</PortalSection>
+  <PortalSection title="Produtos" bleed aside={<Segmented/>}>…</PortalSection>
+</PortalPage>
+```
+
+- **Largura**: `max-w-6xl` (1152px). Antes não havia `max-width` nenhuma — em
+  monitor largo o dashboard esticava até a borda, com card de pedido de 2000px.
+- **`bleed`**: deixa o conteúdo sangrar até a viewport no mobile e voltar para
+  dentro do container a partir de `sm`. É o que carrossel precisa para o scroll
+  pegar a largura toda no iOS sem esticar no desktop.
+- Identidade do parceiro (saudação, rótulo comercial, subtítulo) vem de
+  `portalIdentity.ts`, não de um componente de cabeçalho.
+
+### Hierarquia do dashboard
+
+Portal de revendedor é ferramenta de operação, não vitrine. A ordem das seções
+codifica isso:
+
+1. **O que trava dinheiro** — aviso de pedido aguardando pagamento, no topo
+2. **Estado do mês** — pedidos, investido, último
+3. **Recompra** — a ação mais frequente de um revendedor
+4. **Pedidos recentes**
+5. **Vitrine** — produtos e lançamentos
+6. **Suporte**
+
+Antes eram três carrosséis horizontais empilhados acima de tudo — o vocabulário
+de app de consumo. Os dois de produto viraram um só com controle segmentado:
+mesmo conteúdo, metade da altura.
+
+### Utilitários de superfície
+
+| Classe | O que faz |
+|---|---|
+| `.surface-card` | Card do sistema: `bg-card` + hairline + raio 8 |
+| `.surface-card-interactive` | Hover escurece **só a borda** — o card não se move |
+| `.nav-spine` | Faixa dourada de 2px do item de nav ativo |
+| `.btn-primary` / `.btn-action` / `.btn-gold` | Ação primária ink |
+| `.btn-secondary` / `.btn-gold-outline` | Ação secundária branca + hairline |
+
+> `.btn-gold` (33 usos) e `.btn-action` (59 usos) são legados **no nome**, não no
+> visual: hoje ambos são a ação primária ink, para não existirem dois pretos
+> ligeiramente diferentes. Em código novo usar `.btn-primary`.
+
+---
+
+## 5. Status de pedido — `src/lib/design/orderStatus.ts`
+
+Fonte única. Antes, `statusConfig` estava duplicado em 7 arquivos e o **mesmo**
+status tinha cores diferentes por tela (`separacao` amarelo em /meus-pedidos e
+roxo em /admin/pedidos; `enviado` roxo num e azul-céu noutro). Pior: o funil
+inteiro era colorido — oito etapas, oito cores — o que anula a hierarquia.
+
+**A cor comunica o que fazer, não em que etapa está.** O nome da etapa fica no
+rótulo.
+
+| Status | Tom | Rótulo |
+|---|---|---|
+| `recebido` | `info` | Recebido |
+| `aguardando_pagamento` | `warning` | Aguardando pagamento |
+| `pago` | `success` | Pago |
+| `separacao` | `neutral` | Em separação |
+| `enviado` | `info` | Enviado |
+| `entregue` | `success` | Entregue |
+| `concluido` | `neutral` | Concluído |
+| `cancelado` | `danger` | Cancelado |
+| `expirado` | `neutral` | Expirado |
+
+```tsx
+const st = getOrderStatus(order.status)
+<Badge variant={st.tone}>{st.short}</Badge>
+```
+
+`getOrderStatus` nunca lança: status novo criado no backend degrada para neutro
+com o próprio código como rótulo, em vez de sumir da tela.
+
+Exporta ainda `ORDER_STATUS_SEQUENCE` (ordem canônica para filtros/selects) e
+`ACTIVE_ORDER_STATUSES` (o que conta como pedido em aberto).
+
+---
+
+## 6. Movimento
+
+Curto e sem deslocamento vertical grande.
+
+| Classe | Animação |
+|---|---|
+| `.animate-fade-in-up` | fade + 8px, 280ms, `cubic-bezier(.22,1,.36,1)` |
+| `.animate-delay-100/200/300` | 60 / 120 / 180ms |
+| `animate-accordion-down/up` | 180ms |
+
+Transição padrão de elemento interativo: `transition-colors` em 150ms.
+**Não** usar `hover:-translate-y-*` nem `hover:shadow-md` — em UI de dado isso
+lê como site institucional.
+
+`prefers-reduced-motion: reduce` está respeitado globalmente em `index.css`.
+
+---
+
+## 7. Acessibilidade
+
+- `:focus-visible` global: `outline: 2px solid hsl(var(--ring))` com offset 2px.
+  O anel é ink (não dourado): o dourado sumia sobre branco.
+- Contraste: `--brand-strong` (texto dourado) e todos os `DEFAULT` das famílias
+  semânticas foram escolhidos para ≥ 4.5:1 sobre o seu `subtle` e sobre branco.
+- `--ink-400` é o piso para texto: abaixo disso, só ícone decorativo e borda.
+
+---
+
+## 8. Cobertura e dívida
+
+### Migrado (0 usos de `amber-*` restantes)
+
+Portal (dashboard, layout, shell) · autenticação (Login, Cadastro,
+RedefinirSenha) · funil de compra (Catálogo, Checkout) · vitrine
+(`components/catalog/*`) · pedidos (MeusPedidos, PedidoSucesso) · guards de rota.
+
+### Dívida conhecida
+
+- **Área admin: ~390 usos de `amber-*`** em `comercial-atacado/admin`, `rh`,
+  `dp`, `estoque`, `sistema`, `financeiro`, `marketing`, `salao`. Essas telas
+  herdaram tokens, tipografia e primitivos, mas não passaram por revisão tela a
+  tela. É o maior bloco restante.
+- **Camada de coerência dark** (`.dark .bg-white`, `.dark .text-gray-500`… em
+  `index.css`): traduz ~200 classes hardcoded legadas sem tocar 42 arquivos. É
+  dívida consciente — o alvo é migrar as telas para tokens semânticos e ir
+  apagando regras de lá.
+- **`ring-gold`** (51 usos, telas admin) ainda pinta o anel de foco de bronze
+  em vez do ink global. Resolver junto com a migração do admin.
+- **`statusConfig` local** ainda existe em `admin/Pedidos.tsx`,
+  `admin/Clientes.tsx`, `PedidoSucesso.tsx`, `sistema/Usuarios.tsx` e
+  `OrderCouponModal.tsx`. Devem passar a importar `orderStatus.ts`.
+- **`/portal/comprar`** é rota órfã: nunca foi terminada e hoje redireciona
+  para `/catalogo`. Remover a rota é decisão de produto.
+- **`/lookbook`** usa `stone-*` + Playfair de propósito (peça de impressão) e
+  está fora do sistema.

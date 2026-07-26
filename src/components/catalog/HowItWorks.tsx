@@ -1,51 +1,57 @@
 import { Search, ShoppingCart, TrendingUp } from "lucide-react";
 
+/**
+ * Três passos do fluxo de compra.
+ *
+ * A numeração fica porque aqui ela é honesta: isto é de fato uma sequência, e a
+ * ordem carrega informação. O que saiu foi a decoração em volta dela — círculos
+ * âmbar de 56px, linha conectora posicionada com `-z-10`, sombra colorida e
+ * `hover:scale-105` num elemento que não é clicável.
+ */
+
+const STEPS = [
+  {
+    id: 1,
+    icon: Search,
+    title: "Escolha os produtos",
+    desc: "Navegue pelos kits prontos ou monte a partir de produtos avulsos.",
+  },
+  {
+    id: 2,
+    icon: ShoppingCart,
+    title: "Monte o pedido",
+    desc: "Adicione quantidades de atacado ao carrinho.",
+  },
+  {
+    id: 3,
+    icon: TrendingUp,
+    title: "Receba e revenda",
+    desc: "Acompanhe a margem sugerida de cada item.",
+  },
+];
+
 export default function HowItWorks() {
-  const steps = [
-    {
-      id: 1,
-      title: "Escolha seus produtos",
-      desc: "Navegue e selecione seus kits ou produtos avulsos favoritos.",
-      icon: <Search className="w-5 h-5 text-amber-600" />
-    },
-    {
-      id: 2,
-      title: "Monte seu pedido",
-      desc: "Adicione quantidades de atacado ao carrinho.",
-      icon: <ShoppingCart className="w-5 h-5 text-amber-600" />
-    },
-    {
-      id: 3,
-      title: "Receba e Revenda",
-      desc: "Acompanhe seu potencial de retorno e aumente seus lucros.",
-      icon: <TrendingUp className="w-5 h-5 text-amber-600" />
-    }
-  ];
-
   return (
-    <div className="w-full bg-white rounded-2xl border border-amber-100 shadow-sm p-5 sm:p-6 mb-8 mt-4">
-      <h2 className="text-xl sm:text-2xl font-black text-amber-950 mb-4 sm:mb-6 text-center">
-        Como funciona
-      </h2>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 relative">
-        {/* Connector line for desktop */}
-        <div className="hidden md:block absolute top-[28px] left-[15%] right-[15%] h-[2px] bg-amber-100 -z-10" />
-
-        {steps.map((step) => (
-          <div key={step.id} className="flex flex-col items-center text-center relative bg-white">
-            <div className="w-14 h-14 rounded-full bg-amber-50 border-4 border-white flex items-center justify-center mb-3 shadow-[0_2px_10px_rgba(217,119,6,0.1)] relative z-10 transition-transform hover:scale-105">
-              {step.icon}
-              <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-amber-500 text-white text-[10px] font-black flex items-center justify-center border-2 border-white">
-                {step.id}
+    <div className="w-full surface-card p-5 sm:p-6 mb-8 mt-4">
+      <h2 className="eyebrow mb-5">Como funciona</h2>
+      <ol className="grid grid-cols-1 md:grid-cols-3 gap-5 md:gap-8">
+        {STEPS.map(({ id, icon: Icon, title, desc }) => (
+          <li key={id} className="flex gap-3">
+            <div className="flex flex-col items-center shrink-0">
+              <div className="w-7 h-7 rounded-md border border-border bg-muted flex items-center justify-center">
+                <Icon className="w-3.5 h-3.5 text-ink-500" />
               </div>
             </div>
-            <h3 className="font-bold text-foreground text-sm sm:text-base mb-1.5">{step.title}</h3>
-            <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed px-2">
-              {step.desc}
-            </p>
-          </div>
+            <div className="min-w-0">
+              <p className="text-[13px] font-medium text-foreground leading-tight">
+                <span className="mono text-ink-400 mr-1.5">{id}</span>
+                {title}
+              </p>
+              <p className="text-[12px] text-muted-foreground leading-relaxed mt-1">{desc}</p>
+            </div>
+          </li>
         ))}
-      </div>
+      </ol>
     </div>
   );
 }

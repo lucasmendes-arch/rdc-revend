@@ -5,71 +5,73 @@ interface B2BHeroProps {
   onScrollToProducts: () => void;
 }
 
+/**
+ * Cabeçalho do catálogo B2B.
+ *
+ * Era um hero de landing page: fundo em gradiente âmbar, `font-black` (peso
+ * 900), título em `amber-950`, badge com bolinha pulsando e um card flutuante
+ * de benefícios com sombra colorida. Isso vende para quem ainda não é cliente
+ * — mas quem abre esta tela já é parceiro logado e veio comprar.
+ *
+ * Virou o que a tela precisa ser: título, o que fazer, e as três condições
+ * comerciais que o parceiro consulta de fato (mínimo, pagamento, suporte)
+ * como linha de fatos, não como cartão decorado.
+ */
+
+const FACTS = [
+  { icon: ShoppingBag,    label: "Pedido mínimo", value: "A partir de R$ 500,00" },
+  { icon: CreditCard,     label: "Pagamento",     value: "Pix ou cartão" },
+  { icon: MessageCircle,  label: "Suporte",       value: "Via WhatsApp" },
+];
+
 export default function B2BHero({ onScrollToKits, onScrollToProducts }: B2BHeroProps) {
   return (
-    <div className="w-full bg-gradient-to-br from-amber-50 to-white/60 border-b border-amber-100 py-6 sm:py-10 px-4">
-      <div className="container mx-auto max-w-5xl flex flex-col md:flex-row items-center justify-between gap-6 md:gap-10">
-        
-        {/* Texts */}
-        <div className="flex-1 text-center md:text-left">
-          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-amber-200 bg-amber-100/50 mb-3 sm:mb-4">
-            <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
-            <span className="text-[10px] sm:text-xs font-bold text-amber-800 uppercase tracking-widest">Portal B2B</span>
-          </div>
-          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-amber-950 leading-tight mb-2 sm:mb-3">
-            Catálogo exclusivo <br className="hidden md:block"/> para revenda
-          </h1>
-          <p className="text-sm sm:text-base text-amber-800/80 mb-5 sm:mb-6 leading-relaxed max-w-xl mx-auto md:mx-0">
-            Compre no atacado para salão ou revenda, com kits prontos e produtos avulsos para montar seu pedido com alta lucratividade.
-          </p>
+    <div className="w-full border-b border-border bg-background">
+      <div className="container mx-auto max-w-6xl px-4 sm:px-6 py-8 sm:py-10">
+        <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-8">
 
-          <div className="flex flex-col sm:flex-row gap-3 justify-center md:justify-start">
-            <button 
-              onClick={onScrollToKits}
-              className="px-6 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold shadow-sm hover:shadow hover:-translate-y-0.5 transition-all text-sm flex items-center justify-center gap-2"
-            >
-              <ShoppingBag className="w-4 h-4" /> Ver kits mais vendidos
-            </button>
-            <button 
-              onClick={onScrollToProducts}
-              className="px-6 py-2.5 rounded-xl border border-amber-300 bg-white/80 hover:bg-amber-50 text-amber-900 font-bold shadow-sm transition-all text-sm flex items-center justify-center gap-2"
-            >
-              Explorar catálogo <ArrowDown className="w-4 h-4" />
-            </button>
+          <div className="min-w-0">
+            <p className="eyebrow mb-2.5">Catálogo B2B</p>
+            <h1 className="text-2xl sm:text-3xl font-semibold text-foreground leading-tight tracking-tight max-w-xl">
+              Catálogo exclusivo para revenda
+            </h1>
+            <p className="text-[14px] text-muted-foreground mt-2.5 leading-relaxed max-w-xl">
+              Compre no atacado para salão ou revenda, com kits prontos e produtos
+              avulsos para montar o seu pedido.
+            </p>
+
+            <div className="flex flex-col sm:flex-row gap-2 mt-5">
+              <button
+                onClick={onScrollToKits}
+                className="h-9 px-3.5 rounded-md btn-primary text-[13px] flex items-center justify-center gap-1.5"
+              >
+                <ShoppingBag className="w-3.5 h-3.5" />
+                Ver kits mais vendidos
+              </button>
+              <button
+                onClick={onScrollToProducts}
+                className="h-9 px-3.5 rounded-md btn-secondary text-[13px] flex items-center justify-center gap-1.5"
+              >
+                Explorar catálogo
+                <ArrowDown className="w-3.5 h-3.5" />
+              </button>
+            </div>
           </div>
+
+          {/* Condições comerciais: dado, não banner. */}
+          <dl className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-1 gap-x-8 gap-y-3 shrink-0">
+            {FACTS.map(({ icon: Icon, label, value }) => (
+              <div key={label} className="flex items-center gap-2.5">
+                <Icon className="w-4 h-4 text-ink-400 shrink-0" />
+                <div className="min-w-0">
+                  <dt className="text-[11px] text-muted-foreground leading-none">{label}</dt>
+                  <dd className="text-[13px] font-medium text-foreground leading-none mt-1 numeric">{value}</dd>
+                </div>
+              </div>
+            ))}
+          </dl>
+
         </div>
-
-        {/* Benefits Micro */}
-        <div className="w-full md:w-auto bg-white rounded-2xl p-5 border border-amber-100 shadow-[0_4px_24px_rgba(217,119,6,0.06)] flex flex-col gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
-              <ShoppingBag className="w-4 h-4" />
-            </div>
-            <div className="flex flex-col">
-              <span className="text-sm font-bold text-foreground">Pedido Mínimo</span>
-              <span className="text-xs text-muted-foreground">A partir de R$ 500,00</span>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
-              <CreditCard className="w-4 h-4" />
-            </div>
-            <div className="flex flex-col">
-              <span className="text-sm font-bold text-foreground">Pagamento</span>
-              <span className="text-xs text-muted-foreground">Via Pix ou Cartão</span>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
-              <MessageCircle className="w-4 h-4" />
-            </div>
-            <div className="flex flex-col">
-              <span className="text-sm font-bold text-foreground">Suporte</span>
-              <span className="text-xs text-muted-foreground">Via WhatsApp</span>
-            </div>
-          </div>
-        </div>
-
       </div>
     </div>
   );

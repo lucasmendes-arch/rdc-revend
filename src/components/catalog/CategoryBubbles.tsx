@@ -66,8 +66,8 @@ export default function CategoryBubbles({ categories, activeCategories, onToggle
                         >
                             <div
                                 className={`w-14 h-14 rounded-full flex items-center justify-center transition-all ${isActive
-                                    ? 'bg-amber-500 shadow-md shadow-amber-500/30 text-white'
-                                    : 'bg-white border border-border text-gold hover:border-gold-border hover:shadow-sm'
+                                    ? 'bg-primary text-primary-foreground'
+                                    : 'bg-white border border-border text-gold hover:border-gold-border-sm'
                                     }`}
                             >
                                 <Icon className="w-6 h-6" />
@@ -90,7 +90,7 @@ export default function CategoryBubbles({ categories, activeCategories, onToggle
                     <div
                         key={i}
                         className={`rounded-full transition-all ${i === activeIndex
-                            ? 'w-4 h-1.5 bg-amber-500'
+                            ? 'w-4 h-1.5 bg-foreground'
                             : 'w-1.5 h-1.5 bg-border'
                             }`}
                     />

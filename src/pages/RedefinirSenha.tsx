@@ -72,13 +72,20 @@ const RedefinirSenha = () => {
       {/* Main */}
       <main className="flex-1 flex items-center justify-center px-4 py-16">
         <div className="w-full max-w-md">
-          <div className="bg-white rounded-2xl border border-border shadow-card p-8">
-            {/* Icon */}
-            <div className="w-14 h-14 rounded-2xl gradient-gold flex items-center justify-center mx-auto mb-6 shadow-gold">
+          <div className="surface-card p-6 sm:p-7">
+            {/* Sucesso e neutro carregam significados diferentes — o ícone
+                deixa de ser o mesmo blob dourado nos dois estados. */}
+            <div
+              className={`w-10 h-10 rounded-lg border flex items-center justify-center mx-auto mb-5 ${
+                success
+                  ? 'border-success-border bg-success-subtle'
+                  : 'border-brand-border bg-brand-subtle'
+              }`}
+            >
               {success ? (
-                <CheckCircle className="w-7 h-7 text-white" />
+                <CheckCircle className="w-4 h-4 text-success" />
               ) : (
-                <Crown className="w-7 h-7 text-white" />
+                <Crown className="w-4 h-4 text-brand-strong" />
               )}
             </div>
 
@@ -101,14 +108,16 @@ const RedefinirSenha = () => {
                 </p>
 
                 {error && (
-                  <div className="mb-4 px-4 py-3 rounded-lg bg-red-50 border border-red-100 text-red-600 text-sm">
+                  <div className="mb-4 px-4 py-3 rounded-lg bg-danger-subtle border border-danger-border text-danger text-sm">
                     {error}
                   </div>
                 )}
 
+                {/* Estado transitório, não alerta: nada deu errado ainda. */}
                 {!tokenReady && (
-                  <div className="mb-4 px-4 py-3 rounded-lg bg-amber-50 border border-amber-100 text-amber-700 text-sm">
-                    Validando link de recuperação...
+                  <div className="mb-4 px-3 py-2.5 rounded-md bg-muted border border-border text-muted-foreground text-[13px] flex items-center gap-2">
+                    <span className="w-3.5 h-3.5 rounded-full border-2 border-ink-300 border-t-foreground animate-spin shrink-0" />
+                    Validando o link de recuperação…
                   </div>
                 )}
 
@@ -150,7 +159,7 @@ const RedefinirSenha = () => {
                   <button
                     type="submit"
                     disabled={loading || !tokenReady}
-                    className="w-full flex items-center justify-center gap-2.5 py-3.5 rounded-xl font-semibold text-base btn-gold text-white disabled:opacity-70 disabled:cursor-not-allowed mt-2"
+                    className="w-full flex items-center justify-center gap-2.5 py-3.5 rounded-xl font-semibold text-base btn-gold disabled:opacity-70 disabled:cursor-not-allowed mt-2"
                   >
                     {loading ? (
                       <>

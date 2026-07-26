@@ -69,6 +69,7 @@ As áreas abaixo estão em **feature freeze permanente**. Nenhuma alteração se
 | Recurso | Localização |
 |---|---|
 | Schema completo | `docs/SCHEMA.md` |
+| Design system (tokens, componentes, status) | `design-tokens.md` |
 | Arquitetura | `docs/architecture.md` |
 | Roadmap | `docs/roadmap.md` |
 | Decisões | `docs/decisions.md` |

@@ -99,13 +99,13 @@ export default function PackageCards({ products, isGuest = false, isPartner = fa
             <div
               key={pkg.id}
               onClick={() => setDetailsPkgId(pkg.id)}
-              className={`flex-shrink-0 w-[270px] sm:w-[300px] lg:w-[260px] xl:w-[280px] snap-start rounded-2xl border p-4 sm:p-5 flex flex-col transition-all cursor-pointer ${pkg.highlight
-                ? 'border-amber-400 bg-gradient-to-br from-amber-50 to-white shadow-md relative'
-                : 'border-amber-100 bg-white shadow-[0_2px_12px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_24px_rgba(217,119,6,0.12)]'
+              className={`flex-shrink-0 w-[270px] sm:w-[300px] lg:w-[260px] xl:w-[280px] snap-start rounded-lg border p-4 sm:p-5 flex flex-col transition-all cursor-pointer ${pkg.highlight
+                ? 'border-ink-300 bg-muted shadow-md relative'
+                : 'border-border bg-white shadow-xs'
                 }`}
             >
               {pkg.highlight && (
-                <span className="absolute -top-3 left-4 px-2.5 py-0.5 rounded-full text-[10px] sm:text-xs font-bold bg-amber-500 text-white whitespace-nowrap z-10 shadow-sm">
+                <span className="absolute -top-2.5 left-4 px-2 py-0.5 rounded-full text-[10px] font-medium bg-primary text-primary-foreground whitespace-nowrap z-10">
                   Mais Popular
                 </span>
               )}
@@ -123,10 +123,10 @@ export default function PackageCards({ products, isGuest = false, isPartner = fa
                     <span className="text-sm text-muted-foreground font-medium">Ver preço ao cadastrar</span>
                   </div>
                 ) : (
-                  <span className="text-[22px] sm:text-2xl font-black gradient-gold-text">
+                  <span className="text-[22px] sm:text-2xl font-semibold gradient-gold-text">
                     R$ {pkgTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                     {isPartner && (
-                      <span className="ml-2 text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded uppercase align-middle">Atacado</span>
+                      <span className="ml-2 text-[10px] bg-muted text-ink-600 px-1.5 py-0.5 rounded uppercase align-middle">Atacado</span>
                     )}
                   </span>
                 )}
@@ -197,7 +197,7 @@ export default function PackageCards({ products, isGuest = false, isPartner = fa
                   to="/cadastro"
                   onClick={(e) => e.stopPropagation()}
                   className={`w-full flex items-center justify-center gap-2 py-3 sm:py-2.5 rounded-xl text-sm sm:text-xs font-bold transition-all tracking-wide mt-2 ${pkg.highlight
-                    ? 'bg-amber-500 hover:bg-amber-600 text-white shadow-sm'
+                    ? 'btn-primary'
                     : 'border border-gold-border text-gold-text hover:bg-gold hover:text-white'
                   }`}
                 >
@@ -207,10 +207,10 @@ export default function PackageCards({ products, isGuest = false, isPartner = fa
                 <div className="flex flex-col gap-2 mt-2">
                   <button
                     onClick={(e) => { e.stopPropagation(); handleSelectPackage(pkg.id) }}
-                    className={`w-full h-10 sm:h-11 flex items-center justify-center gap-2 rounded-xl text-sm font-black transition-all tracking-wide uppercase shadow-sm hover:-translate-y-0.5 ${addedPkgId === pkg.id
+                    className={`w-full h-10 sm:h-11 flex items-center justify-center gap-2 rounded-xl text-sm font-semibold transition-all tracking-wide uppercase shadow-sm ${addedPkgId === pkg.id
                       ? 'bg-green-600 text-white'
                       : pkg.highlight
-                        ? 'bg-amber-500 hover:bg-amber-600 text-white'
+                        ? 'btn-primary'
                         : 'bg-green-600 hover:bg-green-700 text-white'
                       }`}
                   >
@@ -228,7 +228,7 @@ export default function PackageCards({ products, isGuest = false, isPartner = fa
                   </button>
                   <button
                     onClick={(e) => { e.stopPropagation(); setDetailsPkgId(pkg.id) }}
-                    className="w-full flex items-center justify-center py-2 text-xs font-bold text-muted-foreground hover:text-amber-700 underline decoration-amber-700/30 transition-colors uppercase"
+                    className="w-full flex items-center justify-center py-2 text-xs font-bold text-muted-foreground hover:text-foreground underline decoration-ink-300 transition-colors uppercase"
                   >
                     Ver composição do kit ({pkg.displayProductCount} itens)
                   </button>
@@ -245,7 +245,7 @@ export default function PackageCards({ products, isGuest = false, isPartner = fa
           <div
             key={i}
             className={`rounded-full transition-all ${i === activeIndex
-              ? 'w-4 h-1.5 bg-amber-500'
+              ? 'w-4 h-1.5 bg-foreground'
               : 'w-1.5 h-1.5 bg-border'
               }`}
           />
@@ -258,8 +258,8 @@ export default function PackageCards({ products, isGuest = false, isPartner = fa
 
       {detailsPkgId !== null && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setDetailsPkgId(null)} />
-          <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[85vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+          <div className="absolute inset-0 bg-ink-950/45 backdrop-blur-[2px]" onClick={() => setDetailsPkgId(null)} />
+          <div className="relative bg-popover rounded-xl shadow-xl w-full max-w-lg max-h-[85vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
             {(() => {
               const entry = packageSelections.find(e => e.pkg.id === detailsPkgId)
               if (!entry) return null
@@ -331,7 +331,7 @@ export default function PackageCards({ products, isGuest = false, isPartner = fa
                     {isGuest ? (
                       <Link
                         to="/cadastro"
-                        className="w-full sm:w-auto px-6 py-2.5 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-lg shadow-sm hover:-translate-y-0.5 transition-transform flex items-center justify-center gap-2"
+                        className="w-full sm:w-auto px-6 py-2.5 btn-primary font-bold rounded-lg shadow-sm transition-transform flex items-center justify-center gap-2"
                       >
                         Criar conta grátis para comprar
                       </Link>
@@ -341,7 +341,7 @@ export default function PackageCards({ products, isGuest = false, isPartner = fa
                           handleSelectPackage(entry.pkg.id);
                           setDetailsPkgId(null);
                         }}
-                        className="w-full sm:w-auto px-6 py-2.5 bg-gold text-white font-bold rounded-lg shadow-sm hover:-translate-y-0.5 transition-transform flex items-center justify-center gap-2"
+                        className="w-full sm:w-auto px-6 py-2.5 btn-primary font-bold rounded-lg shadow-sm transition-transform flex items-center justify-center gap-2"
                       >
                         <ShoppingCart className="w-4 h-4" />
                         Adicionar {entry.pkg.name}

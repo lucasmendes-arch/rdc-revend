@@ -395,11 +395,14 @@ const Checkout = () => {
           <div className="flex items-center justify-center gap-2 sm:gap-4">
             {steps.map((s, i) => (
               <div key={s.num} className="flex items-center gap-2 sm:gap-4">
-                {i > 0 && <div className={`w-8 sm:w-12 h-0.5 ${step >= s.num ? 'bg-amber-400' : 'bg-border'} transition-colors`} />}
+                {i > 0 && <div className={`w-8 sm:w-12 h-0.5 ${step >= s.num ? 'bg-foreground' : 'bg-border'} transition-colors`} />}
                 <div className="flex items-center gap-1.5">
-                  <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all ${step > s.num ? 'bg-green-500 text-white' :
-                    step === s.num ? 'gradient-gold text-white shadow-sm' :
-                      'bg-surface-alt text-muted-foreground border border-border'
+                  {/* Concluído / atual / pendente — três estados, três pesos.
+                      O passo atual é o ink cheio; o concluído recua para a
+                      família success; o pendente é só hairline. */}
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-medium numeric transition-colors ${step > s.num ? 'bg-success-subtle text-success border border-success-border' :
+                    step === s.num ? 'bg-primary text-primary-foreground' :
+                      'bg-background text-ink-400 border border-border'
                     }`}>
                     {step > s.num ? <Check className="w-3.5 h-3.5" /> : s.num}
                   </div>
@@ -425,7 +428,7 @@ const Checkout = () => {
         {/* ================================================================ */}
         {step === 1 && (
           <div className="space-y-6">
-            <div className="bg-white rounded-2xl p-5 sm:p-6 shadow-card">
+            <div className="bg-white rounded-lg p-5 sm:p-6 shadow-card">
               <div className="flex items-center gap-2 mb-5">
                 <ShoppingCart className="w-5 h-5 text-gold-text" />
                 <h2 className="text-lg font-bold text-foreground">Confirme seu Pedido</h2>
@@ -469,15 +472,15 @@ const Checkout = () => {
                     <span>- R$ {shippingDiscountAmount.toFixed(2)}</span>
                   </div>
                 )}
-                <div className="flex items-center justify-between text-lg sm:text-xl font-black pt-3 border-t-2 border-amber-100">
+                <div className="flex items-center justify-between text-lg sm:text-xl font-semibold pt-3 border-t-2 border-border">
                   <span className="uppercase tracking-tight text-foreground/80">Subtotal Geral</span>
                   <span className="gradient-gold-text">R$ {(cartTotal - effectiveDiscount).toFixed(2)}</span>
                 </div>
               </div>
 
               {cartTotal < minOrderValue && (
-                <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                  <p className="text-xs text-amber-700">
+                <div className="mt-4 p-3 bg-muted border border-border rounded-lg">
+                  <p className="text-xs text-ink-600">
                     Pedido minimo: R$ {minOrderValue}. Faltam: <strong>R$ {(minOrderValue - cartTotal).toFixed(2)}</strong>
                   </p>
                 </div>
@@ -489,7 +492,7 @@ const Checkout = () => {
             <button
               onClick={handleNext}
               disabled={cartTotal < minOrderValue}
-              className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-semibold text-base btn-gold text-white disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-semibold text-base btn-gold disabled:opacity-50 disabled:cursor-not-allowed transition-all"
             >
               Continuar para Entrega
               <ArrowRight className="w-4 h-4" />
@@ -504,7 +507,7 @@ const Checkout = () => {
           <div className="space-y-6">
             {/* Pre-filled Client Info (read-only summary) */}
             {/* Progressive Profiling: Only show inputs for missing fields or if editing */}
-            <div className="bg-white rounded-2xl p-5 sm:p-6 shadow-sm border border-border">
+            <div className="bg-white rounded-lg p-5 sm:p-6 shadow-sm border border-border">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
                   <Check className="w-5 h-5 text-green-500" />
@@ -514,7 +517,7 @@ const Checkout = () => {
                   <button 
                     type="button"
                     onClick={() => setIsEditingProfile(!isEditingProfile)}
-                    className="text-xs font-semibold text-amber-600 hover:text-amber-700 underline"
+                    className="text-xs font-semibold text-ink-500 hover:text-foreground underline"
                   >
                     {isEditingProfile ? 'Salvar visualização' : 'Editar dados'}
                   </button>
@@ -523,9 +526,9 @@ const Checkout = () => {
 
               {/* Missing data banner */}
               {!isEditingProfile && (!initialProfile.full_name || !initialProfile.document) && (
-                <div className="mb-6 p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-2.5 animate-in fade-in slide-in-from-top-2 duration-300">
-                  <Zap className="w-4 h-4 text-amber-600 mt-0.5" />
-                  <p className="text-[12px] text-amber-800 leading-relaxed font-medium">
+                <div className="mb-6 p-3 bg-muted border border-border rounded-xl flex items-start gap-2.5 animate-in fade-in slide-in-from-top-2 duration-300">
+                  <Zap className="w-4 h-4 text-ink-500 mt-0.5" />
+                  <p className="text-[12px] text-ink-600 leading-relaxed font-medium">
                     Precisamos de mais alguns dados para finalizar seu pedido com segurança.
                   </p>
                 </div>
@@ -610,9 +613,9 @@ const Checkout = () => {
 
 
             {/* Delivery Method Selector */}
-            <div className="bg-white rounded-2xl p-5 sm:p-6 shadow-sm border border-border">
+            <div className="bg-white rounded-lg p-5 sm:p-6 shadow-sm border border-border">
               <h2 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
-                <Store className="w-5 h-5 text-amber-500" />
+                <Store className="w-5 h-5 text-ink-400" />
                 Entrega
               </h2>
 
@@ -620,9 +623,9 @@ const Checkout = () => {
                 <button
                   type="button"
                   onClick={() => setDeliveryMethod('shipping')}
-                  className={`relative flex items-center p-4 rounded-xl border transition-all ${deliveryMethod === 'shipping' ? 'border-amber-500 bg-amber-50/50 ring-1 ring-amber-500 shadow-sm' : 'border-border bg-surface hover:border-amber-300'}`}
+                  className={`relative flex items-center p-4 rounded-xl border transition-all ${deliveryMethod === 'shipping' ? 'border-foreground bg-muted ring-1 ring-foreground shadow-sm' : 'border-border bg-surface hover:border-ink-300'}`}
                 >
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center mr-3 ${deliveryMethod === 'shipping' ? 'bg-amber-100/80 text-amber-600' : 'bg-surface-alt text-muted-foreground'}`}>
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center mr-3 ${deliveryMethod === 'shipping' ? 'bg-muted text-foreground' : 'bg-surface-alt text-muted-foreground'}`}>
                     <MapPin className="w-5 h-5" />
                   </div>
                   <div className="flex-1 text-left">
@@ -633,7 +636,7 @@ const Checkout = () => {
                   </div>
                   {deliveryMethod === 'shipping' && (
                     <div className="absolute top-4 right-4">
-                      <div className="w-5 h-5 rounded-full bg-amber-500 text-white flex items-center justify-center">
+                      <div className="w-5 h-5 rounded-full bg-primary text-primary-foreground flex items-center justify-center">
                         <Check className="w-3 h-3" />
                       </div>
                     </div>
@@ -643,9 +646,9 @@ const Checkout = () => {
                 <button
                   type="button"
                   onClick={() => { setDeliveryMethod('pickup'); setPickupUnitSlug('linhares'); }}
-                  className={`relative flex items-center p-4 rounded-xl border transition-all ${deliveryMethod === 'pickup' ? 'border-amber-500 bg-amber-50/50 ring-1 ring-amber-500 shadow-sm' : 'border-border bg-surface hover:border-amber-300'}`}
+                  className={`relative flex items-center p-4 rounded-xl border transition-all ${deliveryMethod === 'pickup' ? 'border-foreground bg-muted ring-1 ring-foreground shadow-sm' : 'border-border bg-surface hover:border-ink-300'}`}
                 >
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center mr-3 ${deliveryMethod === 'pickup' ? 'bg-amber-100/80 text-amber-600' : 'bg-surface-alt text-muted-foreground'}`}>
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center mr-3 ${deliveryMethod === 'pickup' ? 'bg-muted text-foreground' : 'bg-surface-alt text-muted-foreground'}`}>
                     <Store className="w-5 h-5" />
                   </div>
                   <div className="flex-1 text-left">
@@ -657,7 +660,7 @@ const Checkout = () => {
                   </div>
                   {deliveryMethod === 'pickup' && (
                     <div className="absolute top-4 right-4">
-                      <div className="w-5 h-5 rounded-full bg-amber-500 text-white flex items-center justify-center">
+                      <div className="w-5 h-5 rounded-full bg-primary text-primary-foreground flex items-center justify-center">
                         <Check className="w-3 h-3" />
                       </div>
                     </div>
@@ -750,10 +753,10 @@ const Checkout = () => {
                   <h3 className="text-sm font-bold text-foreground mb-4 mt-2 border-t border-border pt-6">Selecione a unidade</h3>
                   <div className="space-y-3">
                     {/* Linhares */}
-                    <label className={`relative block p-4 rounded-xl border cursor-pointer transition-all ${pickupUnitSlug === 'linhares' ? 'border-amber-500 bg-amber-50/30' : 'border-border bg-surface hover:border-amber-300'}`}>
+                    <label className={`relative block p-4 rounded-xl border cursor-pointer transition-all ${pickupUnitSlug === 'linhares' ? 'border-foreground bg-muted' : 'border-border bg-surface hover:border-ink-300'}`}>
                       <input type="radio" name="pickup_unit" className="sr-only" checked={pickupUnitSlug === 'linhares'} onChange={() => setPickupUnitSlug('linhares')} />
                       <div className="flex items-start gap-4">
-                        <div className={`mt-0.5 flex-shrink-0 w-5 h-5 rounded-full border flex items-center justify-center transition-colors ${pickupUnitSlug === 'linhares' ? 'border-amber-500 bg-amber-500 text-white' : 'border-slate-300'}`}>
+                        <div className={`mt-0.5 flex-shrink-0 w-5 h-5 rounded-full border flex items-center justify-center transition-colors ${pickupUnitSlug === 'linhares' ? 'border-foreground bg-muted0 text-white' : 'border-slate-300'}`}>
                           {pickupUnitSlug === 'linhares' && <Check className="w-3 h-3" />}
                         </div>
                         <div className="flex-1">
@@ -764,10 +767,10 @@ const Checkout = () => {
                     </label>
 
                     {/* Serra */}
-                    <label className={`relative block p-4 rounded-xl border cursor-pointer transition-all ${pickupUnitSlug === 'serra' ? 'border-amber-500 bg-amber-50/30' : 'border-border bg-surface hover:border-amber-300'}`}>
+                    <label className={`relative block p-4 rounded-xl border cursor-pointer transition-all ${pickupUnitSlug === 'serra' ? 'border-foreground bg-muted' : 'border-border bg-surface hover:border-ink-300'}`}>
                       <input type="radio" name="pickup_unit" className="sr-only" checked={pickupUnitSlug === 'serra'} onChange={() => setPickupUnitSlug('serra')} />
                       <div className="flex items-start gap-4">
-                        <div className={`mt-0.5 flex-shrink-0 w-5 h-5 rounded-full border flex items-center justify-center transition-colors ${pickupUnitSlug === 'serra' ? 'border-amber-500 bg-amber-500 text-white' : 'border-slate-300'}`}>
+                        <div className={`mt-0.5 flex-shrink-0 w-5 h-5 rounded-full border flex items-center justify-center transition-colors ${pickupUnitSlug === 'serra' ? 'border-foreground bg-muted0 text-white' : 'border-slate-300'}`}>
                           {pickupUnitSlug === 'serra' && <Check className="w-3 h-3" />}
                         </div>
                         <div className="flex-1">
@@ -778,10 +781,10 @@ const Checkout = () => {
                     </label>
 
                     {/* Teixeira */}
-                    <label className={`relative block p-4 rounded-xl border cursor-pointer transition-all ${pickupUnitSlug === 'teixeira' ? 'border-amber-500 bg-amber-50/30' : 'border-border bg-surface hover:border-amber-300'}`}>
+                    <label className={`relative block p-4 rounded-xl border cursor-pointer transition-all ${pickupUnitSlug === 'teixeira' ? 'border-foreground bg-muted' : 'border-border bg-surface hover:border-ink-300'}`}>
                       <input type="radio" name="pickup_unit" className="sr-only" checked={pickupUnitSlug === 'teixeira'} onChange={() => setPickupUnitSlug('teixeira')} />
                       <div className="flex items-start gap-4">
-                        <div className={`mt-0.5 flex-shrink-0 w-5 h-5 rounded-full border flex items-center justify-center transition-colors ${pickupUnitSlug === 'teixeira' ? 'border-amber-500 bg-amber-500 text-white' : 'border-slate-300'}`}>
+                        <div className={`mt-0.5 flex-shrink-0 w-5 h-5 rounded-full border flex items-center justify-center transition-colors ${pickupUnitSlug === 'teixeira' ? 'border-foreground bg-muted0 text-white' : 'border-slate-300'}`}>
                           {pickupUnitSlug === 'teixeira' && <Check className="w-3 h-3" />}
                         </div>
                         <div className="flex-1">
@@ -796,7 +799,7 @@ const Checkout = () => {
             </div>
 
             {/* Notes */}
-            <div className="bg-white rounded-2xl p-5 sm:p-6 shadow-card">
+            <div className="bg-white rounded-lg p-5 sm:p-6 shadow-card">
               <label className="block text-xs font-medium text-muted-foreground mb-1">Observacoes</label>
               <textarea
                 name="notes" value={formData.notes} onChange={handleChange} rows={3}
@@ -806,7 +809,7 @@ const Checkout = () => {
             </div>
 
             {/* Cupom de Desconto — oculto para parceiro da rede */}
-            {!isNetworkPartner && <div className="bg-white rounded-2xl p-5 sm:p-6 shadow-card">
+            {!isNetworkPartner && <div className="bg-white rounded-lg p-5 sm:p-6 shadow-card">
               <label className="block text-xs font-bold text-muted-foreground uppercase mb-2">Cupom de Desconto</label>
               <div className="flex gap-2">
                 <input
@@ -842,7 +845,7 @@ const Checkout = () => {
             </div>}
 
             {/* Order Total Summary */}
-            <div className="bg-white rounded-2xl p-5 sm:p-6 shadow-card space-y-3">
+            <div className="bg-white rounded-lg p-5 sm:p-6 shadow-card space-y-3">
               <div className="flex items-center justify-between text-sm text-muted-foreground">
                 <span>Subtotal ({cartCount} itens)</span>
                 <span>R$ {cartTotal.toFixed(2)}</span>
@@ -906,7 +909,7 @@ const Checkout = () => {
             {/* Proceed to Payment Button (instead of submit) */}
             <button
               onClick={handleNext}
-              className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-semibold text-base btn-gold text-white transition-all"
+              className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-semibold text-base btn-gold transition-all"
             >
               Continuar para Pagamento
               <ArrowRight className="w-5 h-5" />
@@ -919,7 +922,7 @@ const Checkout = () => {
         {/* ================================================================ */}
         {step === 3 && (
           <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
-            <div className="bg-white rounded-2xl p-5 sm:p-6 shadow-card">
+            <div className="bg-white rounded-lg p-5 sm:p-6 shadow-card">
               <h2 className="text-lg font-bold text-foreground mb-6 flex items-center gap-2">
                 <Check className="w-5 h-5 text-green-500" />
                 Forma de Pagamento
@@ -929,7 +932,7 @@ const Checkout = () => {
                 <button
                   type="button"
                   onClick={() => { setPaymentMethod('pix'); setInstallments(1); }}
-                  className={`flex flex-col items-center justify-center gap-2 p-4 rounded-xl border-2 transition-all ${paymentMethod === 'pix' ? 'border-amber-500 bg-amber-50 text-amber-800' : 'border-border text-foreground hover:bg-surface-alt'}`}
+                  className={`flex flex-col items-center justify-center gap-2 p-4 rounded-lg border transition-all ${paymentMethod === 'pix' ? 'border-foreground bg-muted text-ink-600' : 'border-border text-foreground hover:bg-surface-alt'}`}
                 >
                   <div className="w-8 h-8 rounded-full bg-teal-100 flex items-center justify-center">
                     <Zap className="w-4 h-4 text-teal-600" />
@@ -940,7 +943,7 @@ const Checkout = () => {
                 <button
                   type="button"
                   onClick={() => setPaymentMethod('credit')}
-                  className={`flex flex-col items-center justify-center gap-2 p-4 rounded-xl border-2 transition-all ${paymentMethod === 'credit' ? 'border-amber-500 bg-amber-50 text-amber-800' : 'border-border text-foreground hover:bg-surface-alt'}`}
+                  className={`flex flex-col items-center justify-center gap-2 p-4 rounded-lg border transition-all ${paymentMethod === 'credit' ? 'border-foreground bg-muted text-ink-600' : 'border-border text-foreground hover:bg-surface-alt'}`}
                 >
                   <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
                     <Check className="w-4 h-4 text-blue-600" />
@@ -952,10 +955,10 @@ const Checkout = () => {
                   <button
                     type="button"
                     onClick={() => { setPaymentMethod('pay_on_delivery'); setInstallments(1); }}
-                    className={`sm:col-span-2 flex items-center justify-center gap-3 p-4 rounded-xl border-2 transition-all ${paymentMethod === 'pay_on_delivery' ? 'border-amber-500 bg-amber-50 text-amber-800' : 'border-border text-foreground hover:bg-surface-alt'}`}
+                    className={`sm:col-span-2 flex items-center justify-center gap-3 p-4 rounded-lg border transition-all ${paymentMethod === 'pay_on_delivery' ? 'border-foreground bg-muted text-ink-600' : 'border-border text-foreground hover:bg-surface-alt'}`}
                   >
-                    <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
-                      <Truck className="w-4 h-4 text-amber-600" />
+                    <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
+                      <Truck className="w-4 h-4 text-ink-500" />
                     </div>
                     <div className="text-left">
                       <span className="block font-bold text-sm">Pagar na Entrega</span>
@@ -971,7 +974,7 @@ const Checkout = () => {
             <button
               onClick={handleSubmit}
               disabled={loading}
-              className="w-full flex items-center justify-center gap-2 py-4 rounded-xl font-semibold text-lg btn-gold text-white disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_4px_20px_rgba(245,158,11,0.3)] transition-all hover:-translate-y-0.5"
+              className="w-full flex items-center justify-center gap-2 py-4 rounded-xl font-semibold text-lg btn-gold disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_4px_20px_rgba(245,158,11,0.3)] transition-all"
             >
               {loading ? (
                 <>

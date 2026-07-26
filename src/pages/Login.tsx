@@ -147,147 +147,141 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col">
-      {/* Header */}
-      <header className="bg-white border-b border-gray-200 px-4 sm:px-6 h-16 flex items-center">
-        <div className="container mx-auto flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg bg-amber-50 border border-amber-100 flex items-center justify-center flex-shrink-0">
-            <img src={logo} alt="Rei dos Cachos" className="h-4 w-auto" />
+    // Tela de autenticação não leva header de aplicação: a marca fica centrada
+    // acima do card, que é o padrão de SaaS e tira o peso visual da barra.
+    <div className="min-h-screen bg-surface flex flex-col items-center justify-center px-4 py-12">
+      <main className="w-full max-w-sm">
+        <div className="flex flex-col items-center mb-7">
+          <div className="w-10 h-10 rounded-lg border border-border bg-background flex items-center justify-center mb-3">
+            <img src={logo} alt="" className="h-5 w-auto" />
           </div>
-          <div className="leading-tight">
-            <p className="text-[13px] font-semibold text-gray-900">Rei dos Cachos</p>
-            <p className="text-[10px] text-amber-600 font-medium tracking-[0.15em] uppercase">
-              Portal do Parceiro
-            </p>
-          </div>
+          <p className="text-[15px] font-semibold text-foreground tracking-tight">Rei dos Cachos</p>
+          <p className="eyebrow mt-1.5">Portal do Parceiro</p>
         </div>
-      </header>
 
-      {/* Main */}
-      <main className="flex-1 flex items-center justify-center px-4 py-16">
-        <div className="w-full max-w-sm">
-          {/* Card */}
-          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8">
-            <h1 className="text-xl font-bold text-gray-900 text-center mb-1">
-              Acessar o Portal
-            </h1>
-            <p className="text-gray-500 text-center text-sm mb-8">
-              Entre com seus dados para gerenciar pedidos e catálogo
-            </p>
-
-            {error && (
-              <div className="mb-4 px-4 py-3 rounded-lg bg-red-50 border border-red-100 text-red-600 text-sm">
-                {error}
-              </div>
-            )}
-
-            {resetSent && (
-              <div className="mb-4 px-4 py-3 rounded-lg bg-green-50 border border-green-100 text-green-700 text-sm">
-                E-mail de recuperação enviado! Verifique sua caixa de entrada.
-              </div>
-            )}
-
-            <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-              {/* Identifier (email or phone) */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  E-mail
-                </label>
-                <div className="relative">
-                  <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                  <input
-                    type="text"
-                    name="identifier"
-                    required
-                    autoComplete="username"
-                    value={form.identifier}
-                    onChange={handleChange}
-                    placeholder="seu@email.com"
-                    className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-gray-200 bg-white text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-amber-300 transition-all"
-                  />
-                </div>
-              </div>
-
-              {/* Password */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  Senha
-                </label>
-                <div className="relative">
-                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                  <input
-                    type={showPassword ? "text" : "password"}
-                    name="password"
-                    required
-                    autoComplete="current-password"
-                    value={form.password}
-                    onChange={handleChange}
-                    placeholder="••••••••"
-                    className="w-full pl-10 pr-11 py-2.5 rounded-lg border border-gray-200 bg-white text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-amber-300 transition-all"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
-                  >
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-              </div>
-
-              {/* Forgot password — only shown for email input */}
-              {!identifierIsPhone && (
-                <div className="flex justify-end -mt-1">
-                  <button
-                    type="button"
-                    onClick={handleResetPassword}
-                    disabled={resetLoading}
-                    className="text-xs text-amber-600 hover:underline disabled:opacity-50"
-                  >
-                    {resetLoading ? "Enviando..." : "Esqueci minha senha"}
-                  </button>
-                </div>
-              )}
-
-              {/* Submit */}
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full flex items-center justify-center gap-2 py-3 rounded-lg font-semibold text-sm bg-amber-500 hover:bg-amber-600 text-white transition-colors disabled:opacity-60 disabled:cursor-not-allowed mt-2"
-              >
-                {loading ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    Entrando...
-                  </>
-                ) : (
-                  <>
-                    Entrar
-                    <ArrowRight className="w-4 h-4" />
-                  </>
-                )}
-              </button>
-            </form>
-
-            <div className="mt-6 pt-6 border-t border-gray-100 text-center">
-              <p className="text-sm text-gray-500">
-                Ainda não tem conta?{" "}
-                <Link
-                  to="/cadastro"
-                  className="font-semibold text-amber-600 hover:underline"
-                >
-                  Cadastre-se
-                </Link>
-              </p>
-            </div>
-          </div>
-
-          {/* Trust */}
-          <p className="flex items-center justify-center gap-1.5 text-center text-xs text-gray-400 mt-6">
-            <Lock className="w-3 h-3" />
-            Acesso restrito a parceiros cadastrados
+        <div className="surface-card p-6 sm:p-7">
+          <h1 className="text-[17px] font-semibold text-foreground tracking-tight">
+            Entrar
+          </h1>
+          <p className="text-[13px] text-muted-foreground mt-1 mb-6">
+            Acesse para gerenciar os seus pedidos e o catálogo.
           </p>
+
+          {/* Erro fala o que houve e o que fazer — não pede desculpa. */}
+          {error && (
+            <div
+              role="alert"
+              className="mb-4 px-3 py-2.5 rounded-md bg-danger-subtle border border-danger-border text-danger text-[13px]"
+            >
+              {error}
+            </div>
+          )}
+
+          {resetSent && (
+            <div
+              role="status"
+              className="mb-4 px-3 py-2.5 rounded-md bg-success-subtle border border-success-border text-success text-[13px]"
+            >
+              E-mail de recuperação enviado. Verifique a sua caixa de entrada.
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="flex flex-col gap-3.5">
+            <div>
+              <label htmlFor="identifier" className="block text-[13px] font-medium text-foreground mb-1.5">
+                E-mail ou telefone
+              </label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-400 pointer-events-none" />
+                <input
+                  id="identifier"
+                  type="text"
+                  name="identifier"
+                  required
+                  autoComplete="username"
+                  value={form.identifier}
+                  onChange={handleChange}
+                  placeholder="seu@email.com"
+                  className="w-full h-9 pl-9 pr-3 rounded-md border border-input bg-background text-base md:text-sm text-foreground tracking-snug placeholder:text-ink-400 transition-colors hover:border-ink-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:border-transparent"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label htmlFor="password" className="block text-[13px] font-medium text-foreground mb-1.5">
+                Senha
+              </label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-400 pointer-events-none" />
+                <input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  name="password"
+                  required
+                  autoComplete="current-password"
+                  value={form.password}
+                  onChange={handleChange}
+                  placeholder="••••••••"
+                  className="w-full h-9 pl-9 pr-10 rounded-md border border-input bg-background text-base md:text-sm text-foreground tracking-snug placeholder:text-ink-400 transition-colors hover:border-ink-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:border-transparent"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
+                  className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 flex items-center justify-center rounded-md text-ink-400 hover:text-foreground hover:bg-muted transition-colors"
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+
+            {/* Recuperação só faz sentido no caminho de e-mail. */}
+            {!identifierIsPhone && (
+              <div className="flex justify-end -mt-1">
+                <button
+                  type="button"
+                  onClick={handleResetPassword}
+                  disabled={resetLoading}
+                  className="text-[12px] font-medium text-ink-500 hover:text-foreground transition-colors disabled:opacity-50"
+                >
+                  {resetLoading ? "Enviando…" : "Esqueci minha senha"}
+                </button>
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full h-10 flex items-center justify-center gap-2 rounded-md btn-primary text-sm mt-1"
+            >
+              {loading ? (
+                <>
+                  <div className="w-3.5 h-3.5 rounded-full border-2 border-current/30 border-t-current animate-spin" />
+                  Entrando…
+                </>
+              ) : (
+                <>
+                  Entrar
+                  <ArrowRight className="w-4 h-4" />
+                </>
+              )}
+            </button>
+          </form>
+
+          <div className="mt-5 pt-5 border-t border-border text-center">
+            <p className="text-[13px] text-muted-foreground">
+              Ainda não tem conta?{" "}
+              <Link to="/cadastro" className="font-medium text-foreground hover:underline underline-offset-4">
+                Cadastre-se
+              </Link>
+            </p>
+          </div>
         </div>
+
+        <p className="flex items-center justify-center gap-1.5 text-center text-[12px] text-ink-400 mt-5">
+          <Lock className="w-3 h-3" />
+          Acesso restrito a parceiros cadastrados
+        </p>
       </main>
     </div>
   );

@@ -1,14 +1,20 @@
-import { useMemo, useRef } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import {
-  Package, ShoppingCart, ArrowRight,
-  ChevronLeft, ChevronRight, MessageCircle,
+  Package, ArrowRight, ArrowUpRight, AlertCircle,
+  ChevronLeft, ChevronRight, MessageCircle, ShoppingBag,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import PortalLayout from '@/components/portal/PortalLayout'
-import { PortalPageHeader } from '@/components/portal/PortalPageHeader'
+import { PortalPage, PortalSection } from '@/components/portal/PortalPage'
+import {
+  getGreeting, firstName, resolveSubtitle, resolveCommercialLabel,
+  type PortalProfile,
+} from '@/components/portal/portalIdentity'
+import { Badge } from '@/components/ui/badge'
+import { getOrderStatus, ACTIVE_ORDER_STATUSES } from '@/lib/design/orderStatus'
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -17,11 +23,6 @@ interface OrderItem { product_name_snapshot: string; qty: number }
 interface Order {
   id: string; status: string; total: number
   created_at: string; order_items: OrderItem[]
-}
-
-interface Profile {
-  full_name: string | null; business_type: string | null
-  customer_segment: string | null; is_partner: boolean | null
 }
 
 interface CatalogProduct {
@@ -41,19 +42,6 @@ interface PortalBanner {
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 
-const statusConfig: Record<string, { label: string; color: string }> = {
-  recebido:             { label: 'Recebido',     color: 'bg-blue-100 text-blue-700' },
-  aguardando_pagamento: { label: 'Aguard. Pgto', color: 'bg-yellow-100 text-yellow-700' },
-  pago:                 { label: 'Pago',          color: 'bg-emerald-100 text-emerald-700' },
-  separacao:            { label: 'Separação',     color: 'bg-purple-100 text-purple-700' },
-  enviado:              { label: 'Enviado',        color: 'bg-indigo-100 text-indigo-700' },
-  entregue:             { label: 'Entregue',       color: 'bg-teal-100 text-teal-700' },
-  concluido:            { label: 'Concluído',      color: 'bg-gray-100 text-gray-600' },
-  cancelado:            { label: 'Cancelado',      color: 'bg-red-100 text-red-600' },
-}
-
-const ACTIVE_STATUSES = ['recebido', 'aguardando_pagamento', 'pago', 'separacao', 'enviado', 'entregue']
-
 function isThisMonth(dateStr: string): boolean {
   const d = new Date(dateStr), now = new Date()
   return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
@@ -71,250 +59,194 @@ function getCostPrice(price: number | null, partnerPrice: number | null): number
   return partnerPrice != null && partnerPrice > 0 ? partnerPrice : price
 }
 
-// ─── Skeleton ──────────────────────────────────────────────────────────────────
+const brl = (v: number) => v.toLocaleString('pt-BR', { minimumFractionDigits: 2 })
 
-function Skeleton({ className }: { className?: string }) {
-  return <div className={`animate-pulse bg-gray-100 rounded-lg ${className ?? ''}`} />
+// ─── Skeletons ─────────────────────────────────────────────────────────────────
+// Skeleton tem que ter a forma do conteúdo que substitui. Bloco cinza de altura
+// arbitrária faz a página "pular" quando os dados chegam.
+
+function Bar({ className }: { className?: string }) {
+  return <div className={`animate-pulse rounded bg-muted ${className ?? ''}`} />
 }
 
-// ─── EditorialBanner — Lançamentos ────────────────────────────────────────────
-// Estilo magazine/story: foto full-bleed + gradiente + texto overlay, sem preço.
-
-const UNSPLASH_FALLBACKS = [
-  'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=600&fit=crop&auto=format',
-  'https://images.unsplash.com/photo-1571781926291-c477ebfd024b?w=600&fit=crop&auto=format',
-  'https://images.unsplash.com/photo-1607748862156-7c548e7e98f4?w=600&fit=crop&auto=format',
-  'https://images.unsplash.com/photo-1616394584738-fc6e612e71b9?w=600&fit=crop&auto=format',
-  'https://images.unsplash.com/photo-1527799820374-dcf8d9d4a388?w=600&fit=crop&auto=format',
-  'https://images.unsplash.com/photo-1585751119414-ef2636f8aede?w=600&fit=crop&auto=format',
-]
-
-function EditorialBanner({ banners, loading }: { banners: PortalBanner[]; loading?: boolean }) {
-  const ref = useRef<HTMLDivElement>(null)
-
-  if (!loading && banners.length === 0) return null
-
+function MetricSkeleton() {
   return (
-    <section>
-      <div className="px-4 sm:px-6 flex items-center justify-between mb-2.5">
-        <div className="flex items-center gap-2">
-          <h2 className="text-[11px] font-semibold text-gray-500 uppercase tracking-[0.14em]">Lançamentos</h2>
-          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 uppercase tracking-wide">Novo</span>
-        </div>
-        <Link to="/catalogo" className="text-[11px] text-amber-600 font-semibold hover:underline">Ver tudo</Link>
-      </div>
-
-      {loading ? (
-        <div className="flex gap-3 overflow-hidden px-4 sm:px-6">
-          {[1, 2, 3].map(i => <Skeleton key={i} className="flex-shrink-0 w-[82vw] sm:w-80 h-52 rounded-2xl" />)}
-        </div>
-      ) : (
-        <div
-          ref={ref}
-          className="overflow-x-auto scrollbar-none pb-2"
-          style={{ scrollSnapType: 'x mandatory', scrollPaddingInlineStart: '1rem' }}
-        >
-          <div className="flex gap-3 px-4 sm:px-6">
-            {banners.map((banner, i) => {
-              const photo = banner.image_url || UNSPLASH_FALLBACKS[i % UNSPLASH_FALLBACKS.length]
-              const isExternal = banner.redirect_url.startsWith('http')
-              const cardClass = "relative flex-shrink-0 w-[82vw] sm:w-80 h-52 sm:h-56 rounded-2xl overflow-hidden group"
-              const cardContent = (
-                <>
-                  <img
-                    src={photo}
-                    alt={banner.title}
-                    loading="lazy"
-                    decoding="async"
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
-                  <div className="absolute bottom-0 left-0 right-0 p-4">
-                    <span className="inline-block text-[9px] font-bold px-2 py-0.5 rounded-full bg-amber-400/90 text-white uppercase tracking-widest mb-2">
-                      ✦ {banner.badge_text}
-                    </span>
-                    <p className="text-white font-bold text-[15px] leading-snug line-clamp-2 mb-2">
-                      {banner.title}
-                    </p>
-                    <p className="text-amber-300 text-[12px] font-semibold flex items-center gap-1">
-                      Descobrir <ArrowRight className="w-3 h-3" />
-                    </p>
-                  </div>
-                </>
-              )
-              return isExternal ? (
-                <a
-                  key={banner.id}
-                  href={banner.redirect_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{ scrollSnapAlign: 'start' }}
-                  className={cardClass}
-                >{cardContent}</a>
-              ) : (
-                <Link
-                  key={banner.id}
-                  to={banner.redirect_url}
-                  style={{ scrollSnapAlign: 'start' }}
-                  className={cardClass}
-                >{cardContent}</Link>
-              )
-            })}
-            <div className="flex-shrink-0 w-4 sm:w-6" aria-hidden />
-          </div>
-        </div>
-      )}
-    </section>
+    <div className="surface-card p-3.5">
+      <Bar className="h-2.5 w-14 mb-3" />
+      <Bar className="h-5 w-10" />
+    </div>
   )
 }
 
-// ─── ProductCarousel ───────────────────────────────────────────────────────────
-// Full-bleed mobile pattern:
-// -mx-4 sm:-mx-6 → scroll container = viewport width → iOS Safari reconhece
-// px-4 sm:px-6   → inner flex alinha cards com o conteúdo da página
-// spacer final   → último card fica completamente visível após scroll
+function ProductSkeleton() {
+  return (
+    <div className="shrink-0 w-[200px] surface-card overflow-hidden">
+      <div className="h-[130px] bg-muted animate-pulse" />
+      <div className="p-3 space-y-2">
+        <Bar className="h-3 w-full" />
+        <Bar className="h-3 w-2/3" />
+        <Bar className="h-4 w-20 mt-3" />
+      </div>
+      <div className="px-3 pb-3"><Bar className="h-8 w-full" /></div>
+    </div>
+  )
+}
 
-function ProductCarousel({ title, products, loading, badge }: {
-  title: string
-  products: CarouselProduct[]
-  loading?: boolean
-  badge?: string // ex: "Novo" | "Top"
+// ─── Peças de UI ───────────────────────────────────────────────────────────────
+
+const ARROW_BTN =
+  'h-7 w-7 flex items-center justify-center rounded-md text-ink-400 hover:text-foreground hover:bg-muted transition-colors'
+
+function SeeAll({ to, children = 'Ver tudo' }: { to: string; children?: React.ReactNode }) {
+  return (
+    <Link
+      to={to}
+      className="inline-flex items-center gap-0.5 text-[12px] font-medium text-ink-500 hover:text-foreground transition-colors"
+    >
+      {children}
+      <ArrowUpRight className="w-3.5 h-3.5" />
+    </Link>
+  )
+}
+
+/** Controle segmentado — substitui dois carrosséis empilhados por um só. */
+function Segmented<T extends string>({ value, onChange, options }: {
+  value: T
+  onChange: (v: T) => void
+  options: { value: T; label: string }[]
 }) {
-  const ref = useRef<HTMLDivElement>(null)
-  const scroll = (dir: -1 | 1) =>
-    ref.current?.scrollBy({ left: dir * 216, behavior: 'smooth' })
+  return (
+    <div role="tablist" className="inline-flex items-center gap-0.5 rounded-lg border border-border bg-muted p-0.5">
+      {options.map(o => {
+        const active = o.value === value
+        return (
+          <button
+            key={o.value}
+            role="tab"
+            aria-selected={active}
+            onClick={() => onChange(o.value)}
+            className={`h-7 px-2.5 rounded-md text-[12px] font-medium tracking-snug transition-colors ${
+              active
+                ? 'bg-background text-foreground shadow-xs'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            {o.label}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+function MetricCard({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="surface-card p-3.5">
+      <p className="eyebrow mb-2">{label}</p>
+      {children}
+    </div>
+  )
+}
+
+// ─── Carrossel de produtos ─────────────────────────────────────────────────────
+
+function ProductRow({ products, loading }: { products: CarouselProduct[]; loading?: boolean; }) {
+  if (loading) {
+    return (
+      <div className="flex gap-3 overflow-hidden px-4 sm:px-0">
+        {[1, 2, 3, 4].map(i => <ProductSkeleton key={i} />)}
+      </div>
+    )
+  }
+
+  if (products.length === 0) {
+    return <p className="px-4 sm:px-0 text-[13px] text-muted-foreground">Nenhum produto disponível.</p>
+  }
 
   return (
-    <section>
-      {/* cabeçalho da seção */}
-      <div className="px-4 sm:px-6 flex items-center justify-between mb-2.5">
-        <div className="flex items-center gap-2">
-          <h2 className="text-[11px] font-semibold text-gray-500 uppercase tracking-[0.14em]">
-            {title}
-          </h2>
-          {badge && (
-            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 uppercase tracking-wide">
-              {badge}
-            </span>
-          )}
-        </div>
-        <div className="flex items-center gap-0.5">
-          <span className="hidden sm:inline-flex items-center gap-0.5">
-            <button onClick={() => scroll(-1)} className="p-1 rounded-md text-gray-300 hover:text-gray-500 hover:bg-gray-100 transition-colors" aria-label="Anterior">
-              <ChevronLeft className="w-4 h-4" />
-            </button>
-            <button onClick={() => scroll(1)} className="p-1 rounded-md text-gray-300 hover:text-gray-500 hover:bg-gray-100 transition-colors" aria-label="Próximo">
-              <ChevronRight className="w-4 h-4" />
-            </button>
-          </span>
-          <Link to="/catalogo" className="text-[11px] text-amber-600 font-semibold hover:underline sm:ml-1">
-            Ver tudo
-          </Link>
-        </div>
-      </div>
+    <div className="flex gap-3 px-4 sm:px-0">
+      {products.map(product => {
+        const cost   = getCostPrice(product.price, product.partner_price)
+        const resale = product.price != null
+          ? getSuggestedPrice(product.price, product.compare_at_price)
+          : null
+        const margin = cost > 0 && resale != null
+          ? Math.round(((resale - cost) / cost) * 100)
+          : null
 
-      {loading ? (
-        <div className="flex gap-4 overflow-hidden px-4 sm:px-6">
-          {[1, 2, 3].map(i => <Skeleton key={i} className="flex-shrink-0 w-[280px] h-[300px]" />)}
-        </div>
-      ) : products.length === 0 ? (
-        <p className="px-4 sm:px-6 text-[12px] text-gray-400 py-1">Nenhum produto disponível.</p>
-      ) : (
-        <div
-          ref={ref}
-          className="overflow-x-auto scrollbar-none pb-2"
-          style={{ scrollSnapType: 'x mandatory', scrollPaddingInlineStart: '1rem' }}
-        >
-          <div className="flex gap-4 px-4 sm:px-6">
-            {products.map(product => {
-              const cost   = getCostPrice(product.price, product.partner_price)
-              const resale = product.price != null
-                ? getSuggestedPrice(product.price, product.compare_at_price)
-                : null
-              const margin = cost > 0 && resale != null
-                ? Math.round(((resale - cost) / cost) * 100)
-                : null
+        return (
+          <div
+            key={product.key}
+            style={{ scrollSnapAlign: 'start' }}
+            className="shrink-0 w-[200px] surface-card surface-card-interactive overflow-hidden flex flex-col"
+          >
+            <Link to="/catalogo" className="block flex-1">
+              <div className="h-[130px] bg-surface-alt flex items-center justify-center overflow-hidden">
+                {product.main_image ? (
+                  <img
+                    src={product.main_image}
+                    alt={product.name}
+                    loading="lazy"
+                    decoding="async"
+                    className="w-full h-full object-contain p-2"
+                  />
+                ) : (
+                  <span className="text-2xl font-semibold text-ink-300 select-none">
+                    {product.name.charAt(0).toUpperCase()}
+                  </span>
+                )}
+              </div>
 
-              return (
-                <div
-                  key={product.key}
-                  style={{ scrollSnapAlign: 'start' }}
-                  className="flex-shrink-0 w-[200px] bg-gray-50 rounded-xl border border-gray-200 overflow-hidden hover:border-amber-300 hover:shadow-md transition-all group flex flex-col"
-                >
-                  {/* ── Zona clicável: imagem + info ── */}
-                  <Link to="/catalogo" className="block flex-1">
-                    <div className="h-[130px] bg-gray-50 flex items-center justify-center overflow-hidden">
-                      {product.main_image ? (
-                        <img
-                          src={product.main_image}
-                          alt={product.name}
-                          loading="lazy"
-                          decoding="async"
-                          className="w-full h-full object-contain p-2"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-amber-50 to-orange-50">
-                          <span className="text-3xl font-black text-amber-200 select-none leading-none">
-                            {product.name.charAt(0).toUpperCase()}
-                          </span>
-                          <span className="text-[8px] text-amber-300 font-bold uppercase tracking-widest mt-1">RDC</span>
-                        </div>
+              <div className="p-3">
+                <p className="text-[12px] font-medium text-foreground line-clamp-2 leading-snug min-h-[32px]">
+                  {product.name}
+                </p>
+
+                {product.price != null && (
+                  <div className="mt-2.5 space-y-1">
+                    <p className="text-[17px] font-semibold text-foreground leading-none numeric">
+                      R$ {brl(cost)}
+                    </p>
+                    <div className="flex items-baseline gap-1.5 text-[11px] leading-none">
+                      {margin != null && (
+                        <span className="font-medium text-success numeric">+{margin}% margem</span>
+                      )}
+                      {resale != null && (
+                        <span className="text-ink-400 numeric">venda R$ {brl(resale)}</span>
                       )}
                     </div>
-
-                    <div className="p-3 pb-2">
-                      <p className="text-[12px] font-semibold text-gray-800 line-clamp-2 leading-snug min-h-[32px]">
-                        {product.name}
-                      </p>
-
-                      {product.price != null && (
-                        <div className="mt-2 space-y-0.5">
-                          <p className="text-[17px] font-bold text-gray-900 leading-none">
-                            R$ {cost.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                          </p>
-                          {margin != null && (
-                            <p className="text-[11px] font-bold text-emerald-600 leading-none flex items-center gap-0.5">
-                              <span>↑</span>{margin}% margem
-                            </p>
-                          )}
-                          {resale != null && (
-                            <p className="text-[10px] text-gray-400 leading-none">
-                              Venda: R$ {resale.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                            </p>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  </Link>
-
-                  {/* ── CTA ── */}
-                  <div className="px-3 pb-3">
-                    <Link
-                      to="/catalogo"
-                      className="flex items-center justify-center gap-1.5 w-full py-2.5 rounded-lg bg-amber-500 hover:bg-amber-600 active:bg-amber-700 text-white text-[11px] font-bold transition-colors"
-                    >
-                      <ShoppingCart className="w-3 h-3" />
-                      Pedir agora
-                    </Link>
                   </div>
-                </div>
-              )
-            })}
-            {/* spacer — garante visibilidade total do último card ao scrollar */}
-            <div className="flex-shrink-0 w-4 sm:w-8" aria-hidden />
+                )}
+              </div>
+            </Link>
+
+            <div className="px-3 pb-3">
+              <Link
+                to="/catalogo"
+                className="flex items-center justify-center w-full h-8 rounded-md btn-primary text-[12px]"
+              >
+                Pedir agora
+              </Link>
+            </div>
           </div>
-        </div>
-      )}
-    </section>
+        )
+      })}
+      <div className="shrink-0 w-4 sm:w-0" aria-hidden />
+    </div>
   )
 }
 
 // ─── Componente principal ──────────────────────────────────────────────────────
 
+type ProductTab = 'vendidos' | 'recomendados'
+
 export default function Portal() {
   const { user } = useAuth()
+  const [productTab, setProductTab] = useState<ProductTab>('vendidos')
+  const productScroller = useRef<HTMLDivElement>(null)
+  const bannerScroller = useRef<HTMLDivElement>(null)
 
-  const { data: profile, isLoading: loadingProfile } = useQuery<Profile | null>({
+  const { data: profile, isLoading: loadingProfile } = useQuery<PortalProfile | null>({
     queryKey: ['portal-profile', user?.id],
     queryFn: async () => {
       if (!user) return null
@@ -391,8 +323,16 @@ export default function Portal() {
 
   const thisMonthOrders = useMemo(() => orders.filter(o => isThisMonth(o.created_at)), [orders])
   const thisMonthTotal  = useMemo(() => thisMonthOrders.reduce((s, o) => s + o.total, 0), [thisMonthOrders])
-  const activeOrders    = useMemo(() => orders.filter(o => ACTIVE_STATUSES.includes(o.status)), [orders])
-  const lastOrder       = orders[0] ?? null
+  const activeOrders    = useMemo(
+    () => orders.filter(o => (ACTIVE_ORDER_STATUSES as string[]).includes(o.status)),
+    [orders],
+  )
+  // Pedidos que travam dinheiro: é o que o parceiro precisa ver primeiro.
+  const awaitingPayment = useMemo(
+    () => orders.filter(o => o.status === 'aguardando_pagamento'),
+    [orders],
+  )
+  const lastOrder = orders[0] ?? null
 
   const topBoughtProducts = useMemo(() => {
     const map = new Map<string, number>()
@@ -407,182 +347,360 @@ export default function Portal() {
     price: p.price, partner_price: p.partner_price, compare_at_price: p.compare_at_price,
   })
 
-  const topSoldProducts    = useMemo<CarouselProduct[]>(() => topSoldRaw.map(p => ({ key: p.product_name, name: p.product_name, main_image: p.main_image, price: p.price, partner_price: p.partner_price, compare_at_price: p.compare_at_price })), [topSoldRaw])
+  const topSoldProducts     = useMemo<CarouselProduct[]>(() => topSoldRaw.map(p => ({ key: p.product_name, name: p.product_name, main_image: p.main_image, price: p.price, partner_price: p.partner_price, compare_at_price: p.compare_at_price })), [topSoldRaw])
   const recommendedCarousel = useMemo<CarouselProduct[]>(() => recommended.map(toCarousel), [recommended])
+
+  const shownProducts = productTab === 'vendidos' ? topSoldProducts : recommendedCarousel
+  const loadingProducts = productTab === 'vendidos' ? loadingTopSold : loadingRecommended
 
   const recentOrders = orders.slice(0, 3)
   const hasOrders    = !loadingOrders && orders.length > 0
+  const isNewPartner = !loadingOrders && orders.length === 0
+
+  const scrollBy = (ref: React.RefObject<HTMLDivElement>, dir: -1 | 1) =>
+    ref.current?.scrollBy({ left: dir * 216, behavior: 'smooth' })
+
+  const scrollerProps = {
+    className: 'overflow-x-auto scrollbar-none pb-2',
+    style: { scrollSnapType: 'x mandatory', scrollPaddingInlineStart: '1rem' } as React.CSSProperties,
+  }
 
   // ── Render ──────────────────────────────────────────────────────────────────
 
   return (
     <PortalLayout profile={{ name: profile?.full_name ?? undefined }}>
-      {/* Sem padding horizontal no container raiz — cada seção define o próprio px-4 sm:px-6.
-          Carrosséis ficam naturalmente full-width sem math de negative margin. */}
-      <div className="pt-5 pb-28 sm:pb-10 space-y-5 sm:space-y-6">
-
-          {/* ── 1 + 2. Header + atalhos ─────────────────────────────────── */}
-          <div className="px-4 sm:px-6">
-            <PortalPageHeader
-              profile={profile}
-              loadingProfile={loadingProfile}
-            />
-          </div>
-
-          {/* ── 3. Resumo do mês — omitido quando vazio ─────────────────── */}
-          {loadingOrders ? (
-            <section className="px-4 sm:px-6">
-              <Skeleton className="h-3 w-24 mb-3" />
-              <div className="grid grid-cols-3 gap-2">
-                {[1, 2, 3].map(i => <Skeleton key={i} className="h-16" />)}
-              </div>
-            </section>
-          ) : hasOrders && (
-            <section className="px-4 sm:px-6">
-              <h2 className="text-[11px] font-semibold text-gray-500 uppercase tracking-[0.14em] mb-2.5">
-                Resumo do mês
-              </h2>
-              {/* 3 colunas sempre — cards compactos no mobile */}
-              <div className="grid grid-cols-3 gap-2">
-                <div className="bg-white rounded-xl border border-gray-200 border-t-2 border-t-indigo-300 p-3">
-                  <p className="text-[10px] text-gray-500 uppercase tracking-wide leading-none mb-1">Pedidos</p>
-                  <p className="text-xl font-bold text-gray-900 leading-none">{thisMonthOrders.length}</p>
-                  {activeOrders.length > 0 && (
-                    <p className="text-[10px] text-indigo-600 font-medium mt-1 leading-none">{activeOrders.length} em aberto</p>
-                  )}
-                </div>
-
-                <div className="bg-white rounded-xl border border-gray-200 border-t-2 border-t-amber-300 p-3">
-                  <p className="text-[10px] text-gray-500 uppercase tracking-wide leading-none mb-1">Investido</p>
-                  <p className="text-sm font-bold text-gray-900 leading-tight">
-                    R$ {thisMonthTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                  </p>
-                </div>
-
-                <div className="bg-white rounded-xl border border-gray-200 border-t-2 border-t-emerald-300 p-3">
-                  <p className="text-[10px] text-gray-500 uppercase tracking-wide leading-none mb-1">Último</p>
-                  {lastOrder ? (
-                    <>
-                      <p className="text-[11px] font-bold text-gray-800 leading-none">
-                        #{lastOrder.id.slice(0, 6).toUpperCase()}
-                      </p>
-                      <span className={`inline-block mt-1 px-1.5 py-px rounded-full text-[9px] font-semibold ${statusConfig[lastOrder.status]?.color ?? 'bg-gray-100 text-gray-600'}`}>
-                        {statusConfig[lastOrder.status]?.label ?? lastOrder.status}
-                      </span>
-                    </>
-                  ) : <p className="text-sm text-gray-400">—</p>}
-                </div>
-              </div>
-            </section>
-          )}
-
-          {/* ── 4. Lançamentos — editorial/magazine, sem preço ─────────── */}
-          <EditorialBanner banners={banners} loading={loadingBanners} />
-
-          {/* ── 5. Mais Vendidos ───────────────────────────────────────── */}
-          <ProductCarousel
-            title="Mais Vendidos"
-            products={topSoldProducts}
-            loading={loadingTopSold}
-            badge="Top"
-          />
-
-          {/* ── 6. Produtos Recomendados ───────────────────────────────── */}
-          <ProductCarousel
-            title="Produtos Recomendados"
-            products={recommendedCarousel}
-            loading={loadingRecommended}
-          />
-
-          {/* ── 7. Pedidos recentes ────────────────────────────────────── */}
-          {!loadingOrders && recentOrders.length > 0 && (
-            <section className="px-4 sm:px-6">
-              <div className="flex items-center justify-between mb-2.5">
-                <h2 className="text-[11px] font-semibold text-gray-500 uppercase tracking-[0.14em]">
-                  Pedidos recentes
-                </h2>
-                <Link to="/meus-pedidos" className="text-[11px] text-amber-600 font-semibold hover:underline">
-                  Ver todos
-                </Link>
-              </div>
-              <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
-                {recentOrders.map(order => {
-                  const st = statusConfig[order.status] ?? { label: order.status, color: 'bg-gray-100 text-gray-600' }
-                  const date = new Date(order.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
-                  return (
-                    <Link key={order.id} to="/meus-pedidos"
-                      className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors"
-                    >
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[12px] font-semibold text-gray-800">
-                          #{order.id.slice(0, 8).toUpperCase()}
-                        </p>
-                        <p className="text-[10px] text-gray-500">{date} · {order.order_items.length} iten{order.order_items.length !== 1 ? 's' : 's'}</p>
-                      </div>
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold whitespace-nowrap ${st.color}`}>
-                        {st.label}
-                      </span>
-                      <p className="text-[13px] font-bold text-gray-900 whitespace-nowrap">
-                        R$ {order.total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                      </p>
-                    </Link>
-                  )
-                })}
-              </div>
-            </section>
-          )}
-
-          {/* ── 8. Reabastecimento rápido ──────────────────────────────── */}
-          {topBoughtProducts.length > 0 && (
-            <section className="px-4 sm:px-6">
-              <div className="flex items-center justify-between mb-2.5">
-                <h2 className="text-[11px] font-semibold text-gray-500 uppercase tracking-[0.14em]">
-                  Reabastecimento rápido
-                </h2>
-                <Link to="/catalogo" className="text-[11px] text-amber-600 font-semibold hover:underline">
-                  Ver catálogo
-                </Link>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-                {topBoughtProducts.map(({ name, qty }) => (
-                  <Link key={name} to="/catalogo"
-                    className="flex items-center gap-3 px-3 py-3 bg-white rounded-xl border border-gray-200 hover:border-amber-200 hover:shadow-sm transition-all group"
-                  >
-                    <div className="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center flex-shrink-0">
-                      <Package className="w-3.5 h-3.5 text-amber-400" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[12px] font-semibold text-gray-800 truncate">{name}</p>
-                      <p className="text-[10px] text-gray-500">Comprado {qty}x</p>
-                    </div>
-                    <ArrowRight className="w-3.5 h-3.5 text-gray-300 group-hover:text-amber-400 flex-shrink-0" />
-                  </Link>
-                ))}
-              </div>
-            </section>
-          )}
-
-          {/* ── 9. Falar com Vendedor — WhatsApp ──────────────────────── */}
-          <section className="px-4 sm:px-6">
-            <a
-              href="https://wa.me/5527996865366?text=Ol%C3%A1%2C%20preciso%20de%20ajuda%20com%20meu%20pedido"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-3 p-4 bg-green-500 hover:bg-green-600 active:bg-green-700 rounded-xl transition-colors group"
+      <PortalPage
+        title={
+          loadingProfile
+            ? <Bar className="h-7 w-56" />
+            : `${getGreeting()}, ${firstName(profile)}`
+        }
+        subtitle={loadingProfile ? undefined : resolveSubtitle(profile)}
+        badge={
+          loadingProfile
+            ? null
+            : <Badge variant="brand" dot>{resolveCommercialLabel(profile)}</Badge>
+        }
+        actions={
+          <>
+            <Link
+              to="/catalogo"
+              className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-md btn-primary text-[13px]"
             >
-              <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center flex-shrink-0">
-                <MessageCircle className="w-4 h-4 text-white" />
-              </div>
+              Fazer pedido
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
+            <Link
+              to="/meus-pedidos"
+              className="inline-flex items-center h-9 px-3.5 rounded-md btn-secondary text-[13px]"
+            >
+              Meus pedidos
+            </Link>
+          </>
+        }
+      >
+
+        {/* ── 1. O que trava dinheiro ────────────────────────────────────────
+            Aviso no topo do dashboard é o padrão de painel operacional: o que
+            exige ação do usuário vem antes de qualquer métrica ou vitrine.
+            Só existe quando há de fato algo pendente. */}
+        {awaitingPayment.length > 0 && (
+          <PortalSection>
+            <Link
+              to="/meus-pedidos"
+              className="flex items-center gap-3 p-3.5 rounded-lg border border-warning-border bg-warning-subtle hover:border-warning transition-colors group"
+            >
+              <AlertCircle className="w-4 h-4 text-warning shrink-0" />
               <div className="flex-1 min-w-0">
-                <p className="text-[13px] font-bold text-white leading-tight">Falar com Vendedor</p>
-                <p className="text-[11px] text-green-100 mt-px">Tire dúvidas ou faça seu pedido pelo WhatsApp</p>
+                <p className="text-[13px] font-medium text-warning leading-tight">
+                  {awaitingPayment.length === 1
+                    ? '1 pedido aguardando pagamento'
+                    : `${awaitingPayment.length} pedidos aguardando pagamento`}
+                </p>
+                <p className="text-[12px] text-warning/80 mt-0.5 numeric">
+                  R$ {brl(awaitingPayment.reduce((s, o) => s + o.total, 0))} em aberto
+                </p>
               </div>
-              <ArrowRight className="w-4 h-4 text-white/70 group-hover:text-white flex-shrink-0 transition-colors" />
-            </a>
-          </section>
+              <ArrowRight className="w-4 h-4 text-warning shrink-0 transition-transform group-hover:translate-x-0.5" />
+            </Link>
+          </PortalSection>
+        )}
 
-      </div>{/* fim conteúdo */}
+        {/* ── 2. Estado do mês ──────────────────────────────────────────────
+            As faixas coloridas no topo de cada card foram removidas: três
+            cores num bloco de três itens sugere categorias que não existem. */}
+        {loadingOrders ? (
+          <PortalSection title="Resumo do mês">
+            <div className="grid grid-cols-3 gap-2">
+              {[1, 2, 3].map(i => <MetricSkeleton key={i} />)}
+            </div>
+          </PortalSection>
+        ) : hasOrders && (
+          <PortalSection title="Resumo do mês">
+            <div className="grid grid-cols-3 gap-2">
+              <MetricCard label="Pedidos">
+                <p className="text-xl font-semibold text-foreground leading-none numeric">
+                  {thisMonthOrders.length}
+                </p>
+                {activeOrders.length > 0 && (
+                  <p className="text-[11px] text-muted-foreground mt-1.5 leading-none numeric">
+                    {activeOrders.length} em aberto
+                  </p>
+                )}
+              </MetricCard>
 
+              <MetricCard label="Investido">
+                <p className="text-[15px] font-semibold text-foreground leading-tight numeric">
+                  R$ {brl(thisMonthTotal)}
+                </p>
+              </MetricCard>
+
+              <MetricCard label="Último">
+                {lastOrder ? (
+                  <>
+                    <p className="text-[12px] font-medium text-foreground leading-none mono">
+                      #{lastOrder.id.slice(0, 6).toUpperCase()}
+                    </p>
+                    <Badge variant={getOrderStatus(lastOrder.status).tone} className="mt-1.5">
+                      {getOrderStatus(lastOrder.status).short}
+                    </Badge>
+                  </>
+                ) : <p className="text-[15px] text-ink-400">—</p>}
+              </MetricCard>
+            </div>
+          </PortalSection>
+        )}
+
+        {/* ── 3. Primeira compra ────────────────────────────────────────────
+            Antes, quem nunca comprou via só a saudação e carrosséis: nenhuma
+            das seções de operação renderiza sem pedido. Tela vazia é convite
+            para agir, não ausência de conteúdo. */}
+        {isNewPartner && (
+          <PortalSection>
+            <div className="surface-card p-8 text-center">
+              <div className="w-10 h-10 rounded-lg border border-border bg-muted flex items-center justify-center mx-auto mb-4">
+                <ShoppingBag className="w-4 h-4 text-ink-400" />
+              </div>
+              <h2 className="text-[15px] font-semibold text-foreground tracking-tight">
+                Faça o seu primeiro pedido
+              </h2>
+              <p className="text-[13px] text-muted-foreground mt-1 mb-5 max-w-sm mx-auto">
+                Assim que o primeiro pedido entrar, este painel passa a mostrar o seu
+                resumo do mês, o andamento das entregas e a recompra em um clique.
+              </p>
+              <Link
+                to="/catalogo"
+                className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-md btn-primary text-[13px]"
+              >
+                Ver catálogo
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
+          </PortalSection>
+        )}
+
+        {/* ── 4. Recompra ───────────────────────────────────────────────────
+            Subiu na página: para um revendedor, repetir o pedido do mês
+            passado é a ação mais frequente — e antes ficava abaixo de três
+            carrosséis de vitrine. */}
+        {topBoughtProducts.length > 0 && (
+          <PortalSection
+            title="Reabastecimento rápido"
+            aside={<SeeAll to="/catalogo">Ver catálogo</SeeAll>}
+          >
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+              {topBoughtProducts.map(({ name, qty }) => (
+                <Link
+                  key={name}
+                  to="/catalogo"
+                  className="flex items-center gap-3 px-3 py-2.5 surface-card surface-card-interactive group"
+                >
+                  <div className="w-7 h-7 rounded-md bg-muted flex items-center justify-center shrink-0">
+                    <Package className="w-3.5 h-3.5 text-ink-500" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[12px] font-medium text-foreground truncate">{name}</p>
+                    <p className="text-[11px] text-muted-foreground numeric">Comprado {qty}x</p>
+                  </div>
+                  <ArrowRight className="w-3.5 h-3.5 text-ink-300 group-hover:text-foreground transition-colors shrink-0" />
+                </Link>
+              ))}
+            </div>
+          </PortalSection>
+        )}
+
+        {/* ── 5. Pedidos recentes ───────────────────────────────────────── */}
+        {!loadingOrders && recentOrders.length > 0 && (
+          <PortalSection title="Pedidos recentes" aside={<SeeAll to="/meus-pedidos">Ver todos</SeeAll>}>
+            <div className="surface-card divide-y divide-border overflow-hidden">
+              {recentOrders.map(order => {
+                const st = getOrderStatus(order.status)
+                const date = new Date(order.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+                const itemCount = order.order_items.length
+                return (
+                  <Link
+                    key={order.id}
+                    to="/meus-pedidos"
+                    className="flex items-center gap-3 px-4 py-3 hover:bg-muted transition-colors"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[12px] font-medium text-foreground mono">
+                        #{order.id.slice(0, 8).toUpperCase()}
+                      </p>
+                      <p className="text-[11px] text-muted-foreground mt-0.5 numeric">
+                        {date} · {itemCount} {itemCount === 1 ? 'item' : 'itens'}
+                      </p>
+                    </div>
+                    <Badge variant={st.tone} className="shrink-0">{st.short}</Badge>
+                    <p className="text-[13px] font-semibold text-foreground whitespace-nowrap numeric">
+                      R$ {brl(order.total)}
+                    </p>
+                  </Link>
+                )
+              })}
+            </div>
+          </PortalSection>
+        )}
+
+        {/* ── 6. Vitrine ────────────────────────────────────────────────────
+            Eram DUAS seções de carrossel idênticas empilhadas ("Mais vendidos"
+            e "Recomendados"). Viraram uma só com controle segmentado: mesmo
+            conteúdo, metade da altura, e o parceiro escolhe o recorte. */}
+        <PortalSection
+          title="Produtos"
+          bleed
+          aside={
+            <>
+              {/* Genérico explícito: o literal em `options` faz o TS alargar
+                  T para `string` se deixado inferir. */}
+              <Segmented<ProductTab>
+                value={productTab}
+                onChange={setProductTab}
+                options={[
+                  { value: 'vendidos', label: 'Mais vendidos' },
+                  { value: 'recomendados', label: 'Recomendados' },
+                ]}
+              />
+              <span className="hidden sm:inline-flex items-center gap-0.5 ml-1">
+                <button onClick={() => scrollBy(productScroller, -1)} className={ARROW_BTN} aria-label="Anterior">
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                <button onClick={() => scrollBy(productScroller, 1)} className={ARROW_BTN} aria-label="Próximo">
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </span>
+            </>
+          }
+        >
+          <div ref={productScroller} {...scrollerProps}>
+            <ProductRow products={shownProducts} loading={loadingProducts} />
+          </div>
+        </PortalSection>
+
+        {/* ── 7. Lançamentos ────────────────────────────────────────────── */}
+        {(loadingBanners || banners.length > 0) && (
+          <PortalSection
+            title="Lançamentos"
+            bleed
+            aside={
+              <>
+                <span className="hidden sm:inline-flex items-center gap-0.5">
+                  <button onClick={() => scrollBy(bannerScroller, -1)} className={ARROW_BTN} aria-label="Anterior">
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+                  <button onClick={() => scrollBy(bannerScroller, 1)} className={ARROW_BTN} aria-label="Próximo">
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </span>
+                <SeeAll to="/catalogo" />
+              </>
+            }
+          >
+            <div ref={bannerScroller} {...scrollerProps}>
+              {loadingBanners ? (
+                <div className="flex gap-3 px-4 sm:px-0">
+                  {[1, 2, 3].map(i => (
+                    <div key={i} className="shrink-0 w-[82vw] sm:w-80 h-52 rounded-xl bg-muted animate-pulse" />
+                  ))}
+                </div>
+              ) : (
+                <div className="flex gap-3 px-4 sm:px-0">
+                  {banners.map(banner => {
+                    const isExternal = banner.redirect_url.startsWith('http')
+                    const cardClass =
+                      'relative shrink-0 w-[82vw] sm:w-80 h-52 rounded-xl overflow-hidden group border border-border bg-surface-alt'
+                    const cardContent = (
+                      <>
+                        {banner.image_url && (
+                          <img
+                            src={banner.image_url}
+                            alt=""
+                            loading="lazy"
+                            decoding="async"
+                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+                          />
+                        )}
+                        <div className="absolute inset-0 bg-gradient-to-t from-ink-950/85 via-ink-950/25 to-transparent" />
+                        <div className="absolute inset-x-0 bottom-0 p-4">
+                          <span className="inline-block text-[10px] font-semibold px-1.5 py-0.5 rounded bg-white/15 text-white uppercase tracking-eyebrow mb-2 backdrop-blur-sm">
+                            {banner.badge_text}
+                          </span>
+                          <p className="text-white font-medium text-[15px] leading-snug tracking-tight line-clamp-2">
+                            {banner.title}
+                          </p>
+                          <p className="text-white/70 text-[12px] mt-1.5 flex items-center gap-1">
+                            Descobrir <ArrowRight className="w-3 h-3" />
+                          </p>
+                        </div>
+                      </>
+                    )
+                    return isExternal ? (
+                      <a
+                        key={banner.id}
+                        href={banner.redirect_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ scrollSnapAlign: 'start' }}
+                        className={cardClass}
+                      >{cardContent}</a>
+                    ) : (
+                      <Link
+                        key={banner.id}
+                        to={banner.redirect_url}
+                        style={{ scrollSnapAlign: 'start' }}
+                        className={cardClass}
+                      >{cardContent}</Link>
+                    )
+                  })}
+                  <div className="shrink-0 w-4 sm:w-0" aria-hidden />
+                </div>
+              )}
+            </div>
+          </PortalSection>
+        )}
+
+        {/* ── 8. Suporte ────────────────────────────────────────────────── */}
+        <PortalSection>
+          <a
+            href="https://wa.me/5527996865366?text=Ol%C3%A1%2C%20preciso%20de%20ajuda%20com%20meu%20pedido"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-3 p-3.5 surface-card surface-card-interactive group"
+          >
+            <div className="w-8 h-8 rounded-md bg-success-subtle border border-success-border flex items-center justify-center shrink-0">
+              <MessageCircle className="w-4 h-4 text-success" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-[13px] font-medium text-foreground leading-tight">Falar com vendedor</p>
+              <p className="text-[12px] text-muted-foreground mt-0.5">
+                Tire dúvidas ou faça o seu pedido pelo WhatsApp
+              </p>
+            </div>
+            <ArrowUpRight className="w-4 h-4 text-ink-300 group-hover:text-foreground transition-colors shrink-0" />
+          </a>
+        </PortalSection>
+
+      </PortalPage>
     </PortalLayout>
   )
 }

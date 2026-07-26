@@ -4,27 +4,35 @@ interface PromoBannerProps {
     onClick?: () => void;
 }
 
+/**
+ * Atalho mobile para a seção de kits.
+ *
+ * Era um bloco de 128px em gradiente âmbar com dois blobs desfocados
+ * (`blur-xl` + `animate-pulse`) e `font-black`. Blob decorativo animado é o
+ * vocabulário de promoção de varejo, não de painel de compra B2B.
+ *
+ * Agora é um card comum com hierarquia clara — e passou a ser um `button` de
+ * verdade, em vez de uma `div` com `role="button"` que não respondia a teclado.
+ */
 export default function PromoBanner({ onClick }: PromoBannerProps) {
     return (
-        <div className="w-full px-4 sm:hidden mb-6" onClick={onClick} role="button" tabIndex={0}>
-            <div className="relative w-full h-32 rounded-2xl overflow-hidden bg-gradient-to-r from-amber-500 to-amber-600 shadow-lg flex items-center p-4">
-                {/* Decorative elements */}
-                <div className="absolute -right-4 -top-4 w-24 h-24 bg-white/10 rounded-full blur-xl animate-pulse" />
-                <div className="absolute right-12 -bottom-8 w-20 h-20 bg-gold/20 rounded-full blur-lg" />
-
-                <div className="relative z-10 w-2/3">
-                    <span className="inline-block px-2 py-0.5 bg-black/20 text-white rounded text-[10px] font-bold tracking-wider uppercase mb-1">
-                        Oferta Especial
-                    </span>
-                    <h3 className="text-white font-black text-lg leading-tight mb-1">
-                        Kits Fechados com <br />
-                        <span className="text-amber-100">Super Desconto</span>
-                    </h3>
-                    <button className="flex items-center gap-1 text-[11px] font-bold text-white mt-1 hover:text-amber-100 transition-colors">
-                        VER AGORA <ArrowRight className="w-3 h-3" />
-                    </button>
+        <div className="w-full px-4 sm:hidden mb-6">
+            <button
+                type="button"
+                onClick={onClick}
+                className="w-full text-left flex items-center gap-3 p-3.5 surface-card surface-card-interactive group"
+            >
+                <div className="min-w-0 flex-1">
+                    <span className="eyebrow">Oferta especial</span>
+                    <p className="text-[14px] font-medium text-foreground leading-snug tracking-tight mt-1.5">
+                        Kits fechados com desconto
+                    </p>
+                    <p className="text-[12px] text-muted-foreground mt-0.5">
+                        Margem maior por item no fechamento do kit.
+                    </p>
                 </div>
-            </div>
+                <ArrowRight className="w-4 h-4 text-ink-300 shrink-0 transition-transform group-hover:translate-x-0.5" />
+            </button>
         </div>
     )
 }

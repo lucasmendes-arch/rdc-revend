@@ -1,4 +1,29 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Playfair+Display:wght@500;600;700&display=swap');
+/* ═══════════════════════════════════════════════════════════════════════════
+   Rei dos Cachos — Design System
+   ───────────────────────────────────────────────────────────────────────────
+   Direção: clean / minimalista / premium (referências: Loggi, Vercel, Stripe).
+
+   Princípios que regem TODO token abaixo:
+   1. Uma única rampa de neutro (`--ink-*`), fria-neutra. Nada de cinza quente
+      brigando com cinza frio na mesma tela.
+   2. Ação primária = ink (quase-preto no light, quase-branco no dark).
+      O dourado NÃO é botão — é sinal de marca (nav ativo, badge de parceiro).
+   3. Set semântico fechado: success / warning / danger / info. Qualquer status
+      novo escolhe UM desses. Não existe "roxo do pedido em separação".
+   4. Hairline border faz o trabalho da sombra. Sombra só em overlay real
+      (dropdown, modal, drawer) e sempre baixa e curta.
+   5. Zero gradiente decorativo, zero sombra colorida, zero translate no hover.
+
+   Tokens semânticos são ALIAS da rampa (`--background: var(--ink-0)`), então
+   o dark mode inverte a rampa uma vez e todo o resto acompanha sozinho.
+
+   Fonte de verdade documentada: design-tokens.md
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Geist / Geist Mono → identidade do portal.
+   Playfair Display → EXCLUSIVA do /lookbook (peça editorial de impressão).
+   Não usar Playfair em tela de produto. */
+@import url('https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500;600&family=Playfair+Display:wght@500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -6,209 +31,198 @@
 
 @layer base {
   :root {
-    /* Core Brand Colors */
-    --background: 0 0% 100%;
-    --foreground: 220 14% 12%;
+    /* ─── Rampa de neutro (light) ─────────────────────────────────────────
+       Fria-neutra, propositalmente muito próxima do `gray-*` do Tailwind:
+       as ~200 ocorrências de gray-* legadas nas páginas passam a harmonizar
+       em vez de brigar com a borda quente antiga (#E8E4DC). */
+    --ink-0:   0 0% 100%;      /* #FFFFFF  fundo da página                  */
+    --ink-25:  240 20% 99%;    /* #FCFCFD  fundo levemente acima do branco  */
+    --ink-50:  210 20% 98%;    /* #F8F9FA  superfície / zebra de tabela     */
+    --ink-100: 220 14% 95%;    /* #F1F2F4  muted, hover de linha            */
+    --ink-200: 214 12% 91%;    /* #E6E8EB  HAIRLINE — a borda do sistema    */
+    --ink-300: 217 11% 84%;    /* #D3D6DB  borda forte, divisor enfatizado  */
+    --ink-400: 217 10% 64%;    /* #9BA1AC  placeholder, ícone inativo       */
+    --ink-500: 220 8% 47%;     /* #6E7480  texto secundário                 */
+    --ink-600: 220 10% 37%;    /* #545A66  texto de apoio com mais peso     */
+    --ink-700: 220 12% 27%;    /* #3C424D                                   */
+    --ink-800: 220 13% 17%;    /* #262A31                                   */
+    --ink-900: 223 14% 10%;    /* #16181D  TEXTO PRINCIPAL / ação primária  */
+    --ink-950: 220 18% 6%;     /* #0B0D10                                   */
 
-    --card: 0 0% 100%;
-    --card-foreground: 220 14% 12%;
+    /* ─── Semântico base (alias da rampa) ────────────────────────────────── */
+    --background: var(--ink-0);
+    --foreground: var(--ink-900);
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 220 14% 12%;
+    --card: var(--ink-0);
+    --card-foreground: var(--ink-900);
 
-    /* Dark charcoal as primary */
-    --primary: 220 14% 12%;
-    --primary-foreground: 0 0% 100%;
+    --popover: var(--ink-0);
+    --popover-foreground: var(--ink-900);
 
-    --secondary: 40 10% 96%;
-    --secondary-foreground: 220 14% 12%;
+    /* Ação primária = ink. É isso que dá o ar Stripe/Vercel. */
+    --primary: var(--ink-900);
+    --primary-foreground: var(--ink-0);
 
-    --muted: 40 20% 96%;
-    --muted-foreground: 220 9% 46%;
+    --secondary: var(--ink-100);
+    --secondary-foreground: var(--ink-800);
 
-    --accent: 40 20% 94%;
-    --accent-foreground: 220 14% 12%;
+    --muted: var(--ink-50);
+    --muted-foreground: var(--ink-500);
 
-    --destructive: 0 84% 60%;
+    --accent: var(--ink-100);
+    --accent-foreground: var(--ink-900);
+
+    --border: var(--ink-200);
+    --input: var(--ink-200);
+
+    /* Foco = ink com offset. Contraste alto em qualquer superfície, ao
+       contrário do anel dourado antigo (que sumia no branco). */
+    --ring: var(--ink-900);
+
+    --surface: var(--ink-50);
+    --surface-alt: var(--ink-100);
+
+    /* ─── Marca — dourado rebaixado a ACCENT ──────────────────────────────
+       `brand-solid` é o único tom saturado, e só aparece em área pequena:
+       spine do nav ativo, bolinha de status, ícone de destaque.
+       Para texto sempre usar `brand-strong` (contraste ≥ 4.5:1 no branco). */
+    --brand:          36 64% 45%;   /* #BC8329  marca sólida, uso contido   */
+    --brand-strong:   34 72% 34%;   /* #95601A  TEXTO dourado legível       */
+    --brand-solid:    38 76% 52%;   /* #E4A02F  spine, dot, indicador       */
+    --brand-subtle:   40 72% 96%;   /* #FDF6E9  fundo de badge de marca     */
+    --brand-border:   38 50% 84%;   /* #EBD9BB  borda de badge de marca     */
+    --brand-foreground: 0 0% 100%;
+
+    /* ─── Set semântico fechado ───────────────────────────────────────────
+       Cada família tem exatamente 4 papéis: texto / sólido / fundo / borda.
+       Um status novo escolhe uma família — não inventa cor. */
+    --success:        152 48% 30%;
+    --success-solid:  152 50% 40%;
+    --success-subtle: 150 46% 96%;
+    --success-border: 150 32% 85%;
+
+    /* Warning puxado para laranja (26°) e não amarelo, para não colidir
+       com o dourado da marca (36-38°) na mesma tela. */
+    --warning:        26 78% 36%;
+    --warning-solid:  30 84% 48%;
+    --warning-subtle: 34 92% 96%;
+    --warning-border: 32 62% 85%;
+
+    --danger:         0 62% 44%;
+    --danger-solid:   0 70% 51%;
+    --danger-subtle:  0 78% 97%;
+    --danger-border:  0 55% 89%;
+
+    --info:           220 68% 42%;
+    --info-solid:     220 76% 54%;
+    --info-subtle:    215 92% 97%;
+    --info-border:    215 60% 88%;
+
+    /* shadcn usa `destructive` — alias de danger, não uma quinta cor. */
+    --destructive: var(--danger-solid);
     --destructive-foreground: 0 0% 100%;
 
-    --border: 40 15% 90%;
-    --input: 40 15% 90%;
-    --ring: 38 95% 48%;
+    /* ─── Raio ────────────────────────────────────────────────────────────
+       8px base. O sistema antigo (10px) inflava para 18px no `2xl` e deixava
+       card grande com cara de app de consumo. */
+    --radius: 0.5rem;
 
-    --radius: 0.625rem;
+    /* ─── Elevação ────────────────────────────────────────────────────────
+       Curta e de baixa opacidade. `xs`/`sm` para superfície estática,
+       `md`/`lg` só para o que realmente flutua sobre o conteúdo. */
+    --shadow-xs: 0 1px 2px 0 hsl(var(--ink-900) / 0.04);
+    --shadow-sm: 0 1px 2px -1px hsl(var(--ink-900) / 0.06), 0 1px 3px 0 hsl(var(--ink-900) / 0.04);
+    --shadow-md: 0 2px 4px -2px hsl(var(--ink-900) / 0.06), 0 4px 12px -2px hsl(var(--ink-900) / 0.08);
+    --shadow-lg: 0 8px 24px -6px hsl(var(--ink-900) / 0.12), 0 2px 6px -2px hsl(var(--ink-900) / 0.06);
 
-    /* Gold Brand System */
-    --gold-start: 38 95% 48%;
-    --gold-end: 36 60% 40%;
-    --gold-light: 40 100% 96%;
-    --gold-mid: 38 90% 55%;
-    --gold-text: 36 65% 35%;
-    --gold-border: 38 85% 70%;
-
-    /* Off-white surface */
-    --surface: 210 20% 98%;
-    --surface-alt: 40 30% 97%;
-
-    /* Gradients */
-    --gradient-gold: linear-gradient(135deg, hsl(38, 95%, 48%), hsl(36, 60%, 40%));
-    --gradient-gold-hover: linear-gradient(135deg, hsl(38, 95%, 55%), hsl(36, 65%, 45%));
-    --gradient-hero: linear-gradient(135deg, hsl(0, 0%, 100%) 0%, hsl(40, 30%, 97%) 100%);
-    --gradient-section: linear-gradient(180deg, hsl(40, 30%, 97%) 0%, hsl(0, 0%, 100%) 100%);
-
-    /* Shadows */
-    --shadow-gold: 0 4px 20px -4px hsl(38 95% 48% / 0.35);
-    --shadow-card: 0 2px 24px -4px hsl(220 14% 12% / 0.08);
-    --shadow-card-hover: 0 8px 40px -8px hsl(220 14% 12% / 0.16);
-
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 240 5.9% 10%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 240 4.8% 95.9%;
-    --sidebar-accent-foreground: 240 5.9% 10%;
-    --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    /* ─── Sidebar ─────────────────────────────────────────────────────────
+       Alias da rampa: a sidebar não é um segundo tema, é a mesma superfície. */
+    --sidebar-background: var(--ink-0);
+    --sidebar-foreground: var(--ink-600);
+    --sidebar-primary: var(--ink-900);
+    --sidebar-primary-foreground: var(--ink-0);
+    --sidebar-accent: var(--ink-100);
+    --sidebar-accent-foreground: var(--ink-900);
+    --sidebar-border: var(--ink-200);
+    --sidebar-ring: var(--ink-900);
   }
 
-  /* ─── Dark Mode ─────────────────────────────────────────────── */
+  /* ─── Dark ───────────────────────────────────────────────────────────────
+     A rampa inverte; os alias semânticos acima acompanham automaticamente.
+     Consequência desejada: `--primary` vira quase-branco, então o botão
+     primário fica branco com texto preto — exatamente o padrão Vercel. */
   .dark {
-    /* Base */
-    --background: 218 20% 8%;
-    --foreground: 214 18% 88%;
+    --ink-0:   223 20% 7%;     /* #0E1015  fundo da página                  */
+    --ink-25:  222 18% 9%;     /* #12151B                                   */
+    --ink-50:  222 17% 11%;    /* #171A21  card / superfície                */
+    --ink-100: 221 16% 14%;    /* #1D212A  muted, hover de linha            */
+    --ink-200: 220 14% 19%;    /* #282D38  HAIRLINE                         */
+    --ink-300: 220 12% 26%;    /* #3A3F4B  borda forte                      */
+    --ink-400: 220 9% 45%;     /* #696F7C  placeholder                      */
+    --ink-500: 218 10% 58%;    /* #878E9C  texto secundário                 */
+    --ink-600: 216 12% 70%;    /* #A9AFBB                                   */
+    --ink-700: 214 14% 80%;    /* #C6CBD4                                   */
+    --ink-800: 213 16% 88%;    /* #DBDFE6                                   */
+    --ink-900: 210 20% 96%;    /* #F2F4F7  TEXTO PRINCIPAL / ação primária  */
+    --ink-950: 0 0% 100%;
 
-    /* Cards / panels */
-    --card: 218 18% 11%;
-    --card-foreground: 214 18% 88%;
+    /* Card e popover sobem um degrau em relação ao fundo (no light são
+       ambos branco puro, aqui precisam se destacar). */
+    --card: var(--ink-50);
+    --popover: var(--ink-100);
+    --muted: var(--ink-100);
+    --surface: var(--ink-25);
+    --surface-alt: var(--ink-50);
+    --ring: var(--ink-700);
 
-    /* Popovers / dropdowns — slightly elevated */
-    --popover: 218 17% 13%;
-    --popover-foreground: 214 18% 88%;
+    /* Dourado ganha luminosidade para sobreviver ao fundo escuro. */
+    --brand:          38 80% 58%;
+    --brand-strong:   38 88% 68%;
+    --brand-solid:    38 84% 56%;
+    --brand-subtle:   36 42% 13%;
+    --brand-border:   36 38% 26%;
+    --brand-foreground: 223 20% 7%;
 
-    /* Primary = gold */
-    --primary: 38 90% 58%;
-    --primary-foreground: 218 20% 8%;
+    --success:        150 55% 66%;
+    --success-solid:  152 48% 42%;
+    --success-subtle: 152 32% 12%;
+    --success-border: 152 25% 22%;
 
-    /* Secondary surface */
-    --secondary: 218 15% 16%;
-    --secondary-foreground: 214 14% 72%;
+    --warning:        32 88% 66%;
+    --warning-solid:  30 78% 48%;
+    --warning-subtle: 30 38% 12%;
+    --warning-border: 30 30% 24%;
 
-    /* Muted */
-    --muted: 218 15% 16%;
-    --muted-foreground: 218 10% 50%;
+    --danger:         0 78% 72%;
+    --danger-solid:   0 62% 50%;
+    --danger-subtle:  0 35% 13%;
+    --danger-border:  0 28% 25%;
 
-    /* Accent (hover bg) */
-    --accent: 218 15% 18%;
-    --accent-foreground: 214 18% 88%;
+    --info:           215 88% 74%;
+    --info-solid:     220 70% 52%;
+    --info-subtle:    220 35% 13%;
+    --info-border:    220 28% 26%;
 
-    /* Destructive */
-    --destructive: 0 62% 50%;
+    --destructive: var(--danger-solid);
     --destructive-foreground: 0 0% 100%;
 
-    /* Borders & inputs */
-    --border: 218 14% 18%;
-    --input: 218 14% 18%;
-    --ring: 38 90% 58%;
+    /* Sombras precisam de mais opacidade para existirem sobre fundo escuro. */
+    --shadow-xs: 0 1px 2px 0 hsl(220 30% 2% / 0.40);
+    --shadow-sm: 0 1px 2px -1px hsl(220 30% 2% / 0.50), 0 1px 3px 0 hsl(220 30% 2% / 0.40);
+    --shadow-md: 0 2px 4px -2px hsl(220 30% 2% / 0.50), 0 4px 12px -2px hsl(220 30% 2% / 0.55);
+    --shadow-lg: 0 8px 24px -6px hsl(220 30% 2% / 0.65), 0 2px 6px -2px hsl(220 30% 2% / 0.50);
 
-    /* Brand surfaces */
-    --surface: 218 18% 10%;
-    --surface-alt: 218 20% 8%;
+    --sidebar-background: var(--ink-50);
+    --sidebar-foreground: var(--ink-500);
+    --sidebar-primary: var(--ink-900);
+    --sidebar-primary-foreground: var(--ink-0);
+    --sidebar-accent: var(--ink-100);
+    --sidebar-accent-foreground: var(--ink-900);
+    --sidebar-border: var(--ink-200);
+    --sidebar-ring: var(--ink-700);
 
-    /* Gold adjusted for dark backgrounds */
-    --gold-start: 38 95% 52%;
-    --gold-end: 36 62% 43%;
-    --gold-light: 38 70% 14%;
-    --gold-mid: 38 90% 58%;
-    --gold-text: 38 92% 68%;
-    --gold-border: 38 50% 30%;
-
-    /* Shadows */
-    --shadow-gold: 0 4px 20px -4px hsl(38 90% 58% / 0.18);
-    --shadow-card: 0 2px 24px -4px hsl(218 20% 5% / 0.70);
-    --shadow-card-hover: 0 8px 40px -8px hsl(218 20% 5% / 0.90);
-
-    /* Sidebar (stays the same — already dark) */
-    --sidebar-background: 218 18% 11%;
-    --sidebar-foreground: 214 18% 88%;
-    --sidebar-primary: 38 90% 58%;
-    --sidebar-primary-foreground: 218 20% 8%;
-    --sidebar-accent: 218 15% 16%;
-    --sidebar-accent-foreground: 214 18% 88%;
-    --sidebar-border: 218 14% 18%;
-    --sidebar-ring: 38 90% 58%;
-
-    /* Dark mode: native elements (date inputs, scrollbars) */
     color-scheme: dark;
   }
-}
-
-/* ─── Dark mode coherence layer ──────────────────────────────────
-   Higher specificity than Tailwind utilities (.dark .x > .x).
-   Maps hardcoded white/gray classes used in admin pages to dark
-   semantic tokens, avoiding the need to touch every page file.
-   Scoped to .dark so light mode is untouched.
-────────────────────────────────────────────────────────────────── */
-.dark .bg-white {
-  background-color: hsl(var(--card));
-}
-.dark .bg-gray-50 {
-  background-color: hsl(218 18% 13%);
-}
-.dark .bg-gray-100 {
-  background-color: hsl(var(--muted));
-}
-.dark .bg-gray-200 {
-  background-color: hsl(var(--muted));
-}
-.dark .border-gray-100,
-.dark .border-gray-200,
-.dark .border-gray-300 {
-  border-color: hsl(var(--border));
-}
-.dark .divide-gray-100 > * + *,
-.dark .divide-gray-200 > * + * {
-  border-color: hsl(var(--border));
-}
-.dark .bg-slate-50,
-.dark .bg-slate-100 {
-  background-color: hsl(var(--muted));
-}
-.dark .text-slate-600,
-.dark .text-slate-500 {
-  color: hsl(var(--muted-foreground));
-}
-.dark .text-slate-400 {
-  color: hsl(218 10% 48%);
-}
-.dark .bg-red-50,
-.dark .hover\:bg-red-50:hover {
-  background-color: hsl(0 40% 18%);
-}
-.dark .bg-red-100 {
-  background-color: hsl(0 45% 20%);
-}
-.dark .text-red-600,
-.dark .hover\:text-red-600:hover {
-  color: hsl(0 75% 72%);
-}
-.dark .text-red-700 {
-  color: hsl(0 75% 78%);
-}
-.dark .bg-amber-100 {
-  background-color: hsl(38 55% 18%);
-}
-.dark .text-amber-700 {
-  color: hsl(38 85% 72%);
-}
-
-/* Recharts chart surface in dark mode */
-.dark .recharts-cartesian-grid line {
-  stroke: hsl(218, 14%, 18%);
-}
-.dark .recharts-tooltip-wrapper .recharts-default-tooltip {
-  background-color: hsl(var(--popover)) !important;
-  border-color: hsl(var(--border)) !important;
-  color: hsl(var(--foreground)) !important;
 }
 
 @layer base {
@@ -218,230 +232,330 @@
 
   body {
     @apply bg-background text-foreground;
-    font-family: 'DM Sans', system-ui, -apple-system, sans-serif;
+    font-family: 'Geist', system-ui, -apple-system, sans-serif;
     -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    /* Geist tem alternates opcionais; `ss01` alinha o `a`/`g` do texto de UI. */
+    font-feature-settings: 'ss01' 1, 'cv01' 1;
     overflow-x: hidden;
   }
 
-  h1,
-  h2,
-  h3 {
-    font-family: 'DM Sans', sans-serif;
-    font-weight: 700;
+  /* Tracking negativo progressivo: é o que faz título grande parecer
+     "apertado e caro" em vez de esparramado. Quanto maior o corpo, mais
+     negativo. Texto pequeno fica em 0 (ou levemente positivo). */
+  h1, h2, h3, h4 {
+    font-family: 'Geist', system-ui, sans-serif;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+  }
+  h1 { letter-spacing: -0.025em; }
+  h4 { letter-spacing: -0.01em; }
+
+  /* Números em contexto de dado tabular não devem dançar de largura. */
+  th, td, output, time, [data-numeric] {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Foco visível e consistente — requisito de acessibilidade, não enfeite. */
+  :focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+  }
+
+  ::selection {
+    background: hsl(var(--ink-900) / 0.12);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
   }
 }
 
+/* ─── Camada de coerência para classes hardcoded ───────────────────────────
+   ~200 usos de `gray-*`/`slate-*` sobraram nas páginas admin. A rampa nova é
+   fria, então no LIGHT eles já harmonizam sozinhos e não precisam de remap.
+   No DARK continuam precisando — este bloco os traduz sem tocar 42 arquivos.
+   Especificidade `.dark .x` > `.x`, por isso vence as utilities do Tailwind.
+
+   Isto é dívida técnica consciente: o alvo é migrar as páginas para tokens
+   semânticos e ir apagando regras daqui.
+─────────────────────────────────────────────────────────────────────────── */
+.dark .bg-white          { background-color: hsl(var(--card)); }
+.dark .bg-gray-50,
+.dark .bg-slate-50       { background-color: hsl(var(--ink-25)); }
+.dark .bg-gray-100,
+.dark .bg-slate-100,
+.dark .bg-zinc-100       { background-color: hsl(var(--ink-100)); }
+.dark .bg-gray-200,
+.dark .bg-zinc-200       { background-color: hsl(var(--ink-200)); }
+
+.dark .border-gray-100,
+.dark .border-gray-200,
+.dark .border-gray-300,
+.dark .border-slate-200,
+.dark .border-zinc-200   { border-color: hsl(var(--border)); }
+
+.dark .divide-gray-100 > * + *,
+.dark .divide-gray-200 > * + * { border-color: hsl(var(--border)); }
+
+.dark .text-gray-900,
+.dark .text-gray-800,
+.dark .text-slate-900,
+.dark .text-zinc-900     { color: hsl(var(--foreground)); }
+.dark .text-gray-700,
+.dark .text-gray-600,
+.dark .text-slate-600    { color: hsl(var(--ink-600)); }
+.dark .text-gray-500,
+.dark .text-slate-500    { color: hsl(var(--muted-foreground)); }
+.dark .text-gray-400,
+.dark .text-gray-300,
+.dark .text-slate-400    { color: hsl(var(--ink-400)); }
+
+.dark .hover\:bg-gray-50:hover,
+.dark .hover\:bg-gray-100:hover { background-color: hsl(var(--ink-100)); }
+
+/* Famílias semânticas hardcoded → tokens, para o dark não estourar. */
+.dark .bg-red-50,
+.dark .hover\:bg-red-50:hover  { background-color: hsl(var(--danger-subtle)); }
+.dark .bg-red-100              { background-color: hsl(var(--danger-subtle)); }
+.dark .text-red-700,
+.dark .text-red-600,
+.dark .hover\:text-red-600:hover { color: hsl(var(--danger)); }
+
+.dark .bg-emerald-50,
+.dark .bg-emerald-100,
+.dark .bg-green-50,
+.dark .bg-green-100            { background-color: hsl(var(--success-subtle)); }
+.dark .text-emerald-700,
+.dark .text-emerald-600,
+.dark .text-green-700,
+.dark .text-green-600          { color: hsl(var(--success)); }
+
+.dark .bg-amber-50,
+.dark .bg-amber-100,
+.dark .bg-yellow-50,
+.dark .bg-yellow-100           { background-color: hsl(var(--warning-subtle)); }
+.dark .text-amber-700,
+.dark .text-amber-600,
+.dark .text-yellow-700         { color: hsl(var(--warning)); }
+
+.dark .bg-blue-50,
+.dark .bg-blue-100,
+.dark .bg-indigo-50,
+.dark .bg-indigo-100           { background-color: hsl(var(--info-subtle)); }
+.dark .text-blue-700,
+.dark .text-blue-600,
+.dark .text-indigo-700,
+.dark .text-indigo-600         { color: hsl(var(--info)); }
+
+/* Recharts */
+.dark .recharts-cartesian-grid line { stroke: hsl(var(--border)); }
+.dark .recharts-tooltip-wrapper .recharts-default-tooltip {
+  background-color: hsl(var(--popover)) !important;
+  border-color: hsl(var(--border)) !important;
+  color: hsl(var(--foreground)) !important;
+}
+
 @layer utilities {
+  /* ─── Tipografia ────────────────────────────────────────────────────── */
+
+  /* Playfair — SOMENTE /lookbook. Não usar em tela de produto. */
   .font-display {
     font-family: 'Playfair Display', serif;
   }
 
-  .text-gold {
-    color: hsl(var(--gold-text));
-  }
-
-  .bg-gold-light {
-    background-color: hsl(var(--gold-light));
-  }
-
-  .border-gold {
-    border-color: hsl(var(--gold-border));
-  }
-
-  .gradient-gold {
-    background: var(--gradient-gold);
-  }
-
-  .gradient-gold-text {
-    background: var(--gradient-gold);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-  }
-
-  .shadow-gold {
-    box-shadow: var(--shadow-gold);
-  }
-
-  .shadow-card {
-    box-shadow: var(--shadow-card);
-  }
-
-  .shadow-card-hover {
-    box-shadow: var(--shadow-card-hover);
-  }
-
-  .bg-surface {
-    background-color: hsl(var(--surface));
-  }
-
-  .bg-surface-alt {
-    background-color: hsl(var(--surface-alt));
-  }
-
-  /* Gold shimmer animation */
-  @keyframes shimmer {
-    0% {
-      background-position: -200% center;
-    }
-
-    100% {
-      background-position: 200% center;
-    }
-  }
-
-  @keyframes float-up {
-
-    0%,
-    100% {
-      transform: translateY(0px);
-    }
-
-    50% {
-      transform: translateY(-8px);
-    }
-  }
-
-  @keyframes fade-in-up {
-    from {
-      opacity: 0;
-      transform: translateY(24px);
-    }
-
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-
-  @keyframes count-up {
-    from {
-      opacity: 0;
-    }
-
-    to {
-      opacity: 1;
-    }
-  }
-
-  .animate-float {
-    animation: float-up 4s ease-in-out infinite;
-  }
-
-  .animate-fade-in-up {
-    animation: fade-in-up 0.6s ease-out forwards;
-  }
-
-  .animate-delay-100 {
-    animation-delay: 0.1s;
-  }
-
-  .animate-delay-200 {
-    animation-delay: 0.2s;
-  }
-
-  .animate-delay-300 {
-    animation-delay: 0.3s;
-  }
-
-  /* Gold button */
-  .btn-gold {
-    background: var(--gradient-gold);
-    color: white;
+  /* Eyebrow: rótulo de seção. Substitui o `tracking-[0.14em]` antigo, que
+     era largo demais e quebrava a leitura em telas estreitas. */
+  .eyebrow {
+    font-size: 11px;
     font-weight: 600;
-    letter-spacing: 0.02em;
-    transition: all 0.25s ease;
-    box-shadow: var(--shadow-gold);
+    line-height: 1;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: hsl(var(--muted-foreground));
   }
 
-  .btn-gold:hover {
-    background: var(--gradient-gold-hover);
-    transform: translateY(-1px);
-    box-shadow: 0 6px 28px -4px hsl(38 95% 48% / 0.45);
+  /* Valor monetário / métrica. Tabular para as colunas não dançarem. */
+  .numeric {
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.01em;
   }
 
-  .btn-gold:active {
-    transform: translateY(0px);
+  /* Código, ID de pedido, SKU. */
+  .mono {
+    font-family: 'Geist Mono', ui-monospace, SFMono-Regular, monospace;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.01em;
   }
 
-  /* Gold outline button */
-  .btn-gold-outline {
-    border: 1.5px solid hsl(var(--gold-border));
-    color: hsl(var(--gold-text));
-    background: transparent;
+  /* ─── Marca ───────────────────────────────────────────────────────────
+     `text-gold`, `bg-gold-light`, `border-gold-border` etc. NÃO são definidos
+     aqui: vêm da escala `colors.gold` do tailwind.config, que aponta para os
+     mesmos tokens `--brand-*`. Definir nos dois lugares criava duas regras na
+     mesma layer disputando por ordem de emissão. */
+
+  /* Gradientes achatados: mantidos como classe porque há ~40 usos, mas
+     agora são cor sólida. Gradiente decorativo não pertence a esta direção. */
+  .gradient-gold {
+    background: hsl(var(--brand-solid));
+  }
+  .gradient-gold-text {
+    background: none;
+    -webkit-text-fill-color: currentColor;
+    color: hsl(var(--foreground));
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+  }
+
+  /* ─── Elevação ──────────────────────────────────────────────────────── */
+  .shadow-xs         { box-shadow: var(--shadow-xs); }
+  .shadow-card       { box-shadow: var(--shadow-xs); }
+  .shadow-card-hover { box-shadow: var(--shadow-sm); }
+  /* Sombra colorida foi aposentada: vira elevação neutra. */
+  .shadow-gold       { box-shadow: var(--shadow-sm); }
+  .shadow-overlay    { box-shadow: var(--shadow-lg); }
+
+  .bg-surface     { background-color: hsl(var(--surface)); }
+  .bg-surface-alt { background-color: hsl(var(--surface-alt)); }
+
+  /* ─── Botões utilitários ────────────────────────────────────────────────
+     `.btn-gold` é legado no NOME (33 usos) mas não no visual: virou a ação
+     primária ink. Em código novo preferir `.btn-primary`.
+     Ambos compartilham a mesma definição — não divergir. */
+  .btn-gold,
+  .btn-primary {
+    background: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
     font-weight: 500;
-    transition: all 0.25s ease;
+    letter-spacing: -0.01em;
+    border: 1px solid transparent;
+    transition: background-color 0.15s ease, opacity 0.15s ease;
+  }
+  .btn-gold:hover,
+  .btn-primary:hover {
+    background: hsl(var(--primary) / 0.88);
+  }
+  .btn-gold:active,
+  .btn-primary:active {
+    background: hsl(var(--primary) / 0.94);
+  }
+  .btn-gold:disabled,
+  .btn-primary:disabled {
+    opacity: 0.45;
+    pointer-events: none;
   }
 
+  /* Ação secundária: branco + hairline. O par natural do botão ink. */
+  .btn-secondary,
+  .btn-gold-outline {
+    background: hsl(var(--background));
+    color: hsl(var(--foreground));
+    border: 1px solid hsl(var(--border));
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    transition: background-color 0.15s ease, border-color 0.15s ease;
+  }
+  .btn-secondary:hover,
   .btn-gold-outline:hover {
-    background: hsl(var(--gold-light));
-    border-color: hsl(var(--gold-mid));
+    background: hsl(var(--muted));
+    border-color: hsl(var(--ink-300));
+  }
+  .btn-secondary:disabled,
+  .btn-gold-outline:disabled {
+    opacity: 0.45;
+    pointer-events: none;
   }
 
-  /* Action button: dark in light mode, elevated surface in dark mode */
+  /* `.btn-action` (59 usos) já era escuro — agora é só um alias do primário,
+     para não existirem dois pretos ligeiramente diferentes no sistema. */
   .btn-action {
-    background: hsl(220, 14%, 14%);
-    color: white;
-    transition: background 0.15s ease;
+    background: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    transition: background-color 0.15s ease;
   }
-  .btn-action:hover {
-    background: hsl(220, 14%, 22%);
+  .btn-action:hover  { background: hsl(var(--primary) / 0.88); }
+  .btn-action:disabled { opacity: 0.45; pointer-events: none; }
+
+  /* ─── Superfícies ───────────────────────────────────────────────────── */
+
+  /* Card padrão do sistema: hairline + raio 8 + sombra mínima.
+     Hover NÃO move o card — só escurece a borda. */
+  .surface-card {
+    background: hsl(var(--card));
+    border: 1px solid hsl(var(--border));
+    border-radius: var(--radius);
   }
-  .btn-action:disabled {
-    opacity: 0.5;
+  .surface-card-interactive {
+    transition: border-color 0.15s ease, background-color 0.15s ease;
   }
-  .dark .btn-action {
-    background: hsl(218, 15%, 22%);
-    color: hsl(214, 18%, 88%);
-  }
-  .dark .btn-action:hover {
-    background: hsl(218, 15%, 28%);
+  .surface-card-interactive:hover {
+    border-color: hsl(var(--ink-300));
   }
 
-  /* Hide scrollbar for snap carousels */
+  /* Faixa vertical do item ativo na navegação — o dourado da marca aparece
+     aqui, em 2px, e é praticamente o único lugar onde ele é saturado. */
+  .nav-spine {
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 2px;
+    height: 16px;
+    border-radius: 0 2px 2px 0;
+    background: hsl(var(--brand-solid));
+  }
+
+  /* ─── Scrollbars ────────────────────────────────────────────────────── */
   .scrollbar-none {
     scrollbar-width: none;
     -ms-overflow-style: none;
   }
-
-  .scrollbar-none::-webkit-scrollbar {
-    display: none;
-  }
-
-  /* Elegant thin scrollbar */
-  .scrollbar-thin {
-    scrollbar-width: thin !important;
-    scrollbar-color: #cbd5e1 transparent !important;
-  }
+  .scrollbar-none::-webkit-scrollbar { display: none; }
 
   .scrollbar-thin,
   .scrollbar-thin * {
     scrollbar-width: thin;
-    scrollbar-color: #cbd5e1 transparent;
+    scrollbar-color: hsl(var(--ink-300)) transparent;
   }
-
   .scrollbar-thin::-webkit-scrollbar,
   .scrollbar-thin *::-webkit-scrollbar {
-    width: 8px !important;
-    height: 8px !important;
-    display: block !important;
+    width: 8px;
+    height: 8px;
   }
-
   .scrollbar-thin::-webkit-scrollbar-track,
-  .scrollbar-thin *::-webkit-scrollbar-track {
-    background: transparent !important;
-  }
-
+  .scrollbar-thin *::-webkit-scrollbar-track { background: transparent; }
   .scrollbar-thin::-webkit-scrollbar-thumb,
   .scrollbar-thin *::-webkit-scrollbar-thumb {
-    background-color: #cbd5e1 !important;
-    /* slate-300 */
-    border-radius: 20px !important;
+    background-color: hsl(var(--ink-300));
+    border-radius: 20px;
   }
-
   .scrollbar-thin::-webkit-scrollbar-thumb:hover,
   .scrollbar-thin *::-webkit-scrollbar-thumb:hover {
-    background-color: #94a3b8 !important;
-    /* slate-400 */
+    background-color: hsl(var(--ink-400));
   }
+
+  /* ─── Movimento ──────────────────────────────────────────────────────
+     Curto e sem deslocamento vertical. A entrada é de 8px, não de 24px —
+     movimento grande em UI de dado lê como site institucional. */
+  @keyframes fade-in-up {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes float-up {
+    0%, 100% { transform: translateY(0); }
+    50%      { transform: translateY(-6px); }
+  }
+
+  .animate-fade-in-up  { animation: fade-in-up 0.28s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+  .animate-float       { animation: float-up 4s ease-in-out infinite; }
+  .animate-delay-100   { animation-delay: 0.06s; }
+  .animate-delay-200   { animation-delay: 0.12s; }
+  .animate-delay-300   { animation-delay: 0.18s; }
 }

@@ -128,11 +128,11 @@ const PedidoSucesso = () => {
   if (error || !order) {
     return (
       <div className="min-h-screen bg-surface-alt flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl p-8 text-center max-w-md">
+        <div className="bg-white rounded-lg p-8 text-center max-w-md">
           <p className="text-red-600 font-medium mb-4">{error || 'Pedido não encontrado'}</p>
           <button
             onClick={() => navigate('/catalogo')}
-            className="inline-flex items-center gap-2 px-6 py-2.5 rounded-lg btn-gold text-white font-medium"
+            className="inline-flex items-center gap-2 px-6 py-2.5 rounded-lg btn-gold font-medium"
           >
             Voltar ao Catálogo
             <ArrowRight className="w-4 h-4" />
@@ -157,7 +157,7 @@ const PedidoSucesso = () => {
       <div className="container mx-auto px-4 sm:px-6 py-8">
         {/* Success Banner */}
         <div className="mb-8">
-          <div className="bg-white rounded-2xl p-8 text-center shadow-card">
+          <div className="bg-white rounded-lg p-8 text-center shadow-card">
             <div className="flex justify-center mb-4">
               <CheckCircle className="w-16 h-16 text-green-600" />
             </div>
@@ -186,7 +186,7 @@ const PedidoSucesso = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Order Details */}
           <div className="lg:col-span-2">
-            <div className="bg-white rounded-2xl p-6 shadow-card">
+            <div className="bg-white rounded-lg p-6 shadow-card">
               <h2 className="text-xl font-bold text-foreground mb-6 flex items-center gap-2">
                 <ShoppingCart className="w-5 h-5 text-gold-text" />
                 Itens do Pedido
@@ -243,7 +243,7 @@ const PedidoSucesso = () => {
                 {order.delivery_method === 'pickup' && (
                   <div className="mt-4 pt-4 border-t border-border/10">
                     <p className="text-sm font-medium text-foreground mb-1">Local de Retirada</p>
-                    <p className="text-sm font-bold text-amber-600 mb-1">Unidade {order.pickup_unit_slug === 'linhares' ? 'Linhares' : order.pickup_unit_slug === 'serra' ? 'Serra' : order.pickup_unit_slug === 'teixeira' ? 'Teixeira' : order.pickup_unit_slug}</p>
+                    <p className="text-[13px] font-medium text-foreground mb-1">Unidade {order.pickup_unit_slug === 'linhares' ? 'Linhares' : order.pickup_unit_slug === 'serra' ? 'Serra' : order.pickup_unit_slug === 'teixeira' ? 'Teixeira' : order.pickup_unit_slug}</p>
                     <p className="text-xs text-muted-foreground">{order.pickup_unit_address}</p>
                   </div>
                 )}
@@ -253,7 +253,7 @@ const PedidoSucesso = () => {
 
           {/* Sidebar CTA */}
           <div className="lg:col-span-1">
-            <div className="bg-white rounded-2xl p-6 shadow-card sticky top-24">
+            <div className="bg-white rounded-lg p-6 shadow-card sticky top-24">
               <h3 className="font-bold text-foreground mb-4">Próximos Passos</h3>
 
               <div className="space-y-3 mb-6">
@@ -291,7 +291,7 @@ const PedidoSucesso = () => {
               <div className="space-y-2">
                 <button
                   onClick={() => navigate('/meus-pedidos')}
-                  className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg font-semibold text-sm btn-gold text-white"
+                  className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg font-semibold text-sm btn-gold"
                 >
                   Ver Meus Pedidos
                   <ArrowRight className="w-4 h-4" />

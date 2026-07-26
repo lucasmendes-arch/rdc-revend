@@ -63,7 +63,7 @@ const RotatingTrustBanner = () => {
       sub: "100% Vegano, Liberado e sem Petrolatos"
     },
     {
-      icon: <Truck className="w-5 h-5 sm:w-6 sm:h-6 text-amber-600" />,
+      icon: <Truck className="w-5 h-5 sm:w-6 sm:h-6 text-ink-500" />,
       label: "Envio Rápido para ES & BA",
       sub: "Logística própria e transportadoras"
     },
@@ -95,13 +95,13 @@ const RotatingTrustBanner = () => {
 
   return (
     <div className="w-full mb-3 sm:mb-8 px-3 flex justify-center">
-      <div className="w-full max-w-4xl bg-white/95 backdrop-blur-md border border-amber-100/40 rounded-2xl sm:rounded-full px-4 sm:px-8 py-3 sm:py-4 shadow-lg shadow-amber-900/10 flex items-center justify-between gap-4 h-16 sm:h-20 overflow-hidden transition-all duration-300 hover:scale-[1.01] active:scale-[0.99] ring-1 ring-amber-900/5">
+      <div className="w-full max-w-4xl bg-white/95 backdrop-blur-md border border-border/40 rounded-lg sm:rounded-full px-4 sm:px-8 py-3 sm:py-4 shadow-lg flex items-center justify-between gap-4 h-16 sm:h-20 overflow-hidden transition-all duration-300 hover:scale-[1.01] active:scale-[0.99] ring-1 ring-border">
         <div key={index} className="flex items-center gap-3 sm:gap-5 animate-in fade-in slide-in-from-bottom-3 duration-500 flex-1">
-          <div className="flex-shrink-0 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-amber-50/50 flex items-center justify-center border border-amber-100/30">
+          <div className="flex-shrink-0 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-muted flex items-center justify-center border border-border/30">
             {items[index].icon}
           </div>
           <div className="flex flex-col justify-center leading-tight">
-            <span className="text-[12px] sm:text-base font-black text-foreground uppercase tracking-tight sm:tracking-normal">
+            <span className="text-[12px] sm:text-base font-semibold text-foreground uppercase tracking-tight sm:tracking-normal">
               {items[index].label}
             </span>
             <span className="text-[10px] sm:text-[13px] text-muted-foreground italic font-medium opacity-80 line-clamp-1">
@@ -112,14 +112,14 @@ const RotatingTrustBanner = () => {
 
         <div className="flex flex-col sm:flex-row items-center gap-1.5 sm:gap-3 border-l border-border/40 pl-4 sm:pl-6 shrink-0">
           <div className="hidden sm:flex flex-col items-end mr-2">
-             <span className="text-[9px] font-bold text-amber-500 uppercase tracking-widest">Confiança</span>
+             <span className="text-[9px] font-bold text-ink-400 uppercase tracking-widest">Confiança</span>
              <span className="text-[8px] text-muted-foreground whitespace-nowrap">Certificada B2B</span>
           </div>
           <div className="flex gap-1">
             {items.map((_, i) => (
               <div
                 key={i}
-                className={`w-1.5 sm:w-2 h-1.5 sm:h-2 rounded-full transition-all duration-500 ${i === index ? 'bg-amber-500 sm:w-6' : 'bg-border/40 hover:bg-border/80'}`}
+                className={`w-1.5 sm:w-2 h-1.5 sm:h-2 rounded-full transition-all duration-500 ${i === index ? 'bg-muted0 sm:w-6' : 'bg-border/40 hover:bg-border/80'}`}
               />
             ))}
           </div>
@@ -450,31 +450,31 @@ const Catalogo = () => {
     <div className="min-h-screen bg-surface-alt overflow-x-hidden">
       {/* Header */}
       <div className="sticky top-0 z-40 w-full overflow-visible">
-        <header className="bg-gold border-b border-amber-600 shadow-sm transition-all duration-300">
+        <header className="bg-background border-b border-border transition-colors">
           <div className="container mx-auto px-3 sm:px-4 lg:px-6 py-2 sm:h-16 flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4">
 
           <div className="flex items-center justify-between w-full sm:w-auto">
             <div className="flex items-center gap-2 sm:gap-3 select-none pointer-events-none">
-              <img src={logo} alt="Rei dos Cachos" className="h-8 sm:h-10 w-auto flex-shrink-0 brightness-0 invert" />
+              <img src={logo} alt="Rei dos Cachos" className="h-7 sm:h-8 w-auto flex-shrink-0" />
               <div className="flex flex-col leading-none">
-                <span className="text-white font-black text-[11px] sm:text-sm tracking-wide uppercase">Rei dos Cachos</span>
-                <span className="text-white/70 text-[9px] sm:text-[10px] font-semibold uppercase tracking-widest">atacado</span>
+                <span className="text-foreground font-semibold text-[13px] tracking-tight">Rei dos Cachos</span>
+                <span className="eyebrow mt-0.5">atacado</span>
               </div>
             </div>
 
             {/* Mobile Actions in Header Row */}
-            <div className="flex items-center gap-1.5 sm:hidden text-white">
+            <div className="flex items-center gap-1 sm:hidden text-ink-500">
               {isGuest ? (
                 <>
                   <Link
                     to="/login"
-                    className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-white/20 hover:bg-white/30 transition-colors"
+                    className="text-xs font-medium h-8 px-3 rounded-md btn-secondary inline-flex items-center"
                   >
                     Entrar
                   </Link>
                   <Link
                     to="/cadastro"
-                    className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-white text-amber-700 hover:bg-amber-50 transition-colors"
+                    className="text-xs font-medium h-8 px-3 rounded-md btn-primary inline-flex items-center"
                   >
                     Criar conta
                   </Link>
@@ -483,12 +483,12 @@ const Catalogo = () => {
                 <>
                   <button
                     onClick={() => setCartOpen(true)}
-                    className="relative p-1.5 hover:bg-white/10 rounded-full transition-colors flex items-center justify-center"
+                    className="relative p-1.5 hover:bg-muted rounded-full transition-colors flex items-center justify-center"
                     title="Carrinho"
                   >
                     <ShoppingCart className="w-5 h-5" />
                     {cartCount > 0 && (
-                      <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-white text-[9px] font-bold flex items-center justify-center border-2 border-gold shadow-sm">
+                      <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-white text-[9px] font-bold flex items-center justify-center border-2 border-background shadow-sm">
                         {cartCount}
                       </span>
                     )}
@@ -496,11 +496,11 @@ const Catalogo = () => {
 
                   <button
                     onClick={() => setFiltersOpen(!filtersOpen)}
-                    className="relative p-1.5 hover:bg-white/10 rounded-full transition-colors flex items-center justify-center"
+                    className="relative p-1.5 hover:bg-muted rounded-full transition-colors flex items-center justify-center"
                   >
                     <Filter className="w-5 h-5" />
                     {activeFiltersCount > 0 && (
-                      <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-white text-[9px] font-bold flex items-center justify-center border-2 border-gold shadow-sm">
+                      <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-white text-[9px] font-bold flex items-center justify-center border-2 border-background shadow-sm">
                         {activeFiltersCount}
                       </span>
                     )}
@@ -509,7 +509,7 @@ const Catalogo = () => {
                   {role === 'admin' && (
                     <Link
                       to="/admin/catalogo"
-                      className="p-1.5 hover:bg-white/10 rounded-full transition-colors flex items-center justify-center"
+                      className="p-1.5 hover:bg-muted rounded-full transition-colors flex items-center justify-center"
                       title="Painel Admin"
                     >
                       <ShieldCheck className="w-5 h-5" />
@@ -519,7 +519,7 @@ const Catalogo = () => {
                   {role === 'salao' && (
                     <Link
                       to="/salao/pedido"
-                      className="p-1.5 hover:bg-white/10 rounded-full transition-colors flex items-center justify-center"
+                      className="p-1.5 hover:bg-muted rounded-full transition-colors flex items-center justify-center"
                       title="Área do Salão"
                     >
                       <Crown className="w-5 h-5" />
@@ -528,7 +528,7 @@ const Catalogo = () => {
 
                   <button
                     onClick={handleLogout}
-                    className="p-1.5 hover:bg-white/10 rounded-full transition-colors flex items-center justify-center"
+                    className="p-1.5 hover:bg-muted rounded-full transition-colors flex items-center justify-center"
                     title="Sair"
                   >
                     <LogOut className="w-5 h-5" />
@@ -546,7 +546,7 @@ const Catalogo = () => {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Estou buscando por..."
-                className="w-full pl-9 pr-4 py-2 sm:py-2.5 rounded-full border border-gold-light bg-white text-sm text-foreground placeholder:text-muted-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-amber-300 transition-all"
+                className="w-full pl-9 pr-4 py-2 sm:py-2.5 rounded-md border border-input bg-background text-sm text-foreground placeholder:text-ink-400 transition-colors hover:border-ink-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               />
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             </div>
@@ -558,13 +558,13 @@ const Catalogo = () => {
               <>
                 <Link
                   to="/login"
-                  className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-white hover:bg-white/10 transition-all border border-white/30"
+                  className="h-9 px-3.5 rounded-md btn-secondary text-[13px] inline-flex items-center"
                 >
                   Entrar
                 </Link>
                 <Link
                   to="/cadastro"
-                  className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold bg-white text-amber-700 hover:bg-amber-50 transition-all"
+                  className="h-9 px-3.5 rounded-md btn-primary text-[13px] inline-flex items-center"
                 >
                   Criar conta
                 </Link>
@@ -573,7 +573,7 @@ const Catalogo = () => {
               <>
                 <button
                   onClick={() => setFiltersOpen(!filtersOpen)}
-                  className="relative p-2 text-white hover:bg-white/10 rounded-lg transition-colors"
+                  className="relative p-2 text-ink-500 hover:bg-muted rounded-lg transition-colors"
                   title="Filtros"
                 >
                   <Filter className="w-5 h-5" />
@@ -587,12 +587,12 @@ const Catalogo = () => {
                 {/* Cart */}
                 <button
                   onClick={() => setCartOpen(true)}
-                  className={`relative flex items-center gap-1.5 px-4 py-2 rounded-lg border border-gold-light text-gold-text bg-white hover:border-gold-border transition-all text-sm font-medium ${cartBounce ? 'animate-bounce' : ''}`}
+                  className={`relative h-9 px-3.5 rounded-md btn-secondary text-[13px] inline-flex items-center gap-1.5 ${cartBounce ? 'animate-bounce' : ''}`}
                 >
                   <ShoppingCart className="w-4 h-4" />
                   <span>Pedido</span>
                   {cartCount > 0 && (
-                    <span className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full gradient-gold text-white text-[10px] font-bold flex items-center justify-center">
+                    <span className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center">
                       {cartCount}
                     </span>
                   )}
@@ -601,7 +601,7 @@ const Catalogo = () => {
                 {role === 'admin' && (
                   <Link
                     to="/admin/catalogo"
-                    className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-transparent text-sm font-medium text-white hover:bg-white/10 transition-all bg-white/5"
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-transparent text-sm font-medium text-ink-500 hover:bg-muted transition-colors"
                     title="Painel Admin"
                   >
                     <ShieldCheck className="w-4 h-4" />
@@ -612,7 +612,7 @@ const Catalogo = () => {
                 {role === 'salao' && (
                   <Link
                     to="/salao/pedido"
-                    className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-transparent text-sm font-medium text-white hover:bg-white/10 transition-all bg-white/5"
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-transparent text-sm font-medium text-ink-500 hover:bg-muted transition-colors"
                     title="Área do Salão"
                   >
                     <Crown className="w-4 h-4" />
@@ -622,7 +622,7 @@ const Catalogo = () => {
 
                 <button
                   onClick={handleLogout}
-                  className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm text-amber-100 hover:text-white hover:bg-white/10 transition-all"
+                  className="h-9 px-3 rounded-md text-[13px] text-ink-500 hover:text-foreground hover:bg-muted transition-colors inline-flex items-center gap-1.5"
                 >
                   <LogOut className="w-4 h-4" />
                   <span>Sair</span>
@@ -661,7 +661,7 @@ const Catalogo = () => {
       <div className="flex flex-col lg:flex-row lg:gap-6 w-full max-w-full">
         {/* Sidebar Filters (Desktop) */}
         <aside className="hidden lg:block w-64 px-3 pt-4 pb-6">
-          <div className="sticky top-24 bg-white rounded-2xl p-1 shadow-sm border border-border">
+          <div className="sticky top-24 bg-white rounded-lg p-1 shadow-sm border border-border">
             <div className="p-3 border-b border-border mb-1">
               <h3 className="font-bold text-foreground">Filtros</h3>
             </div>
@@ -742,7 +742,7 @@ const Catalogo = () => {
                           onChange={() => toggleCategory(cat.id)}
                           className="w-4 h-4 rounded border-border text-gold focus:ring-gold"
                         />
-                        <span className="text-sm text-foreground group-hover:text-amber-600 transition-colors">{cat.name}</span>
+                        <span className="text-sm text-foreground group-hover:text-foreground transition-colors">{cat.name}</span>
                       </label>
                     ))}
                   </div>
@@ -768,7 +768,7 @@ const Catalogo = () => {
                       onChange={(e) => setFilterProfessional(e.target.checked)}
                       className="w-4 h-4 rounded border-border text-gold focus:ring-gold"
                     />
-                    <span className="text-sm text-foreground group-hover:text-amber-600 font-medium">Uso Profissional</span>
+                    <span className="text-sm text-foreground group-hover:text-foreground font-medium">Uso Profissional</span>
                   </label>
 
                   {!isGuest && (
@@ -779,7 +779,7 @@ const Catalogo = () => {
                         onChange={(e) => setFilterOnlySuggested(e.target.checked)}
                         className="w-4 h-4 rounded border-border text-gold focus:ring-gold"
                       />
-                      <span className="text-sm text-foreground group-hover:text-amber-600 font-medium">Preço sugerido</span>
+                      <span className="text-sm text-foreground group-hover:text-foreground font-medium">Preço sugerido</span>
                     </label>
                   )}
                 </div>
@@ -810,10 +810,10 @@ const Catalogo = () => {
             <div className="pt-2 px-3 sm:hidden">
               <div id="kits-section" className="flex items-center justify-between mb-4 mt-2">
                 <div className="flex items-center gap-1.5">
-                  <div className="bg-amber-100 p-1 rounded">
-                    <PackageSearch className="w-4 h-4 text-amber-600" />
+                  <div className="bg-muted p-1 rounded">
+                    <PackageSearch className="w-4 h-4 text-ink-500" />
                   </div>
-                  <h2 className="text-[15px] sm:text-lg font-black text-foreground">Seleção dos Mais Vendidos</h2>
+                  <h2 className="text-[15px] sm:text-lg font-semibold text-foreground">Seleção dos Mais Vendidos</h2>
                 </div>
               </div>
 
@@ -875,13 +875,13 @@ const Catalogo = () => {
 
             {/* Banner de saída do modo Ver todos */}
             {viewAll && !debouncedSearch && (
-              <div className="flex items-center justify-between mt-4 sm:mt-6 mb-4 py-2.5 px-3 rounded-lg bg-amber-50 border border-amber-200">
-                <span className="text-xs sm:text-sm font-semibold text-amber-800">
+              <div className="flex items-center justify-between mt-4 sm:mt-6 mb-4 py-2.5 px-3 rounded-lg bg-muted border border-border">
+                <span className="text-xs sm:text-sm font-semibold text-ink-600">
                   Todos os produtos ({filtered.length})
                 </span>
                 <button
                   onClick={() => setViewAll(false)}
-                  className="flex items-center gap-1 text-xs font-bold text-amber-700 hover:text-amber-900 transition-colors"
+                  className="flex items-center gap-1 text-xs font-bold text-ink-600 hover:text-foreground transition-colors"
                 >
                   <X className="w-3.5 h-3.5" /> Voltar ao catálogo
                 </button>
@@ -892,7 +892,7 @@ const Catalogo = () => {
             <div id="produtos-section">
               {!isLoading && !error && filtered.length > 0 && (!viewAll || debouncedSearch) && (
                 <div className="flex items-center gap-1.5 mb-4 mt-4 sm:mt-8">
-                  <div className="w-1 h-5 bg-amber-500 rounded-full"></div>
+                  <div className="w-1 h-5 bg-muted0 rounded-full"></div>
                   <h2 className="text-[16px] sm:text-lg font-bold text-foreground">
                     {debouncedSearch ? `Resultados para "${debouncedSearch}"` : "Aproveite e leve também"}
                   </h2>
@@ -932,7 +932,7 @@ const Catalogo = () => {
             {/* Loading */}
             {isLoading && (
               <div className="text-center py-16">
-                <div className="w-8 h-8 border-2 border-gold/30 border-t-gold rounded-full animate-spin mx-auto mb-4" />
+                <div className="w-8 h-8 border-2 border-background/30 border-t-gold rounded-full animate-spin mx-auto mb-4" />
                 <p className="text-muted-foreground">Carregando catálogo...</p>
               </div>
             )}
@@ -946,7 +946,7 @@ const Catalogo = () => {
             )}
 
             {priceListError && !error && (
-              <div className="mb-4 px-4 py-2.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-sm">
+              <div className="mb-4 px-4 py-2.5 rounded-lg bg-muted border border-border text-ink-600 text-sm">
                 Não foi possível carregar sua tabela de preços. Os preços exibidos podem não refletir sua tabela personalizada.
               </div>
             )}
@@ -964,7 +964,7 @@ const Catalogo = () => {
                         return (
                           <div
                             key={product.id}
-                            className="bg-white rounded-2xl border border-amber-100 shadow-[0_2px_12px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_24px_rgba(217,119,6,0.12)] transition-all flex flex-col overflow-hidden group"
+                            className="bg-white rounded-lg border border-border shadow-xs transition-all flex flex-col overflow-hidden group"
                           >
                             <div
                               className="w-full aspect-square bg-surface-alt flex items-center justify-center overflow-hidden cursor-pointer relative"
@@ -982,7 +982,7 @@ const Catalogo = () => {
                               )}
                               {volume && (
                                 <div className="absolute bottom-2 right-2 z-10">
-                                  <span className="inline-flex items-center px-1.5 py-0.5 rounded shadow-sm text-[9px] sm:text-[10px] font-black bg-white/90 backdrop-blur-sm text-amber-900 border border-amber-200/60 uppercase tracking-wider">
+                                  <span className="inline-flex items-center px-1.5 py-0.5 rounded shadow-sm text-[9px] sm:text-[10px] font-semibold bg-white/90 backdrop-blur-sm text-foreground border border-border uppercase tracking-wider">
                                     {volume}
                                   </span>
                                 </div>
@@ -990,7 +990,7 @@ const Catalogo = () => {
                             </div>
                             <div className="p-2.5 sm:p-3 flex flex-col flex-1">
                               <div 
-                                className="cursor-pointer group-hover:text-amber-600 transition-colors"
+                                className="cursor-pointer group-hover:text-foreground transition-colors"
                                 onClick={() => handleSelectProduct(product)}
                               >
                                 <h3 className="font-bold text-foreground text-[11px] sm:text-[13px] leading-snug line-clamp-2 mb-1.5 sm:mb-2">
@@ -1011,7 +1011,7 @@ const Catalogo = () => {
                                     <span className="text-[11px] text-muted-foreground font-medium">Ver preço ao cadastrar</span>
                                   </div>
                                 ) : (
-                                  <div className="text-sm sm:text-[15px] font-black text-foreground mb-2">
+                                  <div className="text-sm sm:text-[15px] font-semibold text-foreground mb-2">
                                     {isPartner && product.partner_price
                                       ? <>R$ {product.partner_price.toFixed(2)}</>
                                       : <>R$ {product.price.toFixed(2)}</>
@@ -1028,9 +1028,9 @@ const Catalogo = () => {
                                 ) : (
                                   <div className="flex flex-col gap-1 mt-1">
                                     <div className="flex items-center gap-1">
-                                      <button onClick={(e) => { e.stopPropagation(); setQty(product.id, 6); }} className="flex-1 py-0.5 rounded bg-surface-alt text-muted-foreground text-[9px] font-bold border border-border hover:bg-amber-50 hover:text-amber-700 hover:border-amber-200 transition-colors">+6</button>
-                                      <button onClick={(e) => { e.stopPropagation(); setQty(product.id, 12); }} className="flex-1 py-0.5 rounded bg-surface-alt text-muted-foreground text-[9px] font-bold border border-border hover:bg-amber-50 hover:text-amber-700 hover:border-amber-200 transition-colors">+12</button>
-                                      <button onClick={(e) => { e.stopPropagation(); setQty(product.id, 24); }} className="flex-1 py-0.5 rounded bg-surface-alt text-muted-foreground text-[9px] font-bold border border-border hover:bg-amber-50 hover:text-amber-700 hover:border-amber-200 transition-colors">+24</button>
+                                      <button onClick={(e) => { e.stopPropagation(); setQty(product.id, 6); }} className="flex-1 py-0.5 rounded bg-surface-alt text-muted-foreground text-[9px] font-bold border border-border hover:bg-muted hover:text-foreground hover:border-border transition-colors">+6</button>
+                                      <button onClick={(e) => { e.stopPropagation(); setQty(product.id, 12); }} className="flex-1 py-0.5 rounded bg-surface-alt text-muted-foreground text-[9px] font-bold border border-border hover:bg-muted hover:text-foreground hover:border-border transition-colors">+12</button>
+                                      <button onClick={(e) => { e.stopPropagation(); setQty(product.id, 24); }} className="flex-1 py-0.5 rounded bg-surface-alt text-muted-foreground text-[9px] font-bold border border-border hover:bg-muted hover:text-foreground hover:border-border transition-colors">+24</button>
                                     </div>
                                     <div className="flex items-center gap-1.5 mt-0.5">
                                       <div className="flex items-center gap-0.5">
@@ -1045,7 +1045,7 @@ const Catalogo = () => {
                                           value={getQty(product.id)}
                                           onChange={(e) => { const v = parseInt(e.target.value, 10); if (!isNaN(v)) setQty(product.id, v); }}
                                           onBlur={(e) => { const v = parseInt(e.target.value, 10); if (isNaN(v) || v < 1) setQty(product.id, 1); }}
-                                          className="w-8 h-7 text-center text-xs font-bold text-foreground border border-border rounded-md bg-surface focus:outline-none focus:ring-1 focus:ring-amber-500"
+                                          className="w-8 h-7 text-center text-xs font-bold text-foreground border border-border rounded-md bg-surface focus:outline-none focus:ring-1 focus:ring-ring"
                                         />
                                         <button
                                           onClick={(e) => { e.stopPropagation(); setQty(product.id, getQty(product.id) + 1); }}
@@ -1054,7 +1054,7 @@ const Catalogo = () => {
                                       </div>
                                       <button
                                         onClick={(e) => { e.stopPropagation(); handleAddItem(product); }}
-                                        className={`flex-1 h-7 flex items-center justify-center gap-1 rounded-md text-[10px] font-black transition-all uppercase tracking-wider shadow-sm hover:shadow ${addedId === product.id ? 'bg-green-600 text-white hover:-translate-y-0.5' : 'bg-amber-500 hover:bg-amber-600 text-white hover:-translate-y-0.5'}`}
+                                        className={`flex-1 h-7 flex items-center justify-center gap-1 rounded-md text-[10px] font-semibold transition-all uppercase tracking-wider shadow-sm ${addedId === product.id ? 'bg-green-600 text-white' : 'btn-primary'}`}
                                       >
                                         {addedId === product.id
                                           ? <><Check className="w-3.5 h-3.5" /> OK</>
@@ -1239,7 +1239,7 @@ const Catalogo = () => {
                 )}
                 <button
                   onClick={() => setFiltersOpen(false)}
-                  className="w-full px-2 sm:px-3 py-2 sm:py-2.5 rounded btn-gold text-white text-xs sm:text-sm font-semibold"
+                  className="w-full px-2 sm:px-3 py-2 sm:py-2.5 rounded btn-gold text-xs sm:text-sm font-semibold"
                 >
                   Aplicar
                 </button>
@@ -1255,7 +1255,7 @@ const Catalogo = () => {
               className="absolute inset-0 bg-foreground/40 backdrop-blur-sm"
               onClick={() => setSelectedProduct(null)}
             />
-            <div className="relative bg-white rounded-xl sm:rounded-2xl shadow-lg w-full sm:max-w-xl max-h-[92vh] overflow-y-auto">
+            <div className="relative bg-white rounded-xl sm:rounded-lg shadow-lg w-full sm:max-w-xl max-h-[92vh] overflow-y-auto">
               {/* Close button */}
               <button
                 onClick={() => setSelectedProduct(null)}
@@ -1286,7 +1286,7 @@ const Catalogo = () => {
                 <div className="bg-surface-alt rounded-xl p-3 sm:p-4 mb-4">
                   {isGuest ? (
                     <div className="flex items-center gap-2 py-1">
-                      <Lock className="w-4 h-4 text-amber-500 flex-shrink-0" />
+                      <Lock className="w-4 h-4 text-ink-400 flex-shrink-0" />
                       <span className="text-sm font-medium text-muted-foreground">
                         Preços visíveis após cadastro gratuito
                       </span>
@@ -1335,9 +1335,9 @@ const Catalogo = () => {
                   <div className="flex items-center justify-between mb-3">
                     <span className="text-sm font-bold text-foreground">Quantidade</span>
                     <div className="flex gap-2">
-                       <button onClick={() => setQty(selectedProduct.id, 6)} className="px-2 py-0.5 rounded bg-amber-50 text-amber-700 text-xs font-bold border border-amber-200 hover:bg-amber-100 transition-colors">+6</button>
-                       <button onClick={() => setQty(selectedProduct.id, 12)} className="px-2 py-0.5 rounded bg-amber-50 text-amber-700 text-xs font-bold border border-amber-200 hover:bg-amber-100 transition-colors">+12</button>
-                       <button onClick={() => setQty(selectedProduct.id, 24)} className="px-2 py-0.5 rounded bg-amber-50 text-amber-700 text-xs font-bold border border-amber-200 hover:bg-amber-100 transition-colors">+24</button>
+                       <button onClick={() => setQty(selectedProduct.id, 6)} className="px-2 py-0.5 rounded bg-muted text-ink-600 text-xs font-bold border border-border hover:bg-muted transition-colors">+6</button>
+                       <button onClick={() => setQty(selectedProduct.id, 12)} className="px-2 py-0.5 rounded bg-muted text-ink-600 text-xs font-bold border border-border hover:bg-muted transition-colors">+12</button>
+                       <button onClick={() => setQty(selectedProduct.id, 24)} className="px-2 py-0.5 rounded bg-muted text-ink-600 text-xs font-bold border border-border hover:bg-muted transition-colors">+24</button>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
@@ -1360,7 +1360,7 @@ const Catalogo = () => {
                         const v = parseInt(e.target.value, 10);
                         if (isNaN(v) || v < 1) setQty(selectedProduct.id, 1);
                       }}
-                      className="flex-1 min-w-0 h-10 sm:h-12 text-center text-base sm:text-lg font-black text-foreground border border-border rounded-lg bg-white shadow-inner focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all"
+                      className="flex-1 min-w-0 h-10 sm:h-12 text-center text-base sm:text-lg font-semibold text-foreground border border-border rounded-lg bg-white shadow-inner focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition-all"
                     />
                     <button
                       onClick={() => setQty(selectedProduct.id, getQty(selectedProduct.id) + 1)}
@@ -1376,7 +1376,7 @@ const Catalogo = () => {
                   {isGuest ? (
                     <Link
                       to="/cadastro"
-                      className="w-full flex items-center justify-center gap-1.5 py-3 sm:py-3.5 rounded-xl text-sm sm:text-base font-bold text-white bg-amber-500 hover:bg-amber-600 shadow-sm"
+                      className="w-full flex items-center justify-center gap-1.5 py-3 sm:py-3.5 rounded-xl text-sm sm:text-base font-bold btn-primary shadow-sm"
                     >
                       <ArrowRight className="w-4 h-4" />
                       Cadastre-se para comprar
@@ -1387,9 +1387,9 @@ const Catalogo = () => {
                         handleAddItem(selectedProduct);
                         setSelectedProduct(null);
                       }}
-                      className={`w-full flex items-center justify-center gap-2 py-3 sm:py-3.5 rounded-xl text-sm sm:text-base font-black text-white transition-all shadow-sm hover:shadow hover:-translate-y-0.5 uppercase tracking-wide ${addedId === selectedProduct.id
+                      className={`w-full flex items-center justify-center gap-2 py-3 sm:py-3.5 rounded-xl text-sm sm:text-base font-semibold text-white transition-all shadow-sm uppercase tracking-wide ${addedId === selectedProduct.id
                         ? 'bg-green-600 hover:bg-green-700'
-                        : 'bg-amber-500 hover:bg-amber-600'
+                        : 'btn-primary'
                         }`}
                     >
                       {addedId === selectedProduct.id ? (

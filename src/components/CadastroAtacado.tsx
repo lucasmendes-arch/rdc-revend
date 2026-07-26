@@ -82,7 +82,7 @@ export function CadastroAtacado({ onSubmit }: CadastroAtacadoProps) {
   return (
     <form onSubmit={handleSubmit} className="space-y-4 rounded-2xl border border-border bg-white p-6 shadow-card">
       <div>
-        <h2 className="text-xl font-black text-foreground">Cadastro Atacado</h2>
+        <h2 className="text-lg font-semibold text-foreground tracking-tight">Cadastro Atacado</h2>
         <p className="text-sm text-muted-foreground">
           Exemplo de uso do hook <code>useTrackConversion</code> após um cadastro concluído.
         </p>

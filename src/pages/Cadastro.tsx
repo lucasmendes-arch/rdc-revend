@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { ArrowLeft, CheckCircle2, Crown, Building2, Store, User, Mail, Lock, Phone } from "lucide-react";
+import { ArrowLeft, Check, CheckCircle2, Crown, Building2, Store, User, Mail, Lock, Phone } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import logo from "@/assets/logo-rei-dos-cachos.png";
 import { supabase } from "@/lib/supabase";
@@ -157,36 +157,40 @@ export default function Cadastro() {
             <main className="flex-1 w-full max-w-lg mx-auto px-4 py-8 sm:py-12">
                 {/* Hero */}
                 <div className="text-center mb-8">
-                    <div className="w-14 h-14 rounded-2xl mx-auto mb-4 gradient-gold flex items-center justify-center shadow-gold">
-                        <Crown className="w-7 h-7 text-white" />
+                    <div className="w-10 h-10 rounded-lg mx-auto mb-4 border border-brand-border bg-brand-subtle flex items-center justify-center">
+                        <Crown className="w-4 h-4 text-brand-strong" />
                     </div>
-                    <h1 className="text-2xl sm:text-3xl font-black text-foreground mb-2">
+                    <h1 className="text-2xl sm:text-3xl font-semibold text-foreground tracking-tight mb-2">
                         Libere os preços de atacado
                     </h1>
-                    <p className="text-muted-foreground text-sm sm:text-base">
-                        Cadastre-se grátis e acesse o catálogo completo com preços de revenda
+                    <p className="text-muted-foreground text-[14px]">
+                        Cadastre-se grátis e acesse o catálogo completo com preços de revenda.
                     </p>
 
                     {new URLSearchParams(window.location.search).get('teaser') === '1' && (
-                        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mt-4 animate-in fade-in slide-in-from-top-4 duration-500">
-                            <p className="text-amber-800 text-sm font-bold">
-                                🚀 Você está a um passo de desbloquear os melhores preços de revenda.
+                        <div className="bg-brand-subtle border border-brand-border rounded-lg p-3.5 mt-4">
+                            <p className="text-brand-strong text-[13px] font-medium">
+                                Você está a um passo de desbloquear os melhores preços de revenda.
                             </p>
                         </div>
                     )}
                 </div>
 
-                {/* Benefits row */}
-                <div className="flex items-center justify-center gap-4 mb-6 text-xs text-muted-foreground">
-                    <span className="flex items-center gap-1">✅ Grátis</span>
-                    <span className="flex items-center gap-1">✅ Sem compromisso</span>
-                    <span className="flex items-center gap-1">✅ Acesso imediato</span>
+                {/* Benefícios: ícone de sistema no lugar de emoji — emoji muda de
+                    forma e de cor por plataforma e não acompanha o tema. */}
+                <div className="flex items-center justify-center gap-4 mb-6 text-[12px] text-muted-foreground">
+                    {['Grátis', 'Sem compromisso', 'Acesso imediato'].map(label => (
+                        <span key={label} className="flex items-center gap-1.5">
+                            <Check className="w-3.5 h-3.5 text-success shrink-0" />
+                            {label}
+                        </span>
+                    ))}
                 </div>
 
-                <form onSubmit={handleSubmit} className="bg-white rounded-2xl p-5 sm:p-8 shadow-sm border border-border space-y-4">
+                <form onSubmit={handleSubmit} className="bg-white rounded-lg p-5 sm:p-8 shadow-sm border border-border space-y-4">
 
                     {error && (
-                        <div ref={errorRef} className="px-4 py-3 rounded-lg bg-red-50 border border-red-100 text-red-600 text-sm">
+                        <div ref={errorRef} className="px-4 py-3 rounded-lg bg-danger-subtle border border-danger-border text-danger text-sm">
                             {error}
                         </div>
                     )}
@@ -203,7 +207,7 @@ export default function Cadastro() {
                                 value={formData.name}
                                 onChange={handleChange}
                                 placeholder="Ex: Maria das Graças"
-                                className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-input bg-surface focus:outline-none focus:ring-2 focus:ring-amber-300 transition-all text-sm"
+                                className="w-full pl-10 pr-4 py-2.5 rounded-md border border-input bg-background text-base md:text-sm tracking-snug transition-colors hover:border-ink-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:border-transparent"
                             />
                         </div>
                     </div>
@@ -221,7 +225,7 @@ export default function Cadastro() {
                                 onChange={handleChange}
                                 maxLength={15}
                                 placeholder="(00) 00000-0000"
-                                className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-input bg-surface focus:outline-none focus:ring-2 focus:ring-amber-300 transition-all text-sm"
+                                className="w-full pl-10 pr-4 py-2.5 rounded-md border border-input bg-background text-base md:text-sm tracking-snug transition-colors hover:border-ink-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:border-transparent"
                             />
                         </div>
                     </div>
@@ -238,7 +242,7 @@ export default function Cadastro() {
                                 value={formData.email}
                                 onChange={handleChange}
                                 placeholder="seu@email.com"
-                                className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-input bg-surface focus:outline-none focus:ring-2 focus:ring-amber-300 transition-all text-sm"
+                                className="w-full pl-10 pr-4 py-2.5 rounded-md border border-input bg-background text-base md:text-sm tracking-snug transition-colors hover:border-ink-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:border-transparent"
                             />
                         </div>
                     </div>
@@ -256,7 +260,7 @@ export default function Cadastro() {
                                 value={formData.password}
                                 onChange={handleChange}
                                 placeholder="Mínimo 6 caracteres"
-                                className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-input bg-surface focus:outline-none focus:ring-2 focus:ring-amber-300 transition-all text-sm"
+                                className="w-full pl-10 pr-4 py-2.5 rounded-md border border-input bg-background text-base md:text-sm tracking-snug transition-colors hover:border-ink-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:border-transparent"
                             />
                         </div>
                     </div>
@@ -268,7 +272,7 @@ export default function Cadastro() {
                             <button
                                 type="button"
                                 onClick={() => setFormData(prev => ({ ...prev, businessType: 'salao' }))}
-                                className={`flex flex-col items-center justify-center gap-1.5 p-3 rounded-xl border-2 transition-all ${formData.businessType === 'salao' ? 'border-amber-400 bg-amber-50 text-amber-700' : 'border-border bg-surface text-muted-foreground hover:border-gold-border'}`}
+                                className={`flex flex-col items-center justify-center gap-1.5 p-3 rounded-xl border-2 transition-all ${formData.businessType === 'salao' ? 'border-foreground bg-muted text-foreground' : 'border-border bg-surface text-muted-foreground hover:border-gold-border'}`}
                             >
                                 <Building2 className="w-5 h-5" />
                                 <span className="text-[10px] sm:text-xs font-bold leading-tight text-center">Salão de Beleza</span>
@@ -276,7 +280,7 @@ export default function Cadastro() {
                             <button
                                 type="button"
                                 onClick={() => setFormData(prev => ({ ...prev, businessType: 'loja' }))}
-                                className={`flex flex-col items-center justify-center gap-1.5 p-3 rounded-xl border-2 transition-all ${formData.businessType === 'loja' ? 'border-amber-400 bg-amber-50 text-amber-700' : 'border-border bg-surface text-muted-foreground hover:border-gold-border'}`}
+                                className={`flex flex-col items-center justify-center gap-1.5 p-3 rounded-xl border-2 transition-all ${formData.businessType === 'loja' ? 'border-foreground bg-muted text-foreground' : 'border-border bg-surface text-muted-foreground hover:border-gold-border'}`}
                             >
                                 <Store className="w-5 h-5" />
                                 <span className="text-[10px] sm:text-xs font-bold leading-tight text-center">Loja / Comércio</span>
@@ -284,7 +288,7 @@ export default function Cadastro() {
                             <button
                                 type="button"
                                 onClick={() => setFormData(prev => ({ ...prev, businessType: 'revenda' }))}
-                                className={`flex flex-col items-center justify-center gap-1.5 p-3 rounded-xl border-2 transition-all ${formData.businessType === 'revenda' ? 'border-amber-400 bg-amber-50 text-amber-700' : 'border-border bg-surface text-muted-foreground hover:border-gold-border'}`}
+                                className={`flex flex-col items-center justify-center gap-1.5 p-3 rounded-xl border-2 transition-all ${formData.businessType === 'revenda' ? 'border-foreground bg-muted text-foreground' : 'border-border bg-surface text-muted-foreground hover:border-gold-border'}`}
                             >
                                 <User className="w-5 h-5" />
                                 <span className="text-[10px] sm:text-xs font-bold leading-tight text-center">Autônomo(a)</span>
@@ -295,7 +299,7 @@ export default function Cadastro() {
                     <button
                         type="submit"
                         disabled={loading || !formData.businessType}
-                        className="w-full flex items-center justify-center gap-2 py-3 rounded-lg font-bold text-base btn-gold text-white disabled:opacity-70 disabled:cursor-not-allowed shadow-sm hover:shadow-md transition-all mt-2"
+                        className="w-full flex items-center justify-center gap-2 py-3 rounded-lg font-bold text-base btn-gold disabled:opacity-70 disabled:cursor-not-allowed shadow-sm-md transition-all mt-2"
                     >
                         {loading ? (
                             <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />

@@ -87,7 +87,7 @@ export default function CompactProductCarousel({
     return (
         <div className="mb-8 w-full">
             <div className="flex items-center justify-between px-4 mb-3 sm:mb-4 lg:mb-5">
-                <h2 className="text-[15px] sm:text-lg md:text-lg lg:text-xl font-black text-foreground">{title}</h2>
+                <h2 className="text-[15px] sm:text-lg md:text-lg lg:text-xl font-semibold text-foreground">{title}</h2>
                 {onViewAll && (
                     <button
                         onClick={onViewAll}
@@ -116,22 +116,22 @@ export default function CompactProductCarousel({
                     return (
                         <div
                             key={product.id}
-                            className={`flex-shrink-0 w-[140px] sm:w-[160px] md:w-[180px] lg:w-[190px] xl:w-[200px] snap-start bg-white rounded-2xl border border-amber-100 shadow-[0_2px_12px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_24px_rgba(217,119,6,0.12)] transition-all flex flex-col relative overflow-hidden group`}
+                            className={`flex-shrink-0 w-[140px] sm:w-[160px] md:w-[180px] lg:w-[190px] xl:w-[200px] snap-start bg-white rounded-lg border border-border shadow-xs transition-all flex flex-col relative overflow-hidden group`}
                         >
                             {/* Lock overlay for items 5+ when guest */}
                             {isBlocked && (
                                 <>
                                     {/* Visual layer — pointer-events-none to not block scroll */}
-                                    <div className="absolute inset-0 z-10 rounded-2xl pointer-events-none" style={{ backdropFilter: 'blur(6px)', background: 'rgba(255,255,255,0.75)' }} />
+                                    <div className="absolute inset-0 z-10 rounded-lg pointer-events-none" style={{ backdropFilter: 'blur(6px)', background: 'rgba(255,255,255,0.75)' }} />
                                     {/* Interactive content */}
-                                    <div className="absolute inset-0 z-20 rounded-2xl flex flex-col items-center justify-center gap-1.5 px-3">
-                                        <Lock className="w-4 h-4 text-amber-500 flex-shrink-0" />
+                                    <div className="absolute inset-0 z-20 rounded-lg flex flex-col items-center justify-center gap-1.5 px-3">
+                                        <Lock className="w-4 h-4 text-ink-400 flex-shrink-0" />
                                         <p className="text-[10px] font-semibold text-foreground text-center leading-snug">
                                             Cadastre-se para ver todos
                                         </p>
                                         <Link
                                             to="/cadastro"
-                                            className="text-[10px] font-bold px-2.5 py-1 rounded btn-gold text-white whitespace-nowrap"
+                                            className="text-[10px] font-bold px-2.5 py-1 rounded btn-gold whitespace-nowrap"
                                         >
                                             Criar conta
                                         </Link>
@@ -155,7 +155,7 @@ export default function CompactProductCarousel({
                                 )}
                                 {volume && (
                                     <div className="absolute bottom-2 right-2 z-10">
-                                        <span className="inline-flex items-center px-1.5 py-0.5 rounded shadow-sm text-[9px] sm:text-[10px] font-black bg-white/90 backdrop-blur-sm text-amber-900 border border-amber-200/60 uppercase tracking-wider">
+                                        <span className="inline-flex items-center px-1.5 py-0.5 rounded shadow-sm text-[9px] sm:text-[10px] font-semibold bg-white/90 backdrop-blur-sm text-foreground border border-border uppercase tracking-wider">
                                             {volume}
                                         </span>
                                     </div>
@@ -164,7 +164,7 @@ export default function CompactProductCarousel({
 
                             <div className="p-2.5 sm:p-4 flex flex-col flex-1">
                                 <div 
-                                    className="cursor-pointer group-hover:text-amber-600 transition-colors"
+                                    className="cursor-pointer group-hover:text-foreground transition-colors"
                                     onClick={() => !isBlocked && onSelect(product)}
                                 >
                                     <h3 className="font-bold text-foreground text-[11px] sm:text-[13px] md:text-[13px] lg:text-[14px] leading-snug line-clamp-2 mb-1.5 sm:mb-2">
@@ -209,9 +209,9 @@ export default function CompactProductCarousel({
                                     ) : (
                                         <div className="flex flex-col gap-1.5 mt-2">
                                             <div className="flex items-center gap-1">
-                                                <button onClick={(e) => { e.stopPropagation(); setQty(product.id, 6); }} className="flex-1 py-0.5 rounded bg-surface-alt text-muted-foreground text-[9px] font-bold border border-border hover:bg-amber-50 hover:text-amber-700 hover:border-amber-200 transition-colors">+6</button>
-                                                <button onClick={(e) => { e.stopPropagation(); setQty(product.id, 12); }} className="flex-1 py-0.5 rounded bg-surface-alt text-muted-foreground text-[9px] font-bold border border-border hover:bg-amber-50 hover:text-amber-700 hover:border-amber-200 transition-colors">+12</button>
-                                                <button onClick={(e) => { e.stopPropagation(); setQty(product.id, 24); }} className="flex-1 py-0.5 rounded bg-surface-alt text-muted-foreground text-[9px] font-bold border border-border hover:bg-amber-50 hover:text-amber-700 hover:border-amber-200 transition-colors">+24</button>
+                                                <button onClick={(e) => { e.stopPropagation(); setQty(product.id, 6); }} className="flex-1 py-0.5 rounded bg-surface-alt text-muted-foreground text-[9px] font-bold border border-border hover:bg-muted hover:text-foreground hover:border-border transition-colors">+6</button>
+                                                <button onClick={(e) => { e.stopPropagation(); setQty(product.id, 12); }} className="flex-1 py-0.5 rounded bg-surface-alt text-muted-foreground text-[9px] font-bold border border-border hover:bg-muted hover:text-foreground hover:border-border transition-colors">+12</button>
+                                                <button onClick={(e) => { e.stopPropagation(); setQty(product.id, 24); }} className="flex-1 py-0.5 rounded bg-surface-alt text-muted-foreground text-[9px] font-bold border border-border hover:bg-muted hover:text-foreground hover:border-border transition-colors">+24</button>
                                             </div>
                                             <div className="flex items-center gap-1">
                                                 <button
@@ -235,7 +235,7 @@ export default function CompactProductCarousel({
                                                         const v = parseInt(e.target.value, 10);
                                                         if (isNaN(v) || v < 1) setQty(product.id, 1);
                                                     }}
-                                                    className="flex-1 min-w-0 h-7 sm:h-8 text-center text-xs sm:text-sm font-bold text-foreground border border-border rounded-lg bg-surface focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-shadow"
+                                                    className="flex-1 min-w-0 h-7 sm:h-8 text-center text-xs sm:text-sm font-bold text-foreground border border-border rounded-lg bg-surface focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition-shadow"
                                                 />
                                                 <button
                                                     onClick={(e) => { e.stopPropagation(); setQty(product.id, getQty(product.id) + 1) }}
@@ -248,9 +248,9 @@ export default function CompactProductCarousel({
 
                                             <button
                                                 onClick={(e) => { e.stopPropagation(); onAdd(product) }}
-                                                className={`w-full h-8 sm:h-9 mt-1 flex items-center justify-center gap-1.5 rounded-lg text-[11px] sm:text-xs font-black transition-all uppercase tracking-wide shadow-sm hover:shadow ${cartAddedId === product.id
-                                                    ? 'bg-green-600 text-white hover:bg-green-700 hover:-translate-y-0.5'
-                                                    : 'bg-amber-500 text-white hover:bg-amber-600 hover:-translate-y-0.5'
+                                                className={`w-full h-8 sm:h-9 mt-1 flex items-center justify-center gap-1.5 rounded-lg text-[11px] sm:text-xs font-semibold transition-all uppercase tracking-wide shadow-sm ${cartAddedId === product.id
+                                                    ? 'bg-success-solid text-white hover:bg-success-solid/90'
+                                                    : 'btn-primary'
                                                     }`}
                                             >
                                                 {cartAddedId === product.id ? (
@@ -281,7 +281,7 @@ export default function CompactProductCarousel({
                     <div
                         key={i}
                         className={`rounded-full transition-all ${i === activeIndex
-                            ? 'w-4 h-1.5 bg-amber-500'
+                            ? 'w-4 h-1.5 bg-foreground'
                             : 'w-1.5 h-1.5 bg-border'
                             }`}
                     />

@@ -477,7 +477,7 @@ export default function SalaoNovoPedido() {
             </p>
             <button
               onClick={() => setLastOrderId(null)}
-              className="w-full py-3 rounded-xl font-semibold btn-gold text-white"
+              className="w-full py-3 rounded-xl font-semibold btn-gold"
             >
               Criar Novo Pedido
             </button>
@@ -558,7 +558,7 @@ export default function SalaoNovoPedido() {
                     <input type="email" value={newClientEmail} onChange={e => setNewClientEmail(e.target.value)} className="w-full px-3 py-2 rounded-lg border border-input text-sm bg-white text-foreground focus:ring-2 focus:ring-amber-400 focus:outline-none" placeholder="cliente@email.com" />
                  </div>
               </div>
-              <button disabled={isSaving} type="submit" className="w-full py-2.5 rounded-lg font-semibold btn-gold text-white text-sm mt-4">
+              <button disabled={isSaving} type="submit" className="w-full py-2.5 rounded-lg font-semibold btn-gold text-sm mt-4">
                  {isSaving ? 'Salvando...' : 'Cadastrar e Selecionar'}
               </button>
             </form>
