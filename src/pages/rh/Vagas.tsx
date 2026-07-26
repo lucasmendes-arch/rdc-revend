@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useEscapeToClose } from '@/hooks/useEscapeToClose'
-import { Loader, Plus, Briefcase, Pencil, Trash2, Store as StoreIcon } from 'lucide-react'
+import { Loader, Plus, Briefcase, Pencil, Trash2, Store as StoreIcon, Link2 } from 'lucide-react'
 import { toast } from 'sonner'
 import AdminLayout from '@/components/admin/AdminLayout'
 import StyledSelect from '@/components/ui/styled-select'
@@ -32,7 +32,7 @@ interface JobOpening extends JobRoleDescriptiveRow {
   job_role_id: string | null
   status: 'aberta' | 'fechada'
   created_at: string
-  stores: { name: string } | null
+  stores: { name: string; slug: string } | null
   candidates: { count: number }[]
 }
 
@@ -73,7 +73,7 @@ export default function RhVagas() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('job_openings')
-        .select(`id, store_id, role_title, job_role_id, status, created_at, stores(name), candidates(count), ${JOB_ROLE_DESCRIPTIVE_FIELDS_SELECT}`)
+        .select(`id, store_id, role_title, job_role_id, status, created_at, stores(name, slug), candidates(count), ${JOB_ROLE_DESCRIPTIVE_FIELDS_SELECT}`)
         .order('created_at', { ascending: false })
       if (error) throw error
       return (data || []) as unknown as JobOpening[]
@@ -190,6 +190,17 @@ export default function RhVagas() {
     })
   }
 
+  function copyAdLink(job: JobOpening) {
+    if (!job.stores?.slug) {
+      toast.error('Unidade sem slug cadastrado')
+      return
+    }
+    const url = `${window.location.origin}/candidatura/${job.stores.slug}?vaga=${job.id}`
+    navigator.clipboard.writeText(url)
+      .then(() => toast.success('Link do anúncio copiado'))
+      .catch(() => toast.error('Não foi possível copiar o link'))
+  }
+
   function handleSave() {
     if (!form.store_id) {
       toast.error('Selecione a unidade')
@@ -291,6 +302,13 @@ export default function RhVagas() {
                       </td>
                       <td className="px-4 py-3 text-right">
                         <div className="flex items-center justify-end gap-2">
+                          <button
+                            onClick={() => copyAdLink(job)}
+                            className="p-1.5 rounded-lg hover:bg-surface-alt transition-colors text-muted-foreground hover:text-foreground"
+                            title="Copiar link do anúncio (com tracking da vaga)"
+                          >
+                            <Link2 className="w-4 h-4" />
+                          </button>
                           <button
                             onClick={() => openEdit(job)}
                             className="p-1.5 rounded-lg hover:bg-surface-alt transition-colors text-muted-foreground hover:text-foreground"

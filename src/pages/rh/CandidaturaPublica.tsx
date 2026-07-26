@@ -1,14 +1,21 @@
-import { useMemo, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useParams, useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { Loader, CheckCircle2, Briefcase, Info, ArrowLeft, X, Clock, Wallet } from 'lucide-react'
+import { Loader, CheckCircle2, Briefcase, Info, ArrowLeft, X, Clock, Wallet, MessageCircle } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useImageUpload } from '@/hooks/useImageUpload'
 import { useFileUpload } from '@/hooks/useFileUpload'
 import FormFieldRenderer, { CHECKBOX_DELIM, FormFieldConfig, PublicJobOpening } from '@/components/rh/FormFieldRenderer'
 import { contractTypeLabel, compensationTypeLabel } from '@/components/rh/JobRoleFieldsForm'
+import { useTrackConversion } from '@/lib/hooks/useFacebookConversion'
 import logo from '@/assets/logo-rei-dos-cachos.png'
+
+declare global {
+  interface Window {
+    gtag?: (...args: unknown[]) => void
+  }
+}
 
 interface PublicFormData {
   store: { id: string; name: string }
@@ -16,16 +23,27 @@ interface PublicFormData {
   fields: FormFieldConfig[]
 }
 
+// TODO: número de teste (Lucas) — trocar pelo WhatsApp administrativo real antes de divulgar o link em produção.
+const ADMIN_WHATSAPP_NUMBER = '5527996602331'
+
 export default function CandidaturaPublica() {
   const { storeSlug } = useParams<{ storeSlug: string }>()
+  const [searchParams] = useSearchParams()
+  // Cada conjunto de anúncios (Meta Ads) pode linkar direto pra uma vaga
+  // específica via ?vaga=<job_opening_id> — pré-seleciona a vaga no
+  // formulário e mede ViewContent/Lead segmentado por vaga desde a entrada,
+  // em vez de só saber a vaga depois que o candidato escolhe manualmente.
+  const vagaParam = searchParams.get('vaga')
   const [answers, setAnswers] = useState<Record<string, string>>({})
   const [uploadingKey, setUploadingKey] = useState<string | null>(null)
   const [submitted, setSubmitted] = useState(false)
   const [currentStepIdx, setCurrentStepIdx] = useState(0)
   const [viewingJobId, setViewingJobId] = useState<string | null>(null)
+  const viewContentFired = useRef(false)
 
   const { upload: uploadPhoto } = useImageUpload()
   const { upload: uploadResume } = useFileUpload()
+  const trackConversion = useTrackConversion()
 
   const { data, isLoading, error } = useQuery<PublicFormData>({
     queryKey: ['public-application-form', storeSlug],
@@ -40,13 +58,27 @@ export default function CandidaturaPublica() {
 
   const fields = useMemo(() => (data?.fields || []).slice().sort((a, b) => a.sort_order - b.sort_order), [data])
 
+  // Pré-seleciona a vaga vinda do link do anúncio e mede o ViewContent
+  // segmentado por vaga uma única vez, assim que o formulário carrega.
+  useEffect(() => {
+    if (!data || !vagaParam || viewContentFired.current) return
+    const job = data.job_openings.find((j) => j.id === vagaParam)
+    if (!job) return
+
+    viewContentFired.current = true
+    setAnswers((prev) => (prev['vaga_id'] ? prev : { ...prev, vaga_id: job.id }))
+    trackConversion({ eventName: 'ViewContent', contentName: job.role_title })
+    window.gtag?.('event', 'view_item', { content_name: job.role_title, store: data.store?.name })
+  }, [data, vagaParam, trackConversion])
+
   // Cargo da vaga escolhida — usado pra filtrar perguntas restritas a
   // cargos específicos (visible_for_job_role_ids). Vaga sem cargo vinculado
   // no catálogo (job_role_id null) nunca satisfaz uma restrição de cargo.
-  const selectedJobRoleId = useMemo(
-    () => data?.job_openings.find((j) => j.id === answers['vaga_id'])?.job_role_id ?? null,
+  const appliedJob = useMemo(
+    () => data?.job_openings.find((j) => j.id === answers['vaga_id']),
     [data, answers]
   )
+  const selectedJobRoleId = appliedJob?.job_role_id ?? null
 
   const isFieldVisible = useMemo(() => (field: FormFieldConfig) => {
     const restriction = field.visible_for_job_role_ids
@@ -90,7 +122,24 @@ export default function CandidaturaPublica() {
       })
       if (error) throw error
     },
-    onSuccess: () => setSubmitted(true),
+    onSuccess: () => {
+      setSubmitted(true)
+
+      const jobTitle = appliedJob?.role_title
+      const phoneField = visibleFields.find((f) => f.field_type === 'telefone')
+      const phone = phoneField ? answers[phoneField.field_key] : undefined
+
+      trackConversion({
+        eventName: 'Lead',
+        contentName: jobTitle ?? data?.store?.name,
+        phone,
+      })
+
+      window.gtag?.('event', 'generate_lead', {
+        content_name: jobTitle ?? data?.store?.name,
+        store: data?.store?.name,
+      })
+    },
     onError: (err) => toast.error(err instanceof Error ? err.message : 'Erro ao enviar candidatura'),
   })
 
@@ -140,6 +189,15 @@ export default function CandidaturaPublica() {
 
   const viewingJob = data?.job_openings.find((j) => j.id === viewingJobId) || null
 
+  const whatsappUrl = useMemo(() => {
+    const jobTitle = appliedJob?.role_title
+    const storeName = data?.store?.name
+    const message = jobTitle
+      ? `Olá! Acabei de enviar minha candidatura para a vaga de ${jobTitle}${storeName ? ` (${storeName})` : ''} e queria confirmar o recebimento.`
+      : `Olá! Acabei de enviar minha candidatura${storeName ? ` na ${storeName}` : ''} e queria confirmar o recebimento.`
+    return `https://wa.me/${ADMIN_WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`
+  }, [appliedJob, data?.store?.name])
+
   return (
     <div className="min-h-screen bg-surface-alt flex items-center justify-center p-4">
       {/* Altura fixa (com teto pra tela pequena): o "popup" mantém sempre o
@@ -179,6 +237,23 @@ export default function CandidaturaPublica() {
                   inscrições, <strong className="font-semibold">apenas os candidatos selecionados para entrevista serão contatados</strong>.
                 </p>
               </div>
+              <a
+                href={whatsappUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => {
+                  const jobTitle = appliedJob?.role_title
+                  trackConversion({ eventName: 'Contact', contentName: jobTitle ?? data?.store?.name })
+                  window.gtag?.('event', 'contact', {
+                    content_name: jobTitle ?? data?.store?.name,
+                    store: data?.store?.name,
+                    method: 'whatsapp',
+                  })
+                }}
+                className="w-full mt-4 px-4 py-3 rounded-lg bg-[#25D366] hover:bg-[#20BE5A] text-white font-semibold shadow-md hover:shadow-lg transition-all text-sm flex items-center justify-center gap-2"
+              >
+                <MessageCircle className="w-4 h-4" /> Falar com recrutador
+              </a>
             </div>
           ) : (
             <div className="space-y-6">
