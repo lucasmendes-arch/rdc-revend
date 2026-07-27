@@ -45,7 +45,15 @@ function AvatarBubble({ name, photoUrl }: { name: string; photoUrl: string | nul
   return (
     <div className="w-8 h-8 rounded-full overflow-hidden shrink-0 bg-surface-alt border border-border flex items-center justify-center">
       {photoUrl ? (
-        <img src={photoUrl} alt="" className="w-full h-full object-cover" />
+        <img
+          src={photoUrl}
+          alt=""
+          loading="lazy"
+          decoding="async"
+          width={32}
+          height={32}
+          className="w-full h-full object-cover"
+        />
       ) : (
         <span className="text-[10px] font-bold text-muted-foreground">{initials(name)}</span>
       )}

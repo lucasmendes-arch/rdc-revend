@@ -19,7 +19,7 @@ WHERE current_stage = 'acompanhamento_90d';
 --    conjunto válido pra MEI (mesma constraint de 20260724000003).
 -- ============================================================
 
-ALTER TABLE employee_processes DROP CONSTRAINT employee_processes_current_stage_valid;
+ALTER TABLE employee_processes DROP CONSTRAINT IF EXISTS employee_processes_current_stage_valid;
 ALTER TABLE employee_processes
   ADD CONSTRAINT employee_processes_current_stage_valid CHECK (
     (employment_type = 'clt' AND current_stage IN (

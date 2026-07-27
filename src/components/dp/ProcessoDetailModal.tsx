@@ -5,7 +5,7 @@ import { X, Phone, Camera, FileText, Image as ImageIcon, Tag, ChevronDown, Chevr
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import { useEscapeToClose } from '@/hooks/useEscapeToClose'
-import { useImageUpload } from '@/hooks/useImageUpload'
+import { useImageUpload, PHOTO_MAX_DIMENSION } from '@/hooks/useImageUpload'
 import { useFileUpload } from '@/hooks/useFileUpload'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import StyledSelect from '@/components/ui/styled-select'
@@ -144,7 +144,7 @@ export default function ProcessoDetailModal({ processo, onClose, estagio }: Proc
 
   const updatePhoto = useMutation({
     mutationFn: async (file: File) => {
-      const url = await uploadPhoto(file, 'candidates/photos')
+      const url = await uploadPhoto(file, 'candidates/photos', { maxDimension: PHOTO_MAX_DIMENSION })
       const { error } = await supabase.from('candidates').update({ photo_url: url }).eq('id', processo.candidate_id)
       if (error) throw error
       return url

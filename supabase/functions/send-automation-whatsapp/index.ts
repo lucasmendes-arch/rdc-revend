@@ -8,9 +8,11 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 // cron-commission-reports. Reforço extra: shared secret opcional via header,
 // já que este endpoint dispara envio real de mensagem.
 //
-// Resolve credencial Uazapi por loja (store_whatsapp_credentials) com
-// fallback pra instância global (UAZAPI_URL/UAZAPI_TOKEN) enquanto a tabela
-// não estiver populada com dados reais por unidade.
+// Resolução da credencial Uazapi, em ordem (migration 20260727000001):
+//   1. Instância escolhida na própria ação send_whatsapp da automação
+//      (whatsapp_instances, gravada na linha da fila) — a mais específica.
+//   2. Credencial da loja do candidato (store_whatsapp_credentials).
+//   3. Instância global do negócio (env UAZAPI_URL / UAZAPI_TOKEN).
 
 interface QueueItem {
   id: string
@@ -18,6 +20,7 @@ interface QueueItem {
   store_id: string
   automation_id: string | null
   template_id: string | null
+  whatsapp_instance_id: string | null
   phone_number: string
   rendered_message: string
   attempt_count: number
@@ -66,17 +69,41 @@ serve(async (req) => {
   let failed = 0
 
   for (const item of queueItems) {
-    const { data: cred } = await client
-      .from('store_whatsapp_credentials')
-      .select('uazapi_url, uazapi_token, is_active')
-      .eq('store_id', item.store_id)
-      .maybeSingle()
+    let uazapiUrl: string | undefined
+    let uazapiToken: string | undefined
 
-    const uazapiUrl = cred?.is_active && cred?.uazapi_url ? cred.uazapi_url : globalUazapiUrl
-    const uazapiToken = cred?.is_active && cred?.uazapi_token ? cred.uazapi_token : globalUazapiToken
+    // 1. Instância da automação
+    if (item.whatsapp_instance_id) {
+      const { data: instance } = await client
+        .from('whatsapp_instances')
+        .select('uazapi_url, uazapi_token, is_active')
+        .eq('id', item.whatsapp_instance_id)
+        .maybeSingle()
+      if (instance?.is_active && instance.uazapi_url && instance.uazapi_token) {
+        uazapiUrl = instance.uazapi_url
+        uazapiToken = instance.uazapi_token
+      }
+    }
+
+    // 2. Credencial da loja
+    if (!uazapiUrl || !uazapiToken) {
+      const { data: cred } = await client
+        .from('store_whatsapp_credentials')
+        .select('uazapi_url, uazapi_token, is_active')
+        .eq('store_id', item.store_id)
+        .maybeSingle()
+      if (cred?.is_active && cred.uazapi_url && cred.uazapi_token) {
+        uazapiUrl = cred.uazapi_url
+        uazapiToken = cred.uazapi_token
+      }
+    }
+
+    // 3. Instância global
+    uazapiUrl = uazapiUrl || globalUazapiUrl
+    uazapiToken = uazapiToken || globalUazapiToken
 
     if (!uazapiUrl || !uazapiToken) {
-      await finalizeItem(client, item, false, 'Nenhuma credencial Uazapi disponível (nem por loja, nem global)')
+      await finalizeItem(client, item, false, 'Nenhuma credencial Uazapi disponível (nem na automação, nem por loja, nem global)')
       failed++
       continue
     }

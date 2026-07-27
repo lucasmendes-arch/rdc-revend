@@ -235,9 +235,11 @@ Lojas físicas para o módulo de contagem/reposição (não confundir com `picku
 | legal_name | text | YES | NULL | — |
 | cnpj | text | YES | NULL | — |
 | legal_address | text | YES | NULL | — |
+| maps_link | text | YES | NULL | — |
 
 > `type` válidos: `'central'`, `'satellite'`. Slugs alinhados com `pickup_units` (mesmos valores: `linhares`, `serra`, `teixeira`, `colatina`, `sao-gabriel`), mas **sem FK física** entre as duas tabelas — `pickup_units` é pública/checkout, `stores` é autenticada/operacional. Ver D-20 em `docs/decisions.md`.
 > `legal_name`/`cnpj`/`legal_address` (`20260722000004`): dados jurídicos da unidade como "INSTITUIDORA" nos contratos gerados automaticamente (DP) — placeholders `{{razao_social}}`/`{{cnpj}}`/`{{endereco}}`. Muda por unidade (confirmado com o usuário — não é um dado único da empresa). Nullable até serem preenchidos com os dados reais das 5 lojas.
+> `maps_link` (`20260727000001`): link do Google Maps da unidade, usado no placeholder `{store_maps_link}` das mensagens de automação do RH. Editável no mesmo modal "Dados das lojas" (`src/components/dp/LojasDadosModal.tsx`).
 > RLS: admin gerencia tudo; qualquer colaborador com acesso ao módulo de estoque (`is_estoque()`) lê todas as lojas (não só a própria).
 
 ---
@@ -836,7 +838,7 @@ Modelos de mensagem reaproveitáveis pela ação `send_whatsapp` de uma automaç
 | created_at | timestamptz | NO | `now()` | — |
 | updated_at | timestamptz | NO | `now()` | — |
 
-> `body` aceita os placeholders (substituição simples via `render_automation_template`, sem SQL dinâmico): `{candidate_name}`, `{job_role_title}`, `{store_name}`, `{new_stage}`, `{previous_stage}`.
+> `body` aceita os placeholders (substituição simples via `render_automation_template`, sem SQL dinâmico): `{candidate_name}`, `{candidate_first_name}`, `{job_role_title}`, `{store_name}`, `{store_maps_link}`, `{new_stage}`, `{previous_stage}`, mais `{var.<key>}` pra cada linha de `automation_variables`.
 > RLS: `has_rh_access()` pra tudo (`authenticated`).
 
 ---
@@ -855,6 +857,7 @@ Motor de automações genérico (Fase 3) — substitui as 8 regras do ClickUp (W
 | trigger_stage | text | YES | NULL | — |
 | trigger_conditions | jsonb | NO | `'[]'` | — |
 | is_active | boolean | NO | `true` | — |
+| requires_confirmation | boolean | NO | `false` | — |
 | sort_order | int | NO | `0` | — |
 | created_by | uuid | YES | NULL | auth.users.id (ON DELETE SET NULL) |
 | created_at / updated_at | timestamptz | NO | `now()` | — |
@@ -864,8 +867,51 @@ Motor de automações genérico (Fase 3) — substitui as 8 regras do ClickUp (W
 
 **`automation_actions`**: `id` uuid PK, `automation_id` uuid NOT NULL → automations.id (ON DELETE CASCADE), `sort_order` int, `action_type` text NOT NULL, `action_config` jsonb NOT NULL DEFAULT `'{}'`, `created_at`.
 
-> `action_type` válidos e shape de `action_config`: `change_stage` `{stage}`; `add_tag`/`remove_tag` `{tag_id}`; `change_due_date` `{mode:"relative_days", days}` ou `{mode:"clear"}`; `change_assignee` `{assignee_id}` ou `{clear:true}`; `send_whatsapp` `{template_id}`; `add_comment` `{text}` (placeholders `{{...}}` renderizados por `render_automation_template`).
+> `action_type` válidos e shape de `action_config`: `change_stage` `{stage}`; `add_tag`/`remove_tag` `{tag_id}`; `change_due_date` `{mode:"relative_days", days}` ou `{mode:"clear"}`; `change_assignee` `{assignee_id}` ou `{clear:true}`; `send_whatsapp` `{template_id, whatsapp_instance_id?}`; `add_comment` `{text}` (placeholders `{{...}}` renderizados por `render_automation_template`).
 > RLS: `has_rh_access()` pra tudo (`authenticated`), ambas as tabelas.
+
+> **`requires_confirmation`** (Fase 4, `20260727000001`): quando `true`, a automação **só roda** se a transação tiver sido marcada por `move_candidate_stage_confirmed(candidate_id, new_stage)` — que seta o GUC transaction-local `rh_automation.confirmed_candidate_id`. Qualquer outro caminho que mude a etapa (ação `change_stage` de outra automação, UPDATE manual, script) faz `dispatch_candidate_automations` **pular** a automação e gravar `candidate_stage_history` com `event_type='whatsapp_blocked'`. O GUC guarda o **ID do candidato**, não um booleano, porque uma ação `change_stage` pode mover um segundo candidato na mesma transação — booleano faria a confirmação de um valer pro outro.
+> Fluxo no frontend (`/admin/rh/candidatos`): `requestStageChange()` chama `preview_candidate_stage_automations(candidate_id, new_stage)` (só lê — não enfileira, não muda etapa), mostra a mensagem renderizada num popup e só então chama `move_candidate_stage_confirmed`. Só faz sentido com `trigger_type='stage_changed'`: os outros gatilhos rodam sem ninguém na tela.
+
+---
+
+### `automation_variables`
+Variáveis livres de mensagem (Fase 4, `20260727000001`) — substituem o nó "Set" do fluxo antigo do n8n, onde data/horário da rodada de entrevistas eram editados à mão antes de mover o lote de candidatos.
+
+| Coluna | Tipo | Nullable | Default | FK |
+|--------|------|----------|---------|-----|
+| id | uuid | NO | `gen_random_uuid()` | — |
+| key | text | NO | — | UNIQUE, CHECK `~ '^[a-z][a-z0-9_]*$'` |
+| label | text | NO | — | — |
+| value | text | YES | NULL | — |
+| help_text | text | YES | NULL | — |
+| sort_order | int | NO | `0` | — |
+| updated_by | uuid | YES | NULL | auth.users.id (ON DELETE SET NULL) |
+| updated_at / created_at | timestamptz | NO | `now()` | — |
+
+> **Globais, não por loja** — decisão do usuário, casada com o fluxo real: edita os valores, move o lote daquela data, edita de novo, move o próximo. Entram nos modelos como `{var.<key>}`.
+> Seed inicial: `data_entrevista` ("Data da entrevista") e `horarios` ("Horários"), ambas sem valor.
+> Editáveis em dois lugares: valores no botão "Variáveis da mensagem" do kanban de Candidatos (onde a pessoa está na hora de trocar), definição (criar/renomear/excluir) na aba "Variáveis" de `/admin/rh/automacoes`.
+> Variável excluída deixa o placeholder **cru** na mensagem — `render_automation_template` só substitui o que está no contexto.
+> RLS: `has_rh_access()` pra tudo (`authenticated`).
+
+---
+
+### `whatsapp_instances`
+Instâncias Uazapi nomeadas (Fase 4, `20260727000001`), selecionáveis por automação na ação `send_whatsapp`.
+
+| Coluna | Tipo | Nullable | Default | FK |
+|--------|------|----------|---------|-----|
+| id | uuid | NO | `gen_random_uuid()` | — |
+| name | text | NO | — | — |
+| uazapi_url | text | NO | — | — |
+| uazapi_token | text | NO | — | **SECRET** |
+| is_active | boolean | NO | `true` | — |
+| updated_by | uuid | YES | NULL | auth.users.id (ON DELETE SET NULL) |
+| updated_at / created_at | timestamptz | NO | `now()` | — |
+
+> **Ordem de resolução no envio** (`send-automation-whatsapp`): instância da ação (`automation_whatsapp_queue.whatsapp_instance_id`) → credencial da loja do candidato (`store_whatsapp_credentials`) → instância global (env `UAZAPI_URL`/`UAZAPI_TOKEN`).
+> **Segurança**: mesmo regime de `store_whatsapp_credentials` — sem policy pra `authenticated`, `REVOKE ALL ... FROM authenticated, PUBLIC`, invisível via PostgREST. `GRANT SELECT ... TO service_role` **explícito** (este projeto não veio com grants padrão pro `service_role`). Frontend lê por `list_whatsapp_instances()` (devolve `token_last4`, nunca o token) e escreve por `admin_upsert_whatsapp_instance(id, name, url, token, is_active)` / `admin_delete_whatsapp_instance(id)`, ambas `is_admin()`. Token vazio no update **mantém** o atual, pra editar só o nome sem redigitar o segredo.
 
 ---
 
@@ -896,6 +942,7 @@ Fila da ação `send_whatsapp` — desacopla o envio (rede externa, pode falhar/
 | automation_id | uuid | YES | NULL | automations.id (ON DELETE SET NULL) |
 | automation_action_id | uuid | YES | NULL | automation_actions.id (ON DELETE SET NULL) |
 | template_id | uuid | YES | NULL | whatsapp_templates.id (ON DELETE SET NULL) |
+| whatsapp_instance_id | uuid | YES | NULL | whatsapp_instances.id (ON DELETE SET NULL) |
 | phone_number | text | NO | — | — |
 | rendered_message | text | NO | — | — |
 | idempotency_key | text | NO | — | — (UNIQUE) |
@@ -925,7 +972,7 @@ Generalizado na Fase 3 (motor de automações) de "histórico de etapa" pra log 
 | automation_id | uuid | YES | NULL | automations.id (ON DELETE SET NULL) |
 | metadata | jsonb | NO | `'{}'` | — |
 
-> `event_type` válidos: `'stage_change'`, `'tag_added'`, `'tag_removed'`, `'due_date_changed'`, `'assignee_changed'`, `'whatsapp_sent'`, `'comment_added'`, `'automation_error'`. `automation_id` não-nulo = a linha foi gerada por uma automação (não por ação manual do operador) — é como o frontend distingue "gerado por automação" de "gerado por usuário", em vez de uma coluna `gerado_por` separada.
+> `event_type` válidos: `'stage_change'`, `'tag_added'`, `'tag_removed'`, `'due_date_changed'`, `'assignee_changed'`, `'whatsapp_sent'`, `'comment_added'`, `'automation_error'`, `'whatsapp_blocked'` (automação com `requires_confirmation` disparada sem confirmação — ver `automations`). `automation_id` não-nulo = a linha foi gerada por uma automação (não por ação manual do operador) — é como o frontend distingue "gerado por automação" de "gerado por usuário", em vez de uma coluna `gerado_por` separada.
 > `metadata` por `event_type`: `tag_added`/`tag_removed` → `{tag_id, tag_name}`; `due_date_changed` → `{previous_due_date, new_due_date}`; `assignee_changed` → `{previous_assignee_id, new_assignee_id}`; `whatsapp_sent` → `{template_id, success, error}`; `comment_added` → `{text}` (já renderizado, placeholders substituídos); `automation_error` → `{action_type, error}` (ação que falhou + `SQLERRM`).
 > `changed_by` é `NULL` quando a mudança vem de um visitante anônimo (criação via formulário público) ou de uma automação — só é preenchido quando um usuário autenticado move o card no Kanban.
 > RLS: só `SELECT` via `has_rh_access()`. Nenhuma policy de INSERT — só a função de trigger `log_candidate_stage_change()` e as funções do motor de automações (`SECURITY DEFINER`) escrevem.

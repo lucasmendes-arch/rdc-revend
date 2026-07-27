@@ -5,4 +5,6 @@
 -- getExperienceInfo). MEI não usa esta coluna — janela única de 90d,
 -- sem renovação formal.
 
-ALTER TABLE employee_processes ADD COLUMN experience_renewed_at timestamptz;
+-- IF NOT EXISTS pelo mesmo motivo de 20260724000007: coluna já presente no
+-- remoto, migration ausente do histórico.
+ALTER TABLE employee_processes ADD COLUMN IF NOT EXISTS experience_renewed_at timestamptz;

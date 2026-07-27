@@ -5,4 +5,9 @@
 -- template de contrato, é só uma referência interna do processo, mesmo
 -- padrão de onboarding_completed/training_applicable já na tabela.
 
-ALTER TABLE employee_processes ADD COLUMN drive_folder_url text;
+-- IF NOT EXISTS acrescentado em 2026-07-27: a coluna já estava no banco
+-- remoto sem esta migration constar no histórico (supabase_migrations), então
+-- o push falhava com "column already exists" e travava a fila inteira. Sem o
+-- privilégio de `migration repair` nesta conta, tornar idempotente é o que
+-- registra a migration sem reaplicar efeito nenhum.
+ALTER TABLE employee_processes ADD COLUMN IF NOT EXISTS drive_folder_url text;

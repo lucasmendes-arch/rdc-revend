@@ -4,14 +4,24 @@ import { supabase } from '@/lib/supabase'
 const MAX_DIMENSION = 800
 const WEBP_QUALITY = 0.80
 
-async function compressImage(file: File): Promise<Blob> {
+// Fotos de candidato só aparecem em thumb: 224x120 no card do kanban (RH e DP),
+// 32px no avatar de Colaboradores e ~80px no anexo do modal. 800px gerava ~46KB
+// por foto pra exibir num espaço 7x menor — 480 cobre até tela 2x com folga.
+export const PHOTO_MAX_DIMENSION = 480
+
+interface UploadOptions {
+  /** Maior lado da imagem depois da compressão. Default: MAX_DIMENSION (800). */
+  maxDimension?: number
+}
+
+async function compressImage(file: File, maxDimension: number): Promise<Blob> {
   return new Promise((resolve, reject) => {
     const img = new Image()
     const objectUrl = URL.createObjectURL(file)
     img.onload = () => {
       URL.revokeObjectURL(objectUrl)
       const { width, height } = img
-      const scale = Math.min(1, MAX_DIMENSION / Math.max(width, height))
+      const scale = Math.min(1, maxDimension / Math.max(width, height))
       const canvas = document.createElement('canvas')
       canvas.width = Math.round(width * scale)
       canvas.height = Math.round(height * scale)
@@ -31,12 +41,12 @@ async function compressImage(file: File): Promise<Blob> {
 export function useImageUpload() {
   const [uploading, setUploading] = useState(false)
 
-  const upload = async (file: File, folder?: string): Promise<string> => {
+  const upload = async (file: File, folder?: string, options?: UploadOptions): Promise<string> => {
     setUploading(true)
     try {
       await supabase.auth.refreshSession()
 
-      const compressed = await compressImage(file)
+      const compressed = await compressImage(file, options?.maxDimension ?? MAX_DIMENSION)
       const fileName = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.webp`
 
       const formData = new FormData()

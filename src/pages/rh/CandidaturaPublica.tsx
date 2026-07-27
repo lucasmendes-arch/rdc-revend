@@ -4,7 +4,7 @@ import { useQuery, useMutation } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { Loader, CheckCircle2, Briefcase, Info, ArrowLeft, X, Clock, Wallet, MessageCircle } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
-import { useImageUpload } from '@/hooks/useImageUpload'
+import { useImageUpload, PHOTO_MAX_DIMENSION } from '@/hooks/useImageUpload'
 import { useFileUpload } from '@/hooks/useFileUpload'
 import FormFieldRenderer, { CHECKBOX_DELIM, FormFieldConfig, PublicJobOpening } from '@/components/rh/FormFieldRenderer'
 import { contractTypeLabel, compensationTypeLabel } from '@/components/rh/JobRoleFieldsForm'
@@ -146,9 +146,14 @@ export default function CandidaturaPublica() {
   async function handleUpload(field: FormFieldConfig, file: File) {
     setUploadingKey(field.field_key)
     try {
+      // Certificado continua em 800px (é documento, precisa ficar legível);
+      // só a foto de perfil cai pra PHOTO_MAX_DIMENSION, já que só aparece em
+      // thumb nos kanbans de RH/DP.
       const url = field.field_type === 'upload_arquivo'
         ? await uploadResume(file, 'candidates/resumes')
-        : await uploadPhoto(file, field.field_type === 'upload_imagens' ? 'candidates/certificates' : 'candidates/photos')
+        : field.field_type === 'upload_imagens'
+          ? await uploadPhoto(file, 'candidates/certificates')
+          : await uploadPhoto(file, 'candidates/photos', { maxDimension: PHOTO_MAX_DIMENSION })
       setAnswers((prev) => {
         if (field.field_type === 'upload_imagens') {
           const existing = prev[field.field_key] ? prev[field.field_key].split(CHECKBOX_DELIM) : []

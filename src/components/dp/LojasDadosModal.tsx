@@ -11,6 +11,7 @@ interface StoreLegalData {
   legal_name: string | null
   cnpj: string | null
   legal_address: string | null
+  maps_link: string | null
 }
 
 function StoreRow({ store }: { store: StoreLegalData }) {
@@ -18,18 +19,25 @@ function StoreRow({ store }: { store: StoreLegalData }) {
   const [legalName, setLegalName] = useState(store.legal_name ?? '')
   const [cnpj, setCnpj] = useState(store.cnpj ?? '')
   const [address, setAddress] = useState(store.legal_address ?? '')
+  const [mapsLink, setMapsLink] = useState(store.maps_link ?? '')
 
   useEffect(() => {
     setLegalName(store.legal_name ?? '')
     setCnpj(store.cnpj ?? '')
     setAddress(store.legal_address ?? '')
-  }, [store.legal_name, store.cnpj, store.legal_address])
+    setMapsLink(store.maps_link ?? '')
+  }, [store.legal_name, store.cnpj, store.legal_address, store.maps_link])
 
   const save = useMutation({
     mutationFn: async () => {
       const { error } = await supabase
         .from('stores')
-        .update({ legal_name: legalName || null, cnpj: cnpj || null, legal_address: address || null })
+        .update({
+          legal_name: legalName || null,
+          cnpj: cnpj || null,
+          legal_address: address || null,
+          maps_link: mapsLink || null,
+        })
         .eq('id', store.id)
       if (error) throw error
     },
@@ -59,6 +67,12 @@ function StoreRow({ store }: { store: StoreLegalData }) {
           <input type="text" value={address} onChange={(e) => setAddress(e.target.value)}
             className="w-full px-2.5 py-1.5 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
         </div>
+        <div className="col-span-2">
+          <label className="block text-[11px] text-muted-foreground mb-1">Link do Google Maps</label>
+          <input type="text" value={mapsLink} onChange={(e) => setMapsLink(e.target.value)}
+            placeholder="https://maps.app.goo.gl/..."
+            className="w-full px-2.5 py-1.5 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
+        </div>
       </div>
       <button
         onClick={() => save.mutate()}
@@ -75,6 +89,10 @@ function StoreRow({ store }: { store: StoreLegalData }) {
 // {{cnpj}}/{{endereco}} nos contratos gerados automaticamente (DP). Muda
 // por unidade (confirmado com o usuário), sem tela de admin dedicada até
 // agora — só usado aqui, na página de geração de contrato.
+//
+// O link do Maps entrou depois (2026-07-27) e serve a outro consumidor: o
+// placeholder {store_maps_link} das mensagens de automação do RH. Ficou aqui
+// por ser o único lugar que já edita dado cadastral de loja.
 export default function LojasDadosModal({ onClose }: { onClose: () => void }) {
   useEscapeToClose(onClose)
 
@@ -83,7 +101,7 @@ export default function LojasDadosModal({ onClose }: { onClose: () => void }) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('stores')
-        .select('id, name, legal_name, cnpj, legal_address')
+        .select('id, name, legal_name, cnpj, legal_address, maps_link')
         .order('name')
       if (error) throw error
       return (data || []) as StoreLegalData[]
@@ -97,7 +115,7 @@ export default function LojasDadosModal({ onClose }: { onClose: () => void }) {
         <div className="flex items-start justify-between mb-4">
           <div>
             <h2 className="text-lg font-bold text-foreground">Dados das lojas</h2>
-            <p className="text-xs text-muted-foreground">Razão social, CNPJ e endereço — usados nos contratos gerados automaticamente.</p>
+            <p className="text-xs text-muted-foreground">Razão social, CNPJ e endereço vão nos contratos gerados automaticamente; o link do Maps vai nas mensagens de automação do RH.</p>
           </div>
           <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-surface-alt text-muted-foreground shrink-0">
             <X className="w-4 h-4" />

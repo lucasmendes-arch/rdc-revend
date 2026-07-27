@@ -170,10 +170,20 @@ Deno.serve(async (req: Request) => {
     const aws = new AwsClient({ accessKeyId, secretAccessKey, region: 'auto', service: 's3' })
 
     const fileBuffer = await file.arrayBuffer()
+    // Cache-Control imutável: a chave já é única (timestamp + uuid + extensão
+    // derivada do MIME), então o objeto nunca é sobrescrito — o mesmo URL
+    // sempre devolve os mesmos bytes. Sem esse header o R2 responde sem
+    // Cache-Control nenhum e o browser cai no cache heurístico (10% da idade
+    // do arquivo): foto recém-enviada tem idade ~0, ou seja, revalidação a
+    // cada visita. Doía principalmente nos kanbans de RH/DP, que carregam
+    // dezenas de fotos por página.
     const r2Response = await aws.fetch(`${s3Api}/${BUCKET}/${key}`, {
       method: 'PUT',
       body: fileBuffer,
-      headers: { 'Content-Type': file.type },
+      headers: {
+        'Content-Type': file.type,
+        'Cache-Control': 'public, max-age=31536000, immutable',
+      },
     })
 
     if (!r2Response.ok) {

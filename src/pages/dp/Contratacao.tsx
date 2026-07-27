@@ -155,7 +155,17 @@ function ProcessoPhoto({ name, photoUrl }: { name: string; photoUrl: string | nu
   return (
     <div className="h-[120px] w-full bg-slate-100 shrink-0">
       {photoUrl ? (
-        <img src={photoUrl} alt="" className="w-full h-full object-cover" />
+        // Ver comentário equivalente em CandidatePhoto (src/pages/rh/Candidatos.tsx):
+        // sem lazy, abrir o kanban dispara um request por card de todas as colunas.
+        <img
+          src={photoUrl}
+          alt=""
+          loading="lazy"
+          decoding="async"
+          width={224}
+          height={120}
+          className="w-full h-full object-cover"
+        />
       ) : (
         <div className="w-full h-full flex items-center justify-center">
           <span className="text-lg font-bold text-slate-400">{initials(name)}</span>

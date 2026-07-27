@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import {
   Loader, Plus, User, Phone, FileText, Image as ImageIcon, X, Paperclip,
-  Store as StoreIcon, Zap, AlertTriangle, SlidersHorizontal, Calendar, Tag, Filter,
+  Store as StoreIcon, Zap, AlertTriangle, SlidersHorizontal, Calendar, Tag, Filter, Variable,
 } from 'lucide-react'
 import {
   DndContext, DragOverlay, PointerSensor, KeyboardSensor, useSensor, useSensors,
@@ -12,10 +12,12 @@ import {
 } from '@dnd-kit/core'
 import { supabase } from '@/lib/supabase'
 import { useEscapeToClose } from '@/hooks/useEscapeToClose'
-import { useImageUpload } from '@/hooks/useImageUpload'
+import { useImageUpload, PHOTO_MAX_DIMENSION } from '@/hooks/useImageUpload'
 import { useFileUpload } from '@/hooks/useFileUpload'
 import AdminLayout from '@/components/admin/AdminLayout'
 import ColorSelect, { type ColorSelectOption } from '@/components/rh/ColorSelect'
+import MensagemVariaveisModal from '@/components/rh/MensagemVariaveisModal'
+import ConfirmarAutomacaoModal, { type AutomationPreview } from '@/components/rh/ConfirmarAutomacaoModal'
 import StyledSelect from '@/components/ui/styled-select'
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
 import { Switch } from '@/components/ui/switch'
@@ -100,6 +102,7 @@ function describeActivity(row: { event_type: string; previous_stage: string | nu
     case 'whatsapp_sent': return m.success ? 'WhatsApp enviado' : `Falha ao enviar WhatsApp${m.error ? `: ${m.error}` : ''}`
     case 'comment_added': return String(m.text || '')
     case 'automation_error': return `Erro na automação${m.action_type ? ` (${m.action_type})` : ''}${m.error ? `: ${m.error}` : ''}`
+    case 'whatsapp_blocked': return 'Automação não executada — etapa mudou sem passar pela confirmação'
     default: return row.event_type
   }
 }
@@ -261,7 +264,18 @@ function CandidatePhoto({ candidate }: { candidate: Pick<Candidate, 'photo_url' 
   return (
     <div className="h-[120px] w-full bg-slate-100 shrink-0">
       {candidate.photo_url ? (
-        <img src={candidate.photo_url} alt="" className="w-full h-full object-cover" />
+        // lazy/async: o kanban monta todas as colunas de uma vez, então sem isso
+        // o browser dispara um request por card (inclusive os fora da tela) pro
+        // R2 — que hoje serve pelo domínio pub-*.r2.dev, sem cache de edge.
+        <img
+          src={candidate.photo_url}
+          alt=""
+          loading="lazy"
+          decoding="async"
+          width={224}
+          height={120}
+          className="w-full h-full object-cover"
+        />
       ) : (
         <div className="w-full h-full flex items-center justify-center">
           <span className="text-lg font-bold text-slate-400">{initials(candidate.name)}</span>
@@ -464,6 +478,11 @@ export default function RhCandidatos() {
   const [createOpen, setCreateOpen] = useState(false)
   const [promoteCandidate, setPromoteCandidate] = useState<Candidate | null>(null)
   const [promoteEmploymentType, setPromoteEmploymentType] = useState<EmploymentType>('clt')
+  const [variablesOpen, setVariablesOpen] = useState(false)
+  const [checkingPreview, setCheckingPreview] = useState(false)
+  const [pendingStageChange, setPendingStageChange] = useState<
+    { candidate: Candidate; newStage: Stage; previews: AutomationPreview[] } | null
+  >(null)
   const [createForm, setCreateForm] = useState(EMPTY_CREATE_FORM)
   const [createPhotoFile, setCreatePhotoFile] = useState<File | null>(null)
   const [createResumeFile, setCreateResumeFile] = useState<File | null>(null)
@@ -671,8 +690,21 @@ export default function RhCandidatos() {
     return map
   }, [filteredCandidates, promotedIds])
 
+  // `confirmed` roteia pela RPC em vez do UPDATE direto: ela marca a
+  // transação como confirmada, que é o que libera as automações com
+  // requires_confirmation (migration 20260727000001). Sem essa marca o motor
+  // pula a automação de propósito — é o que impede mensagem sair sem alguém
+  // ter lido o texto antes.
   const updateStage = useMutation({
-    mutationFn: async ({ id, stage }: { id: string; stage: Stage }) => {
+    mutationFn: async ({ id, stage, confirmed }: { id: string; stage: Stage; confirmed?: boolean }) => {
+      if (confirmed) {
+        const { error } = await supabase.rpc('move_candidate_stage_confirmed', {
+          p_candidate_id: id,
+          p_new_stage: stage,
+        })
+        if (error) throw error
+        return
+      }
       const { error } = await supabase.from('candidates').update({ stage }).eq('id', id)
       if (error) throw error
     },
@@ -788,7 +820,7 @@ export default function RhCandidatos() {
     mutationFn: async () => {
       let photo_url: string | null = null
       let resume_url: string | null = null
-      if (createPhotoFile) photo_url = await uploadPhoto(createPhotoFile, 'candidates/photos')
+      if (createPhotoFile) photo_url = await uploadPhoto(createPhotoFile, 'candidates/photos', { maxDimension: PHOTO_MAX_DIMENSION })
       if (createResumeFile) resume_url = await uploadResume(createResumeFile, 'candidates/resumes')
 
       const { error } = await supabase.from('candidates').insert({
@@ -883,16 +915,46 @@ export default function RhCandidatos() {
     setActiveCandidate(c || null)
   }
 
-  // Transição pra "Contratado" precisa do tipo_vinculo antes de commitar —
-  // abre o modal de promoção em vez de mover o card direto. Cancelar não
-  // altera nada: a etapa só muda dentro da RPC promote_candidate_to_dp.
-  function requestStageChange(candidate: Candidate, newStage: Stage) {
+  // Único ponto por onde passam os dois caminhos de mudança de etapa: soltar
+  // o card numa coluna e o select do modal de detalhe. Dois portões antes de
+  // commitar:
+  //
+  //   1. "Contratado" precisa do tipo_vinculo — abre o modal de promoção. A
+  //      etapa só muda dentro da RPC promote_candidate_to_dp.
+  //   2. Etapa com automação marcada como requires_confirmation — pré-visualiza
+  //      a mensagem e espera o "Confirmar". Cancelar não move o card.
+  async function requestStageChange(candidate: Candidate, newStage: Stage) {
     if (candidate.stage === newStage) return
     if (newStage === 'contratado' && !promotedIds.has(candidate.id)) {
       setPromoteCandidate(candidate)
       setPromoteEmploymentType('clt')
       return
     }
+
+    setCheckingPreview(true)
+    let previews: AutomationPreview[]
+    try {
+      const { data, error } = await supabase.rpc('preview_candidate_stage_automations', {
+        p_candidate_id: candidate.id,
+        p_new_stage: newStage,
+      })
+      if (error) throw error
+      previews = (data || []) as AutomationPreview[]
+    } catch (err) {
+      // Falhar aqui e mover mesmo assim seria pior: a automação que exige
+      // confirmação seria pulada no servidor e a mensagem simplesmente não
+      // sairia, sem ninguém perceber. Melhor não mover e avisar.
+      toast.error(`Não deu pra checar as automações desta etapa: ${err instanceof Error ? err.message : 'erro desconhecido'}`)
+      return
+    } finally {
+      setCheckingPreview(false)
+    }
+
+    if (previews.length > 0) {
+      setPendingStageChange({ candidate, newStage, previews })
+      return
+    }
+
     updateStage.mutate({ id: candidate.id, stage: newStage })
   }
 
@@ -909,7 +971,7 @@ export default function RhCandidatos() {
   async function handleDetailPhotoChange(file: File) {
     if (!detailCandidate) return
     try {
-      const url = await uploadPhoto(file, 'candidates/photos')
+      const url = await uploadPhoto(file, 'candidates/photos', { maxDimension: PHOTO_MAX_DIMENSION })
       updateAttachment.mutate({ id: detailCandidate.id, field: 'photo_url', url })
     } catch (err) {
       toast.error(`Erro no upload: ${err instanceof Error ? err.message : 'desconhecido'}`)
@@ -1060,6 +1122,14 @@ export default function RhCandidatos() {
                 )}
               </PopoverContent>
             </Popover>
+            <button
+              onClick={() => setVariablesOpen(true)}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border text-sm font-medium hover:bg-surface-alt transition-colors"
+              title="Data e horários usados nas mensagens automáticas"
+            >
+              <Variable className="w-4 h-4" />
+              <span className="hidden sm:inline">Variáveis da mensagem</span>
+            </button>
             <button
               onClick={openCreate}
               disabled={jobOpenings.length === 0}
@@ -1575,6 +1645,33 @@ export default function RhCandidatos() {
                 Cancelar
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {variablesOpen && <MensagemVariaveisModal onClose={() => setVariablesOpen(false)} />}
+
+      {pendingStageChange && (
+        <ConfirmarAutomacaoModal
+          candidateName={pendingStageChange.candidate.name}
+          newStage={pendingStageChange.newStage}
+          previews={pendingStageChange.previews}
+          sending={updateStage.isPending}
+          onCancel={() => setPendingStageChange(null)}
+          onConfirm={() => updateStage.mutate(
+            { id: pendingStageChange.candidate.id, stage: pendingStageChange.newStage, confirmed: true },
+            { onSuccess: () => setPendingStageChange(null) },
+          )}
+        />
+      )}
+
+      {/* Janela curta entre soltar o card e o preview responder — sem isso o
+          kanban parece travado quando a RPC demora. */}
+      {checkingPreview && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-foreground/10 backdrop-blur-[1px]">
+          <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-card border border-border shadow-lg">
+            <Loader className="w-4 h-4 animate-spin text-gold-text" />
+            <span className="text-sm text-foreground">Checando automações...</span>
           </div>
         </div>
       )}

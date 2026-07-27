@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useEscapeToClose } from '@/hooks/useEscapeToClose'
 import { toast } from 'sonner'
-import { Loader, Plus, Zap, Tag as TagIcon, MessageSquare, KeyRound, Pencil, Trash2, GripVertical, X } from 'lucide-react'
+import { Loader, Plus, Zap, Tag as TagIcon, MessageSquare, KeyRound, Pencil, Trash2, GripVertical, X, Variable, ShieldCheck } from 'lucide-react'
 import {
   DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, type DragEndEvent,
 } from '@dnd-kit/core'
@@ -33,6 +33,7 @@ interface Automation {
   trigger_stage: string | null
   trigger_conditions: Condition[]
   is_active: boolean
+  requires_confirmation: boolean
   sort_order: number
 }
 
@@ -49,6 +50,16 @@ interface WhatsappTemplate { id: string; name: string; body: string; is_active: 
 interface RhStore { id: string; name: string; slug: string }
 interface SystemUser { id: string; full_name: string | null }
 interface CredentialStatus { configured: boolean; is_active: boolean; uazapi_url: string | null; token_last4: string | null; updated_at: string | null }
+interface WhatsappInstance { id: string; name: string; uazapi_url: string; token_last4: string; is_active: boolean; updated_at: string }
+interface AutomationVariable { id: string; key: string; label: string; value: string | null; help_text: string | null; sort_order: number }
+
+// Placeholders fixos (os que vêm do candidato/vaga/loja). As variáveis livres
+// entram como {var.<key>} e são listadas dinamicamente ao lado destes — ver
+// PlaceholderHint.
+const FIXED_PLACEHOLDERS = [
+  '{candidate_name}', '{candidate_first_name}', '{job_role_title}',
+  '{store_name}', '{store_maps_link}', '{new_stage}', '{previous_stage}',
+]
 
 const TRIGGER_TYPE_LABELS: Record<TriggerType, string> = {
   candidate_created: 'Candidato criado',
@@ -79,15 +90,17 @@ const CONDITION_OP_LABELS: Record<ConditionOp, string> = {
   lt: 'é menor que', lte: 'é menor ou igual a', in: 'está em (separado por vírgula)', contains: 'contém',
 }
 
-const EMPTY_AUTOMATION = { name: '', description: '', trigger_type: 'stage_changed' as TriggerType, trigger_stage: '', trigger_conditions: [] as Condition[] }
+const EMPTY_AUTOMATION = { name: '', description: '', trigger_type: 'stage_changed' as TriggerType, trigger_stage: '', trigger_conditions: [] as Condition[], requires_confirmation: false }
 const EMPTY_TAG = { name: '', color: '#6B7280' }
 const EMPTY_TEMPLATE = { name: '', body: '' }
+const EMPTY_VARIABLE = { key: '', label: '', value: '', help_text: '' }
 
 const TABS = [
   { key: 'automacoes', label: 'Automações', icon: Zap },
+  { key: 'variaveis', label: 'Variáveis', icon: Variable },
   { key: 'tags', label: 'Tags', icon: TagIcon },
   { key: 'templates', label: 'Modelos WhatsApp', icon: MessageSquare },
-  { key: 'credenciais', label: 'Credenciais WhatsApp', icon: KeyRound },
+  { key: 'credenciais', label: 'Envio WhatsApp', icon: KeyRound },
 ] as const
 type TabKey = typeof TABS[number]['key']
 
@@ -96,6 +109,44 @@ const labelClass = 'block text-xs font-semibold text-muted-foreground uppercase 
 
 function slugify(text: string) {
   return text.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '')
+}
+
+function useAutomationVariables() {
+  return useQuery<AutomationVariable[]>({
+    queryKey: ['rh-automation-variables'],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('automation_variables').select('*').order('sort_order')
+      if (error) throw error
+      return (data || []) as AutomationVariable[]
+    },
+  })
+}
+
+// Instâncias nunca vêm por SELECT — a tabela é invisível via PostgREST e a
+// RPC devolve só os 4 últimos dígitos do token (mesmo contrato das
+// credenciais por loja).
+function useWhatsappInstances() {
+  return useQuery<WhatsappInstance[]>({
+    queryKey: ['rh-whatsapp-instances'],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('list_whatsapp_instances')
+      if (error) throw error
+      return (data || []) as WhatsappInstance[]
+    },
+  })
+}
+
+// Lista de placeholders mostrada nos editores — os fixos são constantes, as
+// variáveis livres saem da tabela, então criar uma variável nova já a faz
+// aparecer aqui sem mexer em código.
+function PlaceholderHint() {
+  const { data: variables = [] } = useAutomationVariables()
+  return (
+    <p className="text-[11px] text-muted-foreground mt-1 break-words">
+      Placeholders: {FIXED_PLACEHOLDERS.join(' ')}
+      {variables.length > 0 && ` ${variables.map((v) => `{var.${v.key}}`).join(' ')}`}
+    </p>
+  )
 }
 
 // ============================================================
@@ -129,6 +180,7 @@ export default function RhAutomacoes() {
 
       <div className="px-4 sm:px-6 py-6 max-w-3xl mx-auto">
         {tab === 'automacoes' && <AutomationsTab />}
+        {tab === 'variaveis' && <VariablesTab />}
         {tab === 'tags' && <TagsTab />}
         {tab === 'templates' && <TemplatesTab />}
         {tab === 'credenciais' && <CredentialsTab />}
@@ -211,6 +263,14 @@ function AutomationCard({
               {stageLabel(automation.trigger_stage)}
             </span>
           )}
+          {automation.requires_confirmation && (
+            <span
+              className="flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-amber-100 text-amber-700 shrink-0"
+              title="Só executa depois de confirmação no kanban"
+            >
+              <ShieldCheck className="w-2.5 h-2.5" /> Confirmação
+            </span>
+          )}
         </button>
         <button
           onClick={onToggleActive}
@@ -263,13 +323,14 @@ function ActionRow({ action, index }: { action: AutomationAction; index: number 
 }
 
 function ActionConfigEditor({
-  actionType, config, tags, templates, systemUsers, onChange,
+  actionType, config, tags, templates, systemUsers, instances, onChange,
 }: {
   actionType: ActionType
   config: Record<string, unknown>
   tags: RhTag[]
   templates: WhatsappTemplate[]
   systemUsers: SystemUser[]
+  instances: WhatsappInstance[]
   onChange: (config: Record<string, unknown>) => void
 }) {
   if (actionType === 'change_stage') {
@@ -334,12 +395,26 @@ function ActionConfigEditor({
   }
   if (actionType === 'send_whatsapp') {
     return (
-      <StyledSelect
-        value={(config.template_id as string) || ''}
-        onChange={(v) => onChange({ template_id: v })}
-        options={templates.filter((t) => t.is_active).map((t) => ({ value: t.id, label: t.name }))}
-        emptyLabel="Selecione o modelo"
-      />
+      <div className="space-y-2">
+        <StyledSelect
+          value={(config.template_id as string) || ''}
+          onChange={(v) => onChange({ ...config, template_id: v })}
+          options={templates.filter((t) => t.is_active).map((t) => ({ value: t.id, label: t.name }))}
+          emptyLabel="Selecione o modelo"
+        />
+        <div>
+          <StyledSelect
+            value={(config.whatsapp_instance_id as string) || ''}
+            onChange={(v) => onChange({ ...config, whatsapp_instance_id: v })}
+            options={instances.filter((i) => i.is_active).map((i) => ({ value: i.id, label: i.name }))}
+            emptyLabel="Instância da loja (padrão)"
+            placeholder="Instância da loja (padrão)"
+          />
+          <p className="text-[11px] text-muted-foreground mt-1">
+            Sem escolher, usa a instância da loja do candidato — e, se ela não tiver, a global.
+          </p>
+        </div>
+      </div>
     )
   }
   // add_comment
@@ -352,7 +427,7 @@ function ActionConfigEditor({
         placeholder="Ex: Candidato avançou pra {new_stage}"
         className={inputClass}
       />
-      <p className="text-[11px] text-muted-foreground mt-1">Placeholders: {'{candidate_name} {job_role_title} {store_name} {new_stage} {previous_stage}'}</p>
+      <PlaceholderHint />
     </div>
   )
 }
@@ -370,6 +445,7 @@ function AutomationEditorModal({
     name: automation.name, description: automation.description || '',
     trigger_type: automation.trigger_type, trigger_stage: automation.trigger_stage || '',
     trigger_conditions: automation.trigger_conditions || [],
+    requires_confirmation: automation.requires_confirmation ?? false,
   } : EMPTY_AUTOMATION)
   const [actions, setActions] = useState<{ id?: string; action_type: ActionType; action_config: Record<string, unknown> }[]>([])
 
@@ -397,6 +473,7 @@ function AutomationEditorModal({
       return (data || []) as SystemUser[]
     },
   })
+  const { data: instances = [] } = useWhatsappInstances()
 
   useQuery<AutomationAction[]>({
     queryKey: ['rh-automation-actions-edit', automation?.id],
@@ -417,6 +494,7 @@ function AutomationEditorModal({
         trigger_type: form.trigger_type,
         trigger_stage: form.trigger_type === 'stage_changed' ? form.trigger_stage : null,
         trigger_conditions: form.trigger_conditions,
+        requires_confirmation: form.requires_confirmation,
       }
       let automationId = automation?.id
       if (isEdit) {
@@ -516,6 +594,29 @@ function AutomationEditorModal({
             )}
           </div>
 
+          {/* Só faz sentido em stage_changed: o popup de confirmação vive no
+              kanban, no momento em que alguém move o card. Automação por
+              criação de candidato ou prazo vencido roda sem ninguém na tela. */}
+          {form.trigger_type === 'stage_changed' && (
+            <label className="flex items-start gap-2.5 p-3 rounded-lg border border-border bg-surface-alt/40 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={form.requires_confirmation}
+                onChange={(e) => setForm({ ...form, requires_confirmation: e.target.checked })}
+                className="mt-0.5 w-4 h-4 rounded border-border accent-ink-700 shrink-0"
+              />
+              <span className="min-w-0">
+                <span className="flex items-center gap-1.5 text-sm font-medium text-foreground">
+                  <ShieldCheck className="w-3.5 h-3.5 shrink-0" /> Pedir confirmação antes de executar
+                </span>
+                <span className="block text-[11px] text-muted-foreground mt-0.5">
+                  Ao mover o card pra esta etapa, o kanban mostra a mensagem já preenchida e só executa depois do "Confirmar".
+                  Etapa mudada por qualquer outro caminho não dispara a automação — fica registrada como bloqueada no histórico.
+                </span>
+              </span>
+            </label>
+          )}
+
           <div>
             <div className="flex items-center justify-between mb-1.5">
               <label className={`${labelClass} mb-0`}>Condições (opcional, todas precisam bater)</label>
@@ -568,7 +669,8 @@ function AutomationEditorModal({
                     <button onClick={() => removeAction(i)} className="p-1.5 text-muted-foreground hover:text-red-600 shrink-0"><X className="w-4 h-4" /></button>
                   </div>
                   <ActionConfigEditor
-                    actionType={a.action_type} config={a.action_config} tags={tags} templates={templates} systemUsers={systemUsers}
+                    actionType={a.action_type} config={a.action_config} tags={tags} templates={templates}
+                    systemUsers={systemUsers} instances={instances}
                     onChange={(config) => updateAction(i, { action_config: config })}
                   />
                 </div>
@@ -691,6 +793,174 @@ function AutomationsTab() {
           <div className="relative bg-card border border-border rounded-2xl shadow-2xl p-6 w-full max-w-sm">
             <h2 className="text-lg font-bold text-foreground mb-2">Excluir automação</h2>
             <p className="text-sm text-muted-foreground mb-5">"{deleteConfirm.name}" será removida, junto com suas ações.</p>
+            <div className="flex gap-3">
+              <button onClick={() => deleteMutation.mutate(deleteConfirm.id)} disabled={deleteMutation.isPending} className="flex-1 px-4 py-2.5 rounded-lg bg-red-600 hover:bg-red-700 text-white font-medium disabled:opacity-70">
+                {deleteMutation.isPending ? 'Excluindo...' : 'Excluir'}
+              </button>
+              <button onClick={() => setDeleteConfirm(null)} className="flex-1 px-4 py-2.5 rounded-lg border border-border bg-card text-foreground font-medium hover:bg-accent">Cancelar</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ============================================================
+// Aba: Variáveis
+//
+// Substituem o nó "Set" que existia no fluxo do n8n: dois campos editados à
+// mão antes de mover o lote de candidatos daquela rodada de entrevistas. São
+// globais de propósito — o fluxo é editar, mover o lote, editar de novo.
+// O valor também é editável direto no kanban de Candidatos, que é onde a
+// pessoa está quando precisa trocar.
+// ============================================================
+
+function VariablesTab() {
+  const queryClient = useQueryClient()
+  const [modalOpen, setModalOpen] = useState(false)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [form, setForm] = useState(EMPTY_VARIABLE)
+  const [deleteConfirm, setDeleteConfirm] = useState<AutomationVariable | null>(null)
+
+  useEscapeToClose(closeModal, modalOpen)
+  useEscapeToClose(() => setDeleteConfirm(null), !!deleteConfirm)
+
+  const { data: variables = [], isLoading } = useAutomationVariables()
+
+  const saveMutation = useMutation({
+    mutationFn: async () => {
+      const payload = {
+        key: slugify(form.key || form.label),
+        label: form.label.trim(),
+        value: form.value.trim() || null,
+        help_text: form.help_text.trim() || null,
+      }
+      if (editingId) {
+        const { error } = await supabase.from('automation_variables').update(payload).eq('id', editingId)
+        if (error) throw error
+      } else {
+        const { error } = await supabase.from('automation_variables')
+          .insert({ ...payload, sort_order: variables.length })
+        if (error) throw error
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['rh-automation-variables'] })
+      toast.success(editingId ? 'Variável atualizada' : 'Variável criada')
+      closeModal()
+    },
+    onError: (err) => toast.error(`Erro ao salvar: ${err instanceof Error ? err.message : 'desconhecido'}`),
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('automation_variables').delete().eq('id', id)
+      if (error) throw error
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['rh-automation-variables'] })
+      toast.success('Variável excluída')
+      setDeleteConfirm(null)
+    },
+    onError: (err) => toast.error(`Erro ao excluir: ${err instanceof Error ? err.message : 'desconhecido'}`),
+  })
+
+  function closeModal() { setModalOpen(false); setEditingId(null); setForm(EMPTY_VARIABLE) }
+  function openEdit(v: AutomationVariable) {
+    setEditingId(v.id)
+    setForm({ key: v.key, label: v.label, value: v.value ?? '', help_text: v.help_text ?? '' })
+    setModalOpen(true)
+  }
+
+  const previewKey = slugify(form.key || form.label)
+
+  return (
+    <div>
+      <p className="text-sm text-muted-foreground mb-4">
+        Valores que mudam a cada rodada e entram nas mensagens como <code className="text-xs">{'{var.chave}'}</code>.
+        Os valores também podem ser trocados direto no kanban de Candidatos, antes de mover o lote.
+      </p>
+
+      <div className="flex justify-end mb-4">
+        <button onClick={() => setModalOpen(true)} className="flex items-center gap-2 px-3 py-2 rounded-lg btn-action text-sm font-medium">
+          <Plus className="w-4 h-4" /> Nova variável
+        </button>
+      </div>
+
+      {isLoading ? (
+        <div className="text-center py-12"><Loader className="w-6 h-6 animate-spin text-gold-text mx-auto" /></div>
+      ) : variables.length === 0 ? (
+        <p className="text-sm text-muted-foreground text-center py-12">Nenhuma variável cadastrada ainda.</p>
+      ) : (
+        <div className="space-y-2">
+          {variables.map((v) => (
+            <div key={v.id} className="px-3 py-2.5 rounded-lg border border-border bg-card">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-sm font-medium text-foreground">{v.label}</span>
+                <code className="text-[10px] font-mono px-1.5 py-0.5 rounded-md bg-surface-alt text-muted-foreground">{`{var.${v.key}}`}</code>
+                <span className="flex-1" />
+                <button onClick={() => openEdit(v)} className="p-1.5 rounded-lg hover:bg-surface-alt text-muted-foreground hover:text-foreground"><Pencil className="w-3.5 h-3.5" /></button>
+                <button onClick={() => setDeleteConfirm(v)} className="p-1.5 rounded-lg hover:bg-red-50 text-muted-foreground hover:text-red-600"><Trash2 className="w-3.5 h-3.5" /></button>
+              </div>
+              <p className={`text-xs ${v.value ? 'text-foreground' : 'text-muted-foreground italic'}`}>
+                {v.value || 'Sem valor definido — sai vazio na mensagem'}
+              </p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {modalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-foreground/40 backdrop-blur-sm" onClick={closeModal} />
+          <div className="relative bg-card rounded-2xl shadow-2xl border border-border p-6 w-full max-w-sm">
+            <h2 className="text-lg font-bold text-foreground mb-4">{editingId ? 'Editar variável' : 'Nova variável'}</h2>
+            <div className="space-y-3">
+              <div>
+                <label className={labelClass}>Nome *</label>
+                <input type="text" value={form.label} onChange={(e) => setForm({ ...form, label: e.target.value })} className={inputClass} placeholder="Ex: Data da entrevista" />
+                {previewKey && (
+                  <p className="text-[11px] text-muted-foreground mt-1">
+                    Usar no modelo como <code className="font-mono">{`{var.${previewKey}}`}</code>
+                  </p>
+                )}
+              </div>
+              <div>
+                <label className={labelClass}>Valor atual</label>
+                <input type="text" value={form.value} onChange={(e) => setForm({ ...form, value: e.target.value })} className={inputClass} placeholder="Ex: Hoje (16/07)" />
+              </div>
+              <div>
+                <label className={labelClass}>Dica de preenchimento</label>
+                <input type="text" value={form.help_text} onChange={(e) => setForm({ ...form, help_text: e.target.value })} className={inputClass} placeholder="Aparece abaixo do campo no kanban" />
+              </div>
+            </div>
+            <div className="flex gap-3 mt-5">
+              <button
+                onClick={() => {
+                  if (!form.label.trim()) { toast.error('Informe o nome da variável'); return }
+                  if (!previewKey) { toast.error('Nome precisa ter ao menos uma letra'); return }
+                  saveMutation.mutate()
+                }}
+                disabled={saveMutation.isPending}
+                className="flex-1 px-4 py-2.5 rounded-lg btn-action font-medium disabled:opacity-70"
+              >
+                {saveMutation.isPending ? 'Salvando...' : 'Salvar'}
+              </button>
+              <button onClick={closeModal} className="flex-1 px-4 py-2.5 rounded-lg border border-border bg-card text-foreground font-medium hover:bg-accent">Cancelar</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {deleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-foreground/40 backdrop-blur-sm" onClick={() => setDeleteConfirm(null)} />
+          <div className="relative bg-card border border-border rounded-2xl shadow-2xl p-6 w-full max-w-sm">
+            <h2 className="text-lg font-bold text-foreground mb-2">Excluir variável</h2>
+            <p className="text-sm text-muted-foreground mb-5">
+              Modelos que usam <code className="font-mono text-xs">{`{var.${deleteConfirm.key}}`}</code> passam a enviar o placeholder cru na mensagem.
+            </p>
             <div className="flex gap-3">
               <button onClick={() => deleteMutation.mutate(deleteConfirm.id)} disabled={deleteMutation.isPending} className="flex-1 px-4 py-2.5 rounded-lg bg-red-600 hover:bg-red-700 text-white font-medium disabled:opacity-70">
                 {deleteMutation.isPending ? 'Excluindo...' : 'Excluir'}
@@ -943,8 +1213,8 @@ function TemplatesTab() {
               </div>
               <div>
                 <label className={labelClass}>Mensagem *</label>
-                <textarea value={form.body} onChange={(e) => setForm({ ...form, body: e.target.value })} rows={4} className={inputClass} placeholder="Oi {candidate_name}! Vimos seu interesse na vaga de {job_role_title}..." />
-                <p className="text-[11px] text-muted-foreground mt-1">Placeholders: {'{candidate_name} {job_role_title} {store_name} {new_stage} {previous_stage}'}</p>
+                <textarea value={form.body} onChange={(e) => setForm({ ...form, body: e.target.value })} rows={8} className={inputClass} placeholder="Oi {candidate_first_name}! Vimos seu interesse na vaga de {job_role_title}..." />
+                <PlaceholderHint />
               </div>
             </div>
             <div className="flex gap-3 mt-5">
@@ -1063,8 +1333,100 @@ function CredentialStoreRow({ store }: { store: RhStore }) {
   )
 }
 
+function InstanceEditModal({ instance, onClose }: { instance: WhatsappInstance | null; onClose: () => void }) {
+  useEscapeToClose(onClose)
+  const queryClient = useQueryClient()
+  const isEdit = !!instance
+  const [name, setName] = useState(instance?.name ?? '')
+  const [url, setUrl] = useState(instance?.uazapi_url ?? '')
+  const [token, setToken] = useState('')
+  const [isActive, setIsActive] = useState(instance?.is_active ?? true)
+
+  const saveMutation = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.rpc('admin_upsert_whatsapp_instance', {
+        p_id: instance?.id ?? null,
+        p_name: name.trim(),
+        p_uazapi_url: url.trim(),
+        p_uazapi_token: token.trim(),
+        p_is_active: isActive,
+      })
+      if (error) throw error
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['rh-whatsapp-instances'] })
+      toast.success(isEdit ? 'Instância atualizada' : 'Instância criada')
+      onClose()
+    },
+    onError: (err) => toast.error(`Erro ao salvar: ${err instanceof Error ? err.message : 'desconhecido'}`),
+  })
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-foreground/40 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative bg-card rounded-2xl shadow-2xl border border-border p-6 w-full max-w-sm">
+        <h2 className="text-lg font-bold text-foreground mb-4">{isEdit ? 'Editar instância' : 'Nova instância'}</h2>
+        <div className="space-y-3">
+          <div>
+            <label className={labelClass}>Nome *</label>
+            <input type="text" value={name} onChange={(e) => setName(e.target.value)} className={inputClass} placeholder="Ex: RH — número principal" />
+          </div>
+          <div>
+            <label className={labelClass}>URL da instância *</label>
+            <input type="text" value={url} onChange={(e) => setUrl(e.target.value)} className={inputClass} placeholder="https://minha-instancia.uazapi.com" />
+          </div>
+          <div>
+            <label className={labelClass}>Token {isEdit ? '' : '*'}</label>
+            <input type="password" value={token} onChange={(e) => setToken(e.target.value)} className={inputClass}
+              placeholder={isEdit ? `Deixe vazio pra manter •••${instance!.token_last4}` : 'Token da instância'} />
+          </div>
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} className="w-4 h-4 rounded border-border accent-ink-700" />
+            <span className="text-sm text-foreground">Ativa</span>
+          </label>
+        </div>
+        <div className="flex gap-3 mt-5">
+          <button
+            onClick={() => {
+              if (!name.trim() || !url.trim()) { toast.error('Preencha nome e URL'); return }
+              if (!isEdit && !token.trim()) { toast.error('Informe o token'); return }
+              saveMutation.mutate()
+            }}
+            disabled={saveMutation.isPending}
+            className="flex-1 px-4 py-2.5 rounded-lg btn-action font-medium disabled:opacity-70"
+          >
+            {saveMutation.isPending ? 'Salvando...' : 'Salvar'}
+          </button>
+          <button onClick={onClose} className="flex-1 px-4 py-2.5 rounded-lg border border-border bg-card text-foreground font-medium hover:bg-accent">Cancelar</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function CredentialsTab() {
-  const { data: stores = [], isLoading } = useQuery<RhStore[]>({
+  const queryClient = useQueryClient()
+  const [editingInstance, setEditingInstance] = useState<WhatsappInstance | null | 'new'>(null)
+  const [deleteConfirm, setDeleteConfirm] = useState<WhatsappInstance | null>(null)
+
+  useEscapeToClose(() => setDeleteConfirm(null), !!deleteConfirm)
+
+  const { data: instances = [], isLoading: loadingInstances } = useWhatsappInstances()
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.rpc('admin_delete_whatsapp_instance', { p_id: id })
+      if (error) throw error
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['rh-whatsapp-instances'] })
+      toast.success('Instância excluída')
+      setDeleteConfirm(null)
+    },
+    onError: (err) => toast.error(`Erro ao excluir: ${err instanceof Error ? err.message : 'desconhecido'}`),
+  })
+
+  const { data: stores = [], isLoading: loadingStores } = useQuery<RhStore[]>({
     queryKey: ['rh-stores-with-slug'],
     queryFn: async () => {
       const { data, error } = await supabase.from('stores').select('id, name, slug').order('name')
@@ -1074,15 +1436,84 @@ function CredentialsTab() {
   })
 
   return (
-    <div>
-      <p className="text-sm text-muted-foreground mb-4">
-        Sem credencial configurada, o envio de WhatsApp da automação usa a instância global do negócio. Configure aqui só se a loja tiver um número próprio.
-      </p>
-      {isLoading ? (
-        <div className="text-center py-12"><Loader className="w-6 h-6 animate-spin text-gold-text mx-auto" /></div>
-      ) : (
-        <div className="space-y-2">
-          {stores.map((s) => <CredentialStoreRow key={s.id} store={s} />)}
+    <div className="space-y-8">
+      <div className="p-3 rounded-lg bg-surface-alt/60 border border-border">
+        <p className="text-xs font-semibold text-foreground mb-1">Ordem de resolução do envio</p>
+        <p className="text-xs text-muted-foreground">
+          1. Instância escolhida na ação "Enviar WhatsApp" da automação · 2. Instância da loja do candidato · 3. Instância global do negócio.
+        </p>
+      </div>
+
+      <section>
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <h3 className="text-sm font-bold text-foreground">Instâncias</h3>
+            <p className="text-xs text-muted-foreground">Selecionáveis por automação.</p>
+          </div>
+          <button onClick={() => setEditingInstance('new')} className="flex items-center gap-2 px-3 py-2 rounded-lg btn-action text-sm font-medium shrink-0">
+            <Plus className="w-4 h-4" /> Nova instância
+          </button>
+        </div>
+        {loadingInstances ? (
+          <div className="text-center py-8"><Loader className="w-5 h-5 animate-spin text-gold-text mx-auto" /></div>
+        ) : instances.length === 0 ? (
+          <p className="text-sm text-muted-foreground text-center py-8">Nenhuma instância cadastrada — as automações caem na instância da loja ou na global.</p>
+        ) : (
+          <div className="space-y-2">
+            {instances.map((i) => (
+              <div key={i.id} className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-border bg-card">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-foreground truncate">{i.name}</p>
+                  <p className="text-xs text-muted-foreground truncate">{i.uazapi_url}</p>
+                </div>
+                <span className="text-xs text-muted-foreground font-mono shrink-0">•••{i.token_last4}</span>
+                <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 ${i.is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-muted text-muted-foreground'}`}>
+                  {i.is_active ? 'Ativa' : 'Inativa'}
+                </span>
+                <button onClick={() => setEditingInstance(i)} className="p-1.5 rounded-lg hover:bg-surface-alt text-muted-foreground hover:text-foreground shrink-0"><Pencil className="w-3.5 h-3.5" /></button>
+                <button onClick={() => setDeleteConfirm(i)} className="p-1.5 rounded-lg hover:bg-red-50 text-muted-foreground hover:text-red-600 shrink-0"><Trash2 className="w-3.5 h-3.5" /></button>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section>
+        <h3 className="text-sm font-bold text-foreground mb-1">Instância por loja</h3>
+        <p className="text-xs text-muted-foreground mb-3">
+          Fallback pra automação que não escolheu instância. Sem nada configurado aqui, cai na instância global do negócio.
+        </p>
+        {loadingStores ? (
+          <div className="text-center py-8"><Loader className="w-5 h-5 animate-spin text-gold-text mx-auto" /></div>
+        ) : (
+          <div className="space-y-2">
+            {stores.map((s) => <CredentialStoreRow key={s.id} store={s} />)}
+          </div>
+        )}
+      </section>
+
+      {editingInstance && (
+        <InstanceEditModal
+          instance={editingInstance === 'new' ? null : editingInstance}
+          onClose={() => setEditingInstance(null)}
+        />
+      )}
+
+      {deleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-foreground/40 backdrop-blur-sm" onClick={() => setDeleteConfirm(null)} />
+          <div className="relative bg-card border border-border rounded-2xl shadow-2xl p-6 w-full max-w-sm">
+            <h2 className="text-lg font-bold text-foreground mb-2">Excluir instância</h2>
+            <p className="text-sm text-muted-foreground mb-5">
+              "{deleteConfirm.name}" será removida. Automações que a usavam voltam a enviar pela instância da loja.
+            </p>
+            <div className="flex gap-3">
+              <button onClick={() => deleteMutation.mutate(deleteConfirm.id)} disabled={deleteMutation.isPending} className="flex-1 px-4 py-2.5 rounded-lg bg-red-600 hover:bg-red-700 text-white font-medium disabled:opacity-70">
+                {deleteMutation.isPending ? 'Excluindo...' : 'Excluir'}
+              </button>
+              <button onClick={() => setDeleteConfirm(null)} className="flex-1 px-4 py-2.5 rounded-lg border border-border bg-card text-foreground font-medium hover:bg-accent">Cancelar</button>
+            </div>
+          </div>
         </div>
       )}
     </div>
