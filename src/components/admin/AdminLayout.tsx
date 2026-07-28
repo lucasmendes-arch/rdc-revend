@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import {
   Package, ShoppingCart, Users, Warehouse, UserCog,
@@ -71,6 +71,50 @@ const estoqueNavGroup: { label: string; items: NavItem[] } = {
   ],
 }
 
+// Estado dos dropdowns em sessionStorage: `AdminLayout` é renderizado por
+// CADA página, então navegar desmonta e remonta a sidebar inteira — sem
+// persistir, o useState reinicializava a cada rota e fechava tudo que o
+// usuário tinha aberto. sessionStorage (não localStorage) porque a regra é
+// "fica aberto enquanto eu estiver nesta sessão do navegador".
+const SIDEBAR_EXPANDED_KEY = 'rdc-admin-sidebar-expanded'
+
+function loadExpanded(): Set<string> | null {
+  try {
+    const raw = sessionStorage.getItem(SIDEBAR_EXPANDED_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw)
+    return Array.isArray(parsed) ? new Set(parsed.filter((v) => typeof v === 'string')) : null
+  } catch {
+    return null
+  }
+}
+
+function saveExpanded(expanded: Set<string>) {
+  try {
+    sessionStorage.setItem(SIDEBAR_EXPANDED_KEY, JSON.stringify([...expanded]))
+  } catch {
+    // sessionStorage indisponível (modo privado antigo, quota) — a sidebar
+    // volta a se comportar como antes em vez de quebrar a navegação.
+  }
+}
+
+// Seção "dona" de uma rota = os dois primeiros segmentos (`/admin/rh`,
+// `/admin/pedidos`, `/estoque/relatorio`). É o que faz o grupo Recursos
+// Humanos continuar marcado em telas que não têm item próprio na sidebar,
+// como `/admin/rh/automacoes` — antes elas não casavam com nada e a sidebar
+// aparecia toda fechada.
+function sectionPrefix(path: string) {
+  return path.split('/').slice(0, 3).join('/')
+}
+
+function groupOwnsPath(group: { items: NavItem[] }, pathname: string) {
+  return group.items.some((item) => {
+    if (item.path === pathname) return true
+    const prefix = sectionPrefix(item.path)
+    return pathname === prefix || pathname.startsWith(`${prefix}/`)
+  })
+}
+
 function SidebarNavItem({ item, isActive, onClick }: { item: NavItem; isActive: boolean; onClick?: () => void }) {
   const Icon = item.icon
   return (
@@ -115,15 +159,30 @@ function SidebarContent({ onNavClick }: { onNavClick?: () => void }) {
 
   const homePath = role === 'admin' ? '/admin/catalogo' : '/admin/rh/candidatos'
 
+  // Retoma o que estava aberto na sessão; na primeira visita, abre só o grupo
+  // da rota atual.
   const [expanded, setExpanded] = useState<Set<string>>(() => {
+    const stored = loadExpanded()
+    if (stored) return stored
     const initial = new Set<string>()
     groups.forEach((group) => {
-      if (group.items.some((item) => item.path === location.pathname)) {
-        initial.add(group.label)
-      }
+      if (groupOwnsPath(group, location.pathname)) initial.add(group.label)
     })
     return initial
   })
+
+  // Só ABRE o grupo da rota atual — nunca fecha os outros. É o que permite
+  // deep link / F5 numa tela funda sem perder os grupos que o usuário deixou
+  // abertos de propósito.
+  useEffect(() => {
+    const active = groups.find((group) => groupOwnsPath(group, location.pathname))
+    if (!active) return
+    setExpanded((prev) => (prev.has(active.label) ? prev : new Set(prev).add(active.label)))
+    // `groups` é recalculado a cada render (deriva de role/permissões), então
+    // entra aqui por label, não por referência.
+  }, [location.pathname, groups.map((g) => g.label).join('|')]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => { saveExpanded(expanded) }, [expanded])
 
   const toggle = (label: string) => {
     setExpanded((prev) => {
@@ -161,7 +220,7 @@ function SidebarContent({ onNavClick }: { onNavClick?: () => void }) {
       <nav className="flex-1 overflow-y-auto py-3 px-2 scrollbar-none">
         {groups.map((group) => {
           const isOpen = expanded.has(group.label)
-          const hasActive = group.items.some((item) => item.path === location.pathname)
+          const hasActive = groupOwnsPath(group, location.pathname)
 
           return (
             <div key={group.label} className="mb-0.5">
