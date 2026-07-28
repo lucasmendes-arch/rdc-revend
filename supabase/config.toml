@@ -401,3 +401,9 @@ verify_jwt = false
 
 [functions.generate-contract-automation]
 verify_jwt = false
+
+# Webhook da Uazapi: chamado por servidor externo, sem JWT. A autenticação é o
+# segredo compartilhado UAZAPI_WEBHOOK_SECRET (header x-webhook-secret ou
+# parâmetro "secret" na query), verificado em tempo constante e fail-closed.
+[functions.webhook-uazapi]
+verify_jwt = false

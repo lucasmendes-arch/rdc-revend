@@ -897,6 +897,41 @@ Variáveis livres de mensagem (Fase 4, `20260727000001`) — substituem o nó "S
 
 ---
 
+### `whatsapp_messages`
+Conversa de WhatsApp com candidatos, nos dois sentidos (Fase 1 da triagem de entrevistas, `20260727000002`). Até então o sistema só falava — as 6 edge functions de WhatsApp eram todas de saída, sem webhook de entrada nem vínculo telefone→candidato.
+
+| Coluna | Tipo | Nullable | Default | FK |
+|--------|------|----------|---------|-----|
+| id | uuid | NO | `gen_random_uuid()` | — |
+| candidate_id | uuid | YES | NULL | candidates.id (ON DELETE SET NULL) |
+| direction | text | NO | — | CHECK `'inbound'\|'outbound'` |
+| phone_key | text | NO | — | chave normalizada |
+| phone_raw | text | NO | — | como veio da Uazapi |
+| body | text | YES | NULL | — |
+| message_type | text | NO | `'text'` | — |
+| external_id | text | YES | NULL | **UNIQUE** — idempotência |
+| instance_id | uuid | YES | NULL | whatsapp_instances.id (ON DELETE SET NULL) |
+| sent_at | timestamptz | NO | `now()` | — |
+| raw | jsonb | NO | `'{}'` | payload cru |
+| created_at | timestamptz | NO | `now()` | — |
+
+> **Escritor único**: só a edge function `webhook-uazapi` (via `service_role`) grava, sempre por `record_whatsapp_message()`. A alternativa — gravar a saída em `send-automation-whatsapp` e a entrada no webhook — duplicaria toda mensagem enviada, porque a Uazapi devolve os próprios envios como evento `fromMe`. `UNIQUE(external_id)` + `ON CONFLICT DO NOTHING` absorvem reentrega.
+> **`candidate_id` nulo é deliberado**: mensagem de número que não casou com nenhum candidato fica gravada (índice parcial `idx_whatsapp_messages_unmatched`). É o material pra diagnosticar telefone cadastrado errado ou normalização furada — descartar esconderia o problema.
+> RLS: `SELECT` via `has_rh_access()`; escrita só `service_role`. A tela lê por `get_candidate_conversation(candidate_id)`.
+
+---
+
+### `normalize_phone_br(text)` — chave canônica de telefone
+Função `IMMUTABLE` (`20260727000002`, endurecida em `20260727000003`). Devolve **DDD + 8 últimos dígitos** (10 caracteres), ou `NULL` quando não reconhece.
+
+Existe porque os telefones convivem em três formatos no banco: `5527999243617` (13, com país), `27998883912` (11, DDD+9+8) e a Uazapi manda `5527999243617@s.whatsapp.net`. Casar string crua não funciona em nenhuma combinação.
+
+> **Regra do nono dígito**: num número de 11 dígitos o terceiro tem que ser `9`. Foram encontrados 2 cadastros truncados (`55279998052`, `55779918346` — 13 dígitos que perderam 2) que a versão inicial convertia numa chave *bem formada porém de outro telefone*, o que faria mensagem de terceiro casar com o candidato errado. Agora devolvem `NULL`: falhar em casar é aceitável, casar errado não é.
+> Índice de expressão `idx_candidates_phone_key ON candidates (normalize_phone_br(whatsapp))` — expressão em vez de coluna gerada pra que correção na função valha na hora, sem backfill.
+> `resolve_candidate_by_phone(phone_key)` desempata quando o mesmo número aparece em duas candidaturas: 1) candidato com envio nosso `sent` mais recente (30 dias); 2) senão, candidato criado mais recentemente.
+
+---
+
 ### `whatsapp_instances`
 Instâncias Uazapi nomeadas (Fase 4, `20260727000001`), selecionáveis por automação na ação `send_whatsapp`.
 

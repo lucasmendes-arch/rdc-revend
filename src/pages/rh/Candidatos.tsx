@@ -18,6 +18,7 @@ import AdminLayout from '@/components/admin/AdminLayout'
 import ColorSelect, { type ColorSelectOption } from '@/components/rh/ColorSelect'
 import MensagemVariaveisModal from '@/components/rh/MensagemVariaveisModal'
 import ConfirmarAutomacaoModal, { type AutomationPreview } from '@/components/rh/ConfirmarAutomacaoModal'
+import ConversaWhatsapp from '@/components/rh/ConversaWhatsapp'
 import StyledSelect from '@/components/ui/styled-select'
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
 import { Switch } from '@/components/ui/switch'
@@ -1538,6 +1539,8 @@ export default function RhCandidatos() {
                   </div>
                 </div>
               )}
+
+              <ConversaWhatsapp candidateId={detailCandidate.id} />
 
               <div>
                 <label className="block text-sm font-medium text-foreground mb-1.5">Atividade</label>
