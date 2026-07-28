@@ -4,6 +4,7 @@ import { toast } from 'sonner'
 import { X, FileText } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useEscapeToClose } from '@/hooks/useEscapeToClose'
+import { DateField } from '@/components/ui/date-field'
 import {
   CONTRACT_TYPE_LABELS, resolveAutoContractType, REQUIRED_CONTRACT_DATA_FIELDS,
   CONTRACT_DATA_FIELD_LABELS, type ContractDataField,
@@ -190,8 +191,16 @@ export default function GerarContratoModal({ processo, onClose }: GerarContratoM
             </div>
             <div>
               {fieldLabel('birth_date')}
-              <input type="date" value={dataForm.birth_date} onChange={(e) => setDataForm({ ...dataForm, birth_date: e.target.value })}
-                className="w-full px-2.5 py-1.5 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
+              {/* Data de nascimento estoura a faixa padrão do Calendar (±10
+                  anos), então o seletor de ano precisa abrir um século. */}
+              <DateField
+                value={dataForm.birth_date || null}
+                onChange={(v) => setDataForm({ ...dataForm, birth_date: v ?? '' })}
+                fromYear={new Date().getFullYear() - 100}
+                toYear={new Date().getFullYear()}
+                max={new Date().toISOString().slice(0, 10)}
+                placeholder="Selecionar"
+              />
             </div>
             <div>
               {fieldLabel('marital_status')}
@@ -257,13 +266,21 @@ export default function GerarContratoModal({ processo, onClose }: GerarContratoM
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-[11px] text-muted-foreground mb-1">Início vigência</label>
-              <input type="date" value={termStart} onChange={(e) => setTermStart(e.target.value)}
-                className="w-full px-2.5 py-1.5 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
+              <DateField
+                value={termStart || null}
+                onChange={(v) => setTermStart(v ?? '')}
+                max={termEnd || null}
+                placeholder="Selecionar"
+              />
             </div>
             <div>
               <label className="block text-[11px] text-muted-foreground mb-1">Fim vigência</label>
-              <input type="date" value={termEnd} onChange={(e) => setTermEnd(e.target.value)}
-                className="w-full px-2.5 py-1.5 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
+              <DateField
+                value={termEnd || null}
+                onChange={(v) => setTermEnd(v ?? '')}
+                min={termStart || null}
+                placeholder="Selecionar"
+              />
             </div>
           </div>
           {contractType && missingFields.length > 0 && (

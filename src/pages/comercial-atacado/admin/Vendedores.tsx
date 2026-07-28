@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase, callEdgeFunction } from '@/lib/supabase'
 import { Loader, Plus, UserCheck, Pencil, Trash2, Star, Link2, FileText, Send, CheckCircle2, AlertCircle } from 'lucide-react'
 import AdminLayout from '@/components/admin/AdminLayout'
+import { DateField } from '@/components/ui/date-field'
 
 interface Seller {
   id: string
@@ -600,20 +601,18 @@ export default function AdminVendedores() {
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="block text-sm font-medium text-foreground mb-1">Data inicial</label>
-                      <input
-                        type="date"
-                        value={reportStart}
-                        onChange={e => setReportStart(e.target.value)}
-                        className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm"
+                      <DateField
+                        value={reportStart || null}
+                        onChange={v => setReportStart(v ?? '')}
+                        max={reportEnd || null}
                       />
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-foreground mb-1">Data final</label>
-                      <input
-                        type="date"
-                        value={reportEnd}
-                        onChange={e => setReportEnd(e.target.value)}
-                        className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm"
+                      <DateField
+                        value={reportEnd || null}
+                        onChange={v => setReportEnd(v ?? '')}
+                        min={reportStart || null}
                       />
                     </div>
                   </div>

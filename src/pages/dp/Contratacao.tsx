@@ -12,6 +12,7 @@ import { supabase } from '@/lib/supabase'
 import AdminLayout from '@/components/admin/AdminLayout'
 import StyledSelect from '@/components/ui/styled-select'
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
+import { QuickDatePopover } from '@/components/ui/quick-date-popover'
 import { Switch } from '@/components/ui/switch'
 import { useAdminTheme } from '@/contexts/AdminThemeContext'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -74,12 +75,6 @@ function isDueDateOverdue(dueDate: string | null) {
   return new Date(dueDate + 'T00:00:00') < new Date(new Date().toDateString())
 }
 
-function relativeDateStr(days: number) {
-  const d = new Date()
-  d.setDate(d.getDate() + days)
-  return d.toISOString().slice(0, 10)
-}
-
 function formatAnswerValue(a: { value: string; form_fields: { field_type: string } | null }): string {
   if (a.form_fields?.field_type === 'data' && a.value) {
     const [y, m, d] = a.value.split('-')
@@ -89,66 +84,6 @@ function formatAnswerValue(a: { value: string; form_fields: { field_type: string
     return a.value.split('; ').join(', ')
   }
   return a.value
-}
-
-const QUICK_DATE_OPTIONS: { label: string; days: number }[] = [
-  { label: 'Hoje', days: 0 },
-  { label: 'Amanhã', days: 1 },
-  { label: 'Próxima semana', days: 7 },
-  { label: '2 semanas', days: 14 },
-  { label: '4 semanas', days: 28 },
-  { label: '45 dias', days: 45 },
-]
-
-// Editor inline da Data fim — cópia do popover de Candidatos.tsx (mesmo
-// stopPropagation, já que o card é arrastável via dnd-kit).
-function QuickDatePopover({ value, onChange, overdue }: { value: string | null; onChange: (v: string | null) => void; overdue: boolean }) {
-  const [open, setOpen] = useState(false)
-  const stop = (e: SyntheticEvent) => e.stopPropagation()
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <button
-          type="button"
-          onPointerDown={stop}
-          onClick={stop}
-          className={`inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-md ${overdue ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-600'}`}
-        >
-          <Calendar className="w-2.5 h-2.5 shrink-0" />
-          {value ? new Date(value + 'T00:00:00').toLocaleDateString('pt-BR') : 'Data fim'}
-        </button>
-      </PopoverTrigger>
-      <PopoverContent className="w-52 p-2" align="start" onClick={stop} onPointerDown={stop}>
-        <div className="space-y-0.5 mb-2">
-          {QUICK_DATE_OPTIONS.map((o) => (
-            <button
-              key={o.label}
-              type="button"
-              onClick={() => { onChange(relativeDateStr(o.days)); setOpen(false) }}
-              className="w-full text-left px-2 py-1.5 rounded-md text-sm text-foreground hover:bg-surface-alt transition-colors"
-            >
-              {o.label}
-            </button>
-          ))}
-        </div>
-        <input
-          type="date"
-          value={value || ''}
-          onChange={(e) => { onChange(e.target.value || null); setOpen(false) }}
-          className="w-full px-2 py-1.5 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-        />
-        {value && (
-          <button
-            type="button"
-            onClick={() => { onChange(null); setOpen(false) }}
-            className="w-full mt-1.5 text-left px-2 py-1.5 rounded-md text-sm text-red-600 hover:bg-red-50 transition-colors"
-          >
-            Remover data
-          </button>
-        )}
-      </PopoverContent>
-    </Popover>
-  )
 }
 
 function ProcessoPhoto({ name, photoUrl }: { name: string; photoUrl: string | null | undefined }) {

@@ -1,6 +1,7 @@
 import React from 'react';
 
 import { PeriodPresetKey, PeriodPresetOption, ADMIN_DEFAULT_PERIOD_PRESETS } from './presets';
+import { DateField } from '@/components/ui/date-field';
 
 interface AdminPeriodFilterProps {
   presets?: PeriodPresetOption[];
@@ -51,24 +52,28 @@ export function AdminPeriodFilter({
           <div className="flex items-center gap-1.5 bg-card rounded-lg p-0.5 border border-border shadow-sm">
             <div className="flex items-center gap-1.5 pl-2">
               <span className="text-[10px] text-muted-foreground font-bold uppercase">De:</span>
-              <input
-                type="date"
-                value={customDateFrom}
-                onChange={e => onCustomDateFromChange?.(e.target.value)}
-                max={customDateTo}
-                className="px-1.5 py-1 text-xs border-0 rounded-md focus:ring-2 focus:ring-gold bg-transparent text-foreground font-semibold outline-none"
+              <DateField
+                value={customDateFrom || null}
+                onChange={v => onCustomDateFromChange?.(v ?? '')}
+                max={customDateTo || null}
+                placeholder="—"
+                hideIcon
+                clearable={false}
+                className="px-1.5 py-1 text-xs rounded-md bg-transparent text-foreground font-semibold hover:bg-surface-alt transition-colors outline-none focus:ring-2 focus:ring-gold"
               />
             </div>
           </div>
           <div className="flex items-center gap-1.5 bg-card rounded-lg p-0.5 border border-border shadow-sm">
             <div className="flex items-center gap-1.5 pl-2 pr-2">
               <span className="text-[10px] text-muted-foreground font-bold uppercase">Até:</span>
-              <input
-                type="date"
-                value={customDateTo}
-                onChange={e => onCustomDateToChange?.(e.target.value)}
-                min={customDateFrom}
-                className="px-1.5 py-1 text-xs border-0 rounded-md focus:ring-2 focus:ring-gold bg-transparent text-foreground font-semibold outline-none"
+              <DateField
+                value={customDateTo || null}
+                onChange={v => onCustomDateToChange?.(v ?? '')}
+                min={customDateFrom || null}
+                placeholder="—"
+                hideIcon
+                clearable={false}
+                className="px-1.5 py-1 text-xs rounded-md bg-transparent text-foreground font-semibold hover:bg-surface-alt transition-colors outline-none focus:ring-2 focus:ring-gold"
               />
             </div>
           </div>

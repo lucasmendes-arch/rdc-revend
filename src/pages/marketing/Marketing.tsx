@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import { Megaphone, Save, Plus, Trash2, Tag, Calendar, Hash, Percent, RefreshCw, Power, PowerOff, DollarSign } from 'lucide-react';
+import { Megaphone, Save, Plus, Trash2, Tag, Hash, Percent, RefreshCw, Power, PowerOff, DollarSign } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 import AdminLayout from '@/components/admin/AdminLayout';
+import { DateField } from '@/components/ui/date-field';
 import type { StoreSettings, Coupon } from '@/types/marketing';
 
 const Marketing = () => {
@@ -270,15 +271,13 @@ const Marketing = () => {
 
                 <div>
                   <label className="block text-xs font-bold text-muted-foreground uppercase mb-1">Validade (Opcional)</label>
-                  <div className="relative">
-                    <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                    <input
-                      type="date"
-                      value={newCoupon.expires_at}
-                      onChange={(e) => setNewCoupon(prev => ({ ...prev, expires_at: e.target.value }))}
-                      className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-input text-sm focus:ring-2 focus:ring-amber-400 focus:outline-none"
-                    />
-                  </div>
+                  <DateField
+                    value={newCoupon.expires_at || null}
+                    onChange={(v) => setNewCoupon(prev => ({ ...prev, expires_at: v ?? '' }))}
+                    min={new Date().toISOString().slice(0, 10)}
+                    placeholder="Sem validade"
+                    className="w-full flex items-center gap-2 px-4 py-2.5 rounded-xl border border-input bg-background text-foreground text-sm hover:bg-surface-alt transition-colors"
+                  />
                 </div>
 
                 <div>
