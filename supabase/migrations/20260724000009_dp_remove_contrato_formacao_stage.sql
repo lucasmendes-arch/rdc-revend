@@ -1,3 +1,33 @@
+-- RENUMERADA de 20260724000003 para ...009 em 2026-07-27.
+--
+-- Nasceu com a versão 20260724000003, que JÁ ESTAVA OCUPADA por
+-- 20260724000003_confirm_stock_count_updates_inventory.sql. Como o histórico
+-- (supabase_migrations.schema_migrations) tem PK em `version`, só uma das
+-- duas ficou registrada — e esta não. Resultado: o CLI passou a enxergar um
+-- arquivo "antes da última migration do remoto" e recusava QUALQUER
+-- `db push`, exigindo --include-all. `migration repair` não resolvia: dá 403
+-- nesta conta (privilégio da API de gestão). O contorno era mover o arquivo
+-- de lado a cada push, o que só adiava o problema.
+--
+-- Verificado via Management API antes de renumerar: o conteúdo abaixo JÁ
+-- ESTÁ aplicado no remoto (promote_candidate_to_dp valida 'clt','mei';
+-- 0 docs foto_3x4 órfãos; 0 processos em contrato_formacao). Então reaplicar
+-- é no-op — desde que o arquivo não regrida nada, o que exigiu dois ajustes:
+--
+--   * CONSTRAINT: o bloco original devolvia 'acompanhamento_90d' ao conjunto
+--     válido, etapa que 20260724000006 removeu depois. Atualizado pra
+--     definição atual, e DROP ganhou IF EXISTS. Sem isso, um replay do zero
+--     (que roda ...009 DEPOIS de ...006) ressuscitaria a etapa.
+--
+--   * TIMEOUT: as duas funções de trigger abaixo foram reescritas sem
+--     `timeout_milliseconds := 30000`, que 20260723000001 tinha acabado de
+--     adicionar porque o padrão de 5s estourava antes da edge function
+--     terminar. Esta migration é mais nova, então venceu — e o remoto ficou
+--     sem timeout. Regressão real, ainda não disparada (ninguém moveu
+--     processo pra formação desde 24/07). Restaurado nas duas chamadas.
+--
+-- ============================================================
+--
 -- Remove a etapa 'contrato_formacao' do kanban de Contratação (DP) — pedido
 -- do usuário. 'formacao' (rótulo "Curso de Formação" no frontend) passa a
 -- ser a etapa inicial da trilha MEI sem experiência exigida.
@@ -40,15 +70,14 @@ WHERE current_stage = 'contrato_formacao';
 --    conjunto válido pra MEI (mesma constraint de 20260718000015).
 -- ============================================================
 
-ALTER TABLE employee_processes DROP CONSTRAINT employee_processes_current_stage_valid;
+ALTER TABLE employee_processes DROP CONSTRAINT IF EXISTS employee_processes_current_stage_valid;
 ALTER TABLE employee_processes
   ADD CONSTRAINT employee_processes_current_stage_valid CHECK (
     (employment_type = 'clt' AND current_stage IN (
       'contratacao', 'experiencia', 'decisao', 'efetivado', 'encerrado'
     ))
     OR (employment_type = 'mei' AND current_stage IN (
-      'formacao', 'decisao_formacao', 'contratacao',
-      'acompanhamento_90d', 'efetivado', 'encerrado'
+      'formacao', 'decisao_formacao', 'contratacao', 'efetivado', 'encerrado'
     ))
   );
 
@@ -185,6 +214,7 @@ BEGIN
   PERFORM net.http_post(
     url     := 'https://sivbyjwhmeftmtlghmnz.supabase.co/functions/v1/generate-contract-automation',
     headers := jsonb_build_object('Content-Type', 'application/json', 'x-automation-secret', v_secret),
+    timeout_milliseconds := 30000,
     body    := jsonb_build_object('process_id', NEW.id, 'intent', v_intent)
   );
 
@@ -212,6 +242,7 @@ BEGIN
     PERFORM net.http_post(
       url     := 'https://sivbyjwhmeftmtlghmnz.supabase.co/functions/v1/generate-contract-automation',
       headers := jsonb_build_object('Content-Type', 'application/json', 'x-automation-secret', v_secret),
+      timeout_milliseconds := 30000,
       body    := jsonb_build_object('process_id', NEW.process_id, 'intent', 'formacao')
     );
   END IF;
