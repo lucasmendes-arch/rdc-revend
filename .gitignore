@@ -60,6 +60,7 @@ secrets/
 # CLAUDE CODE (local settings — never commit)
 # ============================================================================
 .claude/settings.local.json
+.claude/worktrees/
 
 # ============================================================================
 # IDE & EDITOR
