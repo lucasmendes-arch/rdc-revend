@@ -1461,26 +1461,46 @@ export default function RhCandidatos() {
                 <div>
                   <p className="text-sm font-medium text-foreground mb-1.5">Respostas do formulário</p>
                   <div className="space-y-1.5 text-sm bg-surface-alt rounded-lg p-3">
-                    {detailCandidate.candidate_answers.map((a) => (
-                      <div key={a.form_fields?.field_key || a.value} className="flex items-start justify-between gap-3">
-                        <span className="text-muted-foreground shrink-0">{a.form_fields?.label || '—'}</span>
-                        {a.form_fields?.field_type === 'upload_imagens' ? (
-                          <div className="flex items-center gap-1.5 flex-wrap justify-end">
-                            {a.value.split(CHECKBOX_DELIM).map((url, i) => (
-                              <a key={url + i} href={url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
-                                Imagem {i + 1}
-                              </a>
-                            ))}
+                    {detailCandidate.candidate_answers.map((a) => {
+                      const fieldType = a.form_fields?.field_type
+                      const isUpload = fieldType === 'upload_imagem' || fieldType === 'upload_arquivo' || fieldType === 'upload_imagens'
+                      // Resposta discursiva (texto_longo, ou qualquer texto que
+                      // não caiba na linha) vira bloco empilhado: no layout de
+                      // linha o `truncate` cortava a resposta na primeira linha
+                      // com reticências, escondendo justamente o conteúdo que
+                      // interessa ler (ex: resumo_exp).
+                      const stacked = !isUpload && (fieldType === 'texto_longo' || formatAnswerValue(a).length > 48)
+
+                      if (stacked) {
+                        return (
+                          <div key={a.form_fields?.field_key || a.value}>
+                            <span className="text-muted-foreground">{a.form_fields?.label || '—'}</span>
+                            <p className="text-foreground whitespace-pre-line break-words mt-0.5">{formatAnswerValue(a)}</p>
                           </div>
-                        ) : a.form_fields?.field_type === 'upload_imagem' || a.form_fields?.field_type === 'upload_arquivo' ? (
-                          <a href={a.value} target="_blank" rel="noopener noreferrer" className="text-right text-blue-600 hover:underline truncate">
-                            Ver arquivo
-                          </a>
-                        ) : (
-                          <span className="text-foreground text-right truncate">{formatAnswerValue(a)}</span>
-                        )}
-                      </div>
-                    ))}
+                        )
+                      }
+
+                      return (
+                        <div key={a.form_fields?.field_key || a.value} className="flex items-start justify-between gap-3">
+                          <span className="text-muted-foreground shrink-0">{a.form_fields?.label || '—'}</span>
+                          {fieldType === 'upload_imagens' ? (
+                            <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                              {a.value.split(CHECKBOX_DELIM).map((url, i) => (
+                                <a key={url + i} href={url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                                  Imagem {i + 1}
+                                </a>
+                              ))}
+                            </div>
+                          ) : fieldType === 'upload_imagem' || fieldType === 'upload_arquivo' ? (
+                            <a href={a.value} target="_blank" rel="noopener noreferrer" className="text-right text-blue-600 hover:underline truncate">
+                              Ver arquivo
+                            </a>
+                          ) : (
+                            <span className="text-foreground text-right break-words">{formatAnswerValue(a)}</span>
+                          )}
+                        </div>
+                      )
+                    })}
                   </div>
                 </div>
               )}

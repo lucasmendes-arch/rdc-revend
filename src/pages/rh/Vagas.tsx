@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useEscapeToClose } from '@/hooks/useEscapeToClose'
-import { Loader, Plus, Briefcase, Pencil, Trash2, Store as StoreIcon, Link2 } from 'lucide-react'
+import { Loader, Plus, Briefcase, Pencil, Trash2, Store as StoreIcon, Link2, AlertTriangle } from 'lucide-react'
 import { toast } from 'sonner'
 import AdminLayout from '@/components/admin/AdminLayout'
 import StyledSelect from '@/components/ui/styled-select'
@@ -284,7 +284,24 @@ export default function RhVagas() {
                 <tbody>
                   {filteredJobOpenings.map((job, index) => (
                     <tr key={job.id} className={`border-b border-border/40 last:border-0 ${index % 2 === 0 ? '' : 'bg-muted/30'}`}>
-                      <td className="px-4 py-3 text-sm font-medium text-foreground">{job.role_title}</td>
+                      <td className="px-4 py-3 text-sm font-medium text-foreground">
+                        <div className="flex items-center gap-2">
+                          <span>{job.role_title}</span>
+                          {/* A coluna mostra `role_title`, que é texto livre — sem
+                              esse badge uma vaga preenchida manualmente fica
+                              idêntica a uma vinculada ao catálogo, escondendo que
+                              ela não tem descrição nem dispara as perguntas
+                              restritas a cargo no formulário público. */}
+                          {!job.job_role_id && (
+                            <span
+                              className="px-1.5 py-0.5 rounded-md text-[10px] font-semibold whitespace-nowrap bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
+                              title="Vaga preenchida manualmente, sem vínculo com o catálogo de cargos: fica sem descrição no formulário público e as perguntas restritas a um cargo (ex: Currículo) não aparecem pro candidato."
+                            >
+                              Sem cargo
+                            </span>
+                          )}
+                        </div>
+                      </td>
                       <td className="px-4 py-3 text-sm text-muted-foreground">{job.stores?.name || '—'}</td>
                       <td className="px-4 py-3 text-sm text-center text-foreground">{job.candidates?.[0]?.count ?? 0}</td>
                       <td className="px-4 py-3 text-center">
@@ -366,6 +383,15 @@ export default function RhVagas() {
                   placeholder="Preencher manualmente"
                 />
                 <p className="text-xs text-muted-foreground mt-1">Selecionar um cargo preenche os campos abaixo — dá pra ajustar depois.</p>
+                {!form.job_role_id && (
+                  <p className="text-xs text-amber-700 dark:text-amber-400 mt-1.5 flex items-start gap-1.5">
+                    <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-px" />
+                    <span>
+                      Sem cargo do catálogo, o formulário público mostra a vaga sem descrição e esconde as perguntas
+                      restritas a um cargo (ex: Currículo).
+                    </span>
+                  </p>
+                )}
               </div>
 
               <div>
