@@ -5,7 +5,7 @@ import {
   Menu, X, ExternalLink, Tag, DollarSign,
   Megaphone, UserCheck, BadgeDollarSign, ChevronRight,
   ClipboardList, Briefcase, KanbanSquare, ListChecks, IdCard, Contact,
-  Boxes, FileSignature,
+  Boxes, FileSignature, Store,
 } from 'lucide-react'
 import logo from '@/assets/logo-rei-dos-cachos.png'
 import { ThemeToggle } from '@/components/ui/ThemeToggle'
@@ -22,6 +22,7 @@ const navGroups: { label: string; items: NavItem[] }[] = [
       { label: 'Clientes', path: '/admin/clientes', icon: Users },
       { label: 'Vendedores', path: '/admin/vendedores', icon: UserCheck },
       { label: 'Financeiro', path: '/admin/financeiro', icon: DollarSign },
+      { label: 'Unidades', path: '/admin/unidades', icon: Store },
       { label: 'Tabelas de Preço', path: '/admin/tabelas-preco', icon: BadgeDollarSign },
       { label: 'Marketing', path: '/admin/marketing', icon: Megaphone },
     ],

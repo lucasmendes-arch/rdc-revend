@@ -1232,6 +1232,35 @@ Linha do tempo do processo de admissão — mistura histórico herdado do recrut
 
 ---
 
+### Dashboard Trinks (`trinks_*`, `20260728000001`)
+Dados de faturamento dos salões coletados do Trinks pela edge function `sync-trinks`
+(coleta horária). Alimentam `/admin/unidades`. Ver `docs/trinks-endpoints.md`.
+
+| Tabela | Grão / chave natural |
+|--------|----------------------|
+| `trinks_units` | 1 linha por unidade — `store_id` UNIQUE, `trinks_establishment_id` UNIQUE |
+| `trinks_sessions` | 1 linha por unidade (`store_id` PK) — cache do cookie de sessão |
+| `trinks_daily_revenue` | `(store_id, business_date)` |
+| `trinks_service_sales` | `(store_id, business_date, item_key)` |
+| `trinks_product_sales` | `(store_id, business_date, item_key)` |
+| `trinks_professional_sales` | `(store_id, business_date, professional_key)` |
+| `trinks_sync_runs` | 1 linha por execução |
+
+> `business_date` é **regime de caixa** (data de pagamento, não de atendimento) —
+> é o que o filtro do relatório do Trinks usa; ver `docs/trinks-endpoints.md`.
+> **RLS:** leitura via `is_admin()` (faturamento é dado sensível). **Nenhuma policy
+> de escrita** — só `service_role`, igual a `internal_config`.
+> `trinks_sessions` não tem policy nenhuma: guarda credencial de sessão, nem admin lê.
+> `item_key`/`professional_key` = ID do Trinks quando existe, senão o nome
+> normalizado — é o que torna o upsert idempotente (a coleta roda 24×/dia sobre
+> a mesma janela).
+> Segredo `trinks_sync_secret` em `internal_config` (header `x-trinks-secret`),
+> mesmo padrão de `contract_automation_secret`.
+> Agendamento em `20260728000002`: `trigger_trinks_sync(idx)` + 5 jobs pg_cron
+> escalonados de 3 em 3 min — **criados inativos** de propósito (ver migration).
+
+---
+
 ## Views
 
 ### `catalog_products_public`
