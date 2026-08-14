@@ -93,7 +93,11 @@ interface CandidateDraftPatch {
 // porque é o save deles que dispara a geração — sem isso o processo nasce em
 // 'formacao' e o contrato fica pendurado esperando alguém preencher no DP.
 // E-mail entra junto ({{email_profissional}} no template) mas é opcional.
-const EMPTY_FORMACAO_DATA = { cpf: '', birth_date: '', address: '', email: '' }
+// contract_start_date é pedida em vez de assumida: contrato feito com atraso
+// precisa sair datado do início real do curso, não do dia em que o sistema
+// gerou o arquivo. Fica vazia de propósito (sem default "hoje") pra forçar
+// uma escolha consciente.
+const EMPTY_FORMACAO_DATA = { cpf: '', birth_date: '', address: '', email: '', contract_start_date: '' }
 
 // A geração roda fora da transação (trigger → pg_net → edge function), então o
 // contrato não existe ainda quando o insert retorna. Sondamos a tabela pra
@@ -720,6 +724,7 @@ export default function RhCandidatos() {
         birth_date: formacaoData.birth_date,
         address: formacaoData.address,
         email: formacaoData.email || null,
+        contract_start_date: formacaoData.contract_start_date,
       })
       if (dataError) throw dataError
 
@@ -755,7 +760,8 @@ export default function RhCandidatos() {
 
   const promoteFormacaoIncomplete =
     promoteFormacaoTrack &&
-    (promoteFormacaoData.cpf.length !== 11 || !promoteFormacaoData.birth_date || !promoteFormacaoData.address.trim())
+    (promoteFormacaoData.cpf.length !== 11 || !promoteFormacaoData.birth_date ||
+     !promoteFormacaoData.address.trim() || !promoteFormacaoData.contract_start_date)
 
   // Vaga/Data início/Data fim/Responsável/Observações são editados como
   // rascunho local e só persistem quando o usuário clica em "Salvar
@@ -1668,6 +1674,19 @@ export default function RhCandidatos() {
                 </div>
                 <div>
                   <label className="block text-[11px] text-muted-foreground mb-1">
+                    Início do contrato <span className="text-red-500">*</span>
+                  </label>
+                  <DateField
+                    value={promoteFormacaoData.contract_start_date || null}
+                    onChange={(v) => setPromoteFormacaoData({ ...promoteFormacaoData, contract_start_date: v ?? '' })}
+                    placeholder="Selecionar"
+                  />
+                  <p className="text-[10px] text-muted-foreground mt-1">
+                    Vigência de 10 dias a partir desta data. É também a data de assinatura no documento — use a data real do início do curso, mesmo que já tenha passado.
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-[11px] text-muted-foreground mb-1">
                     CPF <span className="text-red-500">*</span>
                   </label>
                   <input
@@ -1731,7 +1750,7 @@ export default function RhCandidatos() {
                   formacaoData: promoteFormacaoTrack ? promoteFormacaoData : undefined,
                 })}
                 disabled={promoteToDp.isPending || promoteFormacaoIncomplete}
-                title={promoteFormacaoIncomplete ? 'Preencha CPF, data de nascimento e endereço' : undefined}
+                title={promoteFormacaoIncomplete ? 'Preencha início do contrato, CPF, data de nascimento e endereço' : undefined}
                 className="flex-1 px-4 py-2.5 rounded-lg btn-action font-medium disabled:opacity-70 transition-colors"
               >
                 {promoteToDp.isPending

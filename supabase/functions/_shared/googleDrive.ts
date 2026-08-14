@@ -134,6 +134,33 @@ export function formatDateBR(iso: string | null): string {
   return `${d}/${m}/${y}`
 }
 
+// O banco guarda CPF só com dígitos (sem máscara) e o WhatsApp em formatos
+// mistos — ora com o 55 na frente (5527996132417), ora sem (27981282900),
+// herança de cadastros de origens diferentes. No documento os dois precisam
+// sair pontuados, então a formatação acontece aqui, na hora de gerar, sem
+// mexer no que está persistido.
+export function formatCPF(cpf: string | null): string {
+  if (!cpf) return ''
+  const digits = cpf.replace(/\D/g, '')
+  if (digits.length !== 11) return cpf
+  return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`
+}
+
+// Formato pedido: (27)99999-9999. Fixo de 8 dígitos vira (27)9999-9999.
+// Qualquer coisa fora desses tamanhos volta como veio — melhor um número sem
+// máscara no contrato do que um número mutilado por uma suposição errada.
+export function formatPhoneBR(phone: string | null): string {
+  if (!phone) return ''
+  let digits = phone.replace(/\D/g, '')
+  if ((digits.length === 12 || digits.length === 13) && digits.startsWith('55')) {
+    digits = digits.slice(2)
+  }
+  if (digits.length !== 10 && digits.length !== 11) return phone
+  const ddd = digits.slice(0, 2)
+  const rest = digits.slice(2)
+  return `(${ddd})${rest.slice(0, rest.length - 4)}-${rest.slice(-4)}`
+}
+
 export function todayISO(): string {
   return new Date().toISOString().slice(0, 10)
 }

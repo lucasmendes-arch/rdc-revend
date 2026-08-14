@@ -4,7 +4,8 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import {
   getGoogleAccessToken, findOrCreateFolder, copyTemplate, replacePlaceholders, getWebViewLink,
-  decomposeDatePtBR, formatDateBR, todayISO, addDaysISO, resolveUnitFolderName, type FieldMap,
+  decomposeDatePtBR, formatDateBR, formatCPF, formatPhoneBR, todayISO, addDaysISO,
+  resolveUnitFolderName, type FieldMap,
 } from '../_shared/googleDrive.ts'
 
 declare const Deno: { env: { get(k: string): string | undefined } }
@@ -52,7 +53,9 @@ function buildFormacaoFieldMap(input: {
   termEnd: string
 }): FieldMap {
   const { store, candidateName, candidateWhatsapp, contractData, termStart, termEnd } = input
-  const { dia, mes, ano } = decomposeDatePtBR(todayISO())
+  // Assinatura na data de início da vigência, não no dia em que o arquivo foi
+  // gerado — contrato feito com atraso precisa sair datado do início do curso.
+  const { dia, mes, ano } = decomposeDatePtBR(termStart)
   return {
     // Placeholders reais confirmados baixando o .txt do doc gerado
     // (2026-07-23) — a leitura via "natural language representation" tinha
@@ -61,10 +64,10 @@ function buildFormacaoFieldMap(input: {
     '{{cnpj_salao}}': store.cnpj || '',
     '{{endereco_salao}}': store.legal_address || '',
     '{{nome_profissional}}': candidateName,
-    '{{cpf_profissional}}': (contractData.cpf as string) || '',
+    '{{cpf_profissional}}': formatCPF((contractData.cpf as string) || null),
     '{{data_nascimento_profissional}}': formatDateBR((contractData.birth_date as string) || null),
     '{{endereco_profissional}}': (contractData.address as string) || '',
-    '{{telefone_profissional}}': candidateWhatsapp,
+    '{{telefone_profissional}}': formatPhoneBR(candidateWhatsapp),
     '{{email_profissional}}': (contractData.email as string) || '',
     '{{local}}': store.name,
     '{{dia_assinatura}}': dia,
@@ -175,7 +178,9 @@ serve(async (req: Request) => {
     const docName = `${candidateName} - Contrato de Formação`
     const newDocId = await copyTemplate(accessToken, template.google_doc_id, docName, candidateFolderId)
 
-    const termStart = term_start || todayISO()
+    // Precedência: o que o usuário escolheu na tela > a data informada na
+    // contratação (contract_start_date) > hoje.
+    const termStart = term_start || (contractData.contract_start_date as string) || todayISO()
     const termEnd = term_end || addDaysISO(termStart, 10)
 
     const fieldMap = buildFormacaoFieldMap({

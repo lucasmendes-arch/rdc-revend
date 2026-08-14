@@ -7,7 +7,8 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import {
   getGoogleAccessToken, findOrCreateFolder, copyTemplate, replacePlaceholders, getWebViewLink,
-  decomposeDatePtBR, formatDateBR, todayISO, addDaysISO, resolveUnitFolderName, type FieldMap,
+  decomposeDatePtBR, formatDateBR, formatCPF, formatPhoneBR, todayISO, addDaysISO,
+  resolveUnitFolderName, type FieldMap,
 } from '../_shared/googleDrive.ts'
 import { timingSafeEqual } from '../_shared/timingSafe.ts'
 
@@ -35,7 +36,9 @@ function buildFormacaoFieldMap(input: {
   termEnd: string
 }): FieldMap {
   const { store, candidateName, candidateWhatsapp, contractData, termStart, termEnd } = input
-  const { dia, mes, ano } = decomposeDatePtBR(todayISO())
+  // Assinatura na data de início da vigência, não no dia em que o arquivo foi
+  // gerado — contrato feito com atraso precisa sair datado do início do curso.
+  const { dia, mes, ano } = decomposeDatePtBR(termStart)
   return {
     // Placeholders reais confirmados baixando o .txt do doc gerado
     // (2026-07-23) — a leitura via "natural language representation" tinha
@@ -44,10 +47,10 @@ function buildFormacaoFieldMap(input: {
     '{{cnpj_salao}}': store.cnpj || '',
     '{{endereco_salao}}': store.legal_address || '',
     '{{nome_profissional}}': candidateName,
-    '{{cpf_profissional}}': (contractData.cpf as string) || '',
+    '{{cpf_profissional}}': formatCPF((contractData.cpf as string) || null),
     '{{data_nascimento_profissional}}': formatDateBR((contractData.birth_date as string) || null),
     '{{endereco_profissional}}': (contractData.address as string) || '',
-    '{{telefone_profissional}}': candidateWhatsapp,
+    '{{telefone_profissional}}': formatPhoneBR(candidateWhatsapp),
     '{{email_profissional}}': (contractData.email as string) || '',
     '{{local}}': store.name,
     '{{dia_assinatura}}': dia,
@@ -76,7 +79,7 @@ function buildDesligamentoFieldMap(input: {
     '{{cnpj}}': store.cnpj || '',
     '{{endereco}}': store.legal_address || '',
     '{{nome_completo}}': candidateName,
-    '{{cpf}}': cpf,
+    '{{cpf}}': formatCPF(cpf),
     '{{data_inicio_curso}}': formatDateBR(cursoInicio),
     '{{data_fim_curso}}': formatDateBR(cursoFim),
     '{{local}}': store.name,
@@ -195,7 +198,9 @@ serve(async (req: Request) => {
     let docLabel: string
 
     if (intent === 'formacao') {
-      termStart = todayISO()
+      // Data informada na contratação; `hoje` só como fallback pra processos
+      // anteriores à coluna contract_start_date (20260814000001).
+      termStart = (contractData?.contract_start_date as string) || todayISO()
       termEnd = addDaysISO(termStart, 10)
       fieldMap = buildFormacaoFieldMap({
         store, candidateName, candidateWhatsapp: processo.candidates?.whatsapp ?? '',
