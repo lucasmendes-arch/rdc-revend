@@ -165,9 +165,27 @@ export function todayISO(): string {
   return new Date().toISOString().slice(0, 10)
 }
 
-export function addDaysISO(iso: string, days: number): string {
+// Duração do curso de formação, em dias ÚTEIS.
+export const FORMACAO_COURSE_BUSINESS_DAYS = 10
+
+// O curso conta só dias de semana (sábado e domingo não valem), e o próprio
+// dia de início é o primeiro dia útil: começando na segunda 10/08, o décimo
+// dia útil cai na sexta 21/08 — não em 20/08, que era o resultado da contagem
+// corrida usada antes.
+//
+// Feriados não entram na conta: o sistema não tem calendário de feriados, e
+// chutar um (nacional? estadual? municipal, com 5 unidades em cidades
+// diferentes?) erraria mais do que ignorar. Se precisar, ajuste a data final
+// pelo caminho manual em /admin/dp/contratos.
+export function addBusinessDaysISO(iso: string, businessDays: number): string {
   const [y, m, d] = iso.split('-').map(Number)
   const date = new Date(Date.UTC(y, m - 1, d))
-  date.setUTCDate(date.getUTCDate() + days)
+  let counted = 0
+  for (;;) {
+    const weekday = date.getUTCDay()
+    if (weekday !== 0 && weekday !== 6) counted++
+    if (counted >= businessDays) break
+    date.setUTCDate(date.getUTCDate() + 1)
+  }
   return date.toISOString().slice(0, 10)
 }

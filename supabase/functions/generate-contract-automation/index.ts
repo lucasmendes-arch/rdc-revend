@@ -7,8 +7,8 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import {
   getGoogleAccessToken, findOrCreateFolder, copyTemplate, replacePlaceholders, getWebViewLink,
-  decomposeDatePtBR, formatDateBR, formatCPF, formatPhoneBR, todayISO, addDaysISO,
-  resolveUnitFolderName, type FieldMap,
+  decomposeDatePtBR, formatDateBR, formatCPF, formatPhoneBR, todayISO,
+  addBusinessDaysISO, FORMACAO_COURSE_BUSINESS_DAYS, resolveUnitFolderName, type FieldMap,
 } from '../_shared/googleDrive.ts'
 import { timingSafeEqual } from '../_shared/timingSafe.ts'
 
@@ -201,7 +201,7 @@ serve(async (req: Request) => {
       // Data informada na contratação; `hoje` só como fallback pra processos
       // anteriores à coluna contract_start_date (20260814000001).
       termStart = (contractData?.contract_start_date as string) || todayISO()
-      termEnd = addDaysISO(termStart, 10)
+      termEnd = addBusinessDaysISO(termStart, FORMACAO_COURSE_BUSINESS_DAYS)
       fieldMap = buildFormacaoFieldMap({
         store, candidateName, candidateWhatsapp: processo.candidates?.whatsapp ?? '',
         contractData: contractData!, termStart, termEnd,

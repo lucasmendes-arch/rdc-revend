@@ -4,8 +4,8 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import {
   getGoogleAccessToken, findOrCreateFolder, copyTemplate, replacePlaceholders, getWebViewLink,
-  decomposeDatePtBR, formatDateBR, formatCPF, formatPhoneBR, todayISO, addDaysISO,
-  resolveUnitFolderName, type FieldMap,
+  decomposeDatePtBR, formatDateBR, formatCPF, formatPhoneBR, todayISO,
+  addBusinessDaysISO, FORMACAO_COURSE_BUSINESS_DAYS, resolveUnitFolderName, type FieldMap,
 } from '../_shared/googleDrive.ts'
 
 declare const Deno: { env: { get(k: string): string | undefined } }
@@ -181,7 +181,7 @@ serve(async (req: Request) => {
     // Precedência: o que o usuário escolheu na tela > a data informada na
     // contratação (contract_start_date) > hoje.
     const termStart = term_start || (contractData.contract_start_date as string) || todayISO()
-    const termEnd = term_end || addDaysISO(termStart, 10)
+    const termEnd = term_end || addBusinessDaysISO(termStart, FORMACAO_COURSE_BUSINESS_DAYS)
 
     const fieldMap = buildFormacaoFieldMap({
       store, candidateName, candidateWhatsapp: processo.candidates?.whatsapp ?? '', contractData, termStart, termEnd,

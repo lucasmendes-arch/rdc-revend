@@ -24,7 +24,10 @@ import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover
 import { DateField } from '@/components/ui/date-field'
 import { QuickDatePopover } from '@/components/ui/quick-date-popover'
 import { Switch } from '@/components/ui/switch'
-import { EMPLOYMENT_TYPE_LABELS, EMPLOYMENT_TYPE_OPTIONS, type EmploymentType } from '@/lib/dpConstants'
+import {
+  EMPLOYMENT_TYPE_LABELS, EMPLOYMENT_TYPE_OPTIONS, addBusinessDaysISO,
+  FORMACAO_COURSE_BUSINESS_DAYS, type EmploymentType,
+} from '@/lib/dpConstants'
 import { useAdminTheme } from '@/contexts/AdminThemeContext'
 import { STAGE_COLUMNS, STAGE_SELECT_OPTIONS, getStageColors, stageLabel, type Stage } from '@/lib/rhStages'
 import { CHECKBOX_DELIM } from '@/components/rh/FormFieldRenderer'
@@ -1682,7 +1685,20 @@ export default function RhCandidatos() {
                     placeholder="Selecionar"
                   />
                   <p className="text-[10px] text-muted-foreground mt-1">
-                    Vigência de 10 dias a partir desta data. É também a data de assinatura no documento — use a data real do início do curso, mesmo que já tenha passado.
+                    {promoteFormacaoData.contract_start_date ? (
+                      <>
+                        Fim da vigência:{' '}
+                        <span className="font-medium text-foreground">
+                          {new Date(addBusinessDaysISO(promoteFormacaoData.contract_start_date, FORMACAO_COURSE_BUSINESS_DAYS))
+                            .toLocaleDateString('pt-BR', { timeZone: 'UTC' })}
+                        </span>{' '}
+                        ({FORMACAO_COURSE_BUSINESS_DAYS} dias úteis, contando este). É também a data de assinatura no documento.
+                      </>
+                    ) : (
+                      <>
+                        Vigência de {FORMACAO_COURSE_BUSINESS_DAYS} dias úteis (seg a sex) a partir desta data, que também vira a data de assinatura — use a data real do início do curso, mesmo que já tenha passado.
+                      </>
+                    )}
                   </p>
                 </div>
                 <div>
