@@ -1,8 +1,9 @@
 import { useMemo, useState, type SyntheticEvent } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
+import { Link } from 'react-router-dom'
 import {
-  Loader, Store as StoreIcon, Eye, EyeOff, AlertTriangle, Paperclip, Tag, SlidersHorizontal, Calendar,
+  Loader, Store as StoreIcon, Eye, EyeOff, AlertTriangle, Paperclip, Tag, SlidersHorizontal, Calendar, Zap,
 } from 'lucide-react'
 import {
   DndContext, DragOverlay, PointerSensor, KeyboardSensor, useSensor, useSensors,
@@ -460,6 +461,16 @@ export default function DpContratacao() {
             <p className="text-sm text-muted-foreground mt-1">Admissão pós-contratação, por tipo de vínculo</p>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
+            {/* Mesmo padrão do kanban de Candidatos: as automações do módulo
+                são acessadas pela tela que elas afetam, não pela sidebar. */}
+            <Link
+              to="/admin/dp/automacoes"
+              className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border text-sm font-medium hover:bg-surface-alt transition-colors"
+              title="Automações da contratação"
+            >
+              <Zap className="w-4 h-4" />
+              <span className="hidden sm:inline">Automações</span>
+            </Link>
             <Tabs value={employmentType} onValueChange={(v) => setEmploymentType(v as ViewFilter)}>
               <TabsList>
                 {VIEW_OPTIONS.map((tv) => (
