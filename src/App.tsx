@@ -45,6 +45,9 @@ const AdminTabelasPreco = lazy(() => import("./pages/comercial-atacado/admin/Tab
 // módulo financeiro (lazy — inclui recharts)
 const AdminFinanceiro = lazy(() => import("./pages/financeiro/Financeiro"));
 
+// dashboard das unidades / dados do Trinks (lazy — inclui recharts)
+const AdminUnidades = lazy(() => import("./pages/unidades/Unidades"));
+
 // módulo marketing (lazy)
 const AdminMarketing = lazy(() => import("./pages/marketing/Marketing"));
 
@@ -131,6 +134,7 @@ const App = () => (
                     <Route path="/admin/usuarios" element={<AdminUsuarios />} />
                     <Route path="/admin/categorias" element={<AdminCategorias />} />
                     <Route path="/admin/financeiro" element={<AdminFinanceiro />} />
+                    <Route path="/admin/unidades" element={<AdminUnidades />} />
                     <Route path="/admin/marketing" element={<AdminMarketing />} />
                     <Route path="/admin/vendedores" element={<AdminVendedores />} />
                     <Route path="/admin/tabelas-preco" element={<AdminTabelasPreco />} />
