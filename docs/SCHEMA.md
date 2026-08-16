@@ -853,25 +853,62 @@ Motor de automações genérico (Fase 3) — substitui as 8 regras do ClickUp (W
 | id | uuid | NO | `gen_random_uuid()` | — |
 | name | text | NO | — | — |
 | description | text | YES | NULL | — |
+| entity | text | NO | `'candidate'` | — |
 | trigger_type | text | NO | — | — |
 | trigger_stage | text | YES | NULL | — |
 | trigger_conditions | jsonb | NO | `'[]'` | — |
+| trigger_config | jsonb | NO | `'{}'` | — |
 | is_active | boolean | NO | `true` | — |
 | requires_confirmation | boolean | NO | `false` | — |
 | sort_order | int | NO | `0` | — |
 | created_by | uuid | YES | NULL | auth.users.id (ON DELETE SET NULL) |
 | created_at / updated_at | timestamptz | NO | `now()` | — |
 
-> `trigger_type` válidos: `'candidate_created'`, `'stage_changed'`, `'due_date_reached'`. `trigger_stage` (mesmos 11 valores de `candidates.stage`) é obrigatório só quando `trigger_type='stage_changed'` (CHECK composto `automations_trigger_stage_required`).
-> `trigger_conditions`: array AND-combinado, ex. `[{"field":"job_opening.role_title","op":"eq","value":"Vendedor"}]`. Whitelist fixa de `field` (`evaluate_automation_conditions`): `candidate.age`, `candidate.stage`, `job_opening.role_title`, `store.name`, `store.slug`. `op`: `eq`, `neq`, `gt`, `gte`, `lt`, `lte`, `in`, `contains`. Campo fora da whitelist falha fechado (condição nunca casa).
+> `entity` (`20260814000002`) válidos: `'candidate'` (funil de RH) e `'process'` (kanban de Contratação do DP). Default `'candidate'` — as regras criadas antes da coluna continuam válidas sem migração de dados. Cada tela lista só as regras da sua entidade.
+> `trigger_type` válidos **dependem de `entity`** (CHECK composto `automations_trigger_type_check`): `candidate` → `'candidate_created'`, `'stage_changed'`, `'due_date_reached'`; `process` → `'process_stage_changed'`, `'process_date_reached'`, `'process_stage_timeout'`. Declarar um gatilho da outra entidade é rejeitado no banco em vez de virar regra que nunca dispara.
+> `trigger_stage` também é validado por entidade: as 11 etapas de `candidates.stage` pro candidato, as 7 de `employee_processes.current_stage` pro processo. Obrigatório em `stage_changed`/`process_stage_changed`, **opcional** em `process_stage_timeout` (NULL = parado em qualquer etapa), proibido nos demais (`automations_trigger_stage_required`, corrigido em `20260814000004` — a versão original de `...002` proibia etapa no timeout, que precisa dela).
+> `trigger_config` (`20260814000002`): parâmetros dos gatilhos de DP. `process_date_reached` → `{date_source: 'contract_term_end'|'experience_end'|'due_date', offset_days: int}` (negativo antecipa); `process_stage_timeout` → `{days: int}`. Vazio nos demais.
+> `trigger_conditions`: array AND-combinado, ex. `[{"field":"job_opening.role_title","op":"eq","value":"Vendedor"}]`. Whitelist fixa de `field` (`evaluate_automation_conditions`): `candidate.age`, `candidate.stage`, `job_opening.role_title`, `store.name`, `store.slug`, e (`20260814000005`) `process.employment_type`, `process.stage`, `process.role_title`. `op`: `eq`, `neq`, `gt`, `gte`, `lt`, `lte`, `in`, `contains`. Campo fora da whitelist falha fechado (condição nunca casa) — por isso estender a whitelist é obrigatório ao criar campo novo, senão a regra não dispara e não dá erro.
 
 **`automation_actions`**: `id` uuid PK, `automation_id` uuid NOT NULL → automations.id (ON DELETE CASCADE), `sort_order` int, `action_type` text NOT NULL, `action_config` jsonb NOT NULL DEFAULT `'{}'`, `created_at`.
 
 > `action_type` válidos e shape de `action_config`: `change_stage` `{stage}`; `add_tag`/`remove_tag` `{tag_id}`; `change_due_date` `{mode:"relative_days", days}` ou `{mode:"clear"}`; `change_assignee` `{assignee_id}` ou `{clear:true}`; `send_whatsapp` `{template_id, whatsapp_instance_id?}`; `add_comment` `{text}` (placeholders `{{...}}` renderizados por `render_automation_template`).
+> Ações exclusivas de `entity='process'` (`20260814000002`): `change_process_stage` `{stage}` e `add_timeline_note` `{text}` (grava em `employee_timeline`, `source='dp'`, `author_id` NULL). `send_whatsapp` é compartilhada — a fila continua indexada por `candidate_id`, que todo processo tem.
 > RLS: `has_rh_access()` pra tudo (`authenticated`), ambas as tabelas.
 
 > **`requires_confirmation`** (Fase 4, `20260727000001`): quando `true`, a automação **só roda** se a transação tiver sido marcada por `move_candidate_stage_confirmed(candidate_id, new_stage)` — que seta o GUC transaction-local `rh_automation.confirmed_candidate_id`. Qualquer outro caminho que mude a etapa (ação `change_stage` de outra automação, UPDATE manual, script) faz `dispatch_candidate_automations` **pular** a automação e gravar `candidate_stage_history` com `event_type='whatsapp_blocked'`. O GUC guarda o **ID do candidato**, não um booleano, porque uma ação `change_stage` pode mover um segundo candidato na mesma transação — booleano faria a confirmação de um valer pro outro.
 > Fluxo no frontend (`/admin/rh/candidatos`): `requestStageChange()` chama `preview_candidate_stage_automations(candidate_id, new_stage)` (só lê — não enfileira, não muda etapa), mostra a mensagem renderizada num popup e só então chama `move_candidate_stage_confirmed`. Só faz sentido com `trigger_type='stage_changed'`: os outros gatilhos rodam sem ninguém na tela.
+
+---
+
+### Motor de automações do DP (`20260814000003`)
+Regras de `entity='process'` são despachadas por funções **irmãs** das do RH, não pelas mesmas: `dispatch_process_automations(process_id, trigger_type, previous_stage, new_stage)` e `execute_process_automation_action(...)`. O que é genérico (`render_automation_template`, `evaluate_automation_conditions`, a fila de WhatsApp e seu cron) é reaproveitado sem cópia — o motor do RH roda em produção e não foi alterado.
+
+Contexto montado pro processo (define os placeholders e os campos de condição disponíveis): `process` (id, stage, status, employment_type, role_title, started_at, due_date), `candidate` (id, name, age, stage, whatsapp), `job_opening`, `store`. Os nomes de campo de `candidate`/`store` são idênticos aos do contexto de RH, então os mesmos placeholders valem nas duas entidades.
+
+Os três gatilhos:
+1. **`process_stage_changed`** — trigger `employee_processes_automation` (AFTER UPDATE), dispara só quando `current_stage` muda de fato. Recursão limitada por `pg_trigger_depth() <= 10`, igual ao RH; estourado o limite, grava aviso na timeline em vez de seguir.
+2. **`process_date_reached`** — `dispatch_process_date_automations()`, cron `dp-process-date-automations` (15 min). A data observada sai de `resolve_process_automation_date(process_id, date_source)`: `contract_term_end` (último `employee_contracts.term_end` de tipo `formacao`), `experience_end` (`activated_at` + 45d CLT sem renovação / 90d nos demais) ou `due_date`. Processo `status='encerrado'` é ignorado.
+3. **`process_stage_timeout`** — `dispatch_process_timeout_automations()`, cron `dp-process-timeout-automations` (15 min), medindo `stage_started_at + days`.
+
+Erros de ação viram linha em `employee_timeline` (`source='dp'`) em vez de derrubar a transição — a timeline já é exibida no card, então a falha aparece sem tela de log nova.
+
+---
+
+### `automation_process_runs`
+Idempotência dos dois gatilhos periódicos de DP (`20260814000002`). O RH resolve o mesmo problema com `candidates.due_date_reached_processed_at`, o que só funciona porque lá há um único gatilho por data; no DP várias regras podem observar datas diferentes do mesmo processo, então a marcação é por **(regra, processo, data de referência)**.
+
+| Coluna | Tipo | Nullable | Default | FK |
+|--------|------|----------|---------|-----|
+| id | uuid | NO | `gen_random_uuid()` | — |
+| automation_id | uuid | NO | — | automations.id (ON DELETE CASCADE) |
+| process_id | uuid | NO | — | employee_processes.id (ON DELETE CASCADE) |
+| fired_for | date | NO | — | — |
+| fired_at | timestamptz | NO | `now()` | — |
+
+> UNIQUE `(automation_id, process_id, fired_for)`. A linha é gravada **antes** do disparo (mesmo padrão de `send_pending_partner_order_webhooks`), com `FOR UPDATE SKIP LOCKED` no scan evitando corrida entre execuções.
+> No timeout, `fired_for` é o dia em que o prazo venceu (`stage_started_at + days`) — voltar o processo pra etapa reinicia `stage_started_at` e gera um `fired_for` novo, então a regra volta a valer. Sem isso, reentrar numa etapa nunca mais dispararia.
+> RLS: `SELECT` via `has_rh_access()` (auditoria); escrita só pelas funções `SECURITY DEFINER` do motor.
 
 ---
 
@@ -978,6 +1015,7 @@ Fila da ação `send_whatsapp` — desacopla o envio (rede externa, pode falhar/
 | automation_action_id | uuid | YES | NULL | automation_actions.id (ON DELETE SET NULL) |
 | template_id | uuid | YES | NULL | whatsapp_templates.id (ON DELETE SET NULL) |
 | whatsapp_instance_id | uuid | YES | NULL | whatsapp_instances.id (ON DELETE SET NULL) |
+| process_id | uuid | YES | NULL | employee_processes.id (ON DELETE SET NULL) |
 | phone_number | text | NO | — | — |
 | rendered_message | text | NO | — | — |
 | idempotency_key | text | NO | — | — (UNIQUE) |
@@ -1084,10 +1122,14 @@ Módulo Departamento Pessoal (DP) — assume o candidato a partir do momento em 
 | training_completed | boolean | NO | `false` | — |
 | drive_folder_url | text | YES | NULL | — |
 | experience_renewed_at | timestamptz | YES | NULL | — |
+| stage_started_at | timestamptz | NO | `now()` | — |
+| due_date | date | YES | NULL | — |
 | created_at | timestamptz | NO | `now()` | — |
 | updated_at | timestamptz | NO | `now()` | — |
 
 > `drive_folder_url` (`20260724000007`): link da pasta do Drive do colaborador, editado na aba Documentos do card (`ProcessoDetailModal.tsx`) — referência interna, não valida formato.
+> `stage_started_at` (`20260814000002`): quando o processo entrou na etapa atual, mantido pelo trigger `employee_processes_stage_started_at` (BEFORE UPDATE, só quando `current_stage` muda de fato). Base do gatilho `process_stage_timeout` das automações de DP; backfill inicial usou `started_at`. Espelha `candidates.stage_started_at`.
+> `due_date` (`20260814000002`): prazo manual do processo, editável no card. **Não confundir** com `candidates.due_date`, que é o prazo do funil de recrutamento — são datas independentes. É uma das três fontes do gatilho `process_date_reached` (junto de fim do curso e fim da experiência).
 > `experience_renewed_at` (`20260724000008`): carimbo da renovação do contrato de experiência CLT (45d → +45d, teto de 90d desde `activated_at`), setado pelo botão "Renovar experiência" no card. Não se aplica a MEI (janela única de 90d, sem renovação formal). Ver `getExperienceInfo`/`isExperienceTagActive` em `src/lib/dpConstants.ts` — calcula a tag exibida ("Exp. 45d 1/2" → "Exp. 45d 2/2" → "Ativo" pra CLT; "Exp. 90d" → "Ativo" pra MEI) sem gravar a data de fim, só o carimbo de renovação.
 
 > `employment_type` válidos: `'clt'`, `'mei'` (`20260718000015` — antes existia `mei_sem_experiencia`/`mei_com_experiencia`, removido: não há diferença de tipo de contratação entre os dois, experiência é característica do **cargo**, não uma escolha manual na promoção).

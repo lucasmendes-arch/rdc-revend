@@ -35,6 +35,20 @@ function formatCalendarDateBR(iso: string | null) {
   return new Date(iso).toLocaleDateString('pt-BR', { timeZone: 'UTC' })
 }
 
+// Há quanto tempo o processo está na etapa atual. stage_started_at é um
+// timestamp real (não data pura), então aqui o fuso local é o certo — o que
+// importa é a duração, não o dia gravado.
+function daysInStage(stageStartedAt: string): number {
+  const ms = Date.now() - new Date(stageStartedAt).getTime()
+  return Math.max(0, Math.floor(ms / (24 * 60 * 60 * 1000)))
+}
+
+function stageDurationLabel(days: number): string {
+  if (days === 0) return 'entrou hoje'
+  if (days === 1) return 'há 1 dia'
+  return `há ${days} dias`
+}
+
 // Sinaliza campo preenchido na aba Documentos (Dados pessoais + Pasta do
 // Drive) — só um indicador visual de "ok, já tem algo aqui", não valida
 // formato/conteúdo.
@@ -367,6 +381,24 @@ export default function ProcessoDetailModal({ processo, onClose, estagio }: Proc
     onError: (err) => toast.error(`Erro ao salvar: ${err instanceof Error ? err.message : 'desconhecido'}`),
   })
 
+  // Prazo do processo — distinto do prazo do candidato (candidates.due_date,
+  // que é do funil de recrutamento). É uma das fontes de data do gatilho
+  // process_date_reached das automações de Contratação.
+  const [dueDateDraft, setDueDateDraft] = useState<string | null>(processo.due_date)
+  const updateDueDate = useMutation({
+    mutationFn: async (value: string | null) => {
+      const { error } = await supabase.from('employee_processes').update({ due_date: value }).eq('id', processo.id)
+      if (error) throw error
+      return value
+    },
+    onSuccess: (value) => {
+      setDueDateDraft(value)
+      queryClient.invalidateQueries({ queryKey: ['dp-processos'] })
+      queryClient.invalidateQueries({ queryKey: ['dp-parceiros-ativos'] })
+    },
+    onError: (err) => toast.error(`Erro ao salvar prazo: ${err instanceof Error ? err.message : 'desconhecido'}`),
+  })
+
   // Cadastro retroativo (register_existing_employee) nunca pediu idade —
   // fica editável aqui pra quem entrou assim (ou pra corrigir qualquer
   // colaborador depois). Mesmo padrão de aplicar no blur, sem botão próprio.
@@ -577,7 +609,9 @@ export default function ProcessoDetailModal({ processo, onClose, estagio }: Proc
                       options={estagio.columns.map((col) => ({ value: col.stage, label: col.label }))}
                       searchable={false}
                     />
-                    <p className="text-[11px] text-muted-foreground mt-1">Alternativa ao arrastar no kanban — útil no mobile.</p>
+                    <p className="text-[11px] text-muted-foreground mt-1">
+                      Alternativa ao arrastar no kanban — útil no mobile. Nesta etapa {stageDurationLabel(daysInStage(processo.stage_started_at))}.
+                    </p>
                   </>
                 ) : (
                   <div className="flex items-center justify-between gap-3 flex-wrap">
@@ -604,6 +638,23 @@ export default function ProcessoDetailModal({ processo, onClose, estagio }: Proc
                     </div>
                   </div>
                 )}
+              </div>
+
+              {/* Prazo do processo — separado do prazo do candidato (que é do
+                  funil de RH). Serve de data de referência pras automações de
+                  Contratação. */}
+              <div>
+                <label className="block text-[11px] font-semibold text-muted-foreground uppercase mb-1.5">Prazo do processo</label>
+                <div className="max-w-[220px]">
+                  <DateField
+                    value={dueDateDraft}
+                    onChange={(v) => updateDueDate.mutate(v ?? null)}
+                    placeholder="Sem prazo"
+                  />
+                </div>
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  Opcional. Uma automação pode usar esta data como gatilho — ver Automações da Contratação.
+                </p>
               </div>
 
               {/* Perfil trazido do candidato — mesmos campos do modal de
