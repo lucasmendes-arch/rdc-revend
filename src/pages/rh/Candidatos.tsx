@@ -1013,7 +1013,11 @@ export default function RhCandidatos() {
             <h1 className="text-xl sm:text-2xl font-bold text-foreground">Candidatos</h1>
             <p className="text-sm text-muted-foreground mt-1">Kanban do processo seletivo por unidade</p>
           </div>
-          <div className="flex items-center gap-2 flex-wrap">
+          {/* w-full joga a barra de ações pra uma linha própria, logo acima das
+              abas de unidade — mesma altura em que ela aparece na tela de
+              Contratação, onde o número de botões já a fazia quebrar. Sem isto
+              a posição mudava conforme a largura da tela. */}
+          <div className="w-full flex items-center gap-2 flex-wrap">
             <Link
               to="/admin/rh/automacoes"
               className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border text-sm font-medium hover:bg-surface-alt transition-colors"
