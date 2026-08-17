@@ -810,6 +810,7 @@ Candidato a uma vaga (`job_openings`). Um candidato pertence a exatamente uma va
 > `stage_started_at`: quando o candidato entrou na etapa **atual** — mantido sozinho pelo trigger `trg_candidates_set_updated_at` toda vez que `stage` muda (sem UPDATE manual). Não tem mais relação com prazo/atraso (ver nota abaixo) — hoje é só rastro informativo.
 > `start_date`/`due_date` (`20260720000002`, substituiu `stage_sla_days` — a config de dias por etapa não refletia a realidade do processo seletivo): datas livres por candidato, "início" e "fim", editáveis manualmente no card (`/admin/rh/candidatos`). Card fica com badge "Atrasado" quando `now() > due_date`. `due_date` já existia antes (Fase 3, motor de automações) e continua sendo o campo usado por `change_due_date`/`due_date_reached`/`due_date_changed` — `start_date` é só informativo, sem automação atrelada.
 > `assignee_id`/`due_date_reached_processed_at` (Fase 3, motor de automações): responsável livre, editável manualmente no Kanban ou por ação de automação (`change_assignee`). `due_date_reached_processed_at` é controle interno do cron `dispatch_due_date_reached_automations` (evita disparo duplicado do trigger `due_date_reached`) — resetado pra `NULL` automaticamente (mesmo trigger `trg_candidates_set_updated_at`) sempre que `due_date` muda de valor, permitindo um novo prazo disparar de novo no futuro.
+> **Fim de vida do card** (`20260817000001`/`20260817000003`): candidato em `concluido_arquivado` há mais de 45 dias é **apagado fisicamente** pelo cron diário `purge-archived-candidates` (função `purge_archived_candidates`). Ciclo completo, todo automático: `descartado` → (automação de prazo, d+1) → `concluido_arquivado` → (45 dias) → linha removida. Quem tem processo no DP é pulado — `employee_processes.candidate_id` é `ON DELETE RESTRICT` e o vínculo com o colaborador é motivo de retenção. Consequência prática pro frontend: **não existe candidato antigo arquivado** — qualquer tela que dependa de histórico de candidatura precisa guardar o dado em outro lugar.
 > RLS: `has_rh_access()` pra tudo (`authenticated`). **Sem** policy de INSERT/UPDATE/DELETE pra `anon` — candidatura pública entra via RPC `submit_candidate_application` (`SECURITY DEFINER`, bypassa RLS por design, ver nota de segurança na RPC).
 
 ---
@@ -1100,6 +1101,22 @@ Resposta de um candidato a um campo dinâmico de `form_fields` (não-sistema, n�
 > **`ON DELETE CASCADE`** em `field_id` (decisão deliberada, não é o padrão RESTRICT do resto do schema): o construtor permite apagar qualquer campo não-sistema sem exceção — apagar a pergunta descarta as respostas históricas dela junto. Aceitável por ser dado de formulário, não financeiro/estoque.
 > Só escrito pela RPC `submit_candidate_application` (`SECURITY DEFINER`) — **sem policy de INSERT pra ninguém**, nem `authenticated`, pra garantir que uma resposta só nasce atomicamente junto com o candidato dono dela (uma policy de INSERT direta pra `anon` não teria como impedir escrever respostas em candidatos alheios).
 > RLS: só `SELECT` via `has_rh_access()`.
+
+---
+
+### `candidate_purge_runs`
+Uma linha por execução de `purge_archived_candidates()` (`20260817000001`). Existe só pra dar rastro do expurgo automático — "sumiu candidato?" tem resposta sem precisar de log externo.
+
+| Coluna | Tipo | Nullable | Default | FK |
+|--------|------|----------|---------|-----|
+| id | uuid | NO | `gen_random_uuid()` | — |
+| ran_at | timestamptz | NO | `now()` | — |
+| deleted_count | integer | NO | — | — |
+| cutoff_days | integer | NO | — | — |
+
+> Guarda **contagem, não identidade**: nome, telefone e currículo do candidato apagado não são copiados pra cá de propósito — um log com os dados do expurgado anularia o expurgo.
+> `cutoff_days` fica gravado por execução porque a janela é parâmetro da função (`p_days`, padrão 45): se ela mudar, o histórico continua explicando cada rodada.
+> RLS: `SELECT` via `has_rh_access()`. A escrita é feita pela função `SECURITY DEFINER`, mesmo padrão de `automation_process_runs`.
 
 ---
 
@@ -1927,6 +1944,20 @@ dispatch_due_date_reached_automations() → int
 ```
 Scan periódico (`cron.schedule('rh-due-date-automations', '*/15 * * * *', ...)`): busca `candidates` com `due_date <= CURRENT_DATE` e `due_date_reached_processed_at IS NULL`, marca processado **antes** de disparar e usa `FOR UPDATE SKIP LOCKED` (mesmo padrão de idempotência de `send_pending_partner_order_webhooks`, evita disparo duplicado em execução concorrente do cron). Retorna quantos candidatos processou.
 
+### `purge_archived_candidates`
+```
+purge_archived_candidates(p_days integer DEFAULT 45) → integer
+```
+Expurgo de fim de vida do funil de RH (`20260817000001`, etapa corrigida em `20260817000003`): apaga fisicamente os `candidates` em `stage='concluido_arquivado'` com `stage_started_at` mais velho que `p_days` dias, e grava a contagem em `candidate_purge_runs`. Retorna quantos apagou. Cron `purge-archived-candidates`, diário às 03:30 UTC (00:30 BRT).
+
+A régua é `stage_started_at`, o mesmo carimbo que o kanban usa pra tempo em etapa — desarquivar e arquivar de novo reinicia os 45 dias, que é o comportamento desejado.
+
+Pula (`NOT EXISTS`) quem tem linha em `employee_processes`: a FK é `ON DELETE RESTRICT`, então sem essa guarda um único candidato promovido derrubaria a execução inteira com erro de FK.
+
+O DELETE cascateia em `candidate_stage_history`, `candidate_answers`, `candidate_tags` e `automation_whatsapp_queue`. **Não** cascateia em `whatsapp_messages` (`ON DELETE SET NULL` por design — a conversa recebida é indexada por telefone e não pertence ao card) nem nos arquivos do R2 (`photo_url`/`resume_url` ficam órfãos no bucket; o banco não tem credencial pra apagá-los).
+
+`SECURITY DEFINER`, `search_path=public`. **Sem grant pra ninguém** além do dono (`postgres`, que é quem o cron usa) — `REVOKE` explícito de `PUBLIC`, `service_role`, `anon` e `authenticated` (`20260817000002`): apagar candidato em lote não é ação de tela nem de edge function. Note que `REVOKE ... FROM PUBLIC` sozinho **não** basta neste projeto — default privileges dão `EXECUTE` pro `service_role` em toda função nova.
+
 ### `claim_automation_whatsapp_queue_items`
 ```
 claim_automation_whatsapp_queue_items(p_batch_size int DEFAULT 20) → SETOF automation_whatsapp_queue
@@ -2027,3 +2058,4 @@ Acessível por: `authenticated`.
 | `stores` = `pickup_units` | São tabelas diferentes — `stores` (módulo de estoque) não tem FK física com `pickup_units` (checkout), apenas mesmos `slug` |
 | `vagas`/`candidatos`/`formulario_campos`/`candidato_respostas` (nomes em português do briefing original) | `job_openings`/`candidates`/`form_fields`/`candidate_answers` — módulo de RH segue a mesma convenção: tabelas/colunas em inglês, só os *valores* de status/tipo (`etapa`, `field_type`) ficam em português |
 | `unidade_id` (RH) | Não existe — vaga usa `store_id`, RH reaproveita a tabela `stores` já existente (não criou tabela `unidades` própria) |
+| `stage = 'arquivado'` (candidates) | `stage = 'concluido_arquivado'` — a UI e as automações chamam de "Arquivado", mas o valor no CHECK é `concluido_arquivado`. Filtro com `'arquivado'` não dá erro: casa com zero linha e falha em silêncio |
