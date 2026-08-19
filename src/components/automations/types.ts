@@ -12,7 +12,10 @@ export type AutomationEntity = 'candidate' | 'process'
 
 export type ConditionOp = 'eq' | 'neq' | 'gt' | 'gte' | 'lt' | 'lte' | 'in' | 'contains'
 
-export interface Condition { field: string; op: ConditionOp; value: string }
+// value é array quando op = 'in': o motor faz jsonb_array_elements_text(value)
+// e uma string com vírgulas derruba a avaliação ("cannot extract elements from
+// a scalar"), levando junto a transação que disparou o gatilho.
+export interface Condition { field: string; op: ConditionOp; value: string | string[] }
 
 export interface Automation {
   id: string

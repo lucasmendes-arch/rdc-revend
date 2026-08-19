@@ -16,6 +16,7 @@ import { supabase } from '@/lib/supabase'
 import { useEscapeToClose } from '@/hooks/useEscapeToClose'
 import StyledSelect from '@/components/ui/styled-select'
 import ColorSelect from '@/components/rh/ColorSelect'
+import ConditionValueInput from './ConditionValueInput'
 import {
   CONDITION_OP_LABELS,
   type Automation, type AutomationAction, type AutomationEntityConfig, type AutomationVariable,
@@ -427,7 +428,22 @@ function AutomationEditorModal({
   }
   function updateCondition(i: number, patch: Partial<Condition>) {
     const next = form.trigger_conditions.slice()
-    next[i] = { ...next[i], ...patch }
+    const merged = { ...next[i], ...patch }
+
+    // Trocar o operador muda a FORMA do valor: "está em" guarda array (é o que
+    // jsonb_array_elements_text espera no motor), o resto guarda string.
+    if (patch.op) {
+      merged.value = patch.op === 'in'
+        ? (Array.isArray(merged.value) ? merged.value : merged.value ? [merged.value] : [])
+        : (Array.isArray(merged.value) ? merged.value[0] ?? '' : merged.value)
+    }
+    // Trocar o campo invalida o valor anterior — etapa de candidato não é
+    // valor de cargo, e um valor herdado só geraria regra que nunca casa.
+    if (patch.field && patch.field !== next[i].field) {
+      merged.value = merged.op === 'in' ? [] : ''
+    }
+
+    next[i] = merged
     setForm({ ...form, trigger_conditions: next })
   }
   function removeCondition(i: number) {
@@ -546,7 +562,7 @@ function AutomationEditorModal({
             </div>
             <div className="space-y-2">
               {form.trigger_conditions.map((c, i) => (
-                <div key={i} className="flex gap-1.5 items-center">
+                <div key={i} className="flex flex-wrap gap-1.5 items-center">
                   <StyledSelect
                     value={c.field}
                     onChange={(v) => updateCondition(i, { field: v })}
@@ -561,7 +577,12 @@ function AutomationEditorModal({
                     className="flex-1"
                     searchable={false}
                   />
-                  <input type="text" value={c.value} onChange={(e) => updateCondition(i, { value: e.target.value })} className={`${inputClass} flex-1`} placeholder="valor" />
+                  <ConditionValueInput
+                    condition={c}
+                    config={config}
+                    inputClass={inputClass}
+                    onChange={(value) => updateCondition(i, { value })}
+                  />
                   <button onClick={() => removeCondition(i)} className="p-1.5 text-muted-foreground hover:text-red-600 shrink-0"><X className="w-4 h-4" /></button>
                 </div>
               ))}
