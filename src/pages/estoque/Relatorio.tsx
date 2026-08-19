@@ -1,10 +1,11 @@
 import { useState, useMemo } from 'react'
 import { Navigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Loader, BarChart3, AlertTriangle } from 'lucide-react'
+import { Loader, BarChart3, AlertTriangle, Download } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import EstoqueLayout from '@/components/estoque/EstoqueLayout'
+import { downloadCsv, slugifyForFilename, type CsvValue } from '@/lib/csv'
 
 interface StoreOption {
   id: string
@@ -24,7 +25,7 @@ interface StockRow {
 }
 
 export default function EstoqueRelatorio() {
-  const { role } = useAuth()
+  const { role, user } = useAuth()
   const [selectedStoreId, setSelectedStoreId] = useState<string>('') // '' = consolidado (todas)
 
   const { data: stores = [] } = useQuery<StoreOption[]>({
@@ -58,6 +59,49 @@ export default function EstoqueRelatorio() {
     return Array.from(map.entries())
   }, [rows])
 
+  // Exporta exatamente o que está na tela — mesma fonte (`rows`), mesmo
+  // filtro de loja. Nada de refetch: relatório que baixa diferente do que
+  // se está olhando é pior que relatório nenhum.
+  function handleExportCsv() {
+    const storeName = selectedStoreId
+      ? stores.find((s) => s.id === selectedStoreId)?.name ?? 'loja'
+      : 'Todas as lojas (consolidado)'
+    const generatedAt = new Date()
+
+    const lines: CsvValue[][] = [
+      ['Relatório de estoque', storeName],
+      ['Gerado em', generatedAt.toLocaleString('pt-BR'), 'por', user?.email ?? '—'],
+      ['Base', 'Última contagem confirmada de cada loja — não reflete vendas em tempo real'],
+      [],
+      ['Loja', 'Contagem em', 'Produto', 'Categoria', 'Quantidade', 'Meta', 'Diferença', 'Status'],
+    ]
+
+    for (const [, storeRows] of grouped) {
+      for (const row of storeRows) {
+        const hasTarget = row.target_quantity != null
+        const quantity = row.total_units
+        // Diferença só existe com os dois lados preenchidos. Sai como número
+        // cru (-12, e não "-12 un") pra planilha conseguir somar e ordenar.
+        const difference =
+          hasTarget && quantity != null ? quantity - (row.target_quantity as number) : null
+
+        lines.push([
+          row.store_name,
+          new Date(row.confirmed_at).toLocaleString('pt-BR'),
+          row.product_name,
+          row.stock_category ?? '',
+          quantity,
+          row.target_quantity,
+          difference,
+          !hasTarget ? 'sem meta' : (quantity ?? 0) < (row.target_quantity as number) ? 'Abaixo' : 'OK',
+        ])
+      }
+    }
+
+    const datePart = generatedAt.toISOString().slice(0, 10)
+    downloadCsv(`estoque-${slugifyForFilename(storeName)}-${datePart}.csv`, lines)
+  }
+
   if (role !== 'admin' && role !== 'administrativo') {
     return <Navigate to="/estoque/contagem" replace />
   }
@@ -72,14 +116,26 @@ export default function EstoqueRelatorio() {
         <p className="text-xs text-muted-foreground">
           Mostra a última contagem confirmada de cada loja, cruzada com a meta cadastrada. Não reflete vendas/consumo em tempo real — só é atualizado quando uma nova contagem é confirmada.
         </p>
-        <select
-          value={selectedStoreId}
-          onChange={(e) => setSelectedStoreId(e.target.value)}
-          className="h-9 rounded-lg border border-input text-sm bg-white px-2 focus:outline-none focus:ring-2 focus:ring-amber-400"
-        >
-          <option value="">Todas as lojas (consolidado)</option>
-          {stores.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-        </select>
+        <div className="flex flex-wrap items-center gap-2">
+          <select
+            value={selectedStoreId}
+            onChange={(e) => setSelectedStoreId(e.target.value)}
+            className="h-9 rounded-lg border border-input text-sm bg-white px-2 focus:outline-none focus:ring-2 focus:ring-amber-400"
+          >
+            <option value="">Todas as lojas (consolidado)</option>
+            {stores.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+          </select>
+          <button
+            type="button"
+            onClick={handleExportCsv}
+            disabled={rows.length === 0}
+            className="flex items-center gap-1.5 px-3 h-9 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            title={rows.length === 0 ? 'Nada pra exportar ainda' : 'Baixar planilha (.csv)'}
+          >
+            <Download className="w-3.5 h-3.5" />
+            Exportar CSV
+          </button>
+        </div>
       </div>
 
       {isLoading ? (
