@@ -24,7 +24,10 @@ import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover
 import { DateField } from '@/components/ui/date-field'
 import { QuickDatePopover } from '@/components/ui/quick-date-popover'
 import { Switch } from '@/components/ui/switch'
-import { EMPLOYMENT_TYPE_LABELS, EMPLOYMENT_TYPE_OPTIONS, type EmploymentType } from '@/lib/dpConstants'
+import {
+  EMPLOYMENT_TYPE_LABELS, EMPLOYMENT_TYPE_OPTIONS, addBusinessDaysISO,
+  FORMACAO_COURSE_BUSINESS_DAYS, type EmploymentType,
+} from '@/lib/dpConstants'
 import { useAdminTheme } from '@/contexts/AdminThemeContext'
 import { STAGE_COLUMNS, STAGE_SELECT_OPTIONS, getStageColors, stageLabel, type Stage } from '@/lib/rhStages'
 import { CHECKBOX_DELIM } from '@/components/rh/FormFieldRenderer'
@@ -71,7 +74,10 @@ interface Candidate {
   assignee_id: string | null
   created_at: string
   stage_started_at: string
-  job_openings: { id: string; role_title: string; status: string; job_roles: { color: string } | null } | null
+  // requires_experience decide a trilha no DP: cargo MEI que NÃO exige
+  // experiência manda o processo direto pra etapa 'formacao', que dispara a
+  // geração do contrato de formação (ver promote_candidate_to_dp).
+  job_openings: { id: string; role_title: string; status: string; job_roles: { color: string; requires_experience: boolean } | null } | null
   candidate_answers: CandidateAnswer[]
   candidate_tags: CandidateTag[]
 }
@@ -83,6 +89,35 @@ interface CandidateDraftPatch {
   due_date: string | null
   assignee_id: string | null
   notes: string | null
+}
+
+// Dados pessoais exigidos pelo Contrato de Formação (REQUIRED_CONTRACT_DATA_FIELDS
+// em dpConstants.ts, espelhado nas edge functions). Coletados já na contratação
+// porque é o save deles que dispara a geração — sem isso o processo nasce em
+// 'formacao' e o contrato fica pendurado esperando alguém preencher no DP.
+// E-mail entra junto ({{email_profissional}} no template) mas é opcional.
+// contract_start_date é pedida em vez de assumida: contrato feito com atraso
+// precisa sair datado do início real do curso, não do dia em que o sistema
+// gerou o arquivo. Fica vazia de propósito (sem default "hoje") pra forçar
+// uma escolha consciente.
+const EMPTY_FORMACAO_DATA = { cpf: '', birth_date: '', address: '', email: '', contract_start_date: '' }
+
+// A geração roda fora da transação (trigger → pg_net → edge function), então o
+// contrato não existe ainda quando o insert retorna. Sondamos a tabela pra
+// conseguir confirmar o resultado na hora, em vez de mandar o usuário conferir
+// no Drive depois.
+async function waitForFormacaoContract(processId: string): Promise<string | null> {
+  for (let attempt = 0; attempt < 10; attempt++) {
+    await new Promise((resolve) => setTimeout(resolve, 2000))
+    const { data } = await supabase
+      .from('employee_contracts')
+      .select('file_url')
+      .eq('process_id', processId)
+      .eq('contract_type', 'formacao')
+      .maybeSingle()
+    if (data) return (data.file_url as string | null) ?? null
+  }
+  return null
 }
 
 function getAnswerValue(c: Candidate, fieldKey: string): string | undefined {
@@ -415,6 +450,7 @@ export default function RhCandidatos() {
   const [createOpen, setCreateOpen] = useState(false)
   const [promoteCandidate, setPromoteCandidate] = useState<Candidate | null>(null)
   const [promoteEmploymentType, setPromoteEmploymentType] = useState<EmploymentType>('clt')
+  const [promoteFormacaoData, setPromoteFormacaoData] = useState(EMPTY_FORMACAO_DATA)
   const [variablesOpen, setVariablesOpen] = useState(false)
   const [checkingPreview, setCheckingPreview] = useState(false)
   const [pendingStageChange, setPendingStageChange] = useState<
@@ -469,7 +505,7 @@ export default function RhCandidatos() {
     queryFn: async () => {
       let query = supabase
         .from('candidates')
-        .select('id, job_opening_id, name, age, whatsapp, stage, source, photo_url, resume_url, notes, start_date, due_date, assignee_id, created_at, stage_started_at, job_openings!inner(id, role_title, status, store_id, job_roles(color)), candidate_answers(value, form_fields(field_key, label, field_type, show_on_card)), candidate_tags(tags(id, name, color))')
+        .select('id, job_opening_id, name, age, whatsapp, stage, source, photo_url, resume_url, notes, start_date, due_date, assignee_id, created_at, stage_started_at, job_openings!inner(id, role_title, status, store_id, job_roles(color, requires_experience)), candidate_answers(value, form_fields(field_key, label, field_type, show_on_card)), candidate_tags(tags(id, name, color))')
         .order('created_at', { ascending: false })
       if (storeId) query = query.eq('job_openings.store_id', storeId)
       const { data, error } = await query
@@ -665,27 +701,70 @@ export default function RhCandidatos() {
   // candidato pra resolver loja/cargo do processo (trocar a vaga no rascunho
   // precisa valer já nesta promoção).
   const promoteToDp = useMutation({
-    mutationFn: async ({ id, employmentType, patch }: { id: string; employmentType: EmploymentType; patch?: CandidateDraftPatch }) => {
+    mutationFn: async ({ id, employmentType, patch, formacaoData }: {
+      id: string
+      employmentType: EmploymentType
+      patch?: CandidateDraftPatch
+      formacaoData?: typeof EMPTY_FORMACAO_DATA
+    }) => {
       if (patch) {
         const { error: patchError } = await supabase.from('candidates').update(patch).eq('id', id)
         if (patchError) throw patchError
       }
-      const { error } = await supabase.rpc('promote_candidate_to_dp', {
+      const { data: processId, error } = await supabase.rpc('promote_candidate_to_dp', {
         p_candidate_id: id,
         p_employment_type: employmentType,
       })
       if (error) throw error
+      if (!formacaoData) return { contractUrl: null, waited: false }
+
+      // Este insert é o gatilho real da geração (trigger em
+      // employee_contract_data): o processo já nasceu em 'formacao', mas a
+      // primeira tentativa foi pulada por missing_fields.
+      const { error: dataError } = await supabase.from('employee_contract_data').upsert({
+        process_id: processId as string,
+        cpf: formacaoData.cpf,
+        birth_date: formacaoData.birth_date,
+        address: formacaoData.address,
+        email: formacaoData.email || null,
+        contract_start_date: formacaoData.contract_start_date,
+      })
+      if (dataError) throw dataError
+
+      return { contractUrl: await waitForFormacaoContract(processId as string), waited: true }
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['rh-candidates', storeId] })
       queryClient.invalidateQueries({ queryKey: ['dp-promoted-candidate-ids'] })
       queryClient.invalidateQueries({ queryKey: ['dp-processos'] })
-      toast.success('Candidato promovido para o Departamento Pessoal')
+      if (result.contractUrl) {
+        toast.success('Contratada — contrato de formação gerado', {
+          action: { label: 'Abrir', onClick: () => window.open(result.contractUrl!, '_blank', 'noopener') },
+        })
+      } else if (result.waited) {
+        // Gerado sem link, ou ainda em processamento — o card do DP mostra o
+        // resultado quando chegar. Não é erro: a promoção em si deu certo.
+        toast.warning('Contratada, mas o contrato de formação ainda não ficou pronto. Confira em Departamento Pessoal → Contratos.')
+      } else {
+        toast.success('Candidato promovido para o Departamento Pessoal')
+      }
       setPromoteCandidate(null)
       setDetailCandidate(null)
     },
     onError: (err) => toast.error(`Erro ao promover: ${err instanceof Error ? err.message : 'desconhecido'}`),
   })
+
+  // Espelha a decisão de promote_candidate_to_dp: só MEI em cargo que não
+  // exige experiência cai na trilha de formação. Vaga sem cargo do catálogo
+  // (job_roles null) vai pra 'contratacao' — a RPC assume experiência exigida.
+  const promoteFormacaoTrack =
+    promoteEmploymentType === 'mei' &&
+    promoteCandidate?.job_openings?.job_roles?.requires_experience === false
+
+  const promoteFormacaoIncomplete =
+    promoteFormacaoTrack &&
+    (promoteFormacaoData.cpf.length !== 11 || !promoteFormacaoData.birth_date ||
+     !promoteFormacaoData.address.trim() || !promoteFormacaoData.contract_start_date)
 
   // Vaga/Data início/Data fim/Responsável/Observações são editados como
   // rascunho local e só persistem quando o usuário clica em "Salvar
@@ -865,6 +944,7 @@ export default function RhCandidatos() {
     if (newStage === 'contratado' && !promotedIds.has(candidate.id)) {
       setPromoteCandidate(candidate)
       setPromoteEmploymentType('clt')
+      setPromoteFormacaoData(EMPTY_FORMACAO_DATA)
       return
     }
 
@@ -933,7 +1013,11 @@ export default function RhCandidatos() {
             <h1 className="text-xl sm:text-2xl font-bold text-foreground">Candidatos</h1>
             <p className="text-sm text-muted-foreground mt-1">Kanban do processo seletivo por unidade</p>
           </div>
-          <div className="flex items-center gap-2 flex-wrap">
+          {/* w-full joga a barra de ações pra uma linha própria, logo acima das
+              abas de unidade — mesma altura em que ela aparece na tela de
+              Contratação, onde o número de botões já a fazia quebrar. Sem isto
+              a posição mudava conforme a largura da tela. */}
+          <div className="w-full flex items-center gap-2 flex-wrap">
             <Link
               to="/admin/rh/automacoes"
               className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border text-sm font-medium hover:bg-surface-alt transition-colors"
@@ -1285,6 +1369,7 @@ export default function RhCandidatos() {
                     onClick={() => {
                       setPromoteCandidate(detailCandidate)
                       setPromoteEmploymentType('clt')
+                      setPromoteFormacaoData(EMPTY_FORMACAO_DATA)
                     }}
                     title="Contratar candidato"
                     className="px-2.5 py-1.5 rounded-lg bg-teal-600 hover:bg-teal-700 text-white text-xs font-medium transition-colors"
@@ -1569,7 +1654,7 @@ export default function RhCandidatos() {
       {promoteCandidate && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-foreground/40 backdrop-blur-sm" onClick={() => setPromoteCandidate(null)} />
-          <div className="relative bg-card rounded-2xl shadow-2xl border border-border p-6 w-full max-w-sm">
+          <div className="relative bg-card rounded-2xl shadow-2xl border border-border p-6 w-full max-w-sm max-h-[90vh] overflow-y-auto">
             <h2 className="text-lg font-bold text-foreground mb-1">Contratar {promoteCandidate.name}</h2>
             <p className="text-xs text-muted-foreground mb-4">
               Selecione o tipo de vínculo — o candidato passa a ser gerenciado no módulo Departamento Pessoal, mantendo o histórico de recrutamento.
@@ -1582,6 +1667,96 @@ export default function RhCandidatos() {
               className="mb-5"
               searchable={false}
             />
+
+            {/* Trilha de formação (MEI em cargo que não exige experiência): o
+                processo nasce em 'formacao' e o contrato do curso é gerado na
+                hora — mas só se estes campos vierem juntos. */}
+            {promoteFormacaoTrack && (
+              <div className="mb-5 rounded-xl border border-border bg-surface-alt p-3 space-y-3">
+                <div>
+                  <p className="text-sm font-semibold text-foreground">Dados para o contrato de formação</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                    Este cargo passa pela trilha de formação. O contrato do curso é gerado automaticamente ao confirmar.
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-[11px] text-muted-foreground mb-1">
+                    Início do contrato <span className="text-red-500">*</span>
+                  </label>
+                  <DateField
+                    value={promoteFormacaoData.contract_start_date || null}
+                    onChange={(v) => setPromoteFormacaoData({ ...promoteFormacaoData, contract_start_date: v ?? '' })}
+                    placeholder="Selecionar"
+                  />
+                  <p className="text-[10px] text-muted-foreground mt-1">
+                    {promoteFormacaoData.contract_start_date ? (
+                      <>
+                        Fim da vigência:{' '}
+                        <span className="font-medium text-foreground">
+                          {new Date(addBusinessDaysISO(promoteFormacaoData.contract_start_date, FORMACAO_COURSE_BUSINESS_DAYS))
+                            .toLocaleDateString('pt-BR', { timeZone: 'UTC' })}
+                        </span>{' '}
+                        ({FORMACAO_COURSE_BUSINESS_DAYS} dias úteis, contando este). É também a data de assinatura no documento.
+                      </>
+                    ) : (
+                      <>
+                        Vigência de {FORMACAO_COURSE_BUSINESS_DAYS} dias úteis (seg a sex) a partir desta data, que também vira a data de assinatura — use a data real do início do curso, mesmo que já tenha passado.
+                      </>
+                    )}
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-[11px] text-muted-foreground mb-1">
+                    CPF <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={promoteFormacaoData.cpf}
+                    onChange={(e) => setPromoteFormacaoData({ ...promoteFormacaoData, cpf: e.target.value.replace(/\D/g, '').slice(0, 11) })}
+                    placeholder="Somente números"
+                    className="w-full px-2.5 py-1.5 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] text-muted-foreground mb-1">
+                    Data de nascimento <span className="text-red-500">*</span>
+                  </label>
+                  {/* Faixa de um século: nascimento estoura o padrão de ±10 anos
+                      do Calendar (mesmo ajuste do GerarContratoModal). */}
+                  <DateField
+                    value={promoteFormacaoData.birth_date || null}
+                    onChange={(v) => setPromoteFormacaoData({ ...promoteFormacaoData, birth_date: v ?? '' })}
+                    fromYear={new Date().getFullYear() - 100}
+                    toYear={new Date().getFullYear()}
+                    max={new Date().toISOString().slice(0, 10)}
+                    placeholder="Selecionar"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] text-muted-foreground mb-1">
+                    Endereço completo <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={promoteFormacaoData.address}
+                    onChange={(e) => setPromoteFormacaoData({ ...promoteFormacaoData, address: e.target.value })}
+                    placeholder="Rua, número, bairro, cidade"
+                    className="w-full px-2.5 py-1.5 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] text-muted-foreground mb-1">E-mail</label>
+                  <input
+                    type="email"
+                    value={promoteFormacaoData.email}
+                    onChange={(e) => setPromoteFormacaoData({ ...promoteFormacaoData, email: e.target.value })}
+                    className="w-full px-2.5 py-1.5 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                  />
+                </div>
+              </div>
+            )}
+
             <div className="flex gap-3">
               <button
                 onClick={() => promoteToDp.mutate({
@@ -1592,11 +1767,15 @@ export default function RhCandidatos() {
                   patch: detailCandidate && detailCandidate.id === promoteCandidate.id && hasDetailDraftChanges(detailCandidate)
                     ? detailDraftPatch()
                     : undefined,
+                  formacaoData: promoteFormacaoTrack ? promoteFormacaoData : undefined,
                 })}
-                disabled={promoteToDp.isPending}
+                disabled={promoteToDp.isPending || promoteFormacaoIncomplete}
+                title={promoteFormacaoIncomplete ? 'Preencha início do contrato, CPF, data de nascimento e endereço' : undefined}
                 className="flex-1 px-4 py-2.5 rounded-lg btn-action font-medium disabled:opacity-70 transition-colors"
               >
-                {promoteToDp.isPending ? 'Contratando...' : 'Confirmar'}
+                {promoteToDp.isPending
+                  ? (promoteFormacaoTrack ? 'Gerando contrato...' : 'Contratando...')
+                  : 'Confirmar'}
               </button>
               <button onClick={() => setPromoteCandidate(null)} className="flex-1 px-4 py-2.5 rounded-lg border border-border bg-card text-foreground font-medium hover:bg-accent">
                 Cancelar

@@ -134,13 +134,76 @@ export function formatDateBR(iso: string | null): string {
   return `${d}/${m}/${y}`
 }
 
+// O banco guarda CPF só com dígitos (sem máscara) e o WhatsApp em formatos
+// mistos — ora com o 55 na frente (5527996132417), ora sem (27981282900),
+// herança de cadastros de origens diferentes. No documento os dois precisam
+// sair pontuados, então a formatação acontece aqui, na hora de gerar, sem
+// mexer no que está persistido.
+export function formatCPF(cpf: string | null): string {
+  if (!cpf) return ''
+  const digits = cpf.replace(/\D/g, '')
+  if (digits.length !== 11) return cpf
+  return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`
+}
+
+// Formato pedido: (27)99999-9999. Fixo de 8 dígitos vira (27)9999-9999.
+// Qualquer coisa fora desses tamanhos volta como veio — melhor um número sem
+// máscara no contrato do que um número mutilado por uma suposição errada.
+export function formatPhoneBR(phone: string | null): string {
+  if (!phone) return ''
+  let digits = phone.replace(/\D/g, '')
+  if ((digits.length === 12 || digits.length === 13) && digits.startsWith('55')) {
+    digits = digits.slice(2)
+  }
+  if (digits.length !== 10 && digits.length !== 11) return phone
+  const ddd = digits.slice(0, 2)
+  const rest = digits.slice(2)
+  return `(${ddd})${rest.slice(0, rest.length - 4)}-${rest.slice(-4)}`
+}
+
 export function todayISO(): string {
   return new Date().toISOString().slice(0, 10)
 }
 
-export function addDaysISO(iso: string, days: number): string {
+// Duração do curso de formação, em dias ÚTEIS.
+export const FORMACAO_COURSE_BUSINESS_DAYS = 10
+
+// O curso conta só dias de semana (sábado e domingo não valem), e o próprio
+// dia de início é o primeiro dia útil: começando na segunda 10/08, o décimo
+// dia útil cai na sexta 21/08 — não em 20/08, que era o resultado da contagem
+// corrida usada antes.
+//
+// Feriados não entram na conta: o sistema não tem calendário de feriados, e
+// chutar um (nacional? estadual? municipal, com 5 unidades em cidades
+// diferentes?) erraria mais do que ignorar. Se precisar, ajuste a data final
+// pelo caminho manual em /admin/dp/contratos.
+export function addBusinessDaysISO(iso: string, businessDays: number): string {
   const [y, m, d] = iso.split('-').map(Number)
   const date = new Date(Date.UTC(y, m - 1, d))
-  date.setUTCDate(date.getUTCDate() + days)
+  let counted = 0
+  for (;;) {
+    const weekday = date.getUTCDay()
+    if (weekday !== 0 && weekday !== 6) counted++
+    if (counted >= businessDays) break
+    date.setUTCDate(date.getUTCDate() + 1)
+  }
   return date.toISOString().slice(0, 10)
+}
+
+// Idade em anos completos hoje, a partir da data de nascimento (ISO).
+// Aniversário que ainda não chegou no ano corrente desconta um ano — comparar
+// só o ano erraria em metade dos casos. Devolve null pra data ausente,
+// malformada ou futura (digitação errada não vira idade negativa).
+export function ageFromBirthDateISO(iso: string | null | undefined): number | null {
+  if (!iso) return null
+  const [y, m, d] = iso.split('-').map(Number)
+  if (!y || !m || !d) return null
+
+  const today = new Date()
+  let age = today.getUTCFullYear() - y
+  const beforeBirthday =
+    today.getUTCMonth() + 1 < m || (today.getUTCMonth() + 1 === m && today.getUTCDate() < d)
+  if (beforeBirthday) age--
+
+  return age >= 0 && age < 130 ? age : null
 }

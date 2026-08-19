@@ -4,8 +4,10 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import {
   getGoogleAccessToken, findOrCreateFolder, copyTemplate, replacePlaceholders, getWebViewLink,
-  decomposeDatePtBR, formatDateBR, todayISO, addDaysISO, resolveUnitFolderName, type FieldMap,
+  decomposeDatePtBR, formatDateBR, formatCPF, formatPhoneBR, todayISO,
+  addBusinessDaysISO, FORMACAO_COURSE_BUSINESS_DAYS, resolveUnitFolderName, type FieldMap,
 } from '../_shared/googleDrive.ts'
+import { syncContractDataToCard } from '../_shared/contractSync.ts'
 
 declare const Deno: { env: { get(k: string): string | undefined } }
 
@@ -52,7 +54,9 @@ function buildFormacaoFieldMap(input: {
   termEnd: string
 }): FieldMap {
   const { store, candidateName, candidateWhatsapp, contractData, termStart, termEnd } = input
-  const { dia, mes, ano } = decomposeDatePtBR(todayISO())
+  // Assinatura na data de início da vigência, não no dia em que o arquivo foi
+  // gerado — contrato feito com atraso precisa sair datado do início do curso.
+  const { dia, mes, ano } = decomposeDatePtBR(termStart)
   return {
     // Placeholders reais confirmados baixando o .txt do doc gerado
     // (2026-07-23) — a leitura via "natural language representation" tinha
@@ -61,10 +65,10 @@ function buildFormacaoFieldMap(input: {
     '{{cnpj_salao}}': store.cnpj || '',
     '{{endereco_salao}}': store.legal_address || '',
     '{{nome_profissional}}': candidateName,
-    '{{cpf_profissional}}': (contractData.cpf as string) || '',
+    '{{cpf_profissional}}': formatCPF((contractData.cpf as string) || null),
     '{{data_nascimento_profissional}}': formatDateBR((contractData.birth_date as string) || null),
     '{{endereco_profissional}}': (contractData.address as string) || '',
-    '{{telefone_profissional}}': candidateWhatsapp,
+    '{{telefone_profissional}}': formatPhoneBR(candidateWhatsapp),
     '{{email_profissional}}': (contractData.email as string) || '',
     '{{local}}': store.name,
     '{{dia_assinatura}}': dia,
@@ -113,7 +117,7 @@ serve(async (req: Request) => {
 
     const { data: processo, error: processoErr } = await serviceClient
       .from('employee_processes')
-      .select('id, employment_type, current_stage, role_title, candidates(name, whatsapp), stores(name, slug, legal_name, cnpj, legal_address)')
+      .select('id, employment_type, current_stage, role_title, candidate_id, drive_folder_url, candidates(name, whatsapp), stores(name, slug, legal_name, cnpj, legal_address)')
       .eq('id', process_id)
       .single()
     if (processoErr || !processo) return json({ error: 'Processo não encontrado' }, 404, req)
@@ -171,12 +175,15 @@ serve(async (req: Request) => {
     const accessToken = await getGoogleAccessToken()
     const unitFolderId = await findOrCreateFolder(accessToken, resolveUnitFolderName(store.slug, store.name), rootFolderId)
     const candidateFolderId = await findOrCreateFolder(accessToken, candidateName, unitFolderId)
+    const candidateFolderUrl = await getWebViewLink(accessToken, candidateFolderId)
 
     const docName = `${candidateName} - Contrato de Formação`
     const newDocId = await copyTemplate(accessToken, template.google_doc_id, docName, candidateFolderId)
 
-    const termStart = term_start || todayISO()
-    const termEnd = term_end || addDaysISO(termStart, 10)
+    // Precedência: o que o usuário escolheu na tela > a data informada na
+    // contratação (contract_start_date) > hoje.
+    const termStart = term_start || (contractData.contract_start_date as string) || todayISO()
+    const termEnd = term_end || addBusinessDaysISO(termStart, FORMACAO_COURSE_BUSINESS_DAYS)
 
     const fieldMap = buildFormacaoFieldMap({
       store, candidateName, candidateWhatsapp: processo.candidates?.whatsapp ?? '', contractData, termStart, termEnd,
@@ -199,6 +206,18 @@ serve(async (req: Request) => {
       console.error('Insert employee_contracts error:', insertErr.message)
       return json({ error: 'Erro ao registrar o contrato gerado' }, 500, req)
     }
+
+    // Mesma sincronia da geração automática: pasta do Drive, idade e vigência
+    // voltam pro card em vez de ficarem só no documento.
+    await syncContractDataToCard(serviceClient, {
+      processId: process_id,
+      candidateId: processo.candidate_id,
+      currentDriveFolderUrl: processo.drive_folder_url,
+      folderUrl: candidateFolderUrl,
+      formacao: contractType === 'formacao'
+        ? { birthDate: (contractData.birth_date as string) ?? null, termStart, termEnd }
+        : null,
+    })
 
     return json({ success: true, contract_id: contractRow.id, google_doc_url: googleDocUrl }, 200, req)
   } catch (err) {

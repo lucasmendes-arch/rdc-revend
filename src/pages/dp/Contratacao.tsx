@@ -1,8 +1,10 @@
 import { useMemo, useState, type SyntheticEvent } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
+import { Link } from 'react-router-dom'
 import {
-  Loader, Store as StoreIcon, Eye, EyeOff, AlertTriangle, Paperclip, Tag, SlidersHorizontal, Calendar,
+  Loader, Store as StoreIcon, Eye, EyeOff, AlertTriangle, Paperclip, Tag, SlidersHorizontal, Calendar, Zap,
+  Filter, Variable,
 } from 'lucide-react'
 import {
   DndContext, DragOverlay, PointerSensor, KeyboardSensor, useSensor, useSensors,
@@ -17,6 +19,8 @@ import { Switch } from '@/components/ui/switch'
 import { useAdminTheme } from '@/contexts/AdminThemeContext'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import ProcessoDetailModal from '@/components/dp/ProcessoDetailModal'
+import ColorSelect from '@/components/rh/ColorSelect'
+import MensagemVariaveisModal from '@/components/rh/MensagemVariaveisModal'
 import {
   EMPLOYMENT_TYPE_LABELS, EMPLOYMENT_TYPE_OPTIONS, STAGE_COLUMNS_BY_EMPLOYMENT_TYPE, ALL_STAGE_COLUMNS, getStageColumn,
   type EmploymentType, type StageColumn,
@@ -288,6 +292,13 @@ export default function DpContratacao() {
   const [detailProcesso, setDetailProcesso] = useState<Processo | null>(null)
   const [confirmEncerrar, setConfirmEncerrar] = useState<Processo | null>(null)
   const [cardPrefs, setCardPrefs] = useState<CardFieldPrefs>(loadCardPrefs)
+  // Mesmos filtros do kanban de Candidatos — os quatro campos existem no card
+  // do DP também (cargo, tag, data fim e responsável vêm do candidato).
+  const [filterRoleTitle, setFilterRoleTitle] = useState('')
+  const [filterTagId, setFilterTagId] = useState('')
+  const [filterDueDate, setFilterDueDate] = useState<'' | 'hoje' | 'atrasado' | 'sem_prazo'>('')
+  const [filterAssigneeId, setFilterAssigneeId] = useState('')
+  const [variablesOpen, setVariablesOpen] = useState(false)
 
   useEscapeToClose(() => setConfirmEncerrar(null), !!confirmEncerrar)
 
@@ -309,6 +320,24 @@ export default function DpContratacao() {
     staleTime: 5 * 60 * 1000,
   })
   const roleColorByTitle = useMemo(() => new Map(jobRoles.map((r) => [r.title, r.color])), [jobRoles])
+
+  // Mesma chave de cache do RH (tags são globais, não têm dono por módulo).
+  const { data: rhTags = [] } = useQuery<{ id: string; name: string; color: string }[]>({
+    queryKey: ['rh-tags'],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('tags').select('id, name, color').order('name')
+      if (error) throw error
+      return (data || []) as { id: string; name: string; color: string }[]
+    },
+    staleTime: 30 * 1000,
+  })
+
+  const roleTitleOptions = useMemo(
+    () => jobRoles.map((r) => ({ value: r.title, label: r.title, color: r.color })),
+    [jobRoles],
+  )
+
+  const activeFilterCount = [filterRoleTitle, filterTagId, filterDueDate, filterAssigneeId].filter(Boolean).length
 
   const { data: stores = [] } = useQuery<Store[]>({
     queryKey: ['dp-stores'],
@@ -370,7 +399,7 @@ export default function DpContratacao() {
     queryFn: async () => {
       let query = supabase
         .from('employee_processes')
-        .select('id, candidate_id, employment_type, store_id, role_title, current_stage, status, started_at, activated_at, onboarding_completed, training_applicable, training_completed, drive_folder_url, experience_renewed_at, created_at, candidates(id, name, age, whatsapp, photo_url, assignee_id, source, notes, start_date, due_date, resume_url, candidate_answers(value, form_fields(field_key, label, field_type, show_on_card)), candidate_tags(tags(id, name, color))), stores(name)')
+        .select('id, candidate_id, employment_type, store_id, role_title, current_stage, status, started_at, activated_at, stage_started_at, due_date, onboarding_completed, training_applicable, training_completed, drive_folder_url, experience_renewed_at, created_at, candidates(id, name, age, whatsapp, photo_url, assignee_id, source, notes, start_date, due_date, resume_url, candidate_answers(value, form_fields(field_key, label, field_type, show_on_card)), candidate_tags(tags(id, name, color))), stores(name)')
         .order('started_at', { ascending: false })
       if (employmentType !== 'todos') query = query.eq('employment_type', employmentType)
       if (storeId) query = query.eq('store_id', storeId)
@@ -383,12 +412,34 @@ export default function DpContratacao() {
 
   const columns = employmentType === 'todos' ? ALL_STAGE_COLUMNS : STAGE_COLUMNS_BY_EMPLOYMENT_TYPE[employmentType]
 
+  // Filtros aplicados no cliente (mesma abordagem do kanban de Candidatos): a
+  // lista já veio filtrada por unidade/vínculo no servidor, e o volume restante
+  // é pequeno o bastante pra não valer um round-trip por toggle de filtro.
+  const filteredProcessos = useMemo(() => {
+    if (activeFilterCount === 0) return processos
+    const today = new Date(new Date().toDateString())
+    return processos.filter((p) => {
+      if (filterRoleTitle && p.role_title !== filterRoleTitle) return false
+      if (filterAssigneeId && p.candidates?.assignee_id !== filterAssigneeId) return false
+      if (filterTagId && !p.candidates?.candidate_tags.some((ct) => ct.tags?.id === filterTagId)) return false
+      if (filterDueDate) {
+        const due = p.candidates?.due_date ?? null
+        if (filterDueDate === 'sem_prazo') return !due
+        if (!due) return false
+        const dueDate = new Date(due + 'T00:00:00')
+        if (filterDueDate === 'hoje' && dueDate.getTime() !== today.getTime()) return false
+        if (filterDueDate === 'atrasado' && dueDate >= today) return false
+      }
+      return true
+    })
+  }, [processos, activeFilterCount, filterRoleTitle, filterAssigneeId, filterTagId, filterDueDate])
+
   const processosByStage = useMemo(() => {
     const map = new Map<string, Processo[]>()
     columns.forEach((c) => map.set(c.stage, []))
-    processos.forEach((p) => map.get(p.current_stage)?.push(p))
+    filteredProcessos.forEach((p) => map.get(p.current_stage)?.push(p))
     return map
-  }, [processos, columns])
+  }, [filteredProcessos, columns])
 
   const updateStage = useMutation({
     mutationFn: async ({ id, stage }: { id: string; stage: string }) => {
@@ -459,7 +510,20 @@ export default function DpContratacao() {
             <h1 className="text-xl sm:text-2xl font-bold text-foreground">Contratação</h1>
             <p className="text-sm text-muted-foreground mt-1">Admissão pós-contratação, por tipo de vínculo</p>
           </div>
-          <div className="flex items-center gap-2 flex-wrap">
+          {/* Barra de ações em linha própria (w-full), igual à de Candidatos —
+              hoje ela já cai aqui por wrap, mas só porque são muitos botões;
+              explícito, a posição não depende mais da largura da tela. */}
+          <div className="w-full flex items-center gap-2 flex-wrap">
+            {/* Mesmo padrão do kanban de Candidatos: as automações do módulo
+                são acessadas pela tela que elas afetam, não pela sidebar. */}
+            <Link
+              to="/admin/dp/automacoes"
+              className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border text-sm font-medium hover:bg-surface-alt transition-colors"
+              title="Automações da contratação"
+            >
+              <Zap className="w-4 h-4" />
+              <span className="hidden sm:inline">Automações</span>
+            </Link>
             <Tabs value={employmentType} onValueChange={(v) => setEmploymentType(v as ViewFilter)}>
               <TabsList>
                 {VIEW_OPTIONS.map((tv) => (
@@ -475,6 +539,85 @@ export default function DpContratacao() {
               {showFinalizados ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               <span className="hidden sm:inline">{showFinalizados ? 'Ocultar finalizados' : 'Mostrar finalizados'}</span>
             </button>
+            <Popover>
+              <PopoverTrigger asChild>
+                <button
+                  className="relative flex items-center gap-2 px-3 py-2 rounded-lg border border-border text-sm font-medium hover:bg-surface-alt transition-colors"
+                  title="Filtrar processos"
+                >
+                  <Filter className="w-4 h-4" />
+                  <span className="hidden sm:inline">Filtros</span>
+                  {activeFilterCount > 0 && (
+                    <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-gold text-[10px] font-bold text-white flex items-center justify-center">
+                      {activeFilterCount}
+                    </span>
+                  )}
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-72" align="end">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-[11px] font-semibold text-muted-foreground uppercase">Filtrar por</p>
+                  {activeFilterCount > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => { setFilterRoleTitle(''); setFilterTagId(''); setFilterDueDate(''); setFilterAssigneeId('') }}
+                      className="text-[11px] font-medium text-accent hover:underline"
+                    >
+                      Limpar filtros
+                    </button>
+                  )}
+                </div>
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-[11px] text-muted-foreground mb-1">Cargo</label>
+                    <ColorSelect
+                      variant="pill"
+                      value={filterRoleTitle}
+                      onChange={setFilterRoleTitle}
+                      options={roleTitleOptions}
+                      emptyLabel="Todos os cargos"
+                      placeholder="Todos os cargos"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] text-muted-foreground mb-1">Tag</label>
+                    <ColorSelect
+                      variant="pill"
+                      value={filterTagId}
+                      onChange={setFilterTagId}
+                      options={rhTags.map((t) => ({ value: t.id, label: t.name, color: t.color }))}
+                      emptyLabel="Todas as tags"
+                      placeholder="Todas as tags"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] text-muted-foreground mb-1">Data fim</label>
+                    <StyledSelect
+                      value={filterDueDate}
+                      onChange={(v) => setFilterDueDate(v as typeof filterDueDate)}
+                      options={[
+                        { value: 'hoje', label: 'Hoje' },
+                        { value: 'atrasado', label: 'Atrasado' },
+                        { value: 'sem_prazo', label: 'Sem prazo' },
+                      ]}
+                      emptyLabel="Todos"
+                      placeholder="Todos"
+                      searchable={false}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] text-muted-foreground mb-1">Responsável</label>
+                    <StyledSelect
+                      value={filterAssigneeId}
+                      onChange={setFilterAssigneeId}
+                      options={assignableUsers.map((u) => ({ value: u.id, label: u.full_name || 'Sem nome' }))}
+                      emptyLabel="Todos"
+                      placeholder="Todos"
+                    />
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
             <Popover>
               <PopoverTrigger asChild>
                 <button
@@ -497,6 +640,16 @@ export default function DpContratacao() {
                 </div>
               </PopoverContent>
             </Popover>
+            {/* Mesmas variáveis do RH — são globais (automation_variables) e
+                aparecem nas mensagens das automações dos dois módulos. */}
+            <button
+              onClick={() => setVariablesOpen(true)}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border text-sm font-medium hover:bg-surface-alt transition-colors"
+              title="Data e horários usados nas mensagens automáticas"
+            >
+              <Variable className="w-4 h-4" />
+              <span className="hidden sm:inline">Variáveis da mensagem</span>
+            </button>
           </div>
         </div>
         {/* Mesma aba de unidades de src/pages/rh/Candidatos.tsx — substitui o
@@ -575,6 +728,8 @@ export default function DpContratacao() {
           }}
         />
       )}
+
+      {variablesOpen && <MensagemVariaveisModal onClose={() => setVariablesOpen(false)} />}
 
       {/* Modal: confirmação de encerramento (decisão negativa) */}
       {confirmEncerrar && (

@@ -172,6 +172,29 @@ export function resolveAutoContractType(employmentType: EmploymentType, currentS
     : 'prestacao_servico'
 }
 
+// Duração do curso de formação, em dias ÚTEIS (sábado e domingo não contam),
+// com o próprio dia de início valendo como primeiro dia útil: começando na
+// segunda 10/08, o décimo dia útil é a sexta 21/08.
+//
+// Cópia da regra que vive em supabase/functions/_shared/googleDrive.ts, que é
+// quem de fato grava term_end no contrato — Deno não compartilha build com o
+// Vite. Aqui serve só pra prever a data na tela de contratação; mudou uma,
+// mude a outra. Feriados não entram na conta (ver comentário na edge function).
+export const FORMACAO_COURSE_BUSINESS_DAYS = 10
+
+export function addBusinessDaysISO(iso: string, businessDays: number): string {
+  const [y, m, d] = iso.split('-').map(Number)
+  const date = new Date(Date.UTC(y, m - 1, d))
+  let counted = 0
+  for (;;) {
+    const weekday = date.getUTCDay()
+    if (weekday !== 0 && weekday !== 6) counted++
+    if (counted >= businessDays) break
+    date.setUTCDate(date.getUTCDate() + 1)
+  }
+  return date.toISOString().slice(0, 10)
+}
+
 export type ContractDataField =
   | 'cpf' | 'rg' | 'cnpj' | 'birth_date' | 'marital_status' | 'nationality' | 'address' | 'email'
   | 'bank_name' | 'bank_agency' | 'bank_account' | 'pix_key'

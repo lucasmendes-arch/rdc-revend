@@ -19,6 +19,10 @@ export interface Processo {
   status: 'em_andamento' | 'ativo' | 'encerrado'
   started_at: string
   activated_at: string | null
+  // Entrada na etapa atual e prazo do processo — base dos gatilhos
+  // process_stage_timeout e process_date_reached (migration 20260814000002).
+  stage_started_at: string
+  due_date: string | null
   onboarding_completed: boolean
   training_applicable: boolean
   training_completed: boolean
