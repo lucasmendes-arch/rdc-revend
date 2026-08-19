@@ -189,3 +189,21 @@ export function addBusinessDaysISO(iso: string, businessDays: number): string {
   }
   return date.toISOString().slice(0, 10)
 }
+
+// Idade em anos completos hoje, a partir da data de nascimento (ISO).
+// Aniversário que ainda não chegou no ano corrente desconta um ano — comparar
+// só o ano erraria em metade dos casos. Devolve null pra data ausente,
+// malformada ou futura (digitação errada não vira idade negativa).
+export function ageFromBirthDateISO(iso: string | null | undefined): number | null {
+  if (!iso) return null
+  const [y, m, d] = iso.split('-').map(Number)
+  if (!y || !m || !d) return null
+
+  const today = new Date()
+  let age = today.getUTCFullYear() - y
+  const beforeBirthday =
+    today.getUTCMonth() + 1 < m || (today.getUTCMonth() + 1 === m && today.getUTCDate() < d)
+  if (beforeBirthday) age--
+
+  return age >= 0 && age < 130 ? age : null
+}

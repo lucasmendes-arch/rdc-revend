@@ -8,9 +8,11 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import {
   getGoogleAccessToken, findOrCreateFolder, copyTemplate, replacePlaceholders, getWebViewLink,
   decomposeDatePtBR, formatDateBR, formatCPF, formatPhoneBR, todayISO,
-  addBusinessDaysISO, FORMACAO_COURSE_BUSINESS_DAYS, resolveUnitFolderName, type FieldMap,
+  addBusinessDaysISO, FORMACAO_COURSE_BUSINESS_DAYS,
+  resolveUnitFolderName, type FieldMap,
 } from '../_shared/googleDrive.ts'
 import { timingSafeEqual } from '../_shared/timingSafe.ts'
+import { syncContractDataToCard } from '../_shared/contractSync.ts'
 
 declare const Deno: { env: { get(k: string): string | undefined } }
 
@@ -148,7 +150,7 @@ serve(async (req: Request) => {
 
     const { data: processo, error: processoErr } = await serviceClient
       .from('employee_processes')
-      .select('id, store_id, candidates(name, whatsapp, assignee_id), stores(name, slug, legal_name, cnpj, legal_address)')
+      .select('id, store_id, candidate_id, drive_folder_url, candidates(name, whatsapp, assignee_id), stores(name, slug, legal_name, cnpj, legal_address)')
       .eq('id', process_id)
       .single()
     if (processoErr || !processo) return json({ error: 'Processo não encontrado' }, 404)
@@ -191,6 +193,10 @@ serve(async (req: Request) => {
     const accessToken = await getGoogleAccessToken()
     const unitFolderId = await findOrCreateFolder(accessToken, resolveUnitFolderName(store.slug, store.name), rootFolderId)
     const candidateFolderId = await findOrCreateFolder(accessToken, candidateName, unitFolderId)
+    // A pasta da pessoa é criada aqui e em lugar nenhum mais — sem gravar o
+    // link, a aba Documentos do card fica com um campo vazio que só alguém
+    // caçando a pasta no Drive consegue preencher.
+    const candidateFolderUrl = await getWebViewLink(accessToken, candidateFolderId)
 
     let fieldMap: FieldMap
     let termStart: string | null = null
@@ -235,6 +241,16 @@ serve(async (req: Request) => {
       console.error('Insert employee_contracts error:', insertErr.message)
       return json({ error: 'Erro ao registrar o contrato gerado' }, 500)
     }
+
+    await syncContractDataToCard(serviceClient, {
+      processId: process_id,
+      candidateId: processo.candidate_id,
+      currentDriveFolderUrl: processo.drive_folder_url,
+      folderUrl: candidateFolderUrl,
+      formacao: intent === 'formacao'
+        ? { birthDate: (contractData?.birth_date as string) ?? null, termStart, termEnd }
+        : null,
+    })
 
     // ── Notifica o responsável vinculado ao candidato (best-effort) ────
     const assigneeId = processo.candidates?.assignee_id
