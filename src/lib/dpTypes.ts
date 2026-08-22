@@ -76,6 +76,7 @@ export interface ContractPersonalData {
   cpf: string | null
   rg: string | null
   cnpj: string | null
+  legal_name: string | null
   birth_date: string | null
   marital_status: string | null
   nationality: string

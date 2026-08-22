@@ -9,10 +9,11 @@ import {
   getGoogleAccessToken, findOrCreateFolder, copyTemplate, replacePlaceholders, getWebViewLink,
   decomposeDatePtBR, formatDateBR, formatCPF, formatPhoneBR, todayISO,
   addBusinessDaysISO, FORMACAO_COURSE_BUSINESS_DAYS,
-  resolveUnitFolderName, type FieldMap,
+  resolveUnitFolderName, resolveContractLocal, type FieldMap,
 } from '../_shared/googleDrive.ts'
 import { timingSafeEqual } from '../_shared/timingSafe.ts'
 import { syncContractDataToCard } from '../_shared/contractSync.ts'
+import { notifyContractGenerated } from '../_shared/contractNotify.ts'
 
 declare const Deno: { env: { get(k: string): string | undefined } }
 
@@ -27,7 +28,7 @@ const REQUIRED_FIELDS: Record<Intent, string[]> = {
   desligamento_formacao: [],
 }
 
-interface StoreRow { name: string; slug: string; legal_name: string | null; cnpj: string | null; legal_address: string | null }
+interface StoreRow { name: string; slug: string; uf: string | null; legal_name: string | null; cnpj: string | null; legal_address: string | null }
 
 function buildFormacaoFieldMap(input: {
   store: StoreRow
@@ -54,7 +55,7 @@ function buildFormacaoFieldMap(input: {
     '{{endereco_profissional}}': (contractData.address as string) || '',
     '{{telefone_profissional}}': formatPhoneBR(candidateWhatsapp),
     '{{email_profissional}}': (contractData.email as string) || '',
-    '{{local}}': store.name,
+    '{{local}}': resolveContractLocal(store),
     '{{dia_assinatura}}': dia,
     '{{mes_assinatura}}': mes,
     '{{ano_assinatura}}': ano,
@@ -84,48 +85,8 @@ function buildDesligamentoFieldMap(input: {
     '{{cpf}}': formatCPF(cpf),
     '{{data_inicio_curso}}': formatDateBR(cursoInicio),
     '{{data_fim_curso}}': formatDateBR(cursoFim),
-    '{{local}}': store.name,
+    '{{local}}': resolveContractLocal(store),
     '{{data_desligamento}}': formatDateBR(todayISO()),
-  }
-}
-
-async function sendWhatsAppNotification(
-  serviceClient: ReturnType<typeof createClient>,
-  storeId: string,
-  phone: string,
-  candidateName: string,
-  docLabel: string,
-  link: string | null,
-) {
-  const { data: cred } = await serviceClient
-    .from('store_whatsapp_credentials')
-    .select('uazapi_url, uazapi_token, is_active')
-    .eq('store_id', storeId)
-    .maybeSingle()
-
-  const uazapiUrl = cred?.is_active && cred?.uazapi_url ? cred.uazapi_url : Deno.env.get('UAZAPI_URL')
-  const uazapiToken = cred?.is_active && cred?.uazapi_token ? cred.uazapi_token : Deno.env.get('UAZAPI_TOKEN')
-  if (!uazapiUrl || !uazapiToken) {
-    console.warn('Sem credencial Uazapi disponível (nem por loja, nem global) — notificação não enviada')
-    return
-  }
-
-  const message = [
-    `📄 *${docLabel} gerado*`,
-    ``,
-    `👤 Candidato: ${candidateName}`,
-    link ? `🔗 ${link}` : '',
-  ].filter(Boolean).join('\n')
-
-  try {
-    const res = await fetch(`${uazapiUrl}/send/text?token=${encodeURIComponent(uazapiToken)}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ number: phone, text: message }),
-    })
-    if (!res.ok) console.warn('Falha ao enviar WhatsApp (non-blocking):', await res.text())
-  } catch (err) {
-    console.warn('Erro ao enviar WhatsApp (non-blocking):', err)
   }
 }
 
@@ -150,7 +111,7 @@ serve(async (req: Request) => {
 
     const { data: processo, error: processoErr } = await serviceClient
       .from('employee_processes')
-      .select('id, store_id, candidate_id, drive_folder_url, candidates(name, whatsapp, assignee_id), stores(name, slug, legal_name, cnpj, legal_address)')
+      .select('id, store_id, candidate_id, drive_folder_url, candidates(name, whatsapp, assignee_id), stores(name, slug, uf, legal_name, cnpj, legal_address)')
       .eq('id', process_id)
       .single()
     if (processoErr || !processo) return json({ error: 'Processo não encontrado' }, 404)
@@ -188,7 +149,7 @@ serve(async (req: Request) => {
     if (!rootFolderId) return json({ error: 'Pasta raiz de contratos no Drive não configurada' }, 500)
 
     const candidateName = processo.candidates?.name ?? ''
-    const store = (processo.stores ?? { name: '', slug: '', legal_name: null, cnpj: null, legal_address: null }) as StoreRow
+    const store = (processo.stores ?? { name: '', slug: '', uf: null, legal_name: null, cnpj: null, legal_address: null }) as StoreRow
 
     const accessToken = await getGoogleAccessToken()
     const unitFolderId = await findOrCreateFolder(accessToken, resolveUnitFolderName(store.slug, store.name), rootFolderId)
@@ -253,17 +214,13 @@ serve(async (req: Request) => {
     })
 
     // ── Notifica o responsável vinculado ao candidato (best-effort) ────
-    const assigneeId = processo.candidates?.assignee_id
-    if (assigneeId) {
-      const { data: responsavel } = await serviceClient
-        .from('profiles')
-        .select('whatsapp_number')
-        .eq('id', assigneeId)
-        .maybeSingle()
-      if (responsavel?.whatsapp_number) {
-        await sendWhatsAppNotification(serviceClient, processo.store_id, responsavel.whatsapp_number, candidateName, docLabel, googleDocUrl)
-      }
-    }
+    await notifyContractGenerated(serviceClient, {
+      assigneeId: processo.candidates?.assignee_id,
+      storeId: processo.store_id,
+      candidateName,
+      docLabel,
+      link: googleDocUrl,
+    })
 
     return json({ success: true, contract_id: contractRow.id, google_doc_url: googleDocUrl })
   } catch (err) {

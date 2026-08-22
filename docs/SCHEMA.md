@@ -236,10 +236,19 @@ Lojas físicas para o módulo de contagem/reposição (não confundir com `picku
 | cnpj | text | YES | NULL | — |
 | legal_address | text | YES | NULL | — |
 | maps_link | text | YES | NULL | — |
+| uf | text | YES | NULL | — |
+| representative_name | text | YES | NULL | — |
+| representative_cpf | text | YES | NULL | — |
+| representative_rg | text | YES | NULL | — |
+| representative_address | text | YES | NULL | — |
+| email | text | YES | NULL | — |
+| phone | text | YES | NULL | — |
 
 > `type` válidos: `'central'`, `'satellite'`. Slugs alinhados com `pickup_units` (mesmos valores: `linhares`, `serra`, `teixeira`, `colatina`, `sao-gabriel`), mas **sem FK física** entre as duas tabelas — `pickup_units` é pública/checkout, `stores` é autenticada/operacional. Ver D-20 em `docs/decisions.md`.
 > `legal_name`/`cnpj`/`legal_address` (`20260722000004`): dados jurídicos da unidade como "INSTITUIDORA" nos contratos gerados automaticamente (DP) — placeholders `{{razao_social}}`/`{{cnpj}}`/`{{endereco}}`. Muda por unidade (confirmado com o usuário — não é um dado único da empresa). Nullable até serem preenchidos com os dados reais das 5 lojas.
 > `maps_link` (`20260727000001`): link do Google Maps da unidade, usado no placeholder `{store_maps_link}` das mensagens de automação do RH. Editável no mesmo modal "Dados das lojas" (`src/components/dp/LojasDadosModal.tsx`).
+> `representative_*` + `email`/`phone` (`20260822000001`): quem assina pelo salão e o contato da unidade no **Contrato de Profissional Parceiro** — placeholders `{{representante_salao}}`, `{{cpf_representante_salao}}`, `{{rg_representante_salao}}`, `{{endereco_representante_salao}}`, `{{email_salao}}`, `{{telefone_salao}}`. Editáveis no mesmo modal "Dados das lojas". A qualificação civil do representante ("brasileira, solteira, empresária") continua **fixa no texto do template**, não vem do banco — parceiro de outro gênero/estado civil exige editar o Google Doc. `representative_cpf`/`phone` só com dígitos (formatados na geração, mesmo padrão de `formatCPF`/`formatPhoneBR`). Sem esses 6 campos preenchidos, `generate-contract` recusa a geração e lista o que falta.
+> `uf` (`20260822000003`): sigla do estado (CHECK de 2 maiúsculas), usada no fecho dos contratos gerados — `{{local}}` sai "Linhares/ES", não "Linhares". **Não** é fixa no código: das 5 unidades, Teixeira de Freitas é `BA`. Sem UF cadastrada, `resolveContractLocal` degrada pro nome puro em vez de imprimir uma barra solta.
 > RLS: admin gerencia tudo; qualquer colaborador com acesso ao módulo de estoque (`is_estoque()`) lê todas as lojas (não só a própria).
 
 ---
@@ -732,6 +741,8 @@ Catálogo global de cargos (RH) — template reutilizável entre unidades. Ao cr
 | fixed_amount | numeric(10,2) | YES | NULL | — |
 | variable_percentage | numeric(5,2) | YES | NULL | — |
 | variable_basis | text | YES | NULL | — |
+| partner_retention_percentage | numeric(5,2) | YES | NULL | — |
+| product_commission_percentage | numeric(5,2) | YES | NULL | — |
 | work_schedule | text | YES | NULL | — |
 | workload_hours | numeric(4,1) | YES | NULL | — |
 | requirements | text | YES | NULL | — |
@@ -745,6 +756,7 @@ Catálogo global de cargos (RH) — template reutilizável entre unidades. Ao cr
 
 > `contract_type` válidos: `'clt'`, `'mei'`, `'pj'`, `'estagio'`.
 > `compensation_type` válidos: `'fixa'`, `'variavel'`, `'mista'`. CHECK garante consistência com `fixed_amount`/`variable_percentage` conforme o tipo (ver [Constraints](#constraints--check-values)).
+> `partner_retention_percentage`/`product_commission_percentage` (`20260822000001`): percentuais impressos no **Contrato de Profissional Parceiro** (`{{percentual_retencao_salao}}`/`{{percentual_comissao_produtos}}`) — quanto o salão retém de cada serviço e a comissão do parceiro sobre venda de produtos. **Não confundir com `variable_percentage`**, que é a remuneração variável divulgada na descrição pública da vaga ("Até X% — base"): outro número, outro consumidor. Só aparecem no formulário quando `contract_type='mei'` (mesmo critério de `requires_experience`). CHECK de faixa 0–100. Copiados como snapshot pra `job_openings`, igual aos demais campos descritivos.
 > `education_level` válidos (opcional, `20260720000003`): `'fundamental_incompleto'`, `'fundamental_completo'`, `'medio_incompleto'`, `'medio_completo'`, `'superior_incompleto'`, `'superior_completo'`, `'pos_graduacao'`. Antes chamado `seniority_level` (júnior/pleno/sênior) — repropositado pra grau de escolaridade.
 > `color` (hex, `20260720000004`): exibido nos cards/badges de vaga do kanban RH (`/admin/rh/candidatos`) e nos dropdowns de vaga/etapa. Editável em `/admin/rh/cargos`, mesmo padrão de `tags.color`. **Não** é copiado como snapshot pra `job_openings` — o join é sempre ao vivo via `job_openings.job_role_id → job_roles.color`, então mudar a cor do cargo reflete em todas as vagas ligadas a ele. Vaga manual sem `job_role_id` cai no default `'#0D9488'` no frontend.
 > `is_active = false` "aposenta" o cargo sem apagar (some do select de novas vagas, preserva histórico).
@@ -769,6 +781,8 @@ Vaga por unidade. Colunas descritivas (`description`, `contract_type`, `compensa
 | fixed_amount | numeric(10,2) | YES | NULL | — |
 | variable_percentage | numeric(5,2) | YES | NULL | — |
 | variable_basis | text | YES | NULL | — |
+| partner_retention_percentage | numeric(5,2) | YES | NULL | — |
+| product_commission_percentage | numeric(5,2) | YES | NULL | — |
 | work_schedule | text | YES | NULL | — |
 | workload_hours | numeric(4,1) | YES | NULL | — |
 | requirements | text | YES | NULL | — |
@@ -776,6 +790,7 @@ Vaga por unidade. Colunas descritivas (`description`, `contract_type`, `compensa
 | created_at | timestamptz | NO | `now()` | — |
 
 > `status` válidos: `'aberta'`, `'fechada'`.
+> `partner_retention_percentage`/`product_commission_percentage` (`20260822000001`): snapshot dos percentuais do cargo — **é este valor que vai pro contrato de parceria**. `generate-contract` lê a vaga do candidato primeiro e só cai no `job_roles` quando a vaga está vazia (criada antes destas colunas, ou vaga manual sem cargo do catálogo). Sem valor nos dois, a geração é recusada.
 > `job_role_id` é só rastro de origem — `ON DELETE RESTRICT` impede excluir um cargo com vagas vinculadas (desativar em vez de excluir).
 > CRUD feito direto via `supabase.from('job_openings')` no frontend, sem RPC dedicada. RLS: `has_rh_access()`.
 
@@ -1180,6 +1195,7 @@ Checklist de documentos de admissão que são de fato **arquivo escaneado** — 
 
 > `document_type` válidos: `ctps`, `pis_pasep`, `titulo_eleitor`, `comprovante_escolaridade`, `aso_admissional`.
 > Checklist CLT (5 itens, todos os válidos acima). Checklist MEI: nenhum item — os 4 que tinha (`rg_cpf`, `comprovante_residencia`, `cnpj_ccmei`, `dados_bancarios`) viraram campos de texto em `employee_contract_data` (`20260724000004`, ver abaixo). `foto_3x4` removida em `20260724000003` (candidato já tem `candidates.photo_url`).
+> `20260724000004` parou de **criar** itens MEI mas não apagou os existentes, e eles continuaram aparecendo no card pedindo dado que já estava preenchido como campo logo acima. `20260822000004` apagou todas as linhas de processo MEI (inclusive uma com anexo, por decisão explícita do usuário) e `ProcessoDetailModal` passou a esconder a seção quando `employment_type='mei'` — o bloco é só de CLT.
 > `status` válidos: `'pendente'`, `'enviado'`, `'aprovado'`.
 > `file_url`: upload real pro R2 (reaproveita a pasta `candidates/resumes` já liberada na edge function `upload-product-image` — criar pasta própria exigiria redeploy + ajuste do gate de autenticação, que hoje é Estoque, não RH).
 > RLS: `has_rh_access()` pra tudo (`authenticated`).
@@ -1198,9 +1214,13 @@ Contrato(s) do processo de admissão — normalmente 0 ou 1 linha por processo/t
 | signature_date | date | YES | NULL | — |
 | term_start | date | YES | NULL | — |
 | term_end | date | YES | NULL | — |
+| template_doc_id | text | YES | NULL | — |
+| template_name | text | YES | NULL | — |
 | created_at | timestamptz | NO | `now()` | — |
 
-> `contract_type` válidos: `'formacao'`, `'prestacao_servico'`, `'clt'`, `'desligamento_formacao'` (`20260722000004`). Só `formacao`/`desligamento_formacao` têm template real configurado em `contract_templates` hoje (confirmados lendo os 2 Google Docs em 2026-07-22) — `prestacao_servico` continua um chute sem template real ("por partes", próxima rodada), `clt` não tem template nenhum (100% manual).
+> `contract_type` válidos: `'formacao'`, `'prestacao_servico'`, `'clt'`, `'desligamento_formacao'` (`20260722000004`). `formacao`/`desligamento_formacao` (confirmados em 2026-07-22) e `prestacao_servico` — o **Contrato de Profissional Parceiro**, ligado em `20260822000001` — têm template real; `clt` não tem template nenhum (100% manual).
+> `template_doc_id`/`template_name` (`20260822000002`): qual modelo base gerou o contrato. `NULL` em contrato cadastrado à mão ou gerado antes dessa migration. O nome é snapshot — o arquivo pode ser renomeado ou sair do Drive depois.
+> `prestacao_servico`: contrato de parceria da Lei 13.352/2016, gerado **sem trigger** — por ação explícita, em dois caminhos: mover o card para **Contratação** no kanban do DP (abre `ContratarParceiroModal`, que confirma dados + modelo base, commita a etapa e gera) ou o botão em `/admin/dp/contratos`. Não é automático porque depende de percentuais e CNPJ do MEI, que raramente estão prontos na hora da mudança de etapa. `term_start` é a data de assinatura (`{{data_assinatura}}`) e `term_end` sai 12 meses depois menos um dia (cláusula 4.1 do template, `partnerTermEndISO` em `_shared/googleDrive.ts`) — as duas datas continuam sobrescrevíveis à mão no modal.
 > `file_url`: `NULL` quando cadastrado manualmente. Quando gerado (manual ou automático), guarda o **`webViewLink` do Google Doc direto** (não é mais um caminho de Storage — decisão do usuário de simplificar, sem exportar PDF nem subir pro Supabase Storage). Acesso é controlado pelo compartilhamento do próprio Google Drive, não pelo banco.
 > RLS: `has_rh_access()` pra tudo (`authenticated`).
 
@@ -1215,6 +1235,7 @@ Dados pessoais do colaborador necessários pro corpo do contrato — não existe
 | cpf | text | YES | NULL | — |
 | rg | text | YES | NULL | — |
 | cnpj | text | YES | NULL | — |
+| legal_name | text | YES | NULL | — |
 | birth_date | date | YES | NULL | — |
 | marital_status | text | YES | NULL | — |
 | nationality | text | NO | `'brasileira'` | — |
@@ -1230,7 +1251,9 @@ Dados pessoais do colaborador necessários pro corpo do contrato — não existe
 > `cnpj` (`20260724000004`): só relevante pra `employment_type='mei'` (card exibe o campo condicionalmente); sem uso em template de contrato ainda, mas já tem casa própria em vez de ficar solto num `employee_documents.value` inexistente.
 > `cpf`/`cnpj`: campo restrito a dígitos no frontend (11/14 respectivamente), sem máscara de pontuação salva.
 > `email` (`20260722000004`): exigido pelo Contrato de Formação (`{{email}}`) — não existia em lugar nenhum do sistema antes.
-> Campos exigidos por `contract_type` ficam em `src/lib/dpConstants.ts` (`REQUIRED_CONTRACT_DATA_FIELDS`), duplicado nas edge functions (Deno não compartilha build com o frontend). Formação confirmada não precisa de `rg`/`marital_status`/`nationality`/dados bancários (curso gratuito, sem vínculo, sem pagamento) — esses campos continuam existindo na tabela só porque `prestacao_servico` (ainda sem template real) provavelmente vai precisar deles.
+> `legal_name` (`20260822000001`): razão social do MEI do parceiro (`{{razao_social_profissional}}`). **Não** é obrigatório — vazio, a geração deriva pela regra fixa da Receita: raiz do CNPJ (8 primeiros dígitos, pontuados) + nome civil em maiúsculas, ex. `68.727.533 JAMILY TAVARES DA SILVA` (`meiLegalName`, duplicado em `src/lib/dpConstants.ts` e `_shared/googleDrive.ts`; confirmado contra um caso real em 2026-08-22). Preencher só quando a razão social real fugir da regra.
+> `nationality`/`marital_status`: dropdown na UI, não texto livre. Estado civil = `MARITAL_STATUS_OPTIONS` (4 itens: `solteiro(a)`, `casado(a)`, `divorciado(a)`, `viúvo(a)`). Nacionalidade tem só "Brasileiro(a)" + "Digite a nacionalidade" (`NacionalidadeField.tsx`) — selecionar a opção **não** regrava por cima de um `brasileira`/`brasileiro` já salvo (o DEFAULT da coluna é `'brasileira'`, e a forma flexionada lê melhor no documento). Os dois valores entram como adjetivo no meio da frase do contrato ("Fulana, brasileira, solteiro(a), inscrita no CPF…"), então mudar a lista muda o texto do documento.
+> Campos exigidos por `contract_type` ficam em `src/lib/dpConstants.ts` (`REQUIRED_CONTRACT_DATA_FIELDS`), duplicado nas edge functions (Deno não compartilha build com o frontend). Formação confirmada não precisa de `rg`/`marital_status`/`nationality`/dados bancários (curso gratuito, sem vínculo, sem pagamento). `prestacao_servico`, conferido com o template real em 2026-08-22, exige `cpf`, `cnpj`, `address`, `email`, `nationality` e `marital_status` — **não** exige `rg` nem dados bancários (o contrato de parceria não menciona conta em lugar nenhum; pagamento fica fora do documento). `rg`/`bank_*`/`pix_key` seguem na tabela sem consumidor em template hoje.
 > RLS: `has_rh_access()` pra tudo (`authenticated`).
 
 ---
@@ -1246,7 +1269,7 @@ Mapeia `contract_type` → documento template no Google Drive usado por `generat
 | is_active | boolean | NO | `true` | — |
 | updated_at | timestamptz | NO | `now()` | — |
 
-> `contract_type` válidos: `'formacao'`, `'prestacao_servico'`, `'clt'`, `'desligamento_formacao'`. Hoje só `formacao`/`desligamento_formacao` têm linha real (`20260722000004`, IDs dos Google Docs confirmados lendo os documentos direto no Drive); `prestacao_servico`/`clt` ficam sem linha até templates reais serem fornecidos.
+> `contract_type` válidos: `'formacao'`, `'prestacao_servico'`, `'clt'`, `'desligamento_formacao'`. Têm linha real: `formacao`/`desligamento_formacao` (`20260722000004`) e `prestacao_servico` (`20260822000001`, doc "Contrato Profissional Parceiro COM CAMPOS {{destacados}}") — todos com IDs confirmados lendo os documentos direto no Drive. `clt` fica sem linha até um template real ser fornecido.
 > RLS: `SELECT` via `has_rh_access()` (todo o RH lê); `INSERT`/`UPDATE`/`DELETE` só `is_admin()` (config sensível — mesmo padrão de restrição de `store_whatsapp_credentials`).
 
 ---
@@ -1271,6 +1294,36 @@ Dois triggers em `employee_processes`/`employee_contract_data` chamam `net.http_
 3. `employee_contract_data` é criado/atualizado enquanto o processo já está em `'contrato_formacao'` — intent `'formacao'` (resolve o problema de **timing**: no momento em que a etapa muda, CPF/endereço/e-mail normalmente ainda não foram preenchidos).
 
 Os 3 gatilhos disparam sem checar nada além do `employment_type='mei'`/etapa — toda a idempotência (já existe contrato desse tipo? faltam campos obrigatórios?) é responsabilidade da edge function, que responde `200 {skipped:true, reason}` em vez de erro nesses casos (esperado, já que o gatilho é intencionalmente redundante).
+
+---
+
+### Contrato de Profissional Parceiro (`prestacao_servico`, `20260822000001`)
+Contrato de parceria da Lei 13.352/2016, assinado quando o candidato termina o curso de formação e é efetivamente contratado. **Sem trigger** — só o botão "Gerar Contrato" em `/admin/dp/contratos` (`generate-contract`), porque depende de percentuais e do CNPJ do MEI que raramente estão prontos na hora em que o processo muda de etapa.
+
+24 placeholders, mapeados assim:
+
+| Placeholder(s) | Origem |
+|---|---|
+| `razao_social_salao`, `cnpj_salao`, `endereco_salao` | `stores.legal_name` / `cnpj` / `legal_address` |
+| `representante_salao`, `cpf_representante_salao`, `rg_representante_salao`, `endereco_representante_salao` | `stores.representative_*` |
+| `email_salao`, `telefone_salao` | `stores.email` / `phone` |
+| `nome_profissional`, `telefone_profissional` | `candidates.name` / `whatsapp` |
+| `razao_social_profissional` | `employee_contract_data.legal_name`; vazio, deriva de CNPJ + nome (`meiLegalName`) |
+| `cnpj_profissional`, `cpf_profissional`, `endereco_profissional`, `email_profissional`, `nacionalidade_profissional`, `estado_civil_profissional` | `employee_contract_data` |
+| `atividade_profissional` | `employee_processes.role_title` |
+| `percentual_retencao_salao`, `percentual_comissao_produtos` | `job_openings` (snapshot da vaga) → fallback `job_roles` |
+| `local` | `stores.name` + `/` + `stores.uf` (`resolveContractLocal`) |
+| `data_assinatura` | `term_start` (data escolhida no modal, ou hoje) |
+
+Recusa a geração — com a lista do que falta — quando faltar campo obrigatório de `employee_contract_data`, dado da unidade (os 9 de `REQUIRED_STORE_FIELDS`) ou qualquer um dos dois percentuais.
+
+**Modelos base** (`20260822000002`): a lista oferecida na tela **não** é cadastro no banco — são os Google Docs da pasta do Drive onde mora o template padrão. `list-contract-templates` (edge function, `has_rh_access`) descobre a pasta pelo `parents` do doc padrão, então adicionar um modelo é jogar um arquivo lá, sem migration nem secret novo. `contract_templates` continua guardando **qual é o padrão** de cada tipo (o pré-selecionado). `generate-contract` aceita `template_doc_id` opcional e **revalida que o doc está nessa pasta** antes de copiar — sem isso, a function copiaria qualquer documento do Drive da conta a pedido de quem a chamasse.
+
+**Aviso de WhatsApp**: os dois caminhos de geração (manual e automático) avisam o responsável do candidato (`candidates.assignee_id` → `profiles.whatsapp_number`) com o link do documento, via `_shared/contractNotify.ts` (`notifyContractGenerated`). A função nasceu dentro de `generate-contract-automation` e virou módulo em 2026-08-22, quando a geração manual passou a avisar também. Credencial Uazapi: da loja primeiro, global como fallback. Best-effort — sem responsável, sem WhatsApp no perfil ou sem credencial, ninguém é avisado e a geração segue normal.
+
+**Fluxo do popup** (`ContratarParceiroModal`, aberto ao mover um processo MEI para `contratacao`): salva `employee_contract_data` → muda a etapa → gera. A etapa vem **antes** da geração de propósito: `generate-contract` resolve o tipo pelo `current_stage`, e gerar com o processo ainda em `decisao_formacao` produziria um contrato de formação. Se a geração falhar depois disso, o card fica em Contratação e a geração pode ser repetida em `/admin/dp/contratos`. O botão "Só mover" pula a geração.
+
+> **Armadilha do template**: a qualificação civil do **representante do salão** ("brasileira, solteira, empresária") está escrita fixa no Google Doc, não é placeholder — decisão do usuário em 2026-08-22, já que é sempre a mesma pessoa. Trocar de representante exige editar o template, não só o banco. A do **parceiro** é dinâmica (`{{nacionalidade_profissional}}`/`{{estado_civil_profissional}}`).
 
 ---
 
@@ -2006,6 +2059,7 @@ Acessível por: `authenticated`.
 | job_roles | education_level | `'fundamental_incompleto'`, `'fundamental_completo'`, `'medio_incompleto'`, `'medio_completo'`, `'superior_incompleto'`, `'superior_completo'`, `'pos_graduacao'`, NULL |
 | job_openings | status | `'aberta'`, `'fechada'` |
 | job_openings | contract_type / compensation_type | mesmos valores de `job_roles`, porém nullable (snapshot opcional) |
+| job_roles / job_openings | partner_retention_percentage / product_commission_percentage | 0 a 100 (ou NULL) — `*_partner_percentages_range` (`20260822000001`) |
 | candidates | stage | 13 valores — ver tabela `candidates` acima |
 | candidates | source | `'formulario'`, `'manual'` |
 | form_fields | field_type | `'texto'`, `'texto_longo'`, `'numero'`, `'telefone'`, `'select'`, `'checkbox'`, `'data'`, `'upload_imagem'`, `'upload_imagens'`, `'upload_arquivo'` |
@@ -2033,7 +2087,7 @@ Acessível por: `authenticated`.
 | employee_processes | current_stage | depende de `employment_type` — ver tabela `employee_processes` acima |
 | employee_documents | document_type | `'rg_cpf'`, `'comprovante_residencia'`, `'ctps'`, `'pis_pasep'`, `'titulo_eleitor'`, `'comprovante_escolaridade'`, `'foto_3x4'`, `'aso_admissional'`, `'dados_bancarios'`, `'cnpj_ccmei'` |
 | employee_documents | status | `'pendente'`, `'enviado'`, `'aprovado'` |
-| employee_contracts | contract_type | `'formacao'`, `'prestacao_servico'`, `'clt'` |
+| employee_contracts | contract_type | `'formacao'`, `'prestacao_servico'`, `'clt'`, `'desligamento_formacao'` |
 | employee_timeline | source | `'rh'`, `'dp'` |
 
 ---
