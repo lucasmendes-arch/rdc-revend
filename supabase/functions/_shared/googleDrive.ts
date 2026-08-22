@@ -207,3 +207,103 @@ export function ageFromBirthDateISO(iso: string | null | undefined): number | nu
 
   return age >= 0 && age < 130 ? age : null
 }
+
+// CNPJ sai do banco só com dígitos (mesma regra do CPF, ver formatCPF) e
+// precisa aparecer pontuado no contrato de parceria.
+export function formatCNPJ(cnpj: string | null): string {
+  if (!cnpj) return ''
+  const digits = cnpj.replace(/\D/g, '')
+  if (digits.length !== 14) return cnpj
+  return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5, 8)}/${digits.slice(8, 12)}-${digits.slice(12)}`
+}
+
+// Percentual como aparece no contrato: "40%" pra valor redondo, "42,5%" pra
+// fracionado (vírgula decimal, não ponto). numeric(5,2) chega do PostgREST
+// como string ("40.00"), então normalizar aqui em vez de confiar no tipo.
+export function formatPercent(value: number | string | null | undefined): string {
+  if (value === null || value === undefined || value === '') return ''
+  const n = typeof value === 'number' ? value : parseFloat(value)
+  if (!Number.isFinite(n)) return ''
+  const rounded = Math.round(n * 100) / 100
+  return `${String(rounded).replace('.', ',')}%`
+}
+
+// Vigência do contrato de parceria: 12 meses contados da assinatura (cláusula
+// 4.1 do template, exigência do SINTRABEL-ES).
+export const PARCERIA_TERM_MONTHS = 12
+
+// Soma meses tratando fim de mês: 31/01 + 1 mês vira 28/02 (ou 29/02 em
+// bissexto), não 03/03 como faria o rollover automático do Date.
+export function addMonthsISO(iso: string, months: number): string {
+  const [y, m, d] = iso.split('-').map(Number)
+  const targetMonthIndex = m - 1 + months
+  const targetYear = y + Math.floor(targetMonthIndex / 12)
+  const targetMonth = ((targetMonthIndex % 12) + 12) % 12
+  const lastDayOfTargetMonth = new Date(Date.UTC(targetYear, targetMonth + 1, 0)).getUTCDate()
+  const day = Math.min(d, lastDayOfTargetMonth)
+  return new Date(Date.UTC(targetYear, targetMonth, day)).toISOString().slice(0, 10)
+}
+
+// Último dia de vigência: assinado em 22/08/2026, vale até 21/08/2027 — o
+// dia seguinte já é o 13º mês, fora do prazo que o contrato estipula.
+export function partnerTermEndISO(termStart: string): string {
+  const sameDayNextTerm = addMonthsISO(termStart, PARCERIA_TERM_MONTHS)
+  const [y, m, d] = sameDayNextTerm.split('-').map(Number)
+  const date = new Date(Date.UTC(y, m - 1, d))
+  date.setUTCDate(date.getUTCDate() - 1)
+  return date.toISOString().slice(0, 10)
+}
+
+// Razão social de MEI segue uma regra fixa da Receita: raiz do CNPJ (os 8
+// primeiros dígitos, pontuados) + nome civil em maiúsculas — ex.
+// "68.727.533 JAMILY TAVARES DA SILVA". Por isso `employee_contract_data.
+// legal_name` é opcional: vazio, o contrato usa o valor derivado daqui, e
+// só cai no nome puro quando nem CNPJ existe.
+//
+// Espelha meiLegalName() em src/lib/dpConstants.ts (Deno não compartilha
+// build com o Vite) — mudou uma, mude a outra.
+export function meiLegalName(cnpj: string | null | undefined, name: string): string {
+  const digits = (cnpj || '').replace(/\D/g, '')
+  const upperName = name.trim().toUpperCase()
+  if (digits.length < 8) return upperName
+  const root = `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5, 8)}`
+  return `${root} ${upperName}`
+}
+
+// Pasta que contém um arquivo. Usada pra descobrir onde moram os modelos de
+// contrato a partir do template padrão já cadastrado em contract_templates —
+// evita um secret novo só pra guardar o ID de uma pasta que o próprio doc já
+// sabe apontar.
+export async function getParentFolderId(accessToken: string, fileId: string): Promise<string | null> {
+  const res = await fetch(
+    `https://www.googleapis.com/drive/v3/files/${fileId}?fields=parents`,
+    { headers: { Authorization: `Bearer ${accessToken}` } },
+  )
+  if (!res.ok) throw new Error(`Falha ao ler a pasta do template: ${await res.text()}`)
+  const data = await res.json()
+  return (data.parents?.[0] as string) ?? null
+}
+
+export interface DriveDoc { id: string; name: string }
+
+// Google Docs dentro de uma pasta, em ordem alfabética. É a lista de modelos
+// base oferecida na hora de gerar o contrato: adicionar um modelo é jogar um
+// doc na pasta, sem cadastro no banco.
+export async function listDocsInFolder(accessToken: string, folderId: string): Promise<DriveDoc[]> {
+  const query = `'${folderId}' in parents and mimeType='application/vnd.google-apps.document' and trashed=false`
+  const res = await fetch(
+    `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=files(id,name)&orderBy=name&pageSize=100`,
+    { headers: { Authorization: `Bearer ${accessToken}` } },
+  )
+  if (!res.ok) throw new Error(`Falha ao listar modelos no Drive: ${await res.text()}`)
+  const data = await res.json()
+  return (data.files ?? []) as DriveDoc[]
+}
+
+// Fecho dos contratos ("{{local}}, Data: 22/08/2026") — cidade/UF, não só o
+// nome da unidade. A UF vem do banco em vez de fixa no código porque nem
+// todas as unidades são do mesmo estado (Teixeira de Freitas é BA). Sem UF
+// cadastrada, degrada pro nome puro em vez de imprimir uma barra solta.
+export function resolveContractLocal(store: { name: string; uf?: string | null }): string {
+  return store.uf ? `${store.name}/${store.uf}` : store.name
+}

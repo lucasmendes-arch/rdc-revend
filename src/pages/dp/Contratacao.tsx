@@ -19,6 +19,7 @@ import { Switch } from '@/components/ui/switch'
 import { useAdminTheme } from '@/contexts/AdminThemeContext'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import ProcessoDetailModal from '@/components/dp/ProcessoDetailModal'
+import ContratarParceiroModal from '@/components/dp/ContratarParceiroModal'
 import ColorSelect from '@/components/rh/ColorSelect'
 import MensagemVariaveisModal from '@/components/rh/MensagemVariaveisModal'
 import {
@@ -291,6 +292,7 @@ export default function DpContratacao() {
   const [activeProcesso, setActiveProcesso] = useState<Processo | null>(null)
   const [detailProcesso, setDetailProcesso] = useState<Processo | null>(null)
   const [confirmEncerrar, setConfirmEncerrar] = useState<Processo | null>(null)
+  const [contratarParceiro, setContratarParceiro] = useState<Processo | null>(null)
   const [cardPrefs, setCardPrefs] = useState<CardFieldPrefs>(loadCardPrefs)
   // Mesmos filtros do kanban de Candidatos — os quatro campos existem no card
   // do DP também (cargo, tag, data fim e responsável vêm do candidato).
@@ -463,10 +465,19 @@ export default function DpContratacao() {
 
   // "encerrado" é decisão negativa — pede confirmação antes de commitar (via
   // drag ou via <select> da aba Estágio), diferente das demais transições.
+  //
+  // "contratacao" num processo MEI é o momento em que se assina o Contrato de
+  // Profissional Parceiro: abre o popup de contratação (dados obrigatórios +
+  // modelo base), que commita a etapa e gera o documento. Mesma ideia do
+  // "Contratar" do RH, que gera o contrato de formação ao confirmar.
   function requestStageChange(processo: Processo, newStage: string) {
     if (processo.current_stage === newStage) return
     if (newStage === 'encerrado') {
       setConfirmEncerrar(processo)
+      return
+    }
+    if (newStage === 'contratacao' && processo.employment_type === 'mei') {
+      setContratarParceiro(processo)
       return
     }
     updateStage.mutate({ id: processo.id, stage: newStage })
@@ -730,6 +741,20 @@ export default function DpContratacao() {
       )}
 
       {variablesOpen && <MensagemVariaveisModal onClose={() => setVariablesOpen(false)} />}
+
+      {/* Modal: contratação do parceiro (dados + modelo base + geração). O
+          popup é quem commita a mudança de etapa — fechar sem confirmar
+          deixa o card onde estava. */}
+      {contratarParceiro && (
+        <ContratarParceiroModal
+          processo={contratarParceiro}
+          onConfirmStage={async () => {
+            await updateStage.mutateAsync({ id: contratarParceiro.id, stage: 'contratacao' })
+            setDetailProcesso((prev) => (prev && prev.id === contratarParceiro.id ? { ...prev, current_stage: 'contratacao' } : prev))
+          }}
+          onClose={() => setContratarParceiro(null)}
+        />
+      )}
 
       {/* Modal: confirmação de encerramento (decisão negativa) */}
       {confirmEncerrar && (

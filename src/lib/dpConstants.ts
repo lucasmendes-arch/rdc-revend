@@ -152,7 +152,7 @@ export type ContractType = 'formacao' | 'prestacao_servico' | 'clt' | 'desligame
 
 export const CONTRACT_TYPE_LABELS: Record<ContractType, string> = {
   formacao: 'Contrato de formação',
-  prestacao_servico: 'Prestação de serviço',
+  prestacao_servico: 'Contrato de Profissional Parceiro',
   clt: 'CLT',
   desligamento_formacao: 'Desligamento do curso',
 }
@@ -195,12 +195,73 @@ export function addBusinessDaysISO(iso: string, businessDays: number): string {
   return date.toISOString().slice(0, 10)
 }
 
+// Vigência do contrato de parceria: 12 meses contados da assinatura, menos
+// um dia (assinado 22/08/2026 → vale até 21/08/2027). Espelha
+// PARCERIA_TERM_MONTHS/partnerTermEndISO em _shared/googleDrive.ts, que é
+// quem de fato grava term_end — aqui serve pra prever a data na tela.
+export const PARCERIA_TERM_MONTHS = 12
+
+export function partnerTermEndISO(termStart: string): string {
+  const [y, m, d] = termStart.split('-').map(Number)
+  const targetMonthIndex = m - 1 + PARCERIA_TERM_MONTHS
+  const targetYear = y + Math.floor(targetMonthIndex / 12)
+  const targetMonth = ((targetMonthIndex % 12) + 12) % 12
+  // Fim de mês: 31/01 + 12 meses cai em 31/01, mas 29/02 num ano não
+  // bissexto precisa recuar pro último dia real do mês.
+  const lastDay = new Date(Date.UTC(targetYear, targetMonth + 1, 0)).getUTCDate()
+  const date = new Date(Date.UTC(targetYear, targetMonth, Math.min(d, lastDay)))
+  date.setUTCDate(date.getUTCDate() - 1)
+  return date.toISOString().slice(0, 10)
+}
+
 export type ContractDataField =
-  | 'cpf' | 'rg' | 'cnpj' | 'birth_date' | 'marital_status' | 'nationality' | 'address' | 'email'
+  | 'cpf' | 'rg' | 'cnpj' | 'legal_name' | 'birth_date' | 'marital_status' | 'nationality' | 'address' | 'email'
   | 'bank_name' | 'bank_agency' | 'bank_account' | 'pix_key'
 
+// Nacionalidade e estado civil entram no contrato como adjetivo dentro da
+// frase ("Fulana, brasileira, solteira, inscrita no CPF...") — o valor
+// guardado JÁ é a forma flexionada que sai no documento.
+//
+// Nacionalidade: só o caso comum na lista, o resto é digitado (decisão do
+// usuário) — uma lista de nacionalidades seria longa e quase nunca usada.
+export const NATIONALITY_DEFAULT = 'brasileiro(a)'
+
+// Quatro opções, na forma "(a)" — mesmo padrão da nacionalidade. Chegou a
+// ter os pares flexionados (solteira/solteiro/casada/...), mas 11 itens num
+// dropdown pra escolher entre quatro estados civis é atrito à toa.
+export const MARITAL_STATUS_OPTIONS = [
+  'solteiro(a)',
+  'casado(a)',
+  'divorciado(a)',
+  'viúvo(a)',
+] as const
+
+// value = o texto que vai pro documento; label = o mesmo com inicial
+// maiúscula, só pra leitura na tela.
+export function toSelectOptions(values: readonly string[]) {
+  return values.map((v) => ({ value: v, label: v.charAt(0).toUpperCase() + v.slice(1) }))
+}
+
+// Razão social de MEI segue uma regra fixa da Receita: raiz do CNPJ (os 8
+// primeiros dígitos, pontuados) + nome civil em maiúsculas — ex.
+// "68.727.533 JAMILY TAVARES DA SILVA". Por isso o campo não precisa ser
+// digitado: dá pra derivar do CNPJ que já está cadastrado. Só cai no nome
+// puro quando o CNPJ ainda não foi informado.
+//
+// Cópia da regra que vive em supabase/functions/_shared/googleDrive.ts, que
+// é quem de fato preenche o contrato — Deno não compartilha build com o
+// Vite. Aqui serve pra sugerir o valor na tela; mudou uma, mude a outra.
+export function meiLegalName(cnpj: string | null | undefined, name: string): string {
+  const digits = (cnpj || '').replace(/\D/g, '')
+  const upperName = name.trim().toUpperCase()
+  if (digits.length < 8) return upperName
+  const root = `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5, 8)}`
+  return `${root} ${upperName}`
+}
+
 export const CONTRACT_DATA_FIELD_LABELS: Record<ContractDataField, string> = {
-  cpf: 'CPF', rg: 'RG', cnpj: 'CNPJ', birth_date: 'Data de nascimento', marital_status: 'Estado civil',
+  cpf: 'CPF', rg: 'RG', cnpj: 'CNPJ', legal_name: 'Razão social (MEI)',
+  birth_date: 'Data de nascimento', marital_status: 'Estado civil',
   nationality: 'Nacionalidade', address: 'Endereço completo', email: 'E-mail',
   bank_name: 'Banco', bank_agency: 'Agência', bank_account: 'Conta', pix_key: 'Chave PIX',
 }
@@ -210,15 +271,17 @@ export const CONTRACT_DATA_FIELD_LABELS: Record<ContractDataField, string> = {
 // dados bancários (curso gratuito, sem vínculo, sem pagamento). E-mail
 // existe como campo (o template tem {{email}}) mas o usuário confirmou que
 // não é obrigatório pra gerar — fica em branco no doc se não preenchido.
-// 'prestacao_servico' continua um chute (sem template real ainda — "por
-// partes", próxima rodada). 'desligamento_formacao' não pede nada além do
+// 'prestacao_servico' conferido com o template real do Contrato de
+// Profissional Parceiro (2026-08-22): qualifica o parceiro como pessoa
+// jurídica (CNPJ) e como pessoa física (nacionalidade/estado civil), e não
+// menciona conta bancária em lugar nenhum — a lista antiga, com RG e dados
+// bancários, era chute de quando não havia template. Razão social fica fora
+// dos obrigatórios: vazia, a geração usa o nome do candidato.
+// 'desligamento_formacao' não pede nada além do
 // que 'formacao' já exige (reaproveita CPF/nome já preenchidos).
 export const REQUIRED_CONTRACT_DATA_FIELDS: Record<ContractType, ContractDataField[]> = {
   formacao: ['cpf', 'birth_date', 'address'],
-  prestacao_servico: [
-    'cpf', 'rg', 'birth_date', 'marital_status', 'nationality', 'address',
-    'bank_name', 'bank_agency', 'bank_account', 'pix_key',
-  ],
+  prestacao_servico: ['cpf', 'cnpj', 'address', 'email', 'nationality', 'marital_status'],
   clt: [],
   desligamento_formacao: [],
 }

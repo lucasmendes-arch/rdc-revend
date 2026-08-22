@@ -4,10 +4,12 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import {
   getGoogleAccessToken, findOrCreateFolder, copyTemplate, replacePlaceholders, getWebViewLink,
-  decomposeDatePtBR, formatDateBR, formatCPF, formatPhoneBR, todayISO,
-  addBusinessDaysISO, FORMACAO_COURSE_BUSINESS_DAYS, resolveUnitFolderName, type FieldMap,
+  decomposeDatePtBR, formatDateBR, formatCPF, formatCNPJ, formatPhoneBR, formatPercent, todayISO, meiLegalName,
+  addBusinessDaysISO, FORMACAO_COURSE_BUSINESS_DAYS, partnerTermEndISO,
+  resolveUnitFolderName, resolveContractLocal, getParentFolderId, listDocsInFolder, type FieldMap,
 } from '../_shared/googleDrive.ts'
 import { syncContractDataToCard } from '../_shared/contractSync.ts'
+import { notifyContractGenerated } from '../_shared/contractNotify.ts'
 
 declare const Deno: { env: { get(k: string): string | undefined } }
 
@@ -39,14 +41,54 @@ type ContractType = 'formacao' | 'prestacao_servico'
 // manter os dois em sincronia se a regra mudar.
 const REQUIRED_FIELDS_BY_TYPE: Record<ContractType, string[]> = {
   formacao: ['cpf', 'birth_date', 'address'],
-  // 'prestacao_servico' ainda não tem template real confirmado — fora de
-  // escopo desta rodada ("por partes"). Mantido só pra não quebrar a
-  // resolução de contractType existente.
-  prestacao_servico: ['cpf', 'rg', 'birth_date', 'marital_status', 'nationality', 'address', 'bank_name', 'bank_agency', 'bank_account', 'pix_key'],
+  // Conferido contra o template real do Contrato de Profissional Parceiro
+  // (2026-08-22): pede CNPJ e qualificação civil do parceiro, e não menciona
+  // conta bancária em lugar nenhum — a lista antiga (RG + dados bancários)
+  // era um chute de quando não havia template. `legal_name` fica de fora de
+  // propósito: vazio, a razão social é derivada do CNPJ + nome (regra fixa
+  // de MEI, ver meiLegalName).
+  prestacao_servico: ['cpf', 'cnpj', 'address', 'email', 'nationality', 'marital_status'],
+}
+
+// Dados da unidade exigidos pelo contrato de parceria, com o rótulo que o
+// usuário vê no modal "Dados das lojas" — erro que diz "faltam dados da loja"
+// sem dizer quais manda a pessoa caçar campo a campo.
+const REQUIRED_STORE_FIELDS: Array<[string, string]> = [
+  ['legal_name', 'Razão social'],
+  ['cnpj', 'CNPJ'],
+  ['legal_address', 'Endereço'],
+  ['representative_name', 'Representante legal'],
+  ['representative_cpf', 'CPF do representante'],
+  ['representative_rg', 'RG do representante'],
+  ['representative_address', 'Endereço do representante'],
+  ['email', 'E-mail da unidade'],
+  ['phone', 'Telefone da unidade'],
+  ['uf', 'UF (estado) da unidade'],
+]
+
+interface StoreRow {
+  name: string
+  slug: string
+  uf: string | null
+  legal_name: string | null
+  cnpj: string | null
+  legal_address: string | null
+  representative_name: string | null
+  representative_cpf: string | null
+  representative_rg: string | null
+  representative_address: string | null
+  email: string | null
+  phone: string | null
+}
+
+const EMPTY_STORE: StoreRow = {
+  name: '', slug: '', uf: null, legal_name: null, cnpj: null, legal_address: null,
+  representative_name: null, representative_cpf: null, representative_rg: null,
+  representative_address: null, email: null, phone: null,
 }
 
 function buildFormacaoFieldMap(input: {
-  store: { legal_name: string | null; cnpj: string | null; legal_address: string | null; name: string; slug: string }
+  store: StoreRow
   candidateName: string
   candidateWhatsapp: string
   contractData: Record<string, unknown>
@@ -70,7 +112,7 @@ function buildFormacaoFieldMap(input: {
     '{{endereco_profissional}}': (contractData.address as string) || '',
     '{{telefone_profissional}}': formatPhoneBR(candidateWhatsapp),
     '{{email_profissional}}': (contractData.email as string) || '',
-    '{{local}}': store.name,
+    '{{local}}': resolveContractLocal(store),
     '{{dia_assinatura}}': dia,
     '{{mes_assinatura}}': mes,
     '{{ano_assinatura}}': ano,
@@ -82,6 +124,61 @@ function buildFormacaoFieldMap(input: {
     '{{dia_declaracao}}': '',
     '{{mes_declaracao}}': '',
     '{{ano_declaracao}}': '',
+  }
+}
+
+// Contrato de Parceria (Lei 13.352/2016) — 24 placeholders, confirmados
+// lendo o template real no Drive em 2026-08-22. Diferente do de formação,
+// este qualifica as DUAS partes: a unidade entra com razão social, CNPJ,
+// endereço e o representante que assina; o parceiro entra como pessoa
+// jurídica (MEI) além de pessoa física.
+function buildParceriaFieldMap(input: {
+  store: StoreRow
+  candidateName: string
+  candidateWhatsapp: string
+  contractData: Record<string, unknown>
+  roleTitle: string
+  retentionPercentage: number | string | null
+  productCommissionPercentage: number | string | null
+  termStart: string
+}): FieldMap {
+  const {
+    store, candidateName, candidateWhatsapp, contractData, roleTitle,
+    retentionPercentage, productCommissionPercentage, termStart,
+  } = input
+  return {
+    // ── Salão ────────────────────────────────────────────────────────
+    '{{razao_social_salao}}': store.legal_name || '',
+    '{{cnpj_salao}}': formatCNPJ(store.cnpj),
+    '{{endereco_salao}}': store.legal_address || '',
+    '{{representante_salao}}': store.representative_name || '',
+    '{{cpf_representante_salao}}': formatCPF(store.representative_cpf),
+    '{{rg_representante_salao}}': store.representative_rg || '',
+    '{{endereco_representante_salao}}': store.representative_address || '',
+    '{{email_salao}}': store.email || '',
+    '{{telefone_salao}}': formatPhoneBR(store.phone),
+    // ── Profissional ─────────────────────────────────────────────────
+    // Vazia, deriva da regra da Receita (raiz do CNPJ + nome em caixa
+    // alta) em vez de exigir digitação.
+    '{{razao_social_profissional}}': (contractData.legal_name as string)
+      || meiLegalName((contractData.cnpj as string) || null, candidateName),
+    '{{cnpj_profissional}}': formatCNPJ((contractData.cnpj as string) || null),
+    '{{endereco_profissional}}': (contractData.address as string) || '',
+    '{{nome_profissional}}': candidateName,
+    '{{nacionalidade_profissional}}': (contractData.nationality as string) || '',
+    '{{estado_civil_profissional}}': (contractData.marital_status as string) || '',
+    '{{cpf_profissional}}': formatCPF((contractData.cpf as string) || null),
+    '{{email_profissional}}': (contractData.email as string) || '',
+    '{{telefone_profissional}}': formatPhoneBR(candidateWhatsapp),
+    // ── Comercial ────────────────────────────────────────────────────
+    '{{atividade_profissional}}': roleTitle,
+    '{{percentual_retencao_salao}}': formatPercent(retentionPercentage),
+    '{{percentual_comissao_produtos}}': formatPercent(productCommissionPercentage),
+    // ── Fecho ────────────────────────────────────────────────────────
+    // Data única (dd/mm/aaaa), não decomposta em dia/mês/ano como no
+    // contrato de formação — o template escreve "Data: {{data_assinatura}}".
+    '{{local}}': resolveContractLocal(store),
+    '{{data_assinatura}}': formatDateBR(termStart),
   }
 }
 
@@ -110,14 +207,14 @@ serve(async (req: Request) => {
     const { data: hasAccess, error: accessErr } = await userClient.rpc('has_rh_access')
     if (accessErr || !hasAccess) return json({ error: 'Acesso negado' }, 403, req)
 
-    const { process_id, term_start, term_end } = await req.json()
+    const { process_id, term_start, term_end, template_doc_id } = await req.json()
     if (!process_id) return json({ error: 'process_id é obrigatório' }, 400, req)
 
     const serviceClient = createClient(supabaseUrl, supabaseService)
 
     const { data: processo, error: processoErr } = await serviceClient
       .from('employee_processes')
-      .select('id, employment_type, current_stage, role_title, candidate_id, drive_folder_url, candidates(name, whatsapp), stores(name, slug, legal_name, cnpj, legal_address)')
+      .select('id, employment_type, current_stage, role_title, candidate_id, store_id, drive_folder_url, candidates(name, whatsapp, job_opening_id, assignee_id), stores(name, slug, uf, legal_name, cnpj, legal_address, representative_name, representative_cpf, representative_rg, representative_address, email, phone)')
       .eq('id', process_id)
       .single()
     if (processoErr || !processo) return json({ error: 'Processo não encontrado' }, 404, req)
@@ -170,24 +267,94 @@ serve(async (req: Request) => {
     if (!rootFolderId) return json({ error: 'Pasta raiz de contratos no Drive não configurada' }, 500, req)
 
     const candidateName = processo.candidates?.name ?? ''
-    const store = processo.stores ?? { name: '', slug: '', legal_name: null, cnpj: null, legal_address: null }
+    const store = (processo.stores ?? EMPTY_STORE) as StoreRow
+
+    // ── Contrato de parceria: dados que não vivem no processo ──────────
+    // Percentuais saem da VAGA do candidato (snapshot da negociação
+    // daquela unidade) e só caem no cargo quando a vaga é anterior a estas
+    // colunas ou foi criada solta, sem cargo do catálogo.
+    let retentionPercentage: number | string | null = null
+    let productCommissionPercentage: number | string | null = null
+
+    if (contractType === 'prestacao_servico') {
+      const missingStoreFields = REQUIRED_STORE_FIELDS
+        .filter(([column]) => !store[column as keyof StoreRow])
+        .map(([, label]) => label)
+      if (missingStoreFields.length > 0) {
+        return json({
+          error: `Faltam dados da unidade ${store.name} pra gerar o contrato de parceria (${missingStoreFields.join(', ')}). Preencha em "Dados das lojas".`,
+        }, 400, req)
+      }
+
+      const jobOpeningId = processo.candidates?.job_opening_id
+      if (jobOpeningId) {
+        const { data: jobOpening } = await serviceClient
+          .from('job_openings')
+          .select('partner_retention_percentage, product_commission_percentage, job_roles(partner_retention_percentage, product_commission_percentage)')
+          .eq('id', jobOpeningId)
+          .maybeSingle()
+        const role = jobOpening?.job_roles as
+          { partner_retention_percentage: number | null; product_commission_percentage: number | null } | null
+        retentionPercentage = jobOpening?.partner_retention_percentage ?? role?.partner_retention_percentage ?? null
+        productCommissionPercentage = jobOpening?.product_commission_percentage ?? role?.product_commission_percentage ?? null
+      }
+
+      const missingPercentages = [
+        retentionPercentage === null ? 'retenção do salão' : null,
+        productCommissionPercentage === null ? 'comissão sobre produtos' : null,
+      ].filter(Boolean)
+      if (missingPercentages.length > 0) {
+        return json({
+          error: `Faltam percentuais do contrato de parceria (${missingPercentages.join(', ')}). Preencha na vaga do candidato ou no cargo em /admin/rh/cargos.`,
+        }, 400, req)
+      }
+    }
 
     const accessToken = await getGoogleAccessToken()
     const unitFolderId = await findOrCreateFolder(accessToken, resolveUnitFolderName(store.slug, store.name), rootFolderId)
     const candidateFolderId = await findOrCreateFolder(accessToken, candidateName, unitFolderId)
     const candidateFolderUrl = await getWebViewLink(accessToken, candidateFolderId)
 
-    const docName = `${candidateName} - Contrato de Formação`
-    const newDocId = await copyTemplate(accessToken, template.google_doc_id, docName, candidateFolderId)
+    // ── Modelo base ────────────────────────────────────────────────────
+    // O padrão vem de contract_templates; a tela pode escolher outro doc da
+    // MESMA pasta (é assim que novos modelos aparecem, sem cadastro). A
+    // pasta é revalidada aqui: sem isso, quem chamasse a function poderia
+    // pedir a cópia de qualquer documento do Drive da conta.
+    const templateDocId: string = template_doc_id || template.google_doc_id
+    // A lista é consultada mesmo quando o modelo é o padrão: é dela que sai o
+    // nome gravado junto do contrato (rastro legível de sob qual modelo a
+    // pessoa assinou, já que o arquivo pode ser renomeado depois).
+    const templatesFolderId = await getParentFolderId(accessToken, template.google_doc_id)
+    const available = templatesFolderId ? await listDocsInFolder(accessToken, templatesFolderId) : []
+    const chosen = available.find((d) => d.id === templateDocId)
+    if (!chosen && templateDocId !== template.google_doc_id) {
+      return json({ error: 'Modelo de contrato inválido — escolha um dos modelos da pasta de templates' }, 400, req)
+    }
+    const templateName: string | null = chosen?.name ?? null
+
+    const docLabel = contractType === 'formacao' ? 'Contrato de Formação' : 'Contrato Profissional Parceiro'
+    const docName = `${candidateName} - ${docLabel}`
+    const newDocId = await copyTemplate(accessToken, templateDocId, docName, candidateFolderId)
 
     // Precedência: o que o usuário escolheu na tela > a data informada na
-    // contratação (contract_start_date) > hoje.
-    const termStart = term_start || (contractData.contract_start_date as string) || todayISO()
-    const termEnd = term_end || addBusinessDaysISO(termStart, FORMACAO_COURSE_BUSINESS_DAYS)
+    // contratação (contract_start_date, só formação) > hoje.
+    const termStart = term_start
+      || (contractType === 'formacao' ? (contractData.contract_start_date as string) : null)
+      || todayISO()
+    // Formação dura 10 dias úteis; parceria dura 12 meses (cláusula 4.1 do
+    // template). Data de fim informada à mão continua tendo prioridade.
+    const termEnd = term_end || (contractType === 'formacao'
+      ? addBusinessDaysISO(termStart, FORMACAO_COURSE_BUSINESS_DAYS)
+      : partnerTermEndISO(termStart))
 
-    const fieldMap = buildFormacaoFieldMap({
-      store, candidateName, candidateWhatsapp: processo.candidates?.whatsapp ?? '', contractData, termStart, termEnd,
-    })
+    const fieldMap = contractType === 'formacao'
+      ? buildFormacaoFieldMap({
+          store, candidateName, candidateWhatsapp: processo.candidates?.whatsapp ?? '', contractData, termStart, termEnd,
+        })
+      : buildParceriaFieldMap({
+          store, candidateName, candidateWhatsapp: processo.candidates?.whatsapp ?? '', contractData,
+          roleTitle: processo.role_title ?? '', retentionPercentage, productCommissionPercentage, termStart,
+        })
     await replacePlaceholders(accessToken, newDocId, fieldMap)
     const googleDocUrl = await getWebViewLink(accessToken, newDocId)
 
@@ -199,6 +366,8 @@ serve(async (req: Request) => {
         file_url: googleDocUrl,
         term_start: termStart,
         term_end: termEnd,
+        template_doc_id: templateDocId,
+        template_name: templateName,
       })
       .select('id')
       .single()
@@ -217,6 +386,18 @@ serve(async (req: Request) => {
       formacao: contractType === 'formacao'
         ? { birthDate: (contractData.birth_date as string) ?? null, termStart, termEnd }
         : null,
+    })
+
+    // Mesmo aviso da geração automática (WhatsApp do responsável pelo
+    // candidato, com o link do documento) — a confirmação não pode depender
+    // de qual dos dois caminhos gerou o contrato. Best-effort: o contrato já
+    // está gravado, falha aqui só vira log.
+    await notifyContractGenerated(serviceClient, {
+      assigneeId: processo.candidates?.assignee_id,
+      storeId: processo.store_id,
+      candidateName,
+      docLabel,
+      link: googleDocUrl,
     })
 
     return json({ success: true, contract_id: contractRow.id, google_doc_url: googleDocUrl }, 200, req)

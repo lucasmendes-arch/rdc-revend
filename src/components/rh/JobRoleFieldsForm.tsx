@@ -7,6 +7,8 @@ export interface JobRoleFieldsValue {
   fixed_amount: string
   variable_percentage: string
   variable_basis: string
+  partner_retention_percentage: string
+  product_commission_percentage: string
   work_schedule: string
   workload_hours: string
   requirements: string
@@ -20,6 +22,8 @@ export const EMPTY_JOB_ROLE_FIELDS: JobRoleFieldsValue = {
   fixed_amount: '',
   variable_percentage: '',
   variable_basis: '',
+  partner_retention_percentage: '',
+  product_commission_percentage: '',
   work_schedule: '',
   workload_hours: '',
   requirements: '',
@@ -34,6 +38,8 @@ export interface JobRoleDescriptiveRow {
   fixed_amount: number | null
   variable_percentage: number | null
   variable_basis: string | null
+  partner_retention_percentage: number | null
+  product_commission_percentage: number | null
   work_schedule: string | null
   workload_hours: number | null
   requirements: string | null
@@ -41,7 +47,7 @@ export interface JobRoleDescriptiveRow {
 }
 
 export const JOB_ROLE_DESCRIPTIVE_FIELDS_SELECT =
-  'description, contract_type, compensation_type, fixed_amount, variable_percentage, variable_basis, work_schedule, workload_hours, requirements, benefits'
+  'description, contract_type, compensation_type, fixed_amount, variable_percentage, variable_basis, partner_retention_percentage, product_commission_percentage, work_schedule, workload_hours, requirements, benefits'
 
 export function descriptiveRowToFormValue(row: JobRoleDescriptiveRow | null | undefined): JobRoleFieldsValue {
   if (!row) return EMPTY_JOB_ROLE_FIELDS
@@ -52,6 +58,8 @@ export function descriptiveRowToFormValue(row: JobRoleDescriptiveRow | null | un
     fixed_amount: row.fixed_amount != null ? String(row.fixed_amount) : '',
     variable_percentage: row.variable_percentage != null ? String(row.variable_percentage) : '',
     variable_basis: row.variable_basis || '',
+    partner_retention_percentage: row.partner_retention_percentage != null ? String(row.partner_retention_percentage) : '',
+    product_commission_percentage: row.product_commission_percentage != null ? String(row.product_commission_percentage) : '',
     work_schedule: row.work_schedule || '',
     workload_hours: row.workload_hours != null ? String(row.workload_hours) : '',
     requirements: row.requirements || '',
@@ -67,6 +75,8 @@ export function descriptiveFormValueToPayload(value: JobRoleFieldsValue) {
     fixed_amount: value.fixed_amount ? Number(value.fixed_amount) : null,
     variable_percentage: value.variable_percentage ? Number(value.variable_percentage) : null,
     variable_basis: value.variable_basis.trim() || null,
+    partner_retention_percentage: value.partner_retention_percentage ? Number(value.partner_retention_percentage) : null,
+    product_commission_percentage: value.product_commission_percentage ? Number(value.product_commission_percentage) : null,
     work_schedule: value.work_schedule.trim() || null,
     workload_hours: value.workload_hours ? Number(value.workload_hours) : null,
     requirements: value.requirements.trim() || null,
@@ -195,6 +205,45 @@ export function JobRoleFieldsForm({ value, onChange }: JobRoleFieldsFormProps) {
             className={inputClass}
             placeholder="Ex: % sobre vendas líquidas do mês"
           />
+        </div>
+      )}
+
+      {/* Percentuais do Contrato de Profissional Parceiro (Lei 13.352/2016) —
+          só fazem sentido em vínculo MEI, mesmo critério de
+          job_roles.requires_experience. São o que vai impresso no contrato
+          gerado em /admin/dp/contratos, não a remuneração variável divulgada
+          na vaga (variable_percentage, acima). */}
+      {value.contract_type === 'mei' && (
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className={labelClass}>Retenção do salão (%)</label>
+            <input
+              type="number"
+              min="0"
+              max="100"
+              step="0.01"
+              value={value.partner_retention_percentage}
+              onChange={(e) => onChange({ partner_retention_percentage: e.target.value })}
+              className={inputClass}
+              placeholder="Ex: 50"
+            />
+          </div>
+          <div>
+            <label className={labelClass}>Comissão sobre produtos (%)</label>
+            <input
+              type="number"
+              min="0"
+              max="100"
+              step="0.01"
+              value={value.product_commission_percentage}
+              onChange={(e) => onChange({ product_commission_percentage: e.target.value })}
+              className={inputClass}
+              placeholder="Ex: 10"
+            />
+          </div>
+          <p className="col-span-2 text-[11px] text-muted-foreground -mt-2">
+            Vão impressos no Contrato de Profissional Parceiro. A vaga guarda uma cópia editável destes valores.
+          </p>
         </div>
       )}
 

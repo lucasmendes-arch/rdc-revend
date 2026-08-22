@@ -12,9 +12,10 @@ import StyledSelect from '@/components/ui/styled-select'
 import { DateField } from '@/components/ui/date-field'
 import {
   EMPLOYMENT_TYPE_LABELS, DOCUMENT_CHECKLIST_LABELS, DOCUMENT_STATUS_LABELS, CONTRACT_TYPE_LABELS,
-  isExperienceTagActive, getExperienceInfo,
+  isExperienceTagActive, getExperienceInfo, MARITAL_STATUS_OPTIONS, toSelectOptions, meiLegalName,
   type DocumentStatus, type ContractType, type StageColumn,
 } from '@/lib/dpConstants'
+import NacionalidadeField from '@/components/dp/NacionalidadeField'
 import type { Processo, TimelineEntry, DocumentRow, ContractRow, ContractPersonalData } from '@/lib/dpTypes'
 
 const EMPTY_CONTRACT_FORM = { contract_type: 'clt' as ContractType, signature_date: '', term_start: '', term_end: '' }
@@ -282,7 +283,10 @@ export default function ProcessoDetailModal({ processo, onClose, estagio }: Proc
     },
   })
 
-  const [personalDraft, setPersonalDraft] = useState({ cpf: '', rg: '', cnpj: '', address: '', email: '', pix_key: '' })
+  const [personalDraft, setPersonalDraft] = useState({
+    cpf: '', rg: '', cnpj: '', legal_name: '', nationality: '', marital_status: '',
+    address: '', email: '', pix_key: '',
+  })
 
   useEffect(() => {
     if (personalData) {
@@ -290,6 +294,9 @@ export default function ProcessoDetailModal({ processo, onClose, estagio }: Proc
         cpf: personalData.cpf ?? '',
         rg: personalData.rg ?? '',
         cnpj: personalData.cnpj ?? '',
+        legal_name: personalData.legal_name ?? '',
+        nationality: personalData.nationality ?? '',
+        marital_status: personalData.marital_status ?? '',
         address: personalData.address ?? '',
         email: personalData.email ?? '',
         pix_key: personalData.pix_key ?? '',
@@ -299,9 +306,27 @@ export default function ProcessoDetailModal({ processo, onClose, estagio }: Proc
 
   const updatePersonalData = useMutation({
     mutationFn: async (field: keyof typeof personalDraft) => {
+      // `nationality` é NOT NULL DEFAULT 'brasileira' — apagar o campo e sair
+      // mandaria null e estouraria a constraint, então vazio volta ao padrão.
+      const value = personalDraft[field] || (field === 'nationality' ? 'brasileira' : null)
       const { error } = await supabase
         .from('employee_contract_data')
-        .upsert({ process_id: processo.id, [field]: personalDraft[field] || null })
+        .upsert({ process_id: processo.id, [field]: value })
+      if (error) throw error
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['dp-contract-data', processo.id] }),
+    onError: (err) => toast.error(`Erro ao salvar: ${err instanceof Error ? err.message : 'desconhecido'}`),
+  })
+
+  // Irmã de updatePersonalData pros campos de dropdown: o valor vem junto em
+  // vez de ser lido do draft, porque o setState do onChange ainda não
+  // aplicou quando o commit acontece no mesmo tick.
+  const updateSingleField = useMutation({
+    mutationFn: async ({ field, value }: { field: keyof typeof personalDraft; value: string }) => {
+      const resolved = value || (field === 'nationality' ? 'brasileiro(a)' : null)
+      const { error } = await supabase
+        .from('employee_contract_data')
+        .upsert({ process_id: processo.id, [field]: resolved })
       if (error) throw error
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['dp-contract-data', processo.id] }),
@@ -932,6 +957,42 @@ export default function ProcessoDetailModal({ processo, onClose, estagio }: Proc
                       />
                     </div>
                   )}
+                  {processo.employment_type === 'mei' && (
+                    <div>
+                      {/* Não é obrigatória: em branco, o contrato usa a regra
+                          fixa de MEI (raiz do CNPJ + nome em caixa alta), que
+                          é o que o placeholder mostra. Preencher só quando a
+                          razão social real fugir da regra. */}
+                      <FieldLabel text="Razão social (MEI)" filled={!!personalDraft.legal_name.trim()} />
+                      <input
+                        value={personalDraft.legal_name}
+                        onChange={(e) => setPersonalDraft((p) => ({ ...p, legal_name: e.target.value }))}
+                        onBlur={() => updatePersonalData.mutate('legal_name')}
+                        placeholder={meiLegalName(personalDraft.cnpj, processo.candidates?.name ?? '')}
+                        className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                      />
+                    </div>
+                  )}
+                  <div>
+                    <FieldLabel text="Nacionalidade" filled={!!personalDraft.nationality.trim()} />
+                    <NacionalidadeField
+                      value={personalDraft.nationality}
+                      onChange={(v) => setPersonalDraft((p) => ({ ...p, nationality: v }))}
+                      onCommit={(v) => updateSingleField.mutate({ field: 'nationality', value: v })}
+                    />
+                  </div>
+                  <div>
+                    <FieldLabel text="Estado civil" filled={!!personalDraft.marital_status.trim()} />
+                    <StyledSelect
+                      value={personalDraft.marital_status}
+                      onChange={(v) => {
+                        setPersonalDraft((p) => ({ ...p, marital_status: v }))
+                        updateSingleField.mutate({ field: 'marital_status', value: v })
+                      }}
+                      options={toSelectOptions(MARITAL_STATUS_OPTIONS)}
+                      placeholder="Selecionar"
+                    />
+                  </div>
                   <div>
                     <FieldLabel text="Endereço" filled={!!personalDraft.address.trim()} />
                     <input
@@ -963,7 +1024,12 @@ export default function ProcessoDetailModal({ processo, onClose, estagio }: Proc
                 </div>
               </div>
 
-              {documentRows.length > 0 && (
+              {/* Checklist é coisa de CLT (CTPS, PIS, título, escolaridade,
+                  ASO). No MEI os documentos viraram campos de texto em
+                  20260724000004 e as linhas antigas foram apagadas em
+                  20260822000004 — o guard por employment_type impede que
+                  qualquer resíduo volte a aparecer no card do parceiro. */}
+              {processo.employment_type !== 'mei' && documentRows.length > 0 && (
               <div className="border-t border-border/60 pt-4 space-y-1">
               <p className="text-[11px] font-semibold text-muted-foreground uppercase mb-2">Checklist de documentos</p>
               {documentRows.map((doc) => (

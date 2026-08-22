@@ -77,13 +77,13 @@ export default function DpGerarContrato() {
         <div className="px-4 sm:px-6 py-4 flex items-center justify-between gap-4 flex-wrap">
           <div>
             <h1 className="text-xl sm:text-2xl font-bold text-foreground">Gerar Contrato</h1>
-            <p className="text-sm text-muted-foreground mt-1">Geração automática dos contratos de formação e prestação de serviço</p>
+            <p className="text-sm text-muted-foreground mt-1">Geração automática dos contratos de formação e de profissional parceiro</p>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
             <button
               onClick={() => setLojasOpen(true)}
               className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border text-sm font-medium hover:bg-surface-alt transition-colors"
-              title="Razão social, CNPJ e endereço por unidade"
+              title="Razão social, CNPJ, endereço, contato e representante legal por unidade"
             >
               <Building2 className="w-4 h-4" />
               <span className="hidden sm:inline">Dados das lojas</span>

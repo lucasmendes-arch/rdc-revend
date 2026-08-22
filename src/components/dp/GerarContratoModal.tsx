@@ -5,14 +5,17 @@ import { X, FileText } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useEscapeToClose } from '@/hooks/useEscapeToClose'
 import { DateField } from '@/components/ui/date-field'
+import StyledSelect from '@/components/ui/styled-select'
+import NacionalidadeField from '@/components/dp/NacionalidadeField'
 import {
   CONTRACT_TYPE_LABELS, resolveAutoContractType, REQUIRED_CONTRACT_DATA_FIELDS,
-  CONTRACT_DATA_FIELD_LABELS, type ContractDataField,
+  CONTRACT_DATA_FIELD_LABELS, MARITAL_STATUS_OPTIONS, toSelectOptions, meiLegalName,
+  type ContractDataField,
 } from '@/lib/dpConstants'
 import type { Processo, ContractRow, ContractPersonalData } from '@/lib/dpTypes'
 
 const EMPTY_DATA_FORM = {
-  cpf: '', rg: '', birth_date: '', marital_status: '', nationality: 'brasileira',
+  cpf: '', rg: '', cnpj: '', legal_name: '', birth_date: '', marital_status: '', nationality: 'brasileira',
   address: '', email: '', bank_name: '', bank_agency: '', bank_account: '', pix_key: '',
 }
 
@@ -36,6 +39,7 @@ export default function GerarContratoModal({ processo, onClose }: GerarContratoM
   const queryClient = useQueryClient()
   const [dataForm, setDataForm] = useState(EMPTY_DATA_FORM)
   const [termStart, setTermStart] = useState('')
+  const [templateId, setTemplateId] = useState('')
   const [termEnd, setTermEnd] = useState('')
 
   const contractType = resolveAutoContractType(processo.employment_type, processo.current_stage)
@@ -71,6 +75,8 @@ export default function GerarContratoModal({ processo, onClose }: GerarContratoM
       setDataForm({
         cpf: personalData.cpf ?? '',
         rg: personalData.rg ?? '',
+        cnpj: personalData.cnpj ?? '',
+        legal_name: personalData.legal_name ?? '',
         birth_date: personalData.birth_date ?? '',
         marital_status: personalData.marital_status ?? '',
         nationality: personalData.nationality ?? 'brasileira',
@@ -103,6 +109,8 @@ export default function GerarContratoModal({ processo, onClose }: GerarContratoM
         process_id: processo.id,
         cpf: dataForm.cpf || null,
         rg: dataForm.rg || null,
+        cnpj: dataForm.cnpj || null,
+        legal_name: dataForm.legal_name || null,
         birth_date: dataForm.birth_date || null,
         marital_status: dataForm.marital_status || null,
         nationality: dataForm.nationality || 'brasileira',
@@ -122,10 +130,36 @@ export default function GerarContratoModal({ processo, onClose }: GerarContratoM
     onError: (err) => toast.error(`Erro ao salvar dados: ${err instanceof Error ? err.message : 'desconhecido'}`),
   })
 
+  // Modelos base = documentos da pasta de contratos no Drive (ver
+  // list-contract-templates). Só o contrato de parceria oferece escolha; o de
+  // formação tem um modelo só e não ganha nada com o dropdown.
+  const { data: templates, isLoading: loadingTemplates } = useQuery<{ templates: { id: string; name: string }[]; default_id: string }>({
+    queryKey: ['contract-templates', 'prestacao_servico'],
+    enabled: contractType === 'prestacao_servico',
+    queryFn: async () => {
+      const { data, error } = await supabase.functions.invoke('list-contract-templates', {
+        body: { contract_type: 'prestacao_servico' },
+      })
+      if (error) throw error
+      if (data?.error) throw new Error(data.error)
+      return data
+    },
+    staleTime: 5 * 60 * 1000,
+  })
+
+  useEffect(() => {
+    if (templates?.default_id && !templateId) setTemplateId(templates.default_id)
+  }, [templates, templateId])
+
   const generateContract = useMutation({
     mutationFn: async () => {
       const { data, error } = await supabase.functions.invoke('generate-contract', {
-        body: { process_id: processo.id, term_start: termStart || null, term_end: termEnd || null },
+        body: {
+          process_id: processo.id,
+          term_start: termStart || null,
+          term_end: termEnd || null,
+          template_doc_id: contractType === 'prestacao_servico' ? (templateId || null) : null,
+        },
       })
       if (error) throw error
       if (data?.error) throw new Error(data.error)
@@ -190,6 +224,20 @@ export default function GerarContratoModal({ processo, onClose }: GerarContratoM
                 className="w-full px-2.5 py-1.5 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
             </div>
             <div>
+              {fieldLabel('cnpj')}
+              <input type="text" value={dataForm.cnpj} onChange={(e) => setDataForm({ ...dataForm, cnpj: e.target.value })}
+                className="w-full px-2.5 py-1.5 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
+            </div>
+            <div>
+              {/* Não é obrigatória: em branco, o contrato usa a regra fixa de
+                  MEI (raiz do CNPJ + nome em caixa alta), que é o que o
+                  placeholder mostra. */}
+              {fieldLabel('legal_name')}
+              <input type="text" value={dataForm.legal_name} onChange={(e) => setDataForm({ ...dataForm, legal_name: e.target.value })}
+                placeholder={meiLegalName(dataForm.cnpj, processo.candidates?.name ?? '')}
+                className="w-full px-2.5 py-1.5 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
+            </div>
+            <div>
               {fieldLabel('birth_date')}
               {/* Data de nascimento estoura a faixa padrão do Calendar (±10
                   anos), então o seletor de ano precisa abrir um século. */}
@@ -204,13 +252,19 @@ export default function GerarContratoModal({ processo, onClose }: GerarContratoM
             </div>
             <div>
               {fieldLabel('marital_status')}
-              <input type="text" value={dataForm.marital_status} onChange={(e) => setDataForm({ ...dataForm, marital_status: e.target.value })}
-                className="w-full px-2.5 py-1.5 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
+              <StyledSelect
+                value={dataForm.marital_status}
+                onChange={(v) => setDataForm({ ...dataForm, marital_status: v })}
+                options={toSelectOptions(MARITAL_STATUS_OPTIONS)}
+                placeholder="Selecionar"
+              />
             </div>
             <div>
               {fieldLabel('nationality')}
-              <input type="text" value={dataForm.nationality} onChange={(e) => setDataForm({ ...dataForm, nationality: e.target.value })}
-                className="w-full px-2.5 py-1.5 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
+              <NacionalidadeField
+                value={dataForm.nationality}
+                onChange={(v) => setDataForm({ ...dataForm, nationality: v })}
+              />
             </div>
             <div className="col-span-2">
               {fieldLabel('address')}
@@ -283,6 +337,23 @@ export default function GerarContratoModal({ processo, onClose }: GerarContratoM
               />
             </div>
           </div>
+          {contractType === 'prestacao_servico' && (
+            <>
+              <div>
+                <label className="block text-[11px] text-muted-foreground mb-1">Modelo base</label>
+                <StyledSelect
+                  value={templateId}
+                  onChange={setTemplateId}
+                  options={(templates?.templates ?? []).map((t) => ({ value: t.id, label: t.name }))}
+                  placeholder={loadingTemplates ? 'Carregando modelos...' : 'Selecionar'}
+                  disabled={loadingTemplates}
+                />
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                Em branco: assinatura hoje e vigência de 12 meses, como manda a cláusula 4.1 do contrato de parceria.
+              </p>
+            </>
+          )}
           {contractType && missingFields.length > 0 && (
             <p className="text-[11px] text-amber-600 dark:text-amber-400">
               Faltam dados obrigatórios pra este tipo de contrato: {missingFields.map((f) => CONTRACT_DATA_FIELD_LABELS[f]).join(', ')}.
