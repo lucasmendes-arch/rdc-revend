@@ -33,7 +33,7 @@ function json(body: unknown, status = 200, req?: Request) {
   })
 }
 
-type ContractType = 'formacao' | 'prestacao_servico'
+type ContractType = 'formacao' | 'prestacao_servico' | 'distrato'
 
 // Campos exigidos por tipo de contrato — mesma regra de
 // src/lib/dpConstants.ts (REQUIRED_CONTRACT_DATA_FIELDS). Duplicado aqui
@@ -48,23 +48,41 @@ const REQUIRED_FIELDS_BY_TYPE: Record<ContractType, string[]> = {
   // propósito: vazio, a razão social é derivada do CNPJ + nome (regra fixa
   // de MEI, ver meiLegalName).
   prestacao_servico: ['cpf', 'cnpj', 'address', 'email', 'nationality', 'marital_status'],
+  // Distrato (2026-08-25): o template qualifica o parceiro só como pessoa
+  // jurídica (razão social + CNPJ + endereço) e cita o CPF de quem representa
+  // o MEI — não repete nacionalidade/estado civil nem pede e-mail.
+  // `legal_name` fica de fora pelo mesmo motivo da parceria (deriva do CNPJ).
+  distrato: ['cpf', 'cnpj', 'address'],
 }
 
-// Dados da unidade exigidos pelo contrato de parceria, com o rótulo que o
-// usuário vê no modal "Dados das lojas" — erro que diz "faltam dados da loja"
-// sem dizer quais manda a pessoa caçar campo a campo.
-const REQUIRED_STORE_FIELDS: Array<[string, string]> = [
-  ['legal_name', 'Razão social'],
-  ['cnpj', 'CNPJ'],
-  ['legal_address', 'Endereço'],
-  ['representative_name', 'Representante legal'],
-  ['representative_cpf', 'CPF do representante'],
-  ['representative_rg', 'RG do representante'],
-  ['representative_address', 'Endereço do representante'],
-  ['email', 'E-mail da unidade'],
-  ['phone', 'Telefone da unidade'],
-  ['uf', 'UF (estado) da unidade'],
-]
+// Dados da unidade exigidos por tipo de contrato, com o rótulo que o usuário
+// vê no modal "Dados das lojas" — erro que diz "faltam dados da loja" sem
+// dizer quais manda a pessoa caçar campo a campo. O distrato pede menos que a
+// parceria: não menciona RG nem endereço do representante, nem o contato da
+// unidade (o contrato de parceria é que faz a qualificação completa).
+const STORE_FIELD_LABELS: Record<string, string> = {
+  legal_name: 'Razão social',
+  cnpj: 'CNPJ',
+  legal_address: 'Endereço',
+  representative_name: 'Representante legal',
+  representative_cpf: 'CPF do representante',
+  representative_rg: 'RG do representante',
+  representative_address: 'Endereço do representante',
+  email: 'E-mail da unidade',
+  phone: 'Telefone da unidade',
+  uf: 'UF (estado) da unidade',
+}
+
+const REQUIRED_STORE_FIELDS_BY_TYPE: Record<ContractType, string[]> = {
+  // Formação nunca validou dados da unidade (o template usa só razão social,
+  // CNPJ e endereço, e o contrato é gerado por automação) — mantido assim.
+  formacao: [],
+  prestacao_servico: [
+    'legal_name', 'cnpj', 'legal_address', 'representative_name', 'representative_cpf',
+    'representative_rg', 'representative_address', 'email', 'phone', 'uf',
+  ],
+  distrato: ['legal_name', 'cnpj', 'legal_address', 'representative_name', 'representative_cpf', 'uf'],
+}
 
 interface StoreRow {
   name: string
@@ -182,6 +200,41 @@ function buildParceriaFieldMap(input: {
   }
 }
 
+// Distrato do Contrato de Parceria — 13 placeholders, confirmados lendo o
+// template real no Drive em 2026-08-25. É um subconjunto do contrato de
+// parceria (mesmas duas partes, sem percentuais e sem qualificação civil),
+// mais uma data que não existe em nenhum outro documento: a do contrato que
+// está sendo desfeito ({{data_contrato}}).
+function buildDistratoFieldMap(input: {
+  store: StoreRow
+  candidateName: string
+  contractData: Record<string, unknown>
+  originalContractDate: string | null
+  termStart: string
+}): FieldMap {
+  const { store, candidateName, contractData, originalContractDate, termStart } = input
+  return {
+    // ── Salão ────────────────────────────────────────────────────────
+    '{{razao_social_salao}}': store.legal_name || '',
+    '{{cnpj_salao}}': formatCNPJ(store.cnpj),
+    '{{endereco_salao}}': store.legal_address || '',
+    '{{representante_salao}}': store.representative_name || '',
+    '{{cpf_representante_salao}}': formatCPF(store.representative_cpf),
+    // ── Profissional ─────────────────────────────────────────────────
+    '{{razao_social_profissional}}': (contractData.legal_name as string)
+      || meiLegalName((contractData.cnpj as string) || null, candidateName),
+    '{{cnpj_profissional}}': formatCNPJ((contractData.cnpj as string) || null),
+    '{{endereco_profissional}}': (contractData.address as string) || '',
+    '{{nome_profissional}}': candidateName,
+    '{{cpf_profissional}}': formatCPF((contractData.cpf as string) || null),
+    // ── Fecho ────────────────────────────────────────────────────────
+    // Data do contrato de parceria que está sendo distratado (cláusula 1.1).
+    '{{data_contrato}}': formatDateBR(originalContractDate),
+    '{{local}}': resolveContractLocal(store),
+    '{{data_assinatura}}': formatDateBR(termStart),
+  }
+}
+
 serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders(req) })
@@ -207,14 +260,24 @@ serve(async (req: Request) => {
     const { data: hasAccess, error: accessErr } = await userClient.rpc('has_rh_access')
     if (accessErr || !hasAccess) return json({ error: 'Acesso negado' }, 403, req)
 
-    const { process_id, term_start, term_end, template_doc_id } = await req.json()
+    const {
+      process_id, term_start, term_end, template_doc_id,
+      contract_type: requestedType, original_contract_date,
+    } = await req.json()
     if (!process_id) return json({ error: 'process_id é obrigatório' }, 400, req)
+    // O tipo continua sendo resolvido no servidor; a única escolha aceita da
+    // tela é 'distrato', porque encerrar o vínculo é um evento explícito e o
+    // documento precisa sair ANTES da mudança de etapa (processo encerrado
+    // some de /admin/dp/contratos, que é o caminho de retry).
+    if (requestedType && requestedType !== 'distrato') {
+      return json({ error: 'Tipo de contrato inválido — o tipo é resolvido pelo sistema' }, 400, req)
+    }
 
     const serviceClient = createClient(supabaseUrl, supabaseService)
 
     const { data: processo, error: processoErr } = await serviceClient
       .from('employee_processes')
-      .select('id, employment_type, current_stage, role_title, candidate_id, store_id, drive_folder_url, candidates(name, whatsapp, job_opening_id, assignee_id), stores(name, slug, uf, legal_name, cnpj, legal_address, representative_name, representative_cpf, representative_rg, representative_address, email, phone)')
+      .select('id, employment_type, current_stage, role_title, candidate_id, store_id, activated_at, drive_folder_url, candidates(name, whatsapp, job_opening_id, assignee_id), stores(name, slug, uf, legal_name, cnpj, legal_address, representative_name, representative_cpf, representative_rg, representative_address, email, phone)')
       .eq('id', process_id)
       .single()
     if (processoErr || !processo) return json({ error: 'Processo não encontrado' }, 404, req)
@@ -222,12 +285,24 @@ serve(async (req: Request) => {
     // ── Resolve contract_type a partir do estágio/tipo de vínculo ──────
     let contractType: ContractType | null = null
     if (processo.employment_type === 'mei') {
-      contractType = ['contrato_formacao', 'formacao', 'decisao_formacao'].includes(processo.current_stage)
-        ? 'formacao'
-        : 'prestacao_servico'
+      if (requestedType === 'distrato' || processo.current_stage === 'encerrado') {
+        contractType = 'distrato'
+      } else {
+        contractType = ['contrato_formacao', 'formacao', 'decisao_formacao'].includes(processo.current_stage)
+          ? 'formacao'
+          : 'prestacao_servico'
+      }
     }
     if (!contractType) {
       return json({ error: 'Este tipo de vínculo (CLT) ainda não tem template de contrato configurado' }, 400, req)
+    }
+    // Só se distrata quem chegou a ser parceiro. Encerramento durante a
+    // formação tem documento próprio (Comunicação de Desligamento do Curso,
+    // gerada pela automação) — e o card nesse caso nunca foi efetivado.
+    if (contractType === 'distrato' && !processo.activated_at) {
+      return json({
+        error: 'Este processo nunca foi efetivado — desligamento durante a formação usa a Comunicação de Desligamento do Curso, não o distrato de parceria.',
+      }, 400, req)
     }
 
     const { data: contractData } = await serviceClient
@@ -276,16 +351,17 @@ serve(async (req: Request) => {
     let retentionPercentage: number | string | null = null
     let productCommissionPercentage: number | string | null = null
 
-    if (contractType === 'prestacao_servico') {
-      const missingStoreFields = REQUIRED_STORE_FIELDS
-        .filter(([column]) => !store[column as keyof StoreRow])
-        .map(([, label]) => label)
-      if (missingStoreFields.length > 0) {
-        return json({
-          error: `Faltam dados da unidade ${store.name} pra gerar o contrato de parceria (${missingStoreFields.join(', ')}). Preencha em "Dados das lojas".`,
-        }, 400, req)
-      }
+    const missingStoreFields = REQUIRED_STORE_FIELDS_BY_TYPE[contractType]
+      .filter((column) => !store[column as keyof StoreRow])
+      .map((column) => STORE_FIELD_LABELS[column])
+    if (missingStoreFields.length > 0) {
+      const docNome = contractType === 'distrato' ? 'o distrato' : 'o contrato de parceria'
+      return json({
+        error: `Faltam dados da unidade ${store.name} pra gerar ${docNome} (${missingStoreFields.join(', ')}). Preencha em "Dados das lojas".`,
+      }, 400, req)
+    }
 
+    if (contractType === 'prestacao_servico') {
       const jobOpeningId = processo.candidates?.job_opening_id
       if (jobOpeningId) {
         const { data: jobOpening } = await serviceClient
@@ -307,6 +383,26 @@ serve(async (req: Request) => {
         return json({
           error: `Faltam percentuais do contrato de parceria (${missingPercentages.join(', ')}). Preencha na vaga do candidato ou no cargo em /admin/rh/cargos.`,
         }, 400, req)
+      }
+    }
+
+    // ── Distrato: data do contrato que está sendo desfeito ─────────────
+    // Precedência: o que veio da tela > a assinatura do contrato de parceria
+    // gerado aqui > a data de efetivação (parceiro cadastrado de forma
+    // retroativa nunca teve contrato gerado pelo sistema).
+    let originalContractDate: string | null = null
+    if (contractType === 'distrato') {
+      if (original_contract_date) {
+        originalContractDate = original_contract_date
+      } else {
+        const { data: parceria } = await serviceClient
+          .from('employee_contracts')
+          .select('term_start')
+          .eq('process_id', process_id)
+          .eq('contract_type', 'prestacao_servico')
+          .maybeSingle()
+        originalContractDate = parceria?.term_start
+          || (processo.activated_at as string).slice(0, 10)
       }
     }
 
@@ -332,7 +428,12 @@ serve(async (req: Request) => {
     }
     const templateName: string | null = chosen?.name ?? null
 
-    const docLabel = contractType === 'formacao' ? 'Contrato de Formação' : 'Contrato Profissional Parceiro'
+    const DOC_LABELS: Record<ContractType, string> = {
+      formacao: 'Contrato de Formação',
+      prestacao_servico: 'Contrato Profissional Parceiro',
+      distrato: 'Distrato de Contrato de Parceria',
+    }
+    const docLabel = DOC_LABELS[contractType]
     const docName = `${candidateName} - ${docLabel}`
     const newDocId = await copyTemplate(accessToken, templateDocId, docName, candidateFolderId)
 
@@ -343,18 +444,26 @@ serve(async (req: Request) => {
       || todayISO()
     // Formação dura 10 dias úteis; parceria dura 12 meses (cláusula 4.1 do
     // template). Data de fim informada à mão continua tendo prioridade.
-    const termEnd = term_end || (contractType === 'formacao'
-      ? addBusinessDaysISO(termStart, FORMACAO_COURSE_BUSINESS_DAYS)
-      : partnerTermEndISO(termStart))
+    // Distrato não tem vigência — encerra, não começa nada: term_end fica NULL.
+    const termEnd = contractType === 'distrato'
+      ? (term_end || null)
+      : term_end || (contractType === 'formacao'
+        ? addBusinessDaysISO(termStart, FORMACAO_COURSE_BUSINESS_DAYS)
+        : partnerTermEndISO(termStart))
 
-    const fieldMap = contractType === 'formacao'
-      ? buildFormacaoFieldMap({
-          store, candidateName, candidateWhatsapp: processo.candidates?.whatsapp ?? '', contractData, termStart, termEnd,
-        })
-      : buildParceriaFieldMap({
-          store, candidateName, candidateWhatsapp: processo.candidates?.whatsapp ?? '', contractData,
-          roleTitle: processo.role_title ?? '', retentionPercentage, productCommissionPercentage, termStart,
-        })
+    let fieldMap: FieldMap
+    if (contractType === 'formacao') {
+      fieldMap = buildFormacaoFieldMap({
+        store, candidateName, candidateWhatsapp: processo.candidates?.whatsapp ?? '', contractData, termStart, termEnd: termEnd as string,
+      })
+    } else if (contractType === 'distrato') {
+      fieldMap = buildDistratoFieldMap({ store, candidateName, contractData, originalContractDate, termStart })
+    } else {
+      fieldMap = buildParceriaFieldMap({
+        store, candidateName, candidateWhatsapp: processo.candidates?.whatsapp ?? '', contractData,
+        roleTitle: processo.role_title ?? '', retentionPercentage, productCommissionPercentage, termStart,
+      })
+    }
     await replacePlaceholders(accessToken, newDocId, fieldMap)
     const googleDocUrl = await getWebViewLink(accessToken, newDocId)
 

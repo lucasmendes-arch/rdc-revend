@@ -1218,7 +1218,8 @@ Contrato(s) do processo de admissão — normalmente 0 ou 1 linha por processo/t
 | template_name | text | YES | NULL | — |
 | created_at | timestamptz | NO | `now()` | — |
 
-> `contract_type` válidos: `'formacao'`, `'prestacao_servico'`, `'clt'`, `'desligamento_formacao'` (`20260722000004`). `formacao`/`desligamento_formacao` (confirmados em 2026-07-22) e `prestacao_servico` — o **Contrato de Profissional Parceiro**, ligado em `20260822000001` — têm template real; `clt` não tem template nenhum (100% manual).
+> `contract_type` válidos: `'formacao'`, `'prestacao_servico'`, `'clt'`, `'desligamento_formacao'` (`20260722000004`), `'distrato'` (`20260825000001`). `formacao`/`desligamento_formacao` (confirmados em 2026-07-22), `prestacao_servico` — o **Contrato de Profissional Parceiro**, ligado em `20260822000001` — e `distrato` — o **Distrato do Contrato de Parceria**, ligado em `20260825000001` — têm template real; `clt` não tem template nenhum (100% manual).
+> `distrato`: `term_start` é a data de assinatura do distrato e `term_end` fica **NULL** de propósito — distrato encerra, não inicia vigência.
 > `template_doc_id`/`template_name` (`20260822000002`): qual modelo base gerou o contrato. `NULL` em contrato cadastrado à mão ou gerado antes dessa migration. O nome é snapshot — o arquivo pode ser renomeado ou sair do Drive depois.
 > `prestacao_servico`: contrato de parceria da Lei 13.352/2016, gerado **sem trigger** — por ação explícita, em dois caminhos: mover o card para **Contratação** no kanban do DP (abre `ContratarParceiroModal`, que confirma dados + modelo base, commita a etapa e gera) ou o botão em `/admin/dp/contratos`. Não é automático porque depende de percentuais e CNPJ do MEI, que raramente estão prontos na hora da mudança de etapa. `term_start` é a data de assinatura (`{{data_assinatura}}`) e `term_end` sai 12 meses depois menos um dia (cláusula 4.1 do template, `partnerTermEndISO` em `_shared/googleDrive.ts`) — as duas datas continuam sobrescrevíveis à mão no modal.
 > `file_url`: `NULL` quando cadastrado manualmente. Quando gerado (manual ou automático), guarda o **`webViewLink` do Google Doc direto** (não é mais um caminho de Storage — decisão do usuário de simplificar, sem exportar PDF nem subir pro Supabase Storage). Acesso é controlado pelo compartilhamento do próprio Google Drive, não pelo banco.
@@ -1269,7 +1270,8 @@ Mapeia `contract_type` → documento template no Google Drive usado por `generat
 | is_active | boolean | NO | `true` | — |
 | updated_at | timestamptz | NO | `now()` | — |
 
-> `contract_type` válidos: `'formacao'`, `'prestacao_servico'`, `'clt'`, `'desligamento_formacao'`. Têm linha real: `formacao`/`desligamento_formacao` (`20260722000004`) e `prestacao_servico` (`20260822000001`, doc "Contrato Profissional Parceiro COM CAMPOS {{destacados}}") — todos com IDs confirmados lendo os documentos direto no Drive. `clt` fica sem linha até um template real ser fornecido.
+> `contract_type` válidos: `'formacao'`, `'prestacao_servico'`, `'clt'`, `'desligamento_formacao'`, `'distrato'`. Têm linha real: `formacao`/`desligamento_formacao` (`20260722000004`), `prestacao_servico` (`20260822000001`, doc "Contrato Profissional Parceiro COM CAMPOS {{destacados}}") e `distrato` (`20260825000001`, doc "Distrato Contrato Parceria - COM CAMPOS {{destacados}}") — todos com IDs confirmados lendo os documentos direto no Drive. `clt` fica sem linha até um template real ser fornecido.
+> Cada tipo tem sua **própria pasta** de modelos no Drive (a lista de modelos base sai do `parents` do doc padrão daquele tipo): parceria em "Modelo Contrato de Profissionais", distrato em "Modelo Distrato de Profissionais". Um modelo de distrato só aparece no dropdown se estiver na pasta do distrato.
 > RLS: `SELECT` via `has_rh_access()` (todo o RH lê); `INSERT`/`UPDATE`/`DELETE` só `is_admin()` (config sensível — mesmo padrão de restrição de `store_whatsapp_credentials`).
 
 ---
@@ -1324,6 +1326,32 @@ Recusa a geração — com a lista do que falta — quando faltar campo obrigat�
 **Fluxo do popup** (`ContratarParceiroModal`, aberto ao mover um processo MEI para `contratacao`): salva `employee_contract_data` → muda a etapa → gera. A etapa vem **antes** da geração de propósito: `generate-contract` resolve o tipo pelo `current_stage`, e gerar com o processo ainda em `decisao_formacao` produziria um contrato de formação. Se a geração falhar depois disso, o card fica em Contratação e a geração pode ser repetida em `/admin/dp/contratos`. O botão "Só mover" pula a geração.
 
 > **Armadilha do template**: a qualificação civil do **representante do salão** ("brasileira, solteira, empresária") está escrita fixa no Google Doc, não é placeholder — decisão do usuário em 2026-08-22, já que é sempre a mesma pessoa. Trocar de representante exige editar o template, não só o banco. A do **parceiro** é dinâmica (`{{nacionalidade_profissional}}`/`{{estado_civil_profissional}}`).
+
+---
+
+### Distrato do Contrato de Parceria (`distrato`, `20260825000001`)
+Encerramento consensual da parceria — gerado ao clicar **"Encerrar vínculo"** no card de um parceiro **MEI** em `/admin/dp/colaboradores` (popup `DistratarParceiroModal`). CLT não tem documento de rescisão no sistema e continua no confirm simples.
+
+13 placeholders, subconjunto do contrato de parceria (mesmas duas partes, sem percentuais e sem qualificação civil) + a data do contrato que está sendo desfeito:
+
+| Placeholder(s) | Origem |
+|---|---|
+| `razao_social_salao`, `cnpj_salao`, `endereco_salao` | `stores.legal_name` / `cnpj` / `legal_address` |
+| `representante_salao`, `cpf_representante_salao` | `stores.representative_name` / `representative_cpf` |
+| `razao_social_profissional` | `employee_contract_data.legal_name`; vazio, deriva de CNPJ + nome (`meiLegalName`) |
+| `cnpj_profissional`, `endereco_profissional`, `cpf_profissional` | `employee_contract_data` |
+| `nome_profissional` | `candidates.name` |
+| `data_contrato` | data do contrato de parceria distratado (cláusula 1.1) — ver precedência abaixo |
+| `local` | `stores.name` + `/` + `stores.uf` (`resolveContractLocal`) |
+| `data_assinatura` | `term_start` (data do distrato escolhida no modal, ou hoje) |
+
+**Campos obrigatórios**: de `employee_contract_data`, só `cpf`, `cnpj` e `address` (o template não pede RG, e-mail, nacionalidade nem estado civil). Da unidade, 6 dos 10 de `REQUIRED_STORE_FIELDS_BY_TYPE` — razão social, CNPJ, endereço, representante, CPF do representante e UF; RG/endereço do representante e contato da unidade ficam de fora porque o distrato não os cita.
+
+**`data_contrato`** (precedência): o que foi editado no popup → `term_start` do contrato `prestacao_servico` do mesmo processo → `activated_at` do processo (parceiro cadastrado retroativamente nunca teve contrato gerado aqui). O popup mostra qual das duas origens foi usada.
+
+**Ordem do fluxo** — invertida em relação ao `ContratarParceiroModal`: salva `employee_contract_data` → **gera** → só então muda a etapa pra `'encerrado'`. Motivo: processo encerrado sai da listagem de `/admin/dp/contratos` (que filtra `status in ('em_andamento','ativo')`), então gerar antes preserva o caminho de retry — falhou a geração, ninguém foi encerrado. O botão "Só encerrar" pula a geração.
+
+**Resolução do tipo**: `generate-contract` aceita `contract_type: 'distrato'` explícito no body (a **única** sobrescrita aceita — qualquer outro valor é recusado), porque na hora da geração o processo ainda está ativo. Também resolve `distrato` sozinho quando `current_stage = 'encerrado'`. Nos dois casos exige `activated_at` preenchido: sem ele o encerramento foi durante a formação, que tem documento próprio (`desligamento_formacao`, automático).
 
 ---
 
@@ -2087,7 +2115,7 @@ Acessível por: `authenticated`.
 | employee_processes | current_stage | depende de `employment_type` — ver tabela `employee_processes` acima |
 | employee_documents | document_type | `'rg_cpf'`, `'comprovante_residencia'`, `'ctps'`, `'pis_pasep'`, `'titulo_eleitor'`, `'comprovante_escolaridade'`, `'foto_3x4'`, `'aso_admissional'`, `'dados_bancarios'`, `'cnpj_ccmei'` |
 | employee_documents | status | `'pendente'`, `'enviado'`, `'aprovado'` |
-| employee_contracts | contract_type | `'formacao'`, `'prestacao_servico'`, `'clt'`, `'desligamento_formacao'` |
+| employee_contracts | contract_type | `'formacao'`, `'prestacao_servico'`, `'clt'`, `'desligamento_formacao'`, `'distrato'` |
 | employee_timeline | source | `'rh'`, `'dp'` |
 
 ---
