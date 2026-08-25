@@ -148,13 +148,14 @@ export const DOCUMENT_STATUS_LABELS: Record<DocumentStatus, string> = {
   aprovado: 'Aprovado',
 }
 
-export type ContractType = 'formacao' | 'prestacao_servico' | 'clt' | 'desligamento_formacao'
+export type ContractType = 'formacao' | 'prestacao_servico' | 'clt' | 'desligamento_formacao' | 'distrato'
 
 export const CONTRACT_TYPE_LABELS: Record<ContractType, string> = {
   formacao: 'Contrato de formação',
   prestacao_servico: 'Contrato de Profissional Parceiro',
   clt: 'CLT',
   desligamento_formacao: 'Desligamento do curso',
+  distrato: 'Distrato de parceria',
 }
 
 // Mesma regra usada pela edge function generate-contract (não há template de
@@ -165,8 +166,13 @@ export const CONTRACT_TYPE_LABELS: Record<ContractType, string> = {
 // (como formação/prestação), é disparado automaticamente pelo evento de
 // desligamento durante a formação (trigger em employee_processes, ver
 // migration 20260722000005), não por um current_stage estável.
+// 'distrato' entra aqui porque a etapa 'encerrado' É estável — quem já foi
+// efetivado e sai do quadro assina o distrato do contrato de parceria. A
+// edge function aplica a mesma regra e ainda exige activated_at: sem ele o
+// encerramento foi durante a formação, que tem documento próprio.
 export function resolveAutoContractType(employmentType: EmploymentType, currentStage: string): ContractType | null {
   if (employmentType !== 'mei') return null
+  if (currentStage === 'encerrado') return 'distrato'
   return ['formacao', 'decisao_formacao'].includes(currentStage)
     ? 'formacao'
     : 'prestacao_servico'
@@ -284,4 +290,8 @@ export const REQUIRED_CONTRACT_DATA_FIELDS: Record<ContractType, ContractDataFie
   prestacao_servico: ['cpf', 'cnpj', 'address', 'email', 'nationality', 'marital_status'],
   clt: [],
   desligamento_formacao: [],
+  // 'distrato' conferido com o template real (2026-08-25): qualifica o
+  // parceiro só como pessoa jurídica (razão social + CNPJ + endereço) e cita
+  // o CPF de quem representa o MEI — sem nacionalidade/estado civil/e-mail.
+  distrato: ['cpf', 'cnpj', 'address'],
 }

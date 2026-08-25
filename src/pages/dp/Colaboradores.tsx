@@ -8,6 +8,7 @@ import AdminLayout from '@/components/admin/AdminLayout'
 import StyledSelect from '@/components/ui/styled-select'
 import { DateField } from '@/components/ui/date-field'
 import ProcessoDetailModal from '@/components/dp/ProcessoDetailModal'
+import DistratarParceiroModal from '@/components/dp/DistratarParceiroModal'
 import { EMPLOYMENT_TYPE_LABELS, isExperienceTagActive, getExperienceInfo, type EmploymentType } from '@/lib/dpConstants'
 import type { Processo } from '@/lib/dpTypes'
 import { useEscapeToClose } from '@/hooks/useEscapeToClose'
@@ -123,18 +124,21 @@ export default function DpParceiros() {
     },
   })
 
+  // Encerramento em si — compartilhado pelos dois caminhos (confirm simples do
+  // CLT e popup de distrato do MEI). Quem chama é que decide o toast: o modal
+  // de distrato tem mensagem própria (o documento também foi gerado).
+  async function encerrarVinculo(id: string) {
+    const { error } = await supabase.from('employee_processes').update({ current_stage: 'encerrado' }).eq('id', id)
+    if (error) throw error
+    await queryClient.invalidateQueries({ queryKey: ['dp-parceiros-ativos'] })
+    await queryClient.invalidateQueries({ queryKey: ['dp-processos'] })
+    setDetailProcesso(null)
+    setConfirmEncerrar(null)
+  }
+
   const updateStage = useMutation({
-    mutationFn: async ({ id, stage }: { id: string; stage: string }) => {
-      const { error } = await supabase.from('employee_processes').update({ current_stage: stage }).eq('id', id)
-      if (error) throw error
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['dp-parceiros-ativos'] })
-      queryClient.invalidateQueries({ queryKey: ['dp-processos'] })
-      toast.success('Vínculo encerrado')
-      setDetailProcesso(null)
-      setConfirmEncerrar(null)
-    },
+    mutationFn: (id: string) => encerrarVinculo(id),
+    onSuccess: () => toast.success('Vínculo encerrado'),
     onError: (err) => toast.error(`Erro ao encerrar: ${err instanceof Error ? err.message : 'desconhecido'}`),
   })
 
@@ -321,7 +325,18 @@ export default function DpParceiros() {
         />
       )}
 
-      {confirmEncerrar && (
+      {/* MEI assina o Distrato do Contrato de Parceria ao sair — o popup junta
+          os dados do documento, gera e só então encerra. CLT segue no confirm
+          simples (não há template de rescisão CLT no sistema). */}
+      {confirmEncerrar && confirmEncerrar.employment_type === 'mei' && (
+        <DistratarParceiroModal
+          processo={confirmEncerrar}
+          onConfirmEncerrar={() => encerrarVinculo(confirmEncerrar.id)}
+          onClose={() => setConfirmEncerrar(null)}
+        />
+      )}
+
+      {confirmEncerrar && confirmEncerrar.employment_type !== 'mei' && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-foreground/40 backdrop-blur-sm" onClick={() => setConfirmEncerrar(null)} />
           <div className="relative bg-card rounded-2xl shadow-2xl border border-border p-6 w-full max-w-sm">
@@ -331,7 +346,7 @@ export default function DpParceiros() {
             </p>
             <div className="flex gap-3">
               <button
-                onClick={() => updateStage.mutate({ id: confirmEncerrar.id, stage: 'encerrado' })}
+                onClick={() => updateStage.mutate(confirmEncerrar.id)}
                 disabled={updateStage.isPending}
                 className="flex-1 px-4 py-2.5 rounded-lg bg-red-600 text-white font-medium hover:bg-red-700 transition-colors disabled:opacity-70"
               >
