@@ -276,42 +276,6 @@
   }
 }
 
-/* ─── Camada de coerência para famílias semânticas hardcoded ──────────────
-   `gray-*`/`slate-*`/`bg-white` já foram migrados para a rampa `ink` nas
-   telas (2026-09-30). O que sobra aqui é o remap dark de `red`/`emerald`/
-   `green`/`blue`/`indigo`/`yellow` hardcoded, que ainda não viraram
-   `danger`/`success`/`info`/`warning`. Especificidade `.dark .x` > `.x`.
-   Dívida consciente: migrar as telas e ir apagando regras daqui.
-─────────────────────────────────────────────────────────────────────────── */
-.dark .bg-red-50,
-.dark .hover\:bg-red-50:hover  { background-color: hsl(var(--danger-subtle)); }
-.dark .bg-red-100              { background-color: hsl(var(--danger-subtle)); }
-.dark .text-red-700,
-.dark .text-red-600,
-.dark .hover\:text-red-600:hover { color: hsl(var(--danger)); }
-
-.dark .bg-emerald-50,
-.dark .bg-emerald-100,
-.dark .bg-green-50,
-.dark .bg-green-100            { background-color: hsl(var(--success-subtle)); }
-.dark .text-emerald-700,
-.dark .text-emerald-600,
-.dark .text-green-700,
-.dark .text-green-600          { color: hsl(var(--success)); }
-
-.dark .bg-yellow-50,
-.dark .bg-yellow-100           { background-color: hsl(var(--warning-subtle)); }
-.dark .text-yellow-700         { color: hsl(var(--warning)); }
-
-.dark .bg-blue-50,
-.dark .bg-blue-100,
-.dark .bg-indigo-50,
-.dark .bg-indigo-100           { background-color: hsl(var(--info-subtle)); }
-.dark .text-blue-700,
-.dark .text-blue-600,
-.dark .text-indigo-700,
-.dark .text-indigo-600         { color: hsl(var(--info)); }
-
 /* Recharts */
 .dark .recharts-cartesian-grid line { stroke: hsl(var(--border)); }
 .dark .recharts-tooltip-wrapper .recharts-default-tooltip {

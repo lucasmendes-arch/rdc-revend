@@ -190,7 +190,7 @@ function computePeriodBounds(preset: PeriodPreset, customFrom: string, customTo:
 function VariationBadge({ current, previous, invert }: { current: number; previous: number; invert?: boolean }) {
   if (previous === 0 && current === 0) return <span className="text-xs text-muted-foreground">--</span>
   if (previous === 0) return (
-    <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+    <span className="inline-flex items-center gap-1 text-xs font-semibold text-success">
       <ArrowUpRight className="w-3.5 h-3.5" /> novo
     </span>
   )
@@ -206,7 +206,7 @@ function VariationBadge({ current, previous, invert }: { current: number; previo
   )
 
   return (
-    <span className={`inline-flex items-center gap-1 text-xs font-semibold ${isPositive ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500 dark:text-red-400'}`}>
+    <span className={`inline-flex items-center gap-1 text-xs font-semibold ${isPositive ? 'text-success' : 'text-danger'}`}>
       {pct > 0
         ? <ArrowUpRight className="w-3.5 h-3.5" />
         : <ArrowDownRight className="w-3.5 h-3.5" />
@@ -576,7 +576,7 @@ export default function AdminFinanceiro() {
                           await refetchSettings(); setEditingGoal(false)
                         }
                       }}
-                      className="px-2 py-0.5 text-[10px] font-bold bg-emerald-600 text-white rounded hover:bg-emerald-700"
+                      className="px-2 py-0.5 text-[10px] font-bold bg-success-solid text-white rounded hover:bg-success-solid/90"
                     >OK</button>
                   </div>
                 ) : (
@@ -596,7 +596,7 @@ export default function AdminFinanceiro() {
                 <div
                   className={`h-full rounded-full transition-all duration-500 ${
                     stats.goalPct >= 100
-                      ? 'bg-emerald-500'
+                      ? 'bg-success-solid'
                       : stats.goalPct >= 70
                         ? 'bg-primary'
                         : 'bg-warning-solid'
@@ -610,7 +610,7 @@ export default function AdminFinanceiro() {
                   Faltam R$ {fmtCompact(stats.remainingGoal)} &middot; R$ {fmtCompact(stats.dailyTarget)}/dia &middot; {stats.daysRemaining}d restantes
                 </p>
               ) : (
-                <p className="text-[10px] font-semibold text-emerald-600 mt-1">Meta atingida!</p>
+                <p className="text-[10px] font-semibold text-success mt-1">Meta atingida!</p>
               )}
             </div>
           </div>
@@ -620,7 +620,7 @@ export default function AdminFinanceiro() {
               ══════════════════════════════════════════════════════ */}
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3 lg:gap-4">
             <AdminSummaryCard
-              icon={DollarSign} label="Hoje" iconColor="text-emerald-500"
+              icon={DollarSign} label="Hoje" iconColor="text-success"
               value={`R$ ${fmt(stats.todayRevenue)}`}
               subtitle={`${stats.todayCount} pedido${stats.todayCount !== 1 ? 's' : ''}`}
             />
@@ -801,14 +801,14 @@ export default function AdminFinanceiro() {
                                 </span>
                               )}
                             </div>
-                            <span className={`text-xs font-black ${pct >= 100 ? 'text-emerald-600' : pct >= 70 ? 'text-foreground' : 'text-warning'}`}>
+                            <span className={`text-xs font-black ${pct >= 100 ? 'text-success' : pct >= 70 ? 'text-foreground' : 'text-warning'}`}>
                               {pct.toFixed(0)}%
                             </span>
                           </div>
                           <div className="w-full bg-surface-alt rounded-full h-1.5 overflow-hidden">
                             <div
                               className={`h-full rounded-full transition-all duration-500 ${
-                                pct >= 100 ? 'bg-emerald-500' : pct >= 70 ? 'bg-primary' : 'bg-warning-solid'
+                                pct >= 100 ? 'bg-success-solid' : pct >= 70 ? 'bg-primary' : 'bg-warning-solid'
                               }`}
                               style={{ width: `${pct}%` }}
                             />
@@ -822,7 +822,7 @@ export default function AdminFinanceiro() {
                                 faltam R$ {fmtCompact(remaining)} {daysLeft > 0 && <>&middot; R$ {fmtCompact(dailyNeeded)}/dia</>}
                               </span>
                             ) : (
-                              <span className="text-[10px] font-semibold text-emerald-600">Meta atingida!</span>
+                              <span className="text-[10px] font-semibold text-success">Meta atingida!</span>
                             )}
                           </div>
                         </div>

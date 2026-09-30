@@ -151,7 +151,7 @@ function ProcessoCard({
       }`}
     >
       {dueOverdue && (
-        <div className="absolute top-1.5 right-1.5 z-10 flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-red-600 text-white text-[10px] font-bold shadow" title="Data fim já passou">
+        <div className="absolute top-1.5 right-1.5 z-10 flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-danger-solid text-white text-[10px] font-bold shadow" title="Data fim já passou">
           <AlertTriangle className="w-2.5 h-2.5" /> Atrasado
         </div>
       )}
@@ -768,7 +768,7 @@ export default function DpContratacao() {
             <div className="flex gap-3">
               <button
                 onClick={confirmEncerrarProcesso}
-                className="flex-1 px-4 py-2.5 rounded-lg bg-red-600 text-white font-medium hover:bg-red-700 transition-colors"
+                className="flex-1 px-4 py-2.5 rounded-lg bg-danger-solid text-white font-medium hover:bg-danger-solid/90 transition-colors"
               >
                 Encerrar
               </button>

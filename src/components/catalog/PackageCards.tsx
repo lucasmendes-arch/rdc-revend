@@ -182,7 +182,7 @@ export default function PackageCards({ products, isGuest = false, isPartner = fa
 
               {!isGuest && (
                 <div className="space-y-1 text-[12px] sm:text-xs text-muted-foreground mb-3">
-                  <div className="flex items-center gap-1.5 text-green-700 font-semibold leading-tight">
+                  <div className="flex items-center gap-1.5 text-success font-semibold leading-tight">
                     <TrendingUp className="w-4 h-4 sm:w-3.5 sm:h-3.5 shrink-0" />
                     <span className="text-[13px] sm:text-[12px]">
                       Potencial de retorno estimado*{' '}
@@ -208,10 +208,10 @@ export default function PackageCards({ products, isGuest = false, isPartner = fa
                   <button
                     onClick={(e) => { e.stopPropagation(); handleSelectPackage(pkg.id) }}
                     className={`w-full h-10 sm:h-11 flex items-center justify-center gap-2 rounded-xl text-sm font-semibold transition-all tracking-wide uppercase shadow-sm ${addedPkgId === pkg.id
-                      ? 'bg-green-600 text-white'
+                      ? 'bg-success-solid text-white'
                       : pkg.highlight
                         ? 'btn-primary'
-                        : 'bg-green-600 hover:bg-green-700 text-white'
+                        : 'bg-success-solid hover:bg-success-solid/90 text-white'
                       }`}
                   >
                     {addedPkgId === pkg.id ? (

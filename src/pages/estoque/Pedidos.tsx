@@ -29,8 +29,8 @@ interface ReplenishmentRequest {
 
 const COLUMNS = [
   { status: 'open' as const, label: 'Aberto', dot: 'bg-warning-solid', header: 'text-warning' },
-  { status: 'picking' as const, label: 'Em separação', dot: 'bg-blue-500', header: 'text-blue-700' },
-  { status: 'shipped' as const, label: 'Enviado', dot: 'bg-green-500', header: 'text-green-700' },
+  { status: 'picking' as const, label: 'Em separação', dot: 'bg-info-solid', header: 'text-info' },
+  { status: 'shipped' as const, label: 'Enviado', dot: 'bg-success-solid', header: 'text-success' },
 ]
 
 function RequestCard({
@@ -132,13 +132,13 @@ function RequestCard({
             {new Date(request.generated_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
           </p>
           {isShipped ? (
-            <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0" />
+            <CheckCircle2 className="w-4 h-4 text-success shrink-0" />
           ) : (
             <button
               type="button"
               onClick={handleDelete}
               disabled={isDeletePending}
-              className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground hover:text-red-600 hover:bg-red-50 transition-colors disabled:opacity-60"
+              className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground hover:text-danger hover:bg-danger-subtle transition-colors disabled:opacity-60"
               title="Excluir pedido"
             >
               <Trash2 className="w-4 h-4" />
@@ -154,7 +154,7 @@ function RequestCard({
           <> · {new Date(request.shipped_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}</>
         )}
         {isPicking && (
-          <span className={`ml-1.5 font-bold ${pickedCount === items.length ? 'text-green-600' : 'text-blue-600'}`}>
+          <span className={`ml-1.5 font-bold ${pickedCount === items.length ? 'text-success' : 'text-info'}`}>
             · {pickedCount}/{items.length} separados
           </span>
         )}
@@ -182,7 +182,7 @@ function RequestCard({
                 type="button"
                 onClick={() => onTogglePicked(item.id, item.picked_at === null)}
                 className={`w-8 h-8 rounded-lg border flex items-center justify-center shrink-0 transition-colors ${
-                  item.picked_at ? 'bg-green-600 border-green-600 text-white' : 'bg-card border-border text-transparent hover:border-green-400'
+                  item.picked_at ? 'bg-success-solid border-success-solid text-white' : 'bg-card border-border text-transparent hover:border-success-border'
                 }`}
                 title={item.picked_at ? 'Desmarcar separação' : 'Marcar como separado'}
               >
@@ -211,7 +211,7 @@ function RequestCard({
             </button>
             {isPicking && !shipping && item.shipped_quantity !== null && (
               item.shipped_quantity === 0 ? (
-                <span className="text-[10px] font-bold px-2 py-1 rounded-md bg-red-100 text-red-600 uppercase shrink-0">Em falta</span>
+                <span className="text-[10px] font-bold px-2 py-1 rounded-md bg-danger-subtle text-danger uppercase shrink-0">Em falta</span>
               ) : item.shipped_quantity < item.suggested_quantity ? (
                 <span className="text-[10px] font-bold px-2 py-1 rounded-md bg-warning-subtle text-warning shrink-0">
                   {item.shipped_quantity} de {item.suggested_quantity}
@@ -225,7 +225,7 @@ function RequestCard({
                 min={0}
                 value={shipQty[item.id] ?? ''}
                 onChange={(e) => setShipQty((prev) => ({ ...prev, [item.id]: e.target.value }))}
-                className="w-16 h-9 rounded-lg border border-input text-center text-sm font-semibold bg-card focus:outline-none focus:ring-2 focus:ring-green-400 shrink-0"
+                className="w-16 h-9 rounded-lg border border-input text-center text-sm font-semibold bg-card focus:outline-none focus:ring-2 focus:ring-ring shrink-0"
               />
             ) : (
               <span className="text-base font-bold shrink-0 tabular-nums">
@@ -267,7 +267,7 @@ function RequestCard({
                 <button
                   type="button"
                   onClick={() => { onDeclareQty(item.id, 0); setDeclareItemId(null) }}
-                  className="px-2.5 h-8 rounded-lg bg-red-50 border border-red-200 text-red-600 hover:bg-red-100 text-[11px] font-bold transition-colors"
+                  className="px-2.5 h-8 rounded-lg bg-danger-subtle border border-danger-border text-danger hover:bg-danger-subtle text-[11px] font-bold transition-colors"
                 >
                   Em falta
                 </button>
@@ -309,7 +309,7 @@ function RequestCard({
         <button
           onClick={startShipping}
           disabled={isPending}
-          className="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-green-600 hover:bg-green-700 text-white text-sm font-semibold transition-colors disabled:opacity-60"
+          className="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-success-solid hover:bg-success-solid/90 text-white text-sm font-semibold transition-colors disabled:opacity-60"
         >
           <Truck className="w-4 h-4" /> Confirmar envio
         </button>
@@ -320,7 +320,7 @@ function RequestCard({
           <button
             onClick={confirmShipping}
             disabled={isPending}
-            className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-green-600 hover:bg-green-700 text-white text-sm font-bold transition-colors disabled:opacity-60"
+            className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-success-solid hover:bg-success-solid/90 text-white text-sm font-bold transition-colors disabled:opacity-60"
           >
             {isPending ? <Loader className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
             Enviar

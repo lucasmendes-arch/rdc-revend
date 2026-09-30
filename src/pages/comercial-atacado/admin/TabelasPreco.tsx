@@ -83,7 +83,7 @@ function PriceListCard({
           <span
             className={`flex-shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded-md ring-1 ring-inset ${
               list.is_active
-                ? 'bg-emerald-100 text-emerald-700 ring-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:ring-emerald-700/40'
+                ? 'bg-success-subtle text-success ring-success-border'
                 : 'bg-muted text-muted-foreground ring-border'
             }`}
           >
@@ -102,7 +102,7 @@ function PriceListCard({
             className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
               list.is_active
                 ? 'text-muted-foreground border-border hover:bg-accent'
-                : 'text-emerald-600 border-emerald-200 hover:bg-emerald-50 dark:border-emerald-700/50 dark:hover:bg-emerald-900/20'
+                : 'text-success border-success-border hover:bg-success-subtle'
             }`}
           >
             {isToggling ? (
@@ -518,7 +518,7 @@ export default function AdminTabelasPreco() {
       {/* ── Content ── */}
       <div className="px-4 sm:px-6 py-6">
         {error && (
-          <div className="mb-6 p-4 rounded-xl bg-red-50 border border-red-200 text-red-700">
+          <div className="mb-6 p-4 rounded-xl bg-danger-subtle border border-danger-border text-danger">
             <p className="font-semibold text-sm">Erro ao carregar tabelas</p>
             <p className="text-xs mt-0.5">{error instanceof Error ? error.message : 'Erro desconhecido'}</p>
           </div>
@@ -621,7 +621,7 @@ export default function AdminTabelasPreco() {
                   <span
                     className={`flex-shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded-md ring-1 ring-inset ${
                       currentList.is_active
-                        ? 'bg-emerald-100 text-emerald-700 ring-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:ring-emerald-700/40'
+                        ? 'bg-success-subtle text-success ring-success-border'
                         : 'bg-muted text-muted-foreground ring-border'
                     }`}
                   >
@@ -672,8 +672,8 @@ export default function AdminTabelasPreco() {
                       disabled={updateListMutation.isPending}
                       className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors ${
                         currentList.is_active
-                          ? 'text-red-600 border-red-200 hover:bg-red-50 dark:border-red-700/40 dark:hover:bg-red-900/20'
-                          : 'text-emerald-600 border-emerald-200 hover:bg-emerald-50 dark:border-emerald-700/50 dark:hover:bg-emerald-900/20'
+                          ? 'text-danger border-danger-border hover:bg-danger-subtle'
+                          : 'text-success border-success-border hover:bg-success-subtle'
                       }`}
                     >
                       {updateListMutation.isPending && togglingId === currentList.id ? (
@@ -1030,7 +1030,7 @@ export default function AdminTabelasPreco() {
                     <button
                       onClick={() => restoreListMutation.mutate(currentList.id)}
                       disabled={restoreListMutation.isPending}
-                      className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-700 text-sm font-semibold hover:bg-emerald-100 dark:border-emerald-700/40 dark:bg-emerald-900/20 dark:text-emerald-400 dark:hover:bg-emerald-900/30 transition-colors disabled:opacity-60"
+                      className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-success-border bg-success-subtle text-success text-sm font-semibold hover:bg-success-subtle transition-colors disabled:opacity-60"
                     >
                       {restoreListMutation.isPending ? <Loader className="w-4 h-4 animate-spin" /> : <ArchiveRestore className="w-4 h-4" />}
                       Restaurar tabela
@@ -1047,7 +1047,7 @@ export default function AdminTabelasPreco() {
                   {linkedPartners.length === 0 && (
                     <button
                       onClick={() => setDeleteConfirmId(currentList.id)}
-                      className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-red-200 bg-red-50 text-red-600 text-sm font-semibold hover:bg-red-100 dark:border-red-700/40 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/30 transition-colors"
+                      className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-danger-border bg-danger-subtle text-danger text-sm font-semibold hover:bg-danger-subtle transition-colors"
                     >
                       <Trash2 className="w-4 h-4" />
                       Excluir permanentemente
@@ -1135,7 +1135,7 @@ export default function AdminTabelasPreco() {
               <button
                 onClick={() => removeItemMutation.mutate(removeItemId)}
                 disabled={removeItemMutation.isPending}
-                className="flex-1 px-4 py-2.5 rounded-lg bg-red-600 text-white font-medium hover:bg-red-700 disabled:opacity-70 transition-colors"
+                className="flex-1 px-4 py-2.5 rounded-lg bg-danger-solid text-white font-medium hover:bg-danger-solid/90 disabled:opacity-70 transition-colors"
               >
                 {removeItemMutation.isPending ? 'Removendo...' : 'Remover'}
               </button>
@@ -1199,8 +1199,8 @@ export default function AdminTabelasPreco() {
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-foreground/40 backdrop-blur-sm" onClick={() => setDeleteConfirmId(null)} />
           <div className="relative bg-card rounded-2xl shadow-2xl border border-border p-6 w-full max-w-sm">
-            <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center mx-auto mb-4">
-              <Trash2 className="w-6 h-6 text-red-600 dark:text-red-400" />
+            <div className="w-12 h-12 rounded-full bg-danger-subtle flex items-center justify-center mx-auto mb-4">
+              <Trash2 className="w-6 h-6 text-danger" />
             </div>
             <h2 className="text-lg font-bold text-foreground mb-2 text-center">Excluir permanentemente?</h2>
             <p className="text-sm text-muted-foreground mb-5 text-center">
@@ -1210,7 +1210,7 @@ export default function AdminTabelasPreco() {
               <button
                 onClick={() => deleteListMutation.mutate(deleteConfirmId)}
                 disabled={deleteListMutation.isPending}
-                className="flex-1 px-4 py-2.5 rounded-lg bg-red-600 text-white font-medium hover:bg-red-700 disabled:opacity-70 transition-colors"
+                className="flex-1 px-4 py-2.5 rounded-lg bg-danger-solid text-white font-medium hover:bg-danger-solid/90 disabled:opacity-70 transition-colors"
               >
                 {deleteListMutation.isPending ? 'Excluindo...' : 'Excluir'}
               </button>

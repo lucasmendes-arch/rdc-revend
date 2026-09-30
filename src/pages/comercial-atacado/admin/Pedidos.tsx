@@ -369,7 +369,7 @@ const AdminPedidos = () => {
             <p className="text-sm font-medium text-muted-foreground">Sincronizando operação...</p>
           </div>
         ) : error ? (
-          <div className="p-4 rounded-xl bg-red-50 border border-red-200 text-red-700 max-w-md mx-auto mt-10 w-full">
+          <div className="p-4 rounded-xl bg-danger-subtle border border-danger-border text-danger max-w-md mx-auto mt-10 w-full">
             <p className="font-semibold flex items-center gap-2"><AlertTriangle className="w-5 h-5"/> Erro de sistema</p>
             <p className="text-sm mt-1 opacity-90">{error instanceof Error ? error.message : 'Falha na comunicação com o banco.'}</p>
           </div>
@@ -425,7 +425,7 @@ const AdminPedidos = () => {
                                 {order.origin === 'manual' ? (
                                   <span title="Pedido Manual"><Hand className="w-3.5 h-3.5 text-muted-foreground" /></span>
                                 ) : (
-                                  <span title="Feito pelo Site"><Globe className="w-3.5 h-3.5 text-blue-400" /></span>
+                                  <span title="Feito pelo Site"><Globe className="w-3.5 h-3.5 text-info" /></span>
                                 )}
                               </Link>
                               <span className="text-[11px] font-medium text-muted-foreground leading-none">
@@ -437,7 +437,7 @@ const AdminPedidos = () => {
                               {canEditOrders && (
                                 <button
                                   onClick={(e) => { e.stopPropagation(); navigate(`/admin/pedidos/${order.id}/editar`); }}
-                                  className="text-muted-foreground/40 hover:text-blue-500 hover:bg-blue-500/10 p-1.5 rounded-md transition-colors shrink-0"
+                                  className="text-muted-foreground/40 hover:text-info hover:bg-info-subtle p-1.5 rounded-md transition-colors shrink-0"
                                   title="Editar pedido"
                                 >
                                   <Pencil className="w-4 h-4" />
@@ -445,7 +445,7 @@ const AdminPedidos = () => {
                               )}
                               <button
                                 onClick={(e) => { e.stopPropagation(); setOrderToProof(order); setProofFile(null); }}
-                                className={`p-1.5 rounded-md transition-colors shrink-0 ${order.payment_proof_url ? 'text-emerald-500 hover:text-emerald-600 hover:bg-emerald-500/10' : 'text-muted-foreground/40 hover:text-blue-500 hover:bg-blue-500/10'}`}
+                                className={`p-1.5 rounded-md transition-colors shrink-0 ${order.payment_proof_url ? 'text-success hover:text-success hover:bg-success-subtle' : 'text-muted-foreground/40 hover:text-info hover:bg-info-subtle'}`}
                                 title={order.payment_proof_url ? 'Ver comprovante' : 'Anexar comprovante'}
                               >
                                 {order.payment_proof_url ? <Image className="w-4 h-4" /> : <ImagePlus className="w-4 h-4" />}
@@ -459,7 +459,7 @@ const AdminPedidos = () => {
                               </button>
                               <button
                                 onClick={(e) => { e.stopPropagation(); setOrderToDelete(order); }}
-                                className="text-muted-foreground/40 hover:text-red-500 hover:bg-red-500/10 p-1.5 rounded-md transition-colors shrink-0"
+                                className="text-muted-foreground/40 hover:text-danger hover:bg-danger-subtle p-1.5 rounded-md transition-colors shrink-0"
                                 title="Excluir"
                               >
                                 <Trash2 className="w-4 h-4" />
@@ -538,7 +538,7 @@ const AdminPedidos = () => {
                             <button
                               onClick={(e) => { e.stopPropagation(); handleStatusChange(order.id, 'pago'); }}
                               disabled={updateStatusMutation.isPending}
-                              className="w-full mb-3 flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[12px] font-bold transition-colors disabled:opacity-60"
+                              className="w-full mb-3 flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg bg-success-solid hover:bg-success-solid/90 text-white text-[12px] font-bold transition-colors disabled:opacity-60"
                             >
                               <CheckCircle2 className="w-3.5 h-3.5" />
                               Confirmar Pagamento Recebido
@@ -551,7 +551,7 @@ const AdminPedidos = () => {
                                   R$ {order.total.toFixed(2)}
                                 </span>
                                 {order.discount_amount > 0 && (
-                                  <span className="text-[9px] text-emerald-600 font-bold flex items-center gap-0.5 mt-1 whitespace-nowrap">
+                                  <span className="text-[9px] text-success font-bold flex items-center gap-0.5 mt-1 whitespace-nowrap">
                                     <Tag className="w-2 h-2" /> -R$ {order.discount_amount.toFixed(2)}
                                   </span>
                                 )}
@@ -621,7 +621,7 @@ const AdminPedidos = () => {
                   <button
                     onClick={() => updateProofMutation.mutate({ orderId: orderToProof.id, url: null })}
                     disabled={updateProofMutation.isPending}
-                    className="mt-2 w-full text-[11px] text-red-500 hover:text-red-600 font-medium disabled:opacity-50"
+                    className="mt-2 w-full text-[11px] text-danger hover:text-danger font-medium disabled:opacity-50"
                   >
                     Remover comprovante
                   </button>
@@ -629,7 +629,7 @@ const AdminPedidos = () => {
               )}
 
               <label className="block cursor-pointer">
-                <div className={`w-full py-3 px-4 rounded-xl border-2 border-dashed transition-colors ${proofFile ? 'border-emerald-400 bg-emerald-50 dark:bg-emerald-950/20' : 'border-border hover:border-muted-foreground/40'}`}>
+                <div className={`w-full py-3 px-4 rounded-xl border-2 border-dashed transition-colors ${proofFile ? 'border-success-border bg-success-subtle' : 'border-border hover:border-muted-foreground/40'}`}>
                   <input
                     type="file"
                     accept="image/*"
@@ -666,8 +666,8 @@ const AdminPedidos = () => {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-foreground/30 backdrop-blur-sm">
           <div className="bg-card rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl border border-border">
             <div className="p-6 text-center">
-              <div className="w-14 h-14 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-500/20">
-                <AlertTriangle className="w-6 h-6 text-red-500" />
+              <div className="w-14 h-14 bg-danger-subtle rounded-full flex items-center justify-center mx-auto mb-4 border border-danger-border">
+                <AlertTriangle className="w-6 h-6 text-danger" />
               </div>
               <h3 className="text-lg font-bold text-foreground mb-2">
                 Excluir Pedido #{orderToDelete.id.slice(0, 8).toUpperCase()}?
@@ -687,7 +687,7 @@ const AdminPedidos = () => {
                 <button
                   onClick={() => deleteOrderMutation.mutate(orderToDelete.id)}
                   disabled={deleteOrderMutation.isPending}
-                  className="flex-1 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-sm font-bold transition-colors flex items-center justify-center"
+                  className="flex-1 py-2.5 bg-danger-solid hover:bg-danger-solid/90 text-white rounded-xl text-sm font-bold transition-colors flex items-center justify-center"
                 >
                   {deleteOrderMutation.isPending ? <Loader className="w-4 h-4 animate-spin" /> : "Excluir"}
                 </button>

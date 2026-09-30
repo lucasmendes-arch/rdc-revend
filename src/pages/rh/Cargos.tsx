@@ -228,7 +228,7 @@ export default function RhCargos() {
                           onClick={() => toggleActiveMutation.mutate({ id: role.id, is_active: !role.is_active })}
                           className={`px-2.5 py-1 rounded-full text-xs font-semibold transition-colors ${
                             role.is_active
-                              ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+                              ? 'bg-success-subtle text-success'
                               : 'bg-muted text-muted-foreground'
                           }`}
                           title={role.is_active ? 'Desativar cargo' : 'Reativar cargo'}
@@ -247,7 +247,7 @@ export default function RhCargos() {
                           </button>
                           <button
                             onClick={() => setDeleteConfirm(role.id)}
-                            className="p-1.5 rounded-lg hover:bg-red-50 transition-colors text-muted-foreground hover:text-red-600"
+                            className="p-1.5 rounded-lg hover:bg-danger-subtle transition-colors text-muted-foreground hover:text-danger"
                             title="Excluir"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -358,7 +358,7 @@ export default function RhCargos() {
               <button
                 onClick={() => deleteMutation.mutate(deleteConfirm)}
                 disabled={deleteMutation.isPending}
-                className="flex-1 px-4 py-2.5 rounded-lg bg-red-600 hover:bg-red-700 text-white font-medium disabled:opacity-70 transition-colors"
+                className="flex-1 px-4 py-2.5 rounded-lg bg-danger-solid hover:bg-danger-solid/90 text-white font-medium disabled:opacity-70 transition-colors"
               >
                 {deleteMutation.isPending ? 'Removendo...' : 'Excluir'}
               </button>

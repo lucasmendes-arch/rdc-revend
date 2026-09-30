@@ -45,7 +45,7 @@ export function QuickDatePopover({
           type="button"
           onPointerDown={stop}
           onClick={stop}
-          className={`inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-md ${overdue ? 'bg-red-100 text-red-700' : 'bg-ink-100 text-ink-600'}`}
+          className={`inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-md ${overdue ? 'bg-danger-subtle text-danger' : 'bg-ink-100 text-ink-600'}`}
         >
           <CalendarIcon className="w-2.5 h-2.5 shrink-0" />
           {value ? new Date(value + 'T00:00:00').toLocaleDateString('pt-BR') : 'Data fim'}
@@ -75,7 +75,7 @@ export function QuickDatePopover({
           <button
             type="button"
             onClick={() => { onChange(null); setOpen(false) }}
-            className="w-full mt-1.5 text-left px-2 py-1.5 rounded-md text-sm text-red-600 hover:bg-red-50 transition-colors"
+            className="w-full mt-1.5 text-left px-2 py-1.5 rounded-md text-sm text-danger hover:bg-danger-subtle transition-colors"
           >
             Remover data
           </button>

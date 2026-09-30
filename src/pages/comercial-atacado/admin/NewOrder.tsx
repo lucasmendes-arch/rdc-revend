@@ -748,7 +748,7 @@ const NewOrder = () => {
               <button
                 onClick={addSelectedToCart}
                 disabled={isExploding}
-                className="px-4 py-2.5 rounded-xl bg-green-600 text-white text-xs font-bold hover:bg-green-700 transition-colors shadow-sm flex items-center gap-2 disabled:opacity-50"
+                className="px-4 py-2.5 rounded-xl bg-success-solid text-white text-xs font-bold hover:bg-success-solid/90 transition-colors shadow-sm flex items-center gap-2 disabled:opacity-50"
               >
                 {isExploding ? <Loader className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
                 ADICIONAR ({selectedProductIds.size})
@@ -772,7 +772,7 @@ const NewOrder = () => {
                       isSelected
                         ? 'border-foreground bg-surface ring-1 ring-foreground'
                         : inCart 
-                          ? 'border-green-200 bg-green-50'
+                          ? 'border-success-border bg-success-subtle'
                           : 'border-border hover:border-ink-300 hover:bg-surface-alt'
                     }`}
                   >
@@ -889,7 +889,7 @@ const NewOrder = () => {
                   {/* Remover */}
                   <button
                     onClick={() => removeFromCart(item.product_id)}
-                    className="p-1.5 rounded-lg text-muted-foreground hover:text-red-500 hover:bg-red-50 transition-colors"
+                    className="p-1.5 rounded-lg text-muted-foreground hover:text-danger hover:bg-danger-subtle transition-colors"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
@@ -927,7 +927,7 @@ const NewOrder = () => {
                   className="flex-1 text-sm border border-input rounded-lg px-3 py-1.5 focus:ring-2 focus:ring-ring focus:outline-none"
                 />
                 {discountAmount > 0 && (
-                  <span className="text-xs text-emerald-600 font-semibold shrink-0">
+                  <span className="text-xs text-success font-semibold shrink-0">
                     − R$ {discountAmount.toFixed(2)}
                   </span>
                 )}
@@ -947,13 +947,13 @@ const NewOrder = () => {
                 </div>
               )}
               {discountAmount > 0 && (
-                <div className="flex justify-between items-center text-sm text-emerald-600">
+                <div className="flex justify-between items-center text-sm text-success">
                   <span>Desconto Manual</span>
                   <span>− R$ {discountAmount.toFixed(2)}</span>
                 </div>
               )}
               {appliedCoupon && (
-                <div className="flex justify-between items-center text-sm text-emerald-600 font-bold">
+                <div className="flex justify-between items-center text-sm text-success font-bold">
                   <span>Cupom ({appliedCoupon.code})</span>
                   <span>− R$ {appliedCoupon.discount_amount.toFixed(2)}</span>
                 </div>
@@ -979,7 +979,7 @@ const NewOrder = () => {
                 {appliedCoupon ? (
                   <button
                     onClick={() => { setAppliedCoupon(null); setCouponCode(''); }}
-                    className="px-4 py-1.5 rounded-lg border border-red-200 text-red-500 text-xs font-bold hover:bg-red-50 transition-colors"
+                    className="px-4 py-1.5 rounded-lg border border-danger-border text-danger text-xs font-bold hover:bg-danger-subtle transition-colors"
                   >
                     Remover
                   </button>
@@ -994,7 +994,7 @@ const NewOrder = () => {
                 )}
               </div>
               {appliedCoupon && (
-                <p className="text-[10px] text-emerald-600 font-bold">
+                <p className="text-[10px] text-success font-bold">
                   Cupom {appliedCoupon.code} aplicado: − R$ {appliedCoupon.discount_amount.toFixed(2)}
                 </p>
               )}

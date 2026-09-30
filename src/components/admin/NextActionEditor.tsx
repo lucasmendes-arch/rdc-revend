@@ -158,22 +158,22 @@ export function NextActionEditor({ userId, nextAction, nextActionAt }: NextActio
         <div className={`flex items-start gap-2.5 rounded-lg p-3 ring-1 ring-inset ${
           status === 'overdue'
             ? 'bg-destructive/10 ring-destructive/20'
-            : 'bg-emerald-500/10 dark:bg-emerald-500/10 ring-emerald-500/20'
+            : 'bg-success-subtle ring-success-border'
         }`}>
           {status === 'overdue' ? (
             <AlertCircle className="w-4 h-4 text-destructive flex-shrink-0 mt-0.5" />
           ) : (
-            <Clock className="w-4 h-4 text-emerald-500 flex-shrink-0 mt-0.5" />
+            <Clock className="w-4 h-4 text-success flex-shrink-0 mt-0.5" />
           )}
           <div className="min-w-0">
             <p className={`text-sm font-semibold leading-snug ${
-              status === 'overdue' ? 'text-destructive' : 'text-emerald-600 dark:text-emerald-400'
+              status === 'overdue' ? 'text-destructive' : 'text-success'
             }`}>
               {nextAction}
             </p>
             {nextActionAt && (
               <p className={`text-[11px] mt-0.5 font-medium ${
-                status === 'overdue' ? 'text-destructive/70' : 'text-emerald-600/70 dark:text-emerald-400/70'
+                status === 'overdue' ? 'text-destructive/70' : 'text-success/70'
               }`}>
                 {status === 'overdue' ? 'Venceu em ' : 'Agendado para '}
                 {new Date(nextActionAt).toLocaleString('pt-BR', {

@@ -104,7 +104,7 @@ function Delta({ current, previous }: { current: number; previous: number }) {
   const pct = ((current - previous) / previous) * 100
   const flat = Math.abs(pct) < 0.5
   const Icon = flat ? Minus : pct > 0 ? ArrowUpRight : ArrowDownRight
-  const color = flat ? 'text-muted-foreground' : pct > 0 ? 'text-emerald-600' : 'text-red-600'
+  const color = flat ? 'text-muted-foreground' : pct > 0 ? 'text-success' : 'text-danger'
   return (
     <span className={`inline-flex items-center gap-0.5 ${color}`}>
       <Icon className="w-3 h-3" />
@@ -303,7 +303,7 @@ export default function Unidades() {
       <AdminHeader
         title="Unidades"
         subtitle={
-          <span className={`inline-flex items-center gap-1.5 ${syncFailed ? 'text-red-600' : ''}`}>
+          <span className={`inline-flex items-center gap-1.5 ${syncFailed ? 'text-danger' : ''}`}>
             {syncFailed && <AlertTriangle className="w-3 h-3" />}
             Dados do Trinks · {syncLabel}
             {lastRun?.status === 'partial' && ' (parcial)'}

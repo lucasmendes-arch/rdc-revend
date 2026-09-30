@@ -418,7 +418,7 @@ const Checkout = () => {
 
       <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-8 max-w-xl">
         {error && (
-          <div className="mb-6 p-4 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
+          <div className="mb-6 p-4 rounded-lg bg-danger-subtle border border-danger-border text-danger text-sm">
             {error}
           </div>
         )}
@@ -461,13 +461,13 @@ const Checkout = () => {
                   <span className="text-muted-foreground italic text-xs">Calculado na próxima etapa</span>
                 </div>
                 {couponDiscount > 0 && couponType !== 'shipping_percent' && (
-                  <div className="flex items-center justify-between text-sm text-green-600 font-bold">
+                  <div className="flex items-center justify-between text-sm text-success font-bold">
                     <span>Desconto (Cupom)</span>
                     <span>- R$ {couponDiscount.toFixed(2)}</span>
                   </div>
                 )}
                 {shippingDiscountAmount > 0 && (
-                  <div className="flex items-center justify-between text-sm text-green-600 font-bold">
+                  <div className="flex items-center justify-between text-sm text-success font-bold">
                     <span>Desconto no Frete ({couponDiscount}%)</span>
                     <span>- R$ {shippingDiscountAmount.toFixed(2)}</span>
                   </div>
@@ -510,7 +510,7 @@ const Checkout = () => {
             <div className="bg-card rounded-lg p-5 sm:p-6 shadow-sm border border-border">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
-                  <Check className="w-5 h-5 text-green-500" />
+                  <Check className="w-5 h-5 text-success" />
                   Dados do Cliente
                 </h2>
                 {profileLoaded && (
@@ -654,7 +654,7 @@ const Checkout = () => {
                   <div className="flex-1 text-left">
                     <div className="flex items-center gap-2">
                       <span className="block font-bold text-sm text-foreground">Retirar na Loja</span>
-                      <span className="text-[10px] uppercase font-bold tracking-wider text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">Grátis</span>
+                      <span className="text-[10px] uppercase font-bold tracking-wider text-success bg-success-subtle px-2 py-0.5 rounded-full">Grátis</span>
                     </div>
                     <span className="block text-xs text-muted-foreground mt-0.5">Unidades Rei dos Cachos</span>
                   </div>
@@ -823,7 +823,7 @@ const Checkout = () => {
                 {couponDiscount > 0 ? (
                   <button
                     onClick={() => { setCouponDiscount(0); setCouponId(null); setCouponCode(''); setCouponType(null); }}
-                    className="px-4 py-2 rounded-lg border border-red-200 text-red-500 text-sm font-bold hover:bg-red-50 transition-colors"
+                    className="px-4 py-2 rounded-lg border border-danger-border text-danger text-sm font-bold hover:bg-danger-subtle transition-colors"
                   >
                     Remover
                   </button>
@@ -838,7 +838,7 @@ const Checkout = () => {
                 )}
               </div>
               {couponDiscount > 0 && (
-                <p className="mt-2 text-xs text-green-600 font-bold flex items-center gap-1">
+                <p className="mt-2 text-xs text-success font-bold flex items-center gap-1">
                   <Check className="w-3 h-3" /> {couponType === 'free_shipping' ? 'Frete Grátis aplicado!' : couponType === 'shipping_percent' ? `${couponDiscount}% de desconto no frete aplicado!` : `Desconto de R$ ${couponDiscount.toFixed(2)} aplicado!`}
                 </p>
               )}
@@ -856,23 +856,23 @@ const Checkout = () => {
                   <span>Frete</span>
                   {isNetworkPartner ? (
                     <div className="flex flex-col items-end">
-                      <span className="text-emerald-600 font-bold">Transporte Próprio da Rede</span>
+                      <span className="text-success font-bold">Transporte Próprio da Rede</span>
                     </div>
                   ) : deliveryMethod === 'pickup' ? (
                     <div className="flex flex-col items-end">
-                      <span className="text-emerald-600 font-bold">Retirada Grátis</span>
+                      <span className="text-success font-bold">Retirada Grátis</span>
                     </div>
                   ) : !isAddressValid ? (
                      <span className="text-muted-foreground italic text-xs">A calcular</span>
                   ) : couponType === 'free_shipping' ? (
                     <div className="flex flex-col items-end">
                       <span className="text-muted-foreground line-through text-xs">R$ {shippingEstimate.toFixed(2)}</span>
-                      <span className="text-emerald-600 font-bold">Grátis</span>
+                      <span className="text-success font-bold">Grátis</span>
                     </div>
                   ) : couponType === 'shipping_percent' ? (
                     <div className="flex flex-col items-end">
                       <span className="text-muted-foreground line-through text-xs">R$ {shippingEstimate.toFixed(2)}</span>
-                      <span className="text-emerald-600 font-bold">R$ {(shippingEstimate - shippingDiscountAmount).toFixed(2)}</span>
+                      <span className="text-success font-bold">R$ {(shippingEstimate - shippingDiscountAmount).toFixed(2)}</span>
                     </div>
                   ) : (
                     <span>+ R$ {shippingEstimate.toFixed(2)}</span>
@@ -886,13 +886,13 @@ const Checkout = () => {
               </div>
 
               {couponDiscount > 0 && couponType !== 'free_shipping' && couponType !== 'shipping_percent' && (
-                <div className="flex items-center justify-between text-sm text-green-600 font-bold">
+                <div className="flex items-center justify-between text-sm text-success font-bold">
                   <span>Desconto (Cupom)</span>
                   <span>- R$ {couponDiscount.toFixed(2)}</span>
                 </div>
               )}
               {shippingDiscountAmount > 0 && (
-                <div className="flex items-center justify-between text-sm text-green-600 font-bold">
+                <div className="flex items-center justify-between text-sm text-success font-bold">
                   <span>Desconto no Frete ({couponDiscount}%)</span>
                   <span>- R$ {shippingDiscountAmount.toFixed(2)}</span>
                 </div>
@@ -924,7 +924,7 @@ const Checkout = () => {
           <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
             <div className="bg-card rounded-lg p-5 sm:p-6 shadow-card">
               <h2 className="text-lg font-bold text-foreground mb-6 flex items-center gap-2">
-                <Check className="w-5 h-5 text-green-500" />
+                <Check className="w-5 h-5 text-success" />
                 Forma de Pagamento
               </h2>
 
@@ -934,8 +934,8 @@ const Checkout = () => {
                   onClick={() => { setPaymentMethod('pix'); setInstallments(1); }}
                   className={`flex flex-col items-center justify-center gap-2 p-4 rounded-lg border transition-all ${paymentMethod === 'pix' ? 'border-foreground bg-muted text-ink-600' : 'border-border text-foreground hover:bg-surface-alt'}`}
                 >
-                  <div className="w-8 h-8 rounded-full bg-teal-100 flex items-center justify-center">
-                    <Zap className="w-4 h-4 text-teal-600" />
+                  <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
+                    <Zap className="w-4 h-4 text-foreground" />
                   </div>
                   <span className="font-bold text-sm">PIX</span>
                 </button>
@@ -945,8 +945,8 @@ const Checkout = () => {
                   onClick={() => setPaymentMethod('credit')}
                   className={`flex flex-col items-center justify-center gap-2 p-4 rounded-lg border transition-all ${paymentMethod === 'credit' ? 'border-foreground bg-muted text-ink-600' : 'border-border text-foreground hover:bg-surface-alt'}`}
                 >
-                  <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
-                    <Check className="w-4 h-4 text-blue-600" />
+                  <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
+                    <Check className="w-4 h-4 text-foreground" />
                   </div>
                   <span className="font-bold text-sm">Cartão de Crédito</span>
                 </button>

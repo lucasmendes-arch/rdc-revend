@@ -86,13 +86,13 @@ function BuildFieldCard({
           <GripVertical className="w-4 h-4" />
         </button>
         <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-surface-alt text-muted-foreground shrink-0">{TYPE_LABELS[field.field_type]}</span>
-        <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-blue-50 text-blue-700 shrink-0">Etapa {field.step}</span>
+        <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-surface-alt text-muted-foreground shrink-0">Etapa {field.step}</span>
         {field.is_system_field && <Lock className="w-3 h-3 text-muted-foreground shrink-0" />}
         <span className="text-[11px] text-muted-foreground truncate flex-1 font-mono">{field.field_key}</span>
         <button
           type="button"
           onClick={() => onToggleCard(field)}
-          className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-md shrink-0 transition-colors ${field.show_on_card ? 'bg-emerald-100 text-emerald-700' : 'bg-surface-alt text-muted-foreground'}`}
+          className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-md shrink-0 transition-colors ${field.show_on_card ? 'bg-success-subtle text-success' : 'bg-surface-alt text-muted-foreground'}`}
           title="Aparece no card do Kanban"
         >
           No card
@@ -100,7 +100,7 @@ function BuildFieldCard({
         <button
           onClick={() => !field.is_system_field && onDelete(field)}
           disabled={field.is_system_field}
-          className="p-1 rounded-lg hover:bg-red-50 text-muted-foreground hover:text-red-600 disabled:opacity-30 disabled:hover:bg-transparent shrink-0"
+          className="p-1 rounded-lg hover:bg-danger-subtle text-muted-foreground hover:text-danger disabled:opacity-30 disabled:hover:bg-transparent shrink-0"
           title={field.is_system_field ? 'Campo de sistema — não pode ser apagado (usado pelo kanban e pelas automações)' : 'Apagar'}
         >
           <Trash2 className="w-3.5 h-3.5" />
@@ -170,7 +170,7 @@ function BuildFieldCard({
                 checked={field.required}
                 disabled={field.is_system_field}
                 onChange={() => onToggleRequired(field)}
-                className="w-4 h-4 rounded border-border accent-emerald-600"
+                className="w-4 h-4 rounded border-border accent-success-solid"
               />
               <span className="text-sm font-medium text-foreground">Obrigatório</span>
             </label>
@@ -206,7 +206,7 @@ function BuildFieldCard({
                           const next = checked ? selected.filter((id) => id !== role.id) : [...selected, role.id]
                           onFieldUpdate(field.id, { visible_for_job_role_ids: next.length ? next : null })
                         }}
-                        className="w-4 h-4 rounded border-border accent-emerald-600"
+                        className="w-4 h-4 rounded border-border accent-success-solid"
                       />
                       <span className="text-sm text-foreground">{role.title}{!role.is_active ? ' (inativo)' : ''}</span>
                     </label>
@@ -503,7 +503,7 @@ export default function RhFormulario() {
               <button
                 onClick={() => deleteMutation.mutate(deleteConfirm.id)}
                 disabled={deleteMutation.isPending}
-                className="flex-1 px-4 py-2.5 rounded-lg bg-red-600 hover:bg-red-700 text-white font-medium disabled:opacity-70 transition-colors"
+                className="flex-1 px-4 py-2.5 rounded-lg bg-danger-solid hover:bg-danger-solid/90 text-white font-medium disabled:opacity-70 transition-colors"
               >
                 {deleteMutation.isPending ? 'Apagando...' : 'Apagar'}
               </button>

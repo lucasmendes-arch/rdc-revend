@@ -309,7 +309,7 @@ export default function RhVagas() {
                           onClick={() => toggleStatusMutation.mutate({ id: job.id, status: job.status === 'aberta' ? 'fechada' : 'aberta' })}
                           className={`px-2.5 py-1 rounded-full text-xs font-semibold transition-colors ${
                             job.status === 'aberta'
-                              ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+                              ? 'bg-success-subtle text-success'
                               : 'bg-muted text-muted-foreground'
                           }`}
                           title={job.status === 'aberta' ? 'Fechar vaga' : 'Reabrir vaga'}
@@ -335,7 +335,7 @@ export default function RhVagas() {
                           </button>
                           <button
                             onClick={() => setDeleteConfirm(job.id)}
-                            className="p-1.5 rounded-lg hover:bg-red-50 transition-colors text-muted-foreground hover:text-red-600"
+                            className="p-1.5 rounded-lg hover:bg-danger-subtle transition-colors text-muted-foreground hover:text-danger"
                             title="Excluir"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -439,7 +439,7 @@ export default function RhVagas() {
               <button
                 onClick={() => deleteMutation.mutate(deleteConfirm)}
                 disabled={deleteMutation.isPending}
-                className="flex-1 px-4 py-2.5 rounded-lg bg-red-600 hover:bg-red-700 text-white font-medium disabled:opacity-70 transition-colors"
+                className="flex-1 px-4 py-2.5 rounded-lg bg-danger-solid hover:bg-danger-solid/90 text-white font-medium disabled:opacity-70 transition-colors"
               >
                 {deleteMutation.isPending ? 'Removendo...' : 'Excluir'}
               </button>

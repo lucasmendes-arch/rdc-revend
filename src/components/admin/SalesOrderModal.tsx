@@ -193,7 +193,7 @@ const SalesOrderModal = ({ data, onClose }: Props) => {
               {discount > 0 && (
                 <div className="flex items-center justify-between text-[12px]">
                   <span className="text-muted-foreground">Desconto</span>
-                  <span className="font-medium text-emerald-600">− R$ {discount.toFixed(2)}</span>
+                  <span className="font-medium text-success">− R$ {discount.toFixed(2)}</span>
                 </div>
               )}
               <div className="flex items-center justify-between text-[15px] font-extrabold pt-2 border-t border-border">

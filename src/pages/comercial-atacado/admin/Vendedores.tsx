@@ -315,7 +315,7 @@ export default function AdminVendedores() {
                         <button
                           onClick={() => toggleActiveMutation.mutate({ id: seller.id, active: !seller.active })}
                           className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none ${
-                            seller.active ? 'bg-emerald-500' : 'bg-muted-foreground/30'
+                            seller.active ? 'bg-success-solid' : 'bg-muted-foreground/30'
                           }`}
                           title={seller.active ? 'Desativar' : 'Ativar'}
                         >
@@ -344,7 +344,7 @@ export default function AdminVendedores() {
                       </td>
                       <td className="px-4 py-3 hidden lg:table-cell">
                         {seller.user_id ? (
-                          <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-700/40">
+                          <span className="inline-flex items-center gap-1 text-xs font-medium text-success bg-success-subtle border border-success-border px-2 py-0.5 rounded-full">
                             <Link2 className="w-3 h-3" />
                             {systemUsers.find(u => u.id === seller.user_id)?.full_name ||
                              systemUsers.find(u => u.id === seller.user_id)?.email ||
@@ -365,14 +365,14 @@ export default function AdminVendedores() {
                           </button>
                           <button
                             onClick={() => openReport(seller)}
-                            className="p-1.5 rounded-lg hover:bg-emerald-50 transition-colors text-muted-foreground hover:text-emerald-600"
+                            className="p-1.5 rounded-lg hover:bg-success-subtle transition-colors text-muted-foreground hover:text-success"
                             title="Relatório de comissão"
                           >
                             <FileText className="w-4 h-4" />
                           </button>
                           <button
                             onClick={() => setDeleteConfirm(seller.id)}
-                            className="p-1.5 rounded-lg hover:bg-red-50 transition-colors text-muted-foreground hover:text-red-600"
+                            className="p-1.5 rounded-lg hover:bg-danger-subtle transition-colors text-muted-foreground hover:text-danger"
                             title="Deletar"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -508,7 +508,7 @@ export default function AdminVendedores() {
                       type="checkbox"
                       checked={form.active}
                       onChange={(e) => setForm({ ...form, active: e.target.checked })}
-                      className="w-4 h-4 rounded border-border accent-green-600"
+                      className="w-4 h-4 rounded border-border accent-success-solid"
                     />
                     <span className="text-sm font-medium text-foreground">Ativo</span>
                   </label>
@@ -566,7 +566,7 @@ export default function AdminVendedores() {
               <button
                 onClick={() => deleteMutation.mutate(deleteConfirm)}
                 disabled={deleteMutation.isPending}
-                className="flex-1 px-4 py-2.5 rounded-lg bg-red-600 hover:bg-red-700 text-white font-medium disabled:opacity-70 transition-colors"
+                className="flex-1 px-4 py-2.5 rounded-lg bg-danger-solid hover:bg-danger-solid/90 text-white font-medium disabled:opacity-70 transition-colors"
               >
                 {deleteMutation.isPending ? 'Removendo...' : 'Deletar'}
               </button>
@@ -586,7 +586,7 @@ export default function AdminVendedores() {
           <div className="absolute inset-0 bg-foreground/40 backdrop-blur-sm" onClick={closeReport} />
           <div className="relative bg-card rounded-2xl shadow-2xl border border-border p-6 w-full max-w-md">
             <div className="flex items-center gap-3 mb-5">
-              <div className="w-10 h-10 rounded-xl bg-emerald-600 flex items-center justify-center flex-shrink-0">
+              <div className="w-10 h-10 rounded-xl bg-success-solid flex items-center justify-center flex-shrink-0">
                 <FileText className="w-5 h-5 text-white" />
               </div>
               <div>
@@ -622,7 +622,7 @@ export default function AdminVendedores() {
                   </p>
 
                   {reportError && (
-                    <div className="flex items-start gap-2 text-red-600 bg-red-50 dark:bg-red-900/20 rounded-lg px-3 py-2 text-sm">
+                    <div className="flex items-start gap-2 text-danger bg-danger-subtle rounded-lg px-3 py-2 text-sm">
                       <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
                       {reportError}
                     </div>
@@ -633,7 +633,7 @@ export default function AdminVendedores() {
                   <button
                     onClick={sendReport}
                     disabled={reportLoading || !reportStart || !reportEnd}
-                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-medium disabled:opacity-60 transition-colors"
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-success-solid hover:bg-success-solid/90 text-white font-medium disabled:opacity-60 transition-colors"
                   >
                     {reportLoading ? (
                       <Loader className="w-4 h-4 animate-spin" />
@@ -652,7 +652,7 @@ export default function AdminVendedores() {
               </>
             ) : (
               <>
-                <div className="flex items-center gap-2 text-emerald-600 mb-4">
+                <div className="flex items-center gap-2 text-success mb-4">
                   <CheckCircle2 className="w-5 h-5" />
                   <span className="font-semibold">Relatório enviado!</span>
                 </div>
@@ -669,8 +669,8 @@ export default function AdminVendedores() {
                     </span>
                   </div>
                   <div className="flex justify-between text-sm border-t border-border pt-2 mt-2">
-                    <span className="font-semibold text-emerald-700 dark:text-emerald-400">Comissão ({reportResult.summary.commission_pct}%)</span>
-                    <span className="font-bold text-emerald-700 dark:text-emerald-400">
+                    <span className="font-semibold text-success">Comissão ({reportResult.summary.commission_pct}%)</span>
+                    <span className="font-bold text-success">
                       {reportResult.summary.commission_amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                     </span>
                   </div>
@@ -681,7 +681,7 @@ export default function AdminVendedores() {
                     href={reportResult.pdf_url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-emerald-600 text-emerald-700 dark:text-emerald-400 font-medium hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors text-sm"
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-success-solid text-success font-medium hover:bg-success-subtle transition-colors text-sm"
                   >
                     <FileText className="w-4 h-4" />
                     Ver PDF

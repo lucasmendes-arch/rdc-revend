@@ -104,7 +104,7 @@ export function DateField({
             <button
               type="button"
               onClick={() => { onChange(null); setOpen(false) }}
-              className="w-full text-center px-2 py-1.5 rounded-md text-sm text-red-600 hover:bg-red-50 transition-colors"
+              className="w-full text-center px-2 py-1.5 rounded-md text-sm text-danger hover:bg-danger-subtle transition-colors"
             >
               Remover data
             </button>

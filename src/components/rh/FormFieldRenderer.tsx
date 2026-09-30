@@ -60,7 +60,7 @@ export default function FormFieldRenderer({
   const labelNode = (
     <div className="mb-2">
       <label className="block text-sm font-medium text-foreground leading-snug">
-        {field.question_text || field.label}{field.required && <span className="text-red-500"> *</span>}
+        {field.question_text || field.label}{field.required && <span className="text-danger"> *</span>}
       </label>
       {field.help_text && <p className="text-xs text-muted-foreground mt-1 leading-snug">{field.help_text}</p>}
     </div>
@@ -125,7 +125,7 @@ export default function FormFieldRenderer({
                 checked={selected.includes(opt)}
                 disabled={readOnly}
                 onChange={() => toggle(opt)}
-                className="w-4 h-4 rounded border-border accent-emerald-600 disabled:opacity-60"
+                className="w-4 h-4 rounded border-border accent-success-solid disabled:opacity-60"
               />
               <span className="text-sm text-foreground">{opt}</span>
             </label>
@@ -169,7 +169,7 @@ export default function FormFieldRenderer({
                   <button
                     type="button"
                     onClick={() => removeAt(i)}
-                    className="absolute top-0.5 right-0.5 p-0.5 rounded-full bg-black/60 text-white hover:bg-red-600 transition-colors"
+                    className="absolute top-0.5 right-0.5 p-0.5 rounded-full bg-black/60 text-white hover:bg-danger-solid/90 transition-colors"
                     title="Remover imagem"
                   >
                     <X className="w-3 h-3" />
@@ -223,7 +223,7 @@ export default function FormFieldRenderer({
               <button
                 type="button"
                 onClick={() => onChange('')}
-                className="p-2 rounded-lg border border-border text-muted-foreground hover:text-red-600 hover:border-red-200 hover:bg-red-50 transition-colors shrink-0"
+                className="p-2 rounded-lg border border-border text-muted-foreground hover:text-danger hover:border-danger-border hover:bg-danger-subtle transition-colors shrink-0"
                 title={isImage ? 'Remover foto e escolher outra' : 'Remover arquivo e escolher outro'}
               >
                 <X className="w-4 h-4" />

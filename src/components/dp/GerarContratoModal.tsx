@@ -48,7 +48,7 @@ export default function GerarContratoModal({ processo, onClose }: GerarContratoM
   function fieldLabel(field: ContractDataField) {
     return (
       <label className="block text-[11px] text-muted-foreground mb-1">
-        {CONTRACT_DATA_FIELD_LABELS[field]}{isRequired(field) && <span className="text-red-500"> *</span>}
+        {CONTRACT_DATA_FIELD_LABELS[field]}{isRequired(field) && <span className="text-danger"> *</span>}
       </label>
     )
   }

@@ -80,7 +80,7 @@ export default function ConditionValueInput({ condition, config, inputClass, onC
         {single && !known && (
           // Regra antiga gravada com valor inválido: sem este aviso o seletor
           // aparece vazio e a condição continua sem casar com nada.
-          <p className="text-[11px] text-red-600 mt-1">
+          <p className="text-[11px] text-danger mt-1">
             Valor gravado (“{single}”) não é uma etapa válida — esta condição nunca dispara. Escolha uma etapa acima.
           </p>
         )}

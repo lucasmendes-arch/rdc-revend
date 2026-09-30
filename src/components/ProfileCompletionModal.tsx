@@ -139,7 +139,7 @@ export function ProfileCompletionModal({ userId, onClose, onComplete }: Props) {
           ) : (
             <>
               {error && (
-                <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">{error}</p>
+                <p className="text-sm text-danger bg-danger-subtle px-3 py-2 rounded-lg">{error}</p>
               )}
 
               {/* Document */}

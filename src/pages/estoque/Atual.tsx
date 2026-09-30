@@ -22,7 +22,7 @@ export default function EstoqueAtual() {
           Cruza a última declaração confirmada de cada loja, produto a produto — mesmo que tenha sido feita numa contagem anterior à mais recente. Não reflete vendas/consumo em tempo real.
         </p>
         <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <span className="inline-flex items-center gap-0.5 rounded-full bg-violet-50 px-1.5 py-0.5 text-[11px] font-semibold text-violet-700 ring-1 ring-inset ring-violet-200">
+          <span className="inline-flex items-center gap-0.5 rounded-full bg-violet-50 px-1.5 py-0.5 text-[11px] font-semibold text-violet-700 ring-1 ring-inset ring-violet-200 dark:bg-violet-500/15 dark:text-violet-300 dark:ring-violet-500/30">
             99 <TrendingUp className="w-3 h-3 shrink-0" />
           </span>
           estoque da loja mais que o dobro da meta daquela loja

@@ -119,7 +119,7 @@ const PedidoSucesso = () => {
     return (
       <div className="min-h-screen bg-surface-alt flex items-center justify-center p-4">
         <div className="bg-card rounded-lg p-8 text-center max-w-md">
-          <p className="text-red-600 font-medium mb-4">{error || 'Pedido não encontrado'}</p>
+          <p className="text-danger font-medium mb-4">{error || 'Pedido não encontrado'}</p>
           <button
             onClick={() => navigate('/catalogo')}
             className="inline-flex items-center gap-2 px-6 py-2.5 rounded-lg btn-gold font-medium"
@@ -151,7 +151,7 @@ const PedidoSucesso = () => {
         <div className="mb-8">
           <div className="bg-card rounded-lg p-8 text-center shadow-card">
             <div className="flex justify-center mb-4">
-              <CheckCircle className="w-16 h-16 text-green-600" />
+              <CheckCircle className="w-16 h-16 text-success" />
             </div>
             <h1 className="text-2xl sm:text-3xl font-bold text-foreground mb-2">
               Pedido Confirmado!
@@ -250,8 +250,8 @@ const PedidoSucesso = () => {
 
               <div className="space-y-3 mb-6">
                 <div className="flex gap-3">
-                  <div className="flex-shrink-0 w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
-                    <span className="text-green-700 font-bold text-sm">✓</span>
+                  <div className="flex-shrink-0 w-8 h-8 rounded-full bg-success-subtle flex items-center justify-center">
+                    <span className="text-success font-bold text-sm">✓</span>
                   </div>
                   <div>
                     <p className="text-sm font-medium text-foreground">Pedido Confirmado</p>

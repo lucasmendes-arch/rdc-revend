@@ -51,7 +51,7 @@ function QuantityCell({ item, onSave }: { item: InventoryItem; onSave: (id: stri
       <button
         onClick={() => save(qty - 1)}
         disabled={qty === 0}
-        className="w-8 h-8 rounded-lg border border-border hover:bg-red-50 hover:border-red-300 hover:text-red-600 flex items-center justify-center disabled:opacity-30 transition-colors active:scale-95"
+        className="w-8 h-8 rounded-lg border border-border hover:bg-danger-subtle hover:border-danger-border hover:text-danger flex items-center justify-center disabled:opacity-30 transition-colors active:scale-95"
       >
         <Minus className="w-3.5 h-3.5" />
       </button>
@@ -64,7 +64,7 @@ function QuantityCell({ item, onSave }: { item: InventoryItem; onSave: (id: stri
       />
       <button
         onClick={() => save(qty + 1)}
-        className="w-8 h-8 rounded-lg border border-border hover:bg-green-50 hover:border-green-300 hover:text-green-600 flex items-center justify-center transition-colors active:scale-95"
+        className="w-8 h-8 rounded-lg border border-border hover:bg-success-subtle hover:border-success-border hover:text-success flex items-center justify-center transition-colors active:scale-95"
       >
         <Plus className="w-3.5 h-3.5" />
       </button>
@@ -212,9 +212,9 @@ export default function AdminEstoque() {
   }, [updateField])
 
   const getStockStatus = (qty: number, min: number) => {
-    if (qty === 0) return { label: 'Sem estoque', color: 'bg-red-100 text-red-700' }
-    if (qty <= min) return { label: 'Baixo', color: 'bg-yellow-100 text-yellow-700' }
-    return { label: 'OK', color: 'bg-green-100 text-green-700' }
+    if (qty === 0) return { label: 'Sem estoque', color: 'bg-danger-subtle text-danger' }
+    if (qty <= min) return { label: 'Baixo', color: 'bg-warning-subtle text-warning' }
+    return { label: 'OK', color: 'bg-success-subtle text-success' }
   }
 
   const filteredInventory = inventory.filter((item) =>
@@ -304,13 +304,13 @@ export default function AdminEstoque() {
               <p className="text-2xl font-bold text-foreground">{inventory.length}</p>
               <p className="text-xs text-muted-foreground mt-1">Total</p>
             </div>
-            <div className="bg-yellow-50 rounded-xl border border-yellow-200 p-4 text-center">
-              <p className="text-2xl font-bold text-yellow-700">{lowStockCount}</p>
-              <p className="text-xs text-yellow-600 mt-1">Estoque baixo</p>
+            <div className="bg-warning-subtle rounded-xl border border-warning-border p-4 text-center">
+              <p className="text-2xl font-bold text-warning">{lowStockCount}</p>
+              <p className="text-xs text-warning mt-1">Estoque baixo</p>
             </div>
-            <div className="bg-red-50 rounded-xl border border-red-200 p-4 text-center">
-              <p className="text-2xl font-bold text-red-700">{outOfStockCount}</p>
-              <p className="text-xs text-red-600 mt-1">Sem estoque</p>
+            <div className="bg-danger-subtle rounded-xl border border-danger-border p-4 text-center">
+              <p className="text-2xl font-bold text-danger">{outOfStockCount}</p>
+              <p className="text-xs text-danger mt-1">Sem estoque</p>
             </div>
           </div>
 
@@ -437,7 +437,7 @@ export default function AdminEstoque() {
                                 <button
                                   onClick={() => createMutation.mutate(product.id)}
                                   disabled={createMutation.isPending}
-                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-600 hover:bg-green-700 text-white text-xs font-medium transition-colors disabled:opacity-60"
+                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-success-solid hover:bg-success-solid/90 text-white text-xs font-medium transition-colors disabled:opacity-60"
                                 >
                                   <Plus className="w-3 h-3" />
                                   Cadastrar

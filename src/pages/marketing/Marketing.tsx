@@ -365,8 +365,8 @@ const Marketing = () => {
                               onClick={() => toggleCouponStatus(coupon.id, coupon.is_active)}
                               className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold transition-all ${
                                 coupon.is_active 
-                                ? 'bg-green-100 text-green-700 hover:bg-red-100 hover:text-red-700' 
-                                : 'bg-red-100 text-red-700 hover:bg-green-100 hover:text-green-700'
+                                ? 'bg-success-subtle text-success hover:bg-danger-subtle hover:text-danger' 
+                                : 'bg-danger-subtle text-danger hover:bg-success-subtle hover:text-success'
                               }`}
                             >
                               {coupon.is_active ? (
@@ -379,7 +379,7 @@ const Marketing = () => {
                           <td className="px-6 py-4 text-right">
                             <button 
                               onClick={() => deleteCoupon(coupon.id)}
-                              className="p-2 text-muted-foreground hover:text-red-600 transition-colors"
+                              className="p-2 text-muted-foreground hover:text-danger transition-colors"
                             >
                               <Trash2 className="w-4 h-4" />
                             </button>

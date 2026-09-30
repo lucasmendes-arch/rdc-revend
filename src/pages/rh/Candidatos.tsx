@@ -219,7 +219,7 @@ function AttachmentCard({ url, kind, onRemove }: { url: string; kind: 'image' | 
       </a>
       <div className="flex items-center gap-1 px-2 py-1.5 border-t border-border/60">
         <span className="text-[11px] text-muted-foreground truncate flex-1" title={name}>{name}</span>
-        <button type="button" onClick={onRemove} className="p-0.5 rounded hover:bg-red-50 text-muted-foreground hover:text-red-600 shrink-0" title="Remover e escolher outro">
+        <button type="button" onClick={onRemove} className="p-0.5 rounded hover:bg-danger-subtle text-muted-foreground hover:text-danger shrink-0" title="Remover e escolher outro">
           <X className="w-3 h-3" />
         </button>
       </div>
@@ -289,7 +289,7 @@ function CandidateCard({
       }`}
     >
       {dueOverdue && (
-        <div className="absolute top-1.5 right-1.5 z-10 flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-red-600 text-white text-[10px] font-bold shadow" title="Data fim já passou">
+        <div className="absolute top-1.5 right-1.5 z-10 flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-danger-solid text-white text-[10px] font-bold shadow" title="Data fim já passou">
           <AlertTriangle className="w-2.5 h-2.5" /> Atrasado
         </div>
       )}
@@ -1372,7 +1372,7 @@ export default function RhCandidatos() {
                       setPromoteFormacaoData(EMPTY_FORMACAO_DATA)
                     }}
                     title="Contratar candidato"
-                    className="px-2.5 py-1.5 rounded-lg bg-teal-600 hover:bg-teal-700 text-white text-xs font-medium transition-colors"
+                    className="px-2.5 py-1.5 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-medium transition-colors"
                   >
                     Contratar
                   </button>
@@ -1507,13 +1507,13 @@ export default function RhCandidatos() {
                           {fieldType === 'upload_imagens' ? (
                             <div className="flex items-center gap-1.5 flex-wrap justify-end">
                               {a.value.split(CHECKBOX_DELIM).map((url, i) => (
-                                <a key={url + i} href={url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                                <a key={url + i} href={url} target="_blank" rel="noopener noreferrer" className="text-info hover:underline">
                                   Imagem {i + 1}
                                 </a>
                               ))}
                             </div>
                           ) : fieldType === 'upload_imagem' || fieldType === 'upload_arquivo' ? (
-                            <a href={a.value} target="_blank" rel="noopener noreferrer" className="text-right text-blue-600 hover:underline truncate">
+                            <a href={a.value} target="_blank" rel="noopener noreferrer" className="text-right text-info hover:underline truncate">
                               Ver arquivo
                             </a>
                           ) : (
@@ -1593,7 +1593,7 @@ export default function RhCandidatos() {
                           <div key={row.id} className="flex items-start justify-between gap-3 text-xs">
                             <span className="text-foreground">
                               {describeActivity(row)}
-                              {row.automation_id && <span className="ml-1.5 text-[10px] font-semibold px-1 py-0.5 rounded bg-violet-100 text-violet-700">automação</span>}
+                              {row.automation_id && <span className="ml-1.5 text-[10px] font-semibold px-1 py-0.5 rounded bg-violet-100 text-violet-700 dark:bg-violet-500/20 dark:text-violet-300">automação</span>}
                             </span>
                             <span className="text-muted-foreground shrink-0">{new Date(row.changed_at).toLocaleString('pt-BR')}</span>
                           </div>
@@ -1681,7 +1681,7 @@ export default function RhCandidatos() {
                 </div>
                 <div>
                   <label className="block text-[11px] text-muted-foreground mb-1">
-                    Início do contrato <span className="text-red-500">*</span>
+                    Início do contrato <span className="text-danger">*</span>
                   </label>
                   <DateField
                     value={promoteFormacaoData.contract_start_date || null}
@@ -1707,7 +1707,7 @@ export default function RhCandidatos() {
                 </div>
                 <div>
                   <label className="block text-[11px] text-muted-foreground mb-1">
-                    CPF <span className="text-red-500">*</span>
+                    CPF <span className="text-danger">*</span>
                   </label>
                   <input
                     type="text"
@@ -1720,7 +1720,7 @@ export default function RhCandidatos() {
                 </div>
                 <div>
                   <label className="block text-[11px] text-muted-foreground mb-1">
-                    Data de nascimento <span className="text-red-500">*</span>
+                    Data de nascimento <span className="text-danger">*</span>
                   </label>
                   {/* Faixa de um século: nascimento estoura o padrão de ±10 anos
                       do Calendar (mesmo ajuste do GerarContratoModal). */}
@@ -1735,7 +1735,7 @@ export default function RhCandidatos() {
                 </div>
                 <div>
                   <label className="block text-[11px] text-muted-foreground mb-1">
-                    Endereço completo <span className="text-red-500">*</span>
+                    Endereço completo <span className="text-danger">*</span>
                   </label>
                   <input
                     type="text"

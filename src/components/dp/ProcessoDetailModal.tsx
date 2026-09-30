@@ -99,7 +99,7 @@ function AttachmentLine({ url, onRemove }: { url: string; onRemove: () => void }
       <a href={url} target="_blank" rel="noopener noreferrer" className="text-sm text-muted-foreground hover:text-foreground hover:underline truncate flex-1 min-w-0" title={name}>
         {name}
       </a>
-      <button type="button" onClick={onRemove} className="p-1 rounded hover:bg-red-50 text-muted-foreground hover:text-red-600 shrink-0" title="Remover e escolher outro">
+      <button type="button" onClick={onRemove} className="p-1 rounded hover:bg-danger-subtle text-muted-foreground hover:text-danger shrink-0" title="Remover e escolher outro">
         <X className="w-3.5 h-3.5" />
       </button>
     </div>
@@ -559,7 +559,7 @@ export default function ProcessoDetailModal({ processo, onClose, estagio }: Proc
                   // então essa tag ficaria enganosa (parece efetivado sem ser).
                   estagio.mode === 'ativo' && (
                     <span
-                      className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300 shrink-0"
+                      className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-success-subtle text-success shrink-0"
                       title="Período de experiência concluído"
                     >
                       Ativo
@@ -656,7 +656,7 @@ export default function ProcessoDetailModal({ processo, onClose, estagio }: Proc
                       )}
                       <button
                         onClick={estagio.onEncerrar}
-                        className="px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white text-sm font-medium transition-colors"
+                        className="px-3 py-1.5 rounded-lg bg-danger-solid hover:bg-danger-solid/90 text-white text-sm font-medium transition-colors"
                       >
                         Encerrar vínculo
                       </button>
@@ -823,7 +823,7 @@ export default function ProcessoDetailModal({ processo, onClose, estagio }: Proc
                     type="checkbox"
                     checked={checklist.onboarding_completed}
                     onChange={(e) => updateChecklist.mutate({ onboarding_completed: e.target.checked })}
-                    className="w-4 h-4 rounded border-border accent-green-600"
+                    className="w-4 h-4 rounded border-border accent-success-solid"
                   />
                   <span className="text-sm text-foreground">Onboarding institucional concluído</span>
                 </label>
@@ -842,7 +842,7 @@ export default function ProcessoDetailModal({ processo, onClose, estagio }: Proc
                       type="checkbox"
                       checked={checklist.training_completed}
                       onChange={(e) => updateChecklist.mutate({ training_completed: e.target.checked })}
-                      className="w-4 h-4 rounded border-border accent-green-600"
+                      className="w-4 h-4 rounded border-border accent-success-solid"
                     />
                     <span className="text-sm text-foreground">Treinamento concluído</span>
                   </label>
@@ -1050,7 +1050,7 @@ export default function ProcessoDetailModal({ processo, onClose, estagio }: Proc
                         <button
                           type="button"
                           onClick={() => updateDocumentFile.mutate({ id: doc.id, url: null })}
-                          className="p-1 rounded hover:bg-red-50 text-muted-foreground hover:text-red-600"
+                          className="p-1 rounded hover:bg-danger-subtle text-muted-foreground hover:text-danger"
                           title="Remover anexo"
                         >
                           <X className="w-3 h-3" />

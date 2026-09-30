@@ -147,14 +147,14 @@ function AutomationCard({
         </button>
         <button
           onClick={onToggleActive}
-          className={`text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 ${automation.is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-muted text-muted-foreground'}`}
+          className={`text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 ${automation.is_active ? 'bg-success-subtle text-success' : 'bg-muted text-muted-foreground'}`}
         >
           {automation.is_active ? 'Ativa' : 'Inativa'}
         </button>
         <button onClick={onEdit} className="p-1.5 rounded-lg hover:bg-surface-alt text-muted-foreground hover:text-foreground shrink-0" title="Editar">
           <Pencil className="w-3.5 h-3.5" />
         </button>
-        <button onClick={onDelete} className="p-1.5 rounded-lg hover:bg-red-50 text-muted-foreground hover:text-red-600 shrink-0" title="Excluir">
+        <button onClick={onDelete} className="p-1.5 rounded-lg hover:bg-danger-subtle text-muted-foreground hover:text-danger shrink-0" title="Excluir">
           <Trash2 className="w-3.5 h-3.5" />
         </button>
       </div>
@@ -583,7 +583,7 @@ function AutomationEditorModal({
                     inputClass={inputClass}
                     onChange={(value) => updateCondition(i, { value })}
                   />
-                  <button onClick={() => removeCondition(i)} className="p-1.5 text-muted-foreground hover:text-red-600 shrink-0"><X className="w-4 h-4" /></button>
+                  <button onClick={() => removeCondition(i)} className="p-1.5 text-muted-foreground hover:text-danger shrink-0"><X className="w-4 h-4" /></button>
                 </div>
               ))}
             </div>
@@ -607,7 +607,7 @@ function AutomationEditorModal({
                       options={Object.entries(config.actionTypeLabels).map(([value, label]) => ({ value, label }))}
                       className="flex-1"
                     />
-                    <button onClick={() => removeAction(i)} className="p-1.5 text-muted-foreground hover:text-red-600 shrink-0"><X className="w-4 h-4" /></button>
+                    <button onClick={() => removeAction(i)} className="p-1.5 text-muted-foreground hover:text-danger shrink-0"><X className="w-4 h-4" /></button>
                   </div>
                   <ActionConfigEditor
                     actionType={a.action_type} config={a.action_config} entityConfig={config}
@@ -737,7 +737,7 @@ export default function AutomationsPanel({ config }: { config: AutomationEntityC
             <h2 className="text-lg font-bold text-foreground mb-2">Excluir automação</h2>
             <p className="text-sm text-muted-foreground mb-5">"{deleteConfirm.name}" será removida, junto com suas ações.</p>
             <div className="flex gap-3">
-              <button onClick={() => deleteMutation.mutate(deleteConfirm.id)} disabled={deleteMutation.isPending} className="flex-1 px-4 py-2.5 rounded-lg bg-red-600 hover:bg-red-700 text-white font-medium disabled:opacity-70">
+              <button onClick={() => deleteMutation.mutate(deleteConfirm.id)} disabled={deleteMutation.isPending} className="flex-1 px-4 py-2.5 rounded-lg bg-danger-solid hover:bg-danger-solid/90 text-white font-medium disabled:opacity-70">
                 {deleteMutation.isPending ? 'Excluindo...' : 'Excluir'}
               </button>
               <button onClick={() => setDeleteConfirm(null)} className="flex-1 px-4 py-2.5 rounded-lg border border-border bg-card text-foreground font-medium hover:bg-accent">Cancelar</button>

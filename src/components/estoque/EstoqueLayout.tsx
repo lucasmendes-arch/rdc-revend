@@ -34,34 +34,34 @@ export default function EstoqueLayout({ children }: EstoqueLayoutProps) {
 
   const navLinkClass = ({ isActive }: { isActive: boolean }) =>
     `flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-      isActive ? 'bg-white/20 text-white' : 'text-white/70 hover:bg-white/10 hover:text-white'
+      isActive ? 'bg-muted text-foreground' : 'text-ink-500 hover:bg-muted hover:text-foreground'
     }`
 
   return (
     // overflow-x-clip: nenhuma tela do módulo pode alargar a página no mobile —
     // conteúdo largo (tabelas) rola dentro do próprio wrapper overflow-x-auto.
     <div className="min-h-screen bg-surface-alt overflow-x-clip">
-      <header className="bg-gold border-b border-brand-strong px-3 sm:px-6 h-14 flex items-center sticky top-0 z-40">
+      <header className="bg-background border-b border-border px-3 sm:px-6 h-14 flex items-center sticky top-0 z-40">
         <div className="w-full max-w-6xl mx-auto flex items-center justify-between gap-2 sm:gap-4">
           <div className="flex items-center gap-2.5 shrink-0">
-            <Warehouse className="w-6 h-6 text-white" />
+            <div className="w-8 h-8 rounded-md border border-border flex items-center justify-center shrink-0"><Warehouse className="w-4 h-4 text-foreground" /></div>
             <div className="flex flex-col">
-              <span className="text-white font-bold text-sm leading-tight">Estoque</span>
+              <span className="text-foreground font-semibold text-[13px] tracking-tight leading-tight">Estoque</span>
               {isAdmin ? (
                 <select
                   value={adminStoreSlug ?? ''}
                   onChange={(e) => setAdminStore(e.target.value)}
-                  className="text-[10px] bg-transparent text-white/90 border-b border-white/30 leading-tight focus:outline-none max-w-[140px]"
+                  className="text-[10px] bg-transparent text-muted-foreground border-b border-border leading-tight focus:outline-none max-w-[140px]"
                 >
-                  <option value="" disabled className="text-black">Selecionar loja (teste)</option>
+                  <option value="" disabled>Selecionar loja (teste)</option>
                   {allStores.map((s) => (
-                    <option key={s.id} value={s.slug} className="text-black">
+                    <option key={s.id} value={s.slug}>
                       {s.name} ({s.type === 'central' ? 'central' : 'satélite'})
                     </option>
                   ))}
                 </select>
               ) : (
-                <span className="text-white/70 text-[10px] leading-tight">{store?.name || 'Carregando loja…'}</span>
+                <span className="text-muted-foreground text-[10px] leading-tight">{store?.name || 'Carregando loja…'}</span>
               )}
             </div>
           </div>
@@ -105,7 +105,7 @@ export default function EstoqueLayout({ children }: EstoqueLayoutProps) {
             {role === 'admin' ? (
               <Link
                 to="/admin/catalogo"
-                className="p-2 hover:bg-white/10 rounded-lg transition-colors text-white flex items-center gap-1.5 text-sm"
+                className="p-2 hover:bg-muted hover:text-foreground rounded-lg transition-colors text-ink-500 flex items-center gap-1.5 text-sm"
                 title="Voltar ao Admin"
               >
                 <LayoutGrid className="w-4 h-4" />
@@ -114,7 +114,7 @@ export default function EstoqueLayout({ children }: EstoqueLayoutProps) {
             ) : role === 'administrativo' ? (
               <Link
                 to="/admin/rh/candidatos"
-                className="p-2 hover:bg-white/10 rounded-lg transition-colors text-white flex items-center gap-1.5 text-sm"
+                className="p-2 hover:bg-muted hover:text-foreground rounded-lg transition-colors text-ink-500 flex items-center gap-1.5 text-sm"
                 title="Voltar ao RH"
               >
                 <LayoutGrid className="w-4 h-4" />
@@ -123,7 +123,7 @@ export default function EstoqueLayout({ children }: EstoqueLayoutProps) {
             ) : (
               <Link
                 to="/salao"
-                className="p-2 hover:bg-white/10 rounded-lg transition-colors text-white flex items-center gap-1.5 text-sm"
+                className="p-2 hover:bg-muted hover:text-foreground rounded-lg transition-colors text-ink-500 flex items-center gap-1.5 text-sm"
                 title="Trocar de módulo"
               >
                 <LayoutGrid className="w-4 h-4" />
@@ -132,14 +132,14 @@ export default function EstoqueLayout({ children }: EstoqueLayoutProps) {
             )}
             <button
               onClick={() => setIsDark(v => !v)}
-              className="p-2 hover:bg-white/10 rounded-lg transition-colors text-white"
+              className="p-2 hover:bg-muted hover:text-foreground rounded-lg transition-colors text-ink-500"
               title={isDark ? 'Modo claro' : 'Modo escuro'}
             >
               {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
             </button>
             <button
               onClick={handleLogout}
-              className="p-2 hover:bg-white/10 rounded-lg transition-colors text-white flex items-center gap-1.5 text-sm"
+              className="p-2 hover:bg-muted hover:text-foreground rounded-lg transition-colors text-ink-500 flex items-center gap-1.5 text-sm"
               title="Sair"
             >
               <LogOut className="w-4 h-4" />

@@ -277,7 +277,7 @@ export default function EstoqueHistorico() {
                           <button
                             onClick={(e) => { e.stopPropagation(); handleDelete(count) }}
                             disabled={deleteCount.isPending}
-                            className="text-muted-foreground hover:text-red-600 disabled:opacity-40 transition-colors"
+                            className="text-muted-foreground hover:text-danger disabled:opacity-40 transition-colors"
                             title="Excluir contagem"
                           >
                             <Trash2 className="w-4 h-4" />

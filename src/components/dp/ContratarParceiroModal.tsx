@@ -177,7 +177,7 @@ export default function ContratarParceiroModal({ processo, onConfirmStage, onClo
     return (
       <label className="block text-[11px] text-muted-foreground mb-1">
         {CONTRACT_DATA_FIELD_LABELS[field]}
-        {optional ? null : <span className="text-red-500"> *</span>}
+        {optional ? null : <span className="text-danger"> *</span>}
       </label>
     )
   }
@@ -202,7 +202,7 @@ export default function ContratarParceiroModal({ processo, onConfirmStage, onClo
           <div>
             <label className="block text-[11px] text-muted-foreground mb-1">Modelo base do contrato</label>
             {templatesError ? (
-              <p className="text-[11px] text-red-500">
+              <p className="text-[11px] text-danger">
                 Não foi possível carregar os modelos: {templatesError instanceof Error ? templatesError.message : 'erro desconhecido'}
               </p>
             ) : (
@@ -221,7 +221,7 @@ export default function ContratarParceiroModal({ processo, onConfirmStage, onClo
 
           <div>
             <label className="block text-[11px] text-muted-foreground mb-1">
-              Data de assinatura <span className="text-red-500">*</span>
+              Data de assinatura <span className="text-danger">*</span>
             </label>
             <DateField value={termStart || null} onChange={(v) => setTermStart(v ?? '')} placeholder="Selecionar" />
             <p className="text-[10px] text-muted-foreground mt-1">

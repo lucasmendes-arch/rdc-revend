@@ -229,7 +229,7 @@ export default function CandidaturaPublica() {
             </div>
           ) : submitted ? (
             <div className="h-full flex flex-col items-center justify-center text-center">
-              <CheckCircle2 className="w-12 h-12 text-emerald-600 mx-auto mb-4" />
+              <CheckCircle2 className="w-12 h-12 text-success mx-auto mb-4" />
               <p className="text-foreground font-semibold text-lg">Candidatura enviada!</p>
               <p className="text-sm text-muted-foreground mt-2">
                 Recebemos suas informações e vamos analisar seu perfil. Se avançarmos, entraremos em contato

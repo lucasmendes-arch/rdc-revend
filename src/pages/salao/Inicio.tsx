@@ -29,23 +29,23 @@ export default function SalaoInicio() {
 
   return (
     <div className="min-h-screen bg-surface-alt">
-      <header className="bg-gold border-b border-brand-strong px-4 sm:px-6 h-14 flex items-center sticky top-0 z-40">
+      <header className="bg-background border-b border-border px-4 sm:px-6 h-14 flex items-center sticky top-0 z-40">
         <div className="w-full max-w-3xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <img src={logo} alt="Rei dos Cachos" className="h-8 w-auto brightness-0 invert" />
-            <span className="text-white font-bold text-sm leading-tight">Área do Salão</span>
+            <div className="w-8 h-8 rounded-md border border-border flex items-center justify-center shrink-0"><img src={logo} alt="Rei dos Cachos" className="h-4 w-auto" /></div>
+            <span className="text-foreground font-semibold text-[13px] tracking-tight leading-tight">Área do Salão</span>
           </div>
           <div className="flex items-center gap-1">
             <button
               onClick={() => setIsDark(v => !v)}
-              className="p-2 hover:bg-white/10 rounded-lg transition-colors text-white"
+              className="p-2 hover:bg-muted hover:text-foreground rounded-lg transition-colors text-ink-500"
               title={isDark ? 'Modo claro' : 'Modo escuro'}
             >
               {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
             </button>
             <button
               onClick={handleLogout}
-              className="p-2 hover:bg-white/10 rounded-lg transition-colors text-white flex items-center gap-1.5 text-sm"
+              className="p-2 hover:bg-muted hover:text-foreground rounded-lg transition-colors text-ink-500 flex items-center gap-1.5 text-sm"
               title="Sair"
             >
               <LogOut className="w-4 h-4" />
@@ -62,10 +62,10 @@ export default function SalaoInicio() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Link
             to="/salao/pedido"
-            className="flex flex-col items-center gap-3 p-8 rounded-2xl bg-card border border-border shadow-card hover:border-ink-300 hover:shadow-lg transition-all"
+            className="flex flex-col items-center gap-3 p-8 rounded-2xl bg-card border border-border shadow-card hover:border-ink-300 transition-colors"
           >
-            <div className="w-14 h-14 rounded-2xl gradient-gold flex items-center justify-center">
-              <ShoppingCart className="w-7 h-7 text-white" />
+            <div className="w-14 h-14 rounded-2xl bg-muted flex items-center justify-center">
+              <ShoppingCart className="w-7 h-7 text-foreground" />
             </div>
             <div className="text-center">
               <p className="font-bold text-foreground">Lançamento de Venda</p>
@@ -76,10 +76,10 @@ export default function SalaoInicio() {
           {storeId ? (
             <Link
               to="/estoque/contagem"
-              className="flex flex-col items-center gap-3 p-8 rounded-2xl bg-card border border-border shadow-card hover:border-ink-300 hover:shadow-lg transition-all"
+              className="flex flex-col items-center gap-3 p-8 rounded-2xl bg-card border border-border shadow-card hover:border-ink-300 transition-colors"
             >
-              <div className="w-14 h-14 rounded-2xl gradient-gold flex items-center justify-center">
-                <Warehouse className="w-7 h-7 text-white" />
+              <div className="w-14 h-14 rounded-2xl bg-muted flex items-center justify-center">
+                <Warehouse className="w-7 h-7 text-foreground" />
               </div>
               <div className="text-center">
                 <p className="font-bold text-foreground">Contagem de Estoque</p>

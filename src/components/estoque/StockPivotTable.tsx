@@ -163,7 +163,7 @@ export default function StockPivotTable({ storeId }: StockPivotTableProps) {
 
   if (error) {
     return (
-      <div className="bg-card rounded-2xl border border-border shadow-card p-6 text-center text-sm text-red-600">
+      <div className="bg-card rounded-2xl border border-border shadow-card p-6 text-center text-sm text-danger">
         Erro ao carregar estoque: {error instanceof Error ? error.message : 'desconhecido'}
       </div>
     )
@@ -236,7 +236,7 @@ export default function StockPivotTable({ storeId }: StockPivotTableProps) {
                                 ) : value === null ? (
                                   <span className="text-[10px] font-semibold text-warning">não classif.</span>
                                 ) : isOverstocked ? (
-                                  <span className="inline-flex items-center gap-0.5 rounded-full bg-violet-50 px-1.5 py-0.5 text-xs font-semibold text-violet-700 ring-1 ring-inset ring-violet-200">
+                                  <span className="inline-flex items-center gap-0.5 rounded-full bg-violet-50 px-1.5 py-0.5 text-xs font-semibold text-violet-700 ring-1 ring-inset ring-violet-200 dark:bg-violet-500/15 dark:text-violet-300 dark:ring-violet-500/30">
                                     {value}
                                     <TrendingUp className="w-3 h-3 shrink-0" />
                                   </span>
@@ -253,7 +253,7 @@ export default function StockPivotTable({ storeId }: StockPivotTableProps) {
                               ) : lastValue === null ? (
                                 <span className="text-[10px] font-semibold text-warning">não classif.</span>
                               ) : lastOverstocked ? (
-                                <span className="inline-flex items-center gap-0.5 rounded-full bg-violet-50 px-1.5 py-0.5 text-xs font-semibold text-violet-700 ring-1 ring-inset ring-violet-200">
+                                <span className="inline-flex items-center gap-0.5 rounded-full bg-violet-50 px-1.5 py-0.5 text-xs font-semibold text-violet-700 ring-1 ring-inset ring-violet-200 dark:bg-violet-500/15 dark:text-violet-300 dark:ring-violet-500/30">
                                   {lastValue}
                                   <TrendingUp className="w-3 h-3 shrink-0" />
                                 </span>

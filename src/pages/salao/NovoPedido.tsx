@@ -465,8 +465,8 @@ export default function SalaoNovoPedido() {
         <SalaoHeader onLogout={handleLogout} isDark={isDark} onToggleTheme={toggleTheme} />
         <div className="flex items-center justify-center px-4 py-16">
           <div className="bg-card rounded-2xl border border-border shadow-card p-8 max-w-md w-full text-center">
-            <div className="w-16 h-16 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mx-auto mb-4">
-              <ShoppingCart className="w-8 h-8 text-green-600 dark:text-green-400" />
+            <div className="w-16 h-16 rounded-full bg-success-subtle flex items-center justify-center mx-auto mb-4">
+              <ShoppingCart className="w-8 h-8 text-success" />
             </div>
             <h2 className="text-xl font-bold text-foreground mb-2">Pedido Criado!</h2>
             <p className="text-muted-foreground text-sm mb-1">
@@ -504,7 +504,7 @@ export default function SalaoNovoPedido() {
           {selectedCustomer ? (
             <div className="flex items-center justify-between p-3 rounded-xl bg-surface border border-border">
               <div className="flex items-center gap-3">
-                <UserCheck className="w-5 h-5 text-green-600 shrink-0" />
+                <UserCheck className="w-5 h-5 text-success shrink-0" />
                 <div>
                   <p className="font-semibold text-foreground flex items-center flex-wrap gap-1">
                     {selectedCustomer.full_name || 'Sem nome'}
@@ -512,7 +512,7 @@ export default function SalaoNovoPedido() {
                        <span className="text-[10px] bg-brand-subtle text-brand-strong px-1.5 py-0.5 rounded font-bold uppercase">Parceiro</span>
                     )}
                     {selectedCustomer.price_list_id && (
-                       <span className="text-[10px] bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-400 px-1.5 py-0.5 rounded font-bold uppercase flex items-center gap-0.5">
+                       <span className="text-[10px] bg-info-subtle text-info px-1.5 py-0.5 rounded font-bold uppercase flex items-center gap-0.5">
                          <Tag className="w-2.5 h-2.5" /> Tabela Especial
                        </span>
                     )}
@@ -655,12 +655,12 @@ export default function SalaoNovoPedido() {
               {filteredProducts.length} produto{filteredProducts.length !== 1 ? 's' : ''} encontrado{filteredProducts.length !== 1 ? 's' : ''}
             </p>
             {loadingPriceList && (
-              <span className="flex items-center gap-1 text-[10px] text-blue-600">
+              <span className="flex items-center gap-1 text-[10px] text-info">
                 <Loader className="w-3 h-3 animate-spin" /> Carregando preços…
               </span>
             )}
             {!loadingPriceList && Object.keys(priceListOverrides).length > 0 && (
-              <span className="flex items-center gap-1 text-[10px] text-blue-600 font-medium">
+              <span className="flex items-center gap-1 text-[10px] text-info font-medium">
                 <Tag className="w-3 h-3" /> Tabela de preço aplicada
               </span>
             )}
@@ -681,7 +681,7 @@ export default function SalaoNovoPedido() {
                     onClick={() => toggleProductSelection(product.id)}
                     className={`flex items-center gap-3 p-3 rounded-xl border text-left cursor-pointer transition-all ${
                       inCart
-                        ? 'border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20'
+                        ? 'border-success-border bg-success-subtle'
                         : 'border-border hover:border-ink-300 hover:bg-surface-alt'
                     }`}
                   >
@@ -706,7 +706,7 @@ export default function SalaoNovoPedido() {
                       )}
                     </div>
                     {inCart && (
-                      <span className="text-[10px] font-bold text-green-600 shrink-0">
+                      <span className="text-[10px] font-bold text-success shrink-0">
                         {inCart.quantity}x
                       </span>
                     )}
@@ -782,7 +782,7 @@ export default function SalaoNovoPedido() {
                   {/* Remover */}
                   <button
                     onClick={() => removeFromCart(item.product_id)}
-                    className="p-1.5 rounded-lg text-muted-foreground hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                    className="p-1.5 rounded-lg text-muted-foreground hover:text-danger hover:bg-danger-subtle transition-colors"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
@@ -960,7 +960,7 @@ export default function SalaoNovoPedido() {
                         <button
                           type="button"
                           onClick={() => setPaymentSplits(prev => prev.filter((_, i) => i !== idx))}
-                          className="p-1.5 rounded-lg text-muted-foreground hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                          className="p-1.5 rounded-lg text-muted-foreground hover:text-danger hover:bg-danger-subtle transition-colors"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -978,7 +978,7 @@ export default function SalaoNovoPedido() {
 
                   <div className={`flex items-center justify-between text-xs font-semibold px-3 py-2 rounded-lg border ${
                     Math.abs(splitsDiff) < 0.01
-                      ? 'border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400'
+                      ? 'border-success-border bg-success-subtle text-success'
                       : 'border-warning-border bg-warning-subtle text-warning'
                   }`}>
                     <span>Total a distribuir: R$ {total.toFixed(2)}</span>
@@ -1032,19 +1032,19 @@ export default function SalaoNovoPedido() {
 
 function SalaoHeader({ onLogout, isDark, onToggleTheme }: { onLogout: () => void; isDark: boolean; onToggleTheme: () => void }) {
   return (
-    <header className="bg-gold border-b border-brand-strong px-4 sm:px-6 h-14 flex items-center sticky top-0 z-40">
+    <header className="bg-background border-b border-border px-4 sm:px-6 h-14 flex items-center sticky top-0 z-40">
       <div className="w-full max-w-5xl mx-auto flex items-center justify-between">
         <div className="flex items-center gap-2.5">
-          <img src={logo} alt="Rei dos Cachos" className="h-8 w-auto brightness-0 invert" />
+          <div className="w-8 h-8 rounded-md border border-border flex items-center justify-center shrink-0"><img src={logo} alt="Rei dos Cachos" className="h-4 w-auto" /></div>
           <div className="flex flex-col">
-            <span className="text-white font-bold text-sm leading-tight">Novo Pedido</span>
-            <span className="text-white/70 text-[10px] leading-tight">Área do Salão</span>
+            <span className="text-foreground font-semibold text-[13px] tracking-tight leading-tight">Novo Pedido</span>
+            <span className="text-muted-foreground text-[10px] leading-tight">Área do Salão</span>
           </div>
         </div>
         <div className="flex items-center gap-1">
           <Link
             to="/salao"
-            className="p-2 hover:bg-white/10 rounded-lg transition-colors text-white flex items-center gap-1.5 text-sm"
+            className="p-2 hover:bg-muted hover:text-foreground rounded-lg transition-colors text-ink-500 flex items-center gap-1.5 text-sm"
             title="Trocar de módulo"
           >
             <LayoutGrid className="w-4 h-4" />
@@ -1052,14 +1052,14 @@ function SalaoHeader({ onLogout, isDark, onToggleTheme }: { onLogout: () => void
           </Link>
           <button
             onClick={onToggleTheme}
-            className="p-2 hover:bg-white/10 rounded-lg transition-colors text-white"
+            className="p-2 hover:bg-muted hover:text-foreground rounded-lg transition-colors text-ink-500"
             title={isDark ? 'Modo claro' : 'Modo escuro'}
           >
             {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
           </button>
           <button
             onClick={onLogout}
-            className="p-2 hover:bg-white/10 rounded-lg transition-colors text-white flex items-center gap-1.5 text-sm"
+            className="p-2 hover:bg-muted hover:text-foreground rounded-lg transition-colors text-ink-500 flex items-center gap-1.5 text-sm"
             title="Sair"
           >
             <LogOut className="w-4 h-4" />

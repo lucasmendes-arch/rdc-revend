@@ -146,11 +146,11 @@ function ProductCard({
         ? 'border-warning-border bg-warning-subtle'
         : isZeroed
           // Zerado = em falta: o card inteiro fica permanentemente vermelho claro
-          ? 'border-red-200 bg-red-50/50 hover:bg-red-50'
+          ? 'border-danger-border bg-danger-subtle hover:bg-danger-subtle'
           : counted
-            ? 'border-green-200 bg-green-50/30'
+            ? 'border-success-border bg-success-subtle'
             // Pendente = ainda não contado: destaque laranja pra chamar atenção
-            : 'border-orange-300 bg-orange-50/40 ring-1 ring-orange-200'
+            : 'border-warning-border bg-warning-subtle ring-1 ring-warning-border'
     }`}>
       {/* Imagem grande à esquerda — identificação visual rápida do produto */}
       {/* Escalona pela largura real do aparelho — em telas ≤ 400px a imagem
@@ -180,7 +180,7 @@ function ProductCard({
               </p>
             )}
             {!unclassified && !counted && (
-              <p className="flex items-center gap-1 text-[11px] text-orange-600 font-semibold mt-0.5">
+              <p className="flex items-center gap-1 text-[11px] text-warning font-semibold mt-0.5">
                 <AlertTriangle className="w-3 h-3 shrink-0" /> ainda não contado
               </p>
             )}
@@ -215,14 +215,14 @@ function ProductCard({
 
         {!disabled && (
           isZeroed ? (
-            <p className="flex items-center justify-center gap-1 py-0.5 rounded-lg border border-red-300 bg-card text-[11px] font-semibold text-red-500">
+            <p className="flex items-center justify-center gap-1 py-0.5 rounded-lg border border-danger-border bg-card text-[11px] font-semibold text-danger">
               <CircleSlash className="w-3 h-3" /> Zerado — sem estoque
             </p>
           ) : (
             <button
               type="button"
               onClick={markZero}
-              className="w-full flex items-center justify-center gap-1 py-0.5 rounded-lg border border-red-200 bg-card text-[11px] font-medium text-red-400 hover:text-red-600 hover:border-red-300 active:scale-[0.99] transition-all"
+              className="w-full flex items-center justify-center gap-1 py-0.5 rounded-lg border border-danger-border bg-card text-[11px] font-medium text-danger hover:text-danger hover:border-danger-border active:scale-[0.99] transition-all"
             >
               <CircleSlash className="w-3 h-3" /> Zerado — sem estoque
             </button>
@@ -277,7 +277,7 @@ function CategorySection({
             {category}
           </span>
           <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
-            filledCount === products.length ? 'bg-green-100 text-green-700' : 'bg-surface-alt text-muted-foreground'
+            filledCount === products.length ? 'bg-success-subtle text-success' : 'bg-surface-alt text-muted-foreground'
           }`}>
             {filledCount}/{products.length}
           </span>
@@ -540,16 +540,16 @@ export default function EstoqueContagemDetalhe() {
                   style={{ width: `${progressPct}%` }}
                 />
               </div>
-              <span className={`text-[11px] font-bold tabular-nums shrink-0 ${progressPct === 100 ? 'text-green-600' : 'text-muted-foreground'}`}>
+              <span className={`text-[11px] font-bold tabular-nums shrink-0 ${progressPct === 100 ? 'text-success' : 'text-muted-foreground'}`}>
                 {progressPct}%
               </span>
             </div>
           )}
 
           {readOnly && (
-            <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-xl px-3 py-2">
-              <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0" />
-              <p className="text-xs text-green-800 font-medium">
+            <div className="flex items-center gap-2 bg-success-subtle border border-success-border rounded-xl px-3 py-2">
+              <CheckCircle2 className="w-4 h-4 text-success shrink-0" />
+              <p className="text-xs text-success font-medium">
                 Contagem confirmada em {stockCount.confirmed_at ? new Date(stockCount.confirmed_at).toLocaleString('pt-BR') : '—'} — somente leitura.
               </p>
             </div>

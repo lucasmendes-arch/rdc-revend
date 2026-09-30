@@ -168,7 +168,7 @@ function ClassificationRow({ product, categories, onSave, onDelete }: { product:
               </span>
             )}
             {product.stock_only ? (
-              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-teal-100 text-teal-700 uppercase">Só contagem</span>
+              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-info-subtle text-info uppercase">Só contagem</span>
             ) : (
               <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-info-subtle text-info uppercase">Catálogo atacado</span>
             )}
@@ -244,7 +244,7 @@ function ClassificationRow({ product, categories, onSave, onDelete }: { product:
         {product.stock_only && (
           <button
             onClick={() => onDelete(product)}
-            className="text-muted-foreground hover:text-red-600 transition-colors"
+            className="text-muted-foreground hover:text-danger transition-colors"
             title="Excluir item"
           >
             <Trash2 className="w-3.5 h-3.5" />
@@ -826,9 +826,9 @@ export default function EstoqueConfig() {
           )}
 
           {showNewItemForm && (
-            <div className="bg-card rounded-2xl border border-teal-200 shadow-card p-4 space-y-3">
+            <div className="bg-card rounded-2xl border border-info-border shadow-card p-4 space-y-3">
               <div className="flex items-center justify-between">
-                <p className="text-xs font-semibold text-teal-700">Novos itens — só pra contagem (não entram no catálogo de venda)</p>
+                <p className="text-xs font-semibold text-info">Novos itens — só pra contagem (não entram no catálogo de venda)</p>
                 <button onClick={() => setShowNewItemForm(false)} className="text-xs text-muted-foreground hover:text-foreground">Cancelar</button>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-4 gap-2.5">

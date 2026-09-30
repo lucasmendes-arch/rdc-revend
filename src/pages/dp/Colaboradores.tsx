@@ -284,7 +284,7 @@ export default function DpParceiros() {
                             </span>
                           ) : (
                             <span
-                              className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300 shrink-0"
+                              className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-success-subtle text-success shrink-0"
                               title="Período de experiência concluído"
                             >
                               Ativo
@@ -348,7 +348,7 @@ export default function DpParceiros() {
               <button
                 onClick={() => updateStage.mutate(confirmEncerrar.id)}
                 disabled={updateStage.isPending}
-                className="flex-1 px-4 py-2.5 rounded-lg bg-red-600 text-white font-medium hover:bg-red-700 transition-colors disabled:opacity-70"
+                className="flex-1 px-4 py-2.5 rounded-lg bg-danger-solid text-white font-medium hover:bg-danger-solid/90 transition-colors disabled:opacity-70"
               >
                 {updateStage.isPending ? 'Encerrando...' : 'Encerrar'}
               </button>

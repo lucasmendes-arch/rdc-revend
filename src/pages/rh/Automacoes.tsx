@@ -179,7 +179,7 @@ function VariablesTab() {
                 <code className="text-[10px] font-mono px-1.5 py-0.5 rounded-md bg-surface-alt text-muted-foreground">{`{var.${v.key}}`}</code>
                 <span className="flex-1" />
                 <button onClick={() => openEdit(v)} className="p-1.5 rounded-lg hover:bg-surface-alt text-muted-foreground hover:text-foreground"><Pencil className="w-3.5 h-3.5" /></button>
-                <button onClick={() => setDeleteConfirm(v)} className="p-1.5 rounded-lg hover:bg-red-50 text-muted-foreground hover:text-red-600"><Trash2 className="w-3.5 h-3.5" /></button>
+                <button onClick={() => setDeleteConfirm(v)} className="p-1.5 rounded-lg hover:bg-danger-subtle text-muted-foreground hover:text-danger"><Trash2 className="w-3.5 h-3.5" /></button>
               </div>
               <p className={`text-xs ${v.value ? 'text-foreground' : 'text-muted-foreground italic'}`}>
                 {v.value || 'Sem valor definido — sai vazio na mensagem'}
@@ -240,7 +240,7 @@ function VariablesTab() {
               Modelos que usam <code className="font-mono text-xs">{`{var.${deleteConfirm.key}}`}</code> passam a enviar o placeholder cru na mensagem.
             </p>
             <div className="flex gap-3">
-              <button onClick={() => deleteMutation.mutate(deleteConfirm.id)} disabled={deleteMutation.isPending} className="flex-1 px-4 py-2.5 rounded-lg bg-red-600 hover:bg-red-700 text-white font-medium disabled:opacity-70">
+              <button onClick={() => deleteMutation.mutate(deleteConfirm.id)} disabled={deleteMutation.isPending} className="flex-1 px-4 py-2.5 rounded-lg bg-danger-solid hover:bg-danger-solid/90 text-white font-medium disabled:opacity-70">
                 {deleteMutation.isPending ? 'Excluindo...' : 'Excluir'}
               </button>
               <button onClick={() => setDeleteConfirm(null)} className="flex-1 px-4 py-2.5 rounded-lg border border-border bg-card text-foreground font-medium hover:bg-accent">Cancelar</button>
@@ -329,7 +329,7 @@ function TagsTab() {
               <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: t.color }} />
               <span className="flex-1 text-sm font-medium text-foreground">{t.name}</span>
               <button onClick={() => openEdit(t)} className="p-1.5 rounded-lg hover:bg-surface-alt text-muted-foreground hover:text-foreground"><Pencil className="w-3.5 h-3.5" /></button>
-              <button onClick={() => setDeleteConfirm(t)} className="p-1.5 rounded-lg hover:bg-red-50 text-muted-foreground hover:text-red-600"><Trash2 className="w-3.5 h-3.5" /></button>
+              <button onClick={() => setDeleteConfirm(t)} className="p-1.5 rounded-lg hover:bg-danger-subtle text-muted-foreground hover:text-danger"><Trash2 className="w-3.5 h-3.5" /></button>
             </div>
           ))}
         </div>
@@ -371,7 +371,7 @@ function TagsTab() {
             <h2 className="text-lg font-bold text-foreground mb-2">Excluir tag</h2>
             <p className="text-sm text-muted-foreground mb-5">"{deleteConfirm.name}" será removida de todos os candidatos que a têm.</p>
             <div className="flex gap-3">
-              <button onClick={() => deleteMutation.mutate(deleteConfirm.id)} disabled={deleteMutation.isPending} className="flex-1 px-4 py-2.5 rounded-lg bg-red-600 hover:bg-red-700 text-white font-medium disabled:opacity-70">
+              <button onClick={() => deleteMutation.mutate(deleteConfirm.id)} disabled={deleteMutation.isPending} className="flex-1 px-4 py-2.5 rounded-lg bg-danger-solid hover:bg-danger-solid/90 text-white font-medium disabled:opacity-70">
                 {deleteMutation.isPending ? 'Excluindo...' : 'Excluir'}
               </button>
               <button onClick={() => setDeleteConfirm(null)} className="flex-1 px-4 py-2.5 rounded-lg border border-border bg-card text-foreground font-medium hover:bg-accent">Cancelar</button>
@@ -467,11 +467,11 @@ function TemplatesTab() {
             <div key={t.id} className="px-3 py-2.5 rounded-lg border border-border bg-card">
               <div className="flex items-center gap-2 mb-1">
                 <span className="flex-1 text-sm font-medium text-foreground">{t.name}</span>
-                <button onClick={() => toggleActive.mutate(t)} className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${t.is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-muted text-muted-foreground'}`}>
+                <button onClick={() => toggleActive.mutate(t)} className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${t.is_active ? 'bg-success-subtle text-success' : 'bg-muted text-muted-foreground'}`}>
                   {t.is_active ? 'Ativo' : 'Inativo'}
                 </button>
                 <button onClick={() => openEdit(t)} className="p-1.5 rounded-lg hover:bg-surface-alt text-muted-foreground hover:text-foreground"><Pencil className="w-3.5 h-3.5" /></button>
-                <button onClick={() => setDeleteConfirm(t)} className="p-1.5 rounded-lg hover:bg-red-50 text-muted-foreground hover:text-red-600"><Trash2 className="w-3.5 h-3.5" /></button>
+                <button onClick={() => setDeleteConfirm(t)} className="p-1.5 rounded-lg hover:bg-danger-subtle text-muted-foreground hover:text-danger"><Trash2 className="w-3.5 h-3.5" /></button>
               </div>
               <p className="text-xs text-muted-foreground whitespace-pre-line">{t.body}</p>
             </div>
@@ -519,7 +519,7 @@ function TemplatesTab() {
             <h2 className="text-lg font-bold text-foreground mb-2">Excluir modelo</h2>
             <p className="text-sm text-muted-foreground mb-5">"{deleteConfirm.name}" será removido. Automações que o usam vão parar de enviar até serem reconfiguradas.</p>
             <div className="flex gap-3">
-              <button onClick={() => deleteMutation.mutate(deleteConfirm.id)} disabled={deleteMutation.isPending} className="flex-1 px-4 py-2.5 rounded-lg bg-red-600 hover:bg-red-700 text-white font-medium disabled:opacity-70">
+              <button onClick={() => deleteMutation.mutate(deleteConfirm.id)} disabled={deleteMutation.isPending} className="flex-1 px-4 py-2.5 rounded-lg bg-danger-solid hover:bg-danger-solid/90 text-white font-medium disabled:opacity-70">
                 {deleteMutation.isPending ? 'Excluindo...' : 'Excluir'}
               </button>
               <button onClick={() => setDeleteConfirm(null)} className="flex-1 px-4 py-2.5 rounded-lg border border-border bg-card text-foreground font-medium hover:bg-accent">Cancelar</button>
@@ -748,11 +748,11 @@ function CredentialsTab() {
                   <p className="text-xs text-muted-foreground truncate">{i.uazapi_url}</p>
                 </div>
                 <span className="text-xs text-muted-foreground font-mono shrink-0">•••{i.token_last4}</span>
-                <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 ${i.is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-muted text-muted-foreground'}`}>
+                <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 ${i.is_active ? 'bg-success-subtle text-success' : 'bg-muted text-muted-foreground'}`}>
                   {i.is_active ? 'Ativa' : 'Inativa'}
                 </span>
                 <button onClick={() => setEditingInstance(i)} className="p-1.5 rounded-lg hover:bg-surface-alt text-muted-foreground hover:text-foreground shrink-0"><Pencil className="w-3.5 h-3.5" /></button>
-                <button onClick={() => setDeleteConfirm(i)} className="p-1.5 rounded-lg hover:bg-red-50 text-muted-foreground hover:text-red-600 shrink-0"><Trash2 className="w-3.5 h-3.5" /></button>
+                <button onClick={() => setDeleteConfirm(i)} className="p-1.5 rounded-lg hover:bg-danger-subtle text-muted-foreground hover:text-danger shrink-0"><Trash2 className="w-3.5 h-3.5" /></button>
               </div>
             ))}
           </div>
@@ -789,7 +789,7 @@ function CredentialsTab() {
               "{deleteConfirm.name}" será removida. Automações que a usavam voltam a enviar pela instância da loja.
             </p>
             <div className="flex gap-3">
-              <button onClick={() => deleteMutation.mutate(deleteConfirm.id)} disabled={deleteMutation.isPending} className="flex-1 px-4 py-2.5 rounded-lg bg-red-600 hover:bg-red-700 text-white font-medium disabled:opacity-70">
+              <button onClick={() => deleteMutation.mutate(deleteConfirm.id)} disabled={deleteMutation.isPending} className="flex-1 px-4 py-2.5 rounded-lg bg-danger-solid hover:bg-danger-solid/90 text-white font-medium disabled:opacity-70">
                 {deleteMutation.isPending ? 'Excluindo...' : 'Excluir'}
               </button>
               <button onClick={() => setDeleteConfirm(null)} className="flex-1 px-4 py-2.5 rounded-lg border border-border bg-card text-foreground font-medium hover:bg-accent">Cancelar</button>

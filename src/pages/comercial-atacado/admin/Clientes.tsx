@@ -16,6 +16,7 @@ import { AdminSummaryCard } from '@/components/admin/ui/AdminSummaryCard'
 import { AdminSelect } from '@/components/admin/ui/AdminSelect'
 import { OPERATIONAL_FILTERS, QUEUE_VIEWS, applyQueueView, applySegmentFilter, getQueuePriority, getViewsForSegment, sortWorkQueue } from '@/lib/crmFilters'
 import type { CrmFilterSession, QueuePriority, SegmentTab } from '@/lib/crmFilters'
+import { ORDER_STATUS, ORDER_STATUS_SEQUENCE, toneClasses } from '@/lib/design/orderStatus'
 
 interface OrderItem {
   id: string
@@ -109,14 +110,14 @@ const funnelStages = [
     label: 'Comprou',
     subtitle: 'Pedido concluído',
     icon: CheckCircle,
-    indicatorColor: 'bg-emerald-500',
+    indicatorColor: 'bg-success-solid',
   },
   {
     key: 'abandonou',
     label: 'Abandonou',
     subtitle: 'Saiu sem fechar',
     icon: XCircle,
-    indicatorColor: 'bg-red-400',
+    indicatorColor: 'bg-danger-solid',
   },
 ] as const
 
@@ -142,17 +143,14 @@ const revenueLabels: Record<string, string> = {
   'acima_50k': 'Mais de R$ 50.000/mês',
 }
 
-const orderStatusLabels: Record<string, { label: string; color: string }> = {
-  recebido: { label: 'Recebido', color: 'bg-blue-500/10 text-blue-600 dark:text-blue-400' },
-  aguardando_pagamento: { label: 'Aguardando Pgto', color: 'bg-orange-500/10 text-orange-600 dark:text-orange-400' },
-  pago: { label: 'Pago', color: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' },
-  separacao: { label: 'Separação', color: 'bg-yellow-500/10 text-yellow-600 dark:text-yellow-400' },
-  enviado: { label: 'Enviado', color: 'bg-purple-500/10 text-purple-600 dark:text-purple-400' },
-  entregue: { label: 'Entregue', color: 'bg-teal-500/10 text-teal-600 dark:text-teal-400' },
-  concluido: { label: 'Concluído', color: 'bg-green-500/10 text-green-600 dark:text-green-400' },
-  cancelado: { label: 'Cancelado', color: 'bg-red-500/10 text-red-600 dark:text-red-400' },
-  expirado: { label: 'Expirado', color: 'bg-muted text-muted-foreground' },
-}
+// Cor e rótulo vêm de orderStatus.ts — o mesmo status tem a mesma cor em qualquer tela.
+const orderStatusLabels: Record<string, { label: string; color: string }> = Object.fromEntries(
+  ORDER_STATUS_SEQUENCE.map((s) => {
+    const meta = ORDER_STATUS[s]
+    const t = toneClasses(meta.tone)
+    return [s, { label: meta.label, color: `${t.bg} ${t.text}` }]
+  }),
+)
 
 // --- Compute labels for a session ---
 function getClientLabels(session: ClientSession): Array<{ text: string; color: string; icon: typeof Sparkles }> {
@@ -164,17 +162,17 @@ function getClientLabels(session: ClientSession): Array<{ text: string; color: s
 
   // Novo usuário (últimos 7 dias)
   if (daysSinceCreation <= 7) {
-    labels.push({ text: 'Novo', color: 'bg-emerald-100 text-emerald-700 border-emerald-200', icon: Sparkles })
+    labels.push({ text: 'Novo', color: 'bg-success-subtle text-success border-success-border', icon: Sparkles })
   }
 
   // Sem compra (cadastrado há mais de 7 dias e menos de 30 dias, sem pedido)
   if (!hasPurchased && daysSinceCreation > 7 && daysSinceCreation <= 30) {
-    labels.push({ text: 'Sem compra', color: 'bg-orange-100 text-orange-700 border-orange-200', icon: AlertTriangle })
+    labels.push({ text: 'Sem compra', color: 'bg-warning-subtle text-warning border-warning-border', icon: AlertTriangle })
   }
 
   // Sem compra há 30+ dias
   if (!hasPurchased && daysSinceCreation > 30) {
-    labels.push({ text: `${Math.floor(daysSinceCreation)}d sem compra`, color: 'bg-red-100 text-red-700 border-red-200', icon: AlertTriangle })
+    labels.push({ text: `${Math.floor(daysSinceCreation)}d sem compra`, color: 'bg-danger-subtle text-danger border-danger-border', icon: AlertTriangle })
   }
 
   return labels
@@ -196,9 +194,9 @@ const QUEUE_PRIORITY_CONFIG: Record<QueuePriority, {
 }> = {
   vencido: {
     label: 'Vencido',
-    badgeClasses: 'bg-red-500/10 text-red-600 dark:text-red-400 ring-red-500/25',
-    borderClasses: 'border-red-500/25 hover:border-red-500/40',
-    barClasses: 'bg-red-400',
+    badgeClasses: 'bg-danger-subtle text-danger ring-danger-border',
+    borderClasses: 'border-danger-border hover:border-danger-border',
+    barClasses: 'bg-danger-solid',
   },
   hoje: {
     label: 'Hoje',
@@ -325,7 +323,7 @@ function InlineNextActionForm({ userId, nextAction, nextActionAt, onClose }: Inl
           <button
             onClick={() => clearMutation.mutate()}
             disabled={isLoading}
-            className="px-2 py-1.5 text-xs font-medium text-red-600 dark:text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg hover:bg-red-500/20 disabled:opacity-50 transition-colors"
+            className="px-2 py-1.5 text-xs font-medium text-danger bg-danger-subtle border border-danger-border rounded-lg hover:bg-danger-subtle disabled:opacity-50 transition-colors"
           >
             Remover
           </button>
@@ -428,7 +426,7 @@ function WorkQueueCard({ session, priority, onOpen }: WorkQueueCardProps) {
               <p className="text-xs text-foreground line-clamp-1">{profile.next_action}</p>
               {nextActionDate && (
                 <p className={`text-[10px] font-medium mt-0.5 ${
-                  priority === 'vencido' ? 'text-red-500 dark:text-red-400' :
+                  priority === 'vencido' ? 'text-danger' :
                   priority === 'hoje' ? 'text-warning' :
                   'text-muted-foreground'
                 }`}>
@@ -1044,7 +1042,7 @@ function ClientDetailPanel({ session, onClose, onDeleteClick }: { session: Clien
           <div className="px-5 py-5 mt-2 border-t border-border">
             <button
               onClick={onDeleteClick}
-              className="w-full py-2.5 px-4 rounded-xl ring-1 ring-inset ring-red-500/20 text-red-600 dark:text-red-400 bg-red-500/10 hover:bg-red-500/20 font-bold text-sm transition-colors flex items-center justify-center gap-2"
+              className="w-full py-2.5 px-4 rounded-xl ring-1 ring-inset ring-danger-border text-danger bg-danger-subtle hover:bg-danger-subtle font-bold text-sm transition-colors flex items-center justify-center gap-2"
             >
               <Trash2 className="w-4 h-4" />
               Excluir Cliente
@@ -1173,8 +1171,8 @@ function PartnerAccessSection({ session }: { session: ClientSession }) {
 
   const statusConfig = {
     not_created: { label: 'Sem acesso', classes: 'bg-muted text-muted-foreground ring-border' },
-    active:      { label: 'Ativo',      classes: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 ring-emerald-500/25' },
-    blocked:     { label: 'Bloqueado',  classes: 'bg-red-500/10 text-red-600 dark:text-red-400 ring-red-500/25' },
+    active:      { label: 'Ativo',      classes: 'bg-success-subtle text-success ring-success-border' },
+    blocked:     { label: 'Bloqueado',  classes: 'bg-danger-subtle text-danger ring-danger-border' },
   }
   const statusInfo = statusConfig[accessStatus as keyof typeof statusConfig] ?? statusConfig.not_created
 
@@ -1265,7 +1263,7 @@ function PartnerAccessSection({ session }: { session: ClientSession }) {
             <button
               onClick={() => blockMutation.mutate()}
               disabled={isLoading}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold border border-red-200 text-red-600 bg-red-50 rounded-lg hover:bg-red-100 disabled:opacity-50 transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold border border-danger-border text-danger bg-danger-subtle rounded-lg hover:bg-danger-subtle disabled:opacity-50 transition-colors"
             >
               {blockMutation.isPending ? <Loader className="w-3.5 h-3.5 animate-spin" /> : <Lock className="w-3.5 h-3.5" />}
               Bloquear
@@ -1545,8 +1543,8 @@ export default function AdminClientes() {
     visualizou_produto:   { ring: 'ring-blue-600/20',         bg: 'bg-blue-500/10',    text: 'text-blue-600 dark:text-blue-400' },
     adicionou_carrinho:   { ring: 'ring-warning-border',        bg: 'bg-warning-subtle',   text: 'text-warning' },
     iniciou_checkout:     { ring: 'ring-purple-600/20',       bg: 'bg-purple-500/10',  text: 'text-purple-600 dark:text-purple-400' },
-    comprou:              { ring: 'ring-emerald-600/20',      bg: 'bg-emerald-500/10', text: 'text-emerald-600 dark:text-emerald-400' },
-    abandonou:            { ring: 'ring-red-600/20',          bg: 'bg-red-500/10',     text: 'text-red-600 dark:text-red-400' },
+    comprou:              { ring: 'ring-success-border',      bg: 'bg-success-subtle', text: 'text-success' },
+    abandonou:            { ring: 'ring-danger-border',          bg: 'bg-danger-subtle',     text: 'text-danger' },
   }
 
   return (
@@ -1623,7 +1621,7 @@ export default function AdminClientes() {
               {/* Queue: indicador do seller vinculado (auto-resolvido) */}
               {viewMode === 'queue' && mySellerId && (
                 <span className="text-[11px] text-muted-foreground font-medium whitespace-nowrap">
-                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400 mr-1 align-middle" />
+                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-success-solid mr-1 align-middle" />
                   {sellers.find(s => s.id === mySellerId)?.name ?? 'Vendedor vinculado'}
                 </span>
               )}
@@ -1725,25 +1723,25 @@ export default function AdminClientes() {
             />
             <AdminSummaryCard
               label="Compraram"
-              indicatorColor="bg-emerald-400"
+              indicatorColor="bg-success-solid"
               value={String(grouped['comprou']?.length || 0)}
               subtitle={
-                <span className={`inline-block text-[11px] font-bold px-1.5 py-0.5 rounded-md ${(grouped['comprou']?.length || 0) > 0 ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20' : 'bg-muted text-muted-foreground'}`}>
+                <span className={`inline-block text-[11px] font-bold px-1.5 py-0.5 rounded-md ${(grouped['comprou']?.length || 0) > 0 ? 'bg-success-subtle text-success border border-success-border' : 'bg-muted text-muted-foreground'}`}>
                   {totalSessions > 0 ? `${((grouped['comprou']?.length || 0) / totalSessions * 100).toFixed(0)}% do total` : '—'}
                 </span>
               }
-              className={`min-w-[120px] sm:min-w-[150px] flex-1 shrink-0 ring-inset ring-1 ${(grouped['comprou']?.length || 0) > 0 ? 'ring-emerald-600/20' : 'ring-transparent opacity-80'}`}
+              className={`min-w-[120px] sm:min-w-[150px] flex-1 shrink-0 ring-inset ring-1 ${(grouped['comprou']?.length || 0) > 0 ? 'ring-success-border' : 'ring-transparent opacity-80'}`}
             />
             <AdminSummaryCard
               label="Abandonaram"
-              indicatorColor="bg-red-400"
+              indicatorColor="bg-danger-solid"
               value={String(grouped['abandonou']?.length || 0)}
               subtitle={
-                <span className={`inline-block text-[11px] font-bold px-1.5 py-0.5 rounded-md ${(grouped['abandonou']?.length || 0) > 0 ? 'bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20' : 'bg-muted text-muted-foreground'}`}>
+                <span className={`inline-block text-[11px] font-bold px-1.5 py-0.5 rounded-md ${(grouped['abandonou']?.length || 0) > 0 ? 'bg-danger-subtle text-danger border border-danger-border' : 'bg-muted text-muted-foreground'}`}>
                   {totalSessions > 0 ? `${((grouped['abandonou']?.length || 0) / totalSessions * 100).toFixed(0)}% do total` : '—'}
                 </span>
               }
-              className={`min-w-[120px] sm:min-w-[150px] flex-1 shrink-0 ring-inset ring-1 ${(grouped['abandonou']?.length || 0) > 0 ? 'ring-red-600/20' : 'ring-transparent opacity-80'}`}
+              className={`min-w-[120px] sm:min-w-[150px] flex-1 shrink-0 ring-inset ring-1 ${(grouped['abandonou']?.length || 0) > 0 ? 'ring-danger-border' : 'ring-transparent opacity-80'}`}
             />
             <AdminSummaryCard
               icon={TrendingUp}
@@ -1822,7 +1820,7 @@ export default function AdminClientes() {
                               <button
                                 key={session.id}
                                 onClick={() => setSelectedSessionId(session.id)}
-                                className={`w-full text-left bg-card p-2.5 sm:p-3 md:p-3.5 rounded-xl shadow-[0_2px_8px_-4px_rgba(0,0,0,0.05)] hover:shadow-md border transition-all duration-200 cursor-pointer group flex flex-col gap-2 sm:gap-2.5 relative ${followUpVencido ? 'border-red-500/30 hover:border-red-500/50' : 'border-border hover:border-border/70'}`}
+                                className={`w-full text-left bg-card p-2.5 sm:p-3 md:p-3.5 rounded-xl shadow-[0_2px_8px_-4px_rgba(0,0,0,0.05)] hover:shadow-md border transition-all duration-200 cursor-pointer group flex flex-col gap-2 sm:gap-2.5 relative ${followUpVencido ? 'border-danger-border hover:border-danger-border' : 'border-border hover:border-border/70'}`}
                               >
                                 {/* Identity */}
                                 <div className="flex items-start justify-between gap-3 w-full">
@@ -1835,13 +1833,13 @@ export default function AdminClientes() {
                                     </span>
                                   </div>
                                   {followUpVencido && (
-                                    <span className="flex-shrink-0 flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-red-500/10 text-red-600 dark:text-red-400 ring-1 ring-inset ring-red-500/25" title="Follow-up vencido">
+                                    <span className="flex-shrink-0 flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-danger-subtle text-danger ring-1 ring-inset ring-danger-border" title="Follow-up vencido">
                                       <Clock className="w-3 h-3" />
                                       Vencido
                                     </span>
                                   )}
                                   {!followUpVencido && temProximaAcao && (
-                                    <span className="flex-shrink-0 flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 ring-1 ring-inset ring-emerald-500/25" title={session.profile?.next_action ?? ''}>
+                                    <span className="flex-shrink-0 flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-success-subtle text-success ring-1 ring-inset ring-success-border" title={session.profile?.next_action ?? ''}>
                                       <Clock className="w-3 h-3" />
                                     </span>
                                   )}
@@ -1968,8 +1966,8 @@ export default function AdminClientes() {
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-foreground/30 backdrop-blur-sm">
           <div className="bg-card rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl border border-border">
             <div className="p-6 text-center">
-              <div className="w-14 h-14 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-500/20">
-                <AlertTriangle className="w-6 h-6 text-red-500" />
+              <div className="w-14 h-14 bg-danger-subtle rounded-full flex items-center justify-center mx-auto mb-4 border border-danger-border">
+                <AlertTriangle className="w-6 h-6 text-danger" />
               </div>
               <h3 className="text-lg font-bold text-foreground mb-2">Excluir Cliente?</h3>
               {clientToDelete.orders && clientToDelete.orders.length > 0 ? (
@@ -1997,7 +1995,7 @@ export default function AdminClientes() {
                         deleteClientMutation.mutate(targetId)
                       }}
                       disabled={deleteClientMutation.isPending}
-                      className="flex-1 py-3 px-4 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold transition-colors disabled:opacity-50 flex items-center justify-center"
+                      className="flex-1 py-3 px-4 bg-danger-solid hover:bg-danger-solid/90 text-white rounded-xl font-bold transition-colors disabled:opacity-50 flex items-center justify-center"
                     >
                       {deleteClientMutation.isPending ? <Loader className="w-5 h-5 animate-spin" /> : "Excluir"}
                     </button>

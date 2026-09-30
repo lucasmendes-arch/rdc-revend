@@ -221,13 +221,13 @@ const OrderCouponModal = ({ order, onClose }: Props) => {
               {shipping === 0 && (
                 <div className="flex items-center justify-between text-[12px]">
                   <span className="text-muted-foreground">Frete</span>
-                  <span className="font-medium text-green-600">Grátis</span>
+                  <span className="font-medium text-success">Grátis</span>
                 </div>
               )}
               {discount > 0 && (
                 <div className="flex items-center justify-between text-[12px]">
                   <span className="text-muted-foreground">Desconto</span>
-                  <span className="font-medium text-green-600">- R$ {discount.toFixed(2)}</span>
+                  <span className="font-medium text-success">- R$ {discount.toFixed(2)}</span>
                 </div>
               )}
               <div className="flex items-center justify-between text-[15px] font-extrabold pt-2 border-t border-border">

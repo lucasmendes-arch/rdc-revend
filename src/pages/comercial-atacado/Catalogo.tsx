@@ -49,7 +49,7 @@ interface FilterChipProps {
 const FilterChip = ({ label, onRemove }: FilterChipProps) => (
   <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-medium bg-gold-light text-gold-text border border-gold-border whitespace-nowrap">
     {label}
-    <button onClick={onRemove} className="ml-0.5 hover:text-red-500 transition-colors">
+    <button onClick={onRemove} className="ml-0.5 hover:text-danger transition-colors">
       <X className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
     </button>
   </span>
@@ -58,7 +58,7 @@ const FilterChip = ({ label, onRemove }: FilterChipProps) => (
 const RotatingTrustBanner = () => {
   const items = [
     {
-      icon: <Leaf className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-600" />,
+      icon: <Leaf className="w-5 h-5 sm:w-6 sm:h-6 text-success" />,
       label: "Fórmula Limpa",
       sub: "100% Vegano, Liberado e sem Petrolatos"
     },
@@ -68,17 +68,17 @@ const RotatingTrustBanner = () => {
       sub: "Logística própria e transportadoras"
     },
     {
-      icon: <ShieldCheck className="w-5 h-5 sm:w-6 sm:h-6 text-green-600" />,
+      icon: <ShieldCheck className="w-5 h-5 sm:w-6 sm:h-6 text-success" />,
       label: "Compra 100% Segura",
       sub: "Ambiente Seguro e Dados Protegidos"
     },
     {
-      icon: <Check className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600" />,
+      icon: <Check className="w-5 h-5 sm:w-6 sm:h-6 text-info" />,
       label: "Alto Giro",
       sub: "Fazem sucesso com as cacheadas"
     },
     {
-      icon: <div className="w-3 h-3 sm:w-4 sm:h-4 rounded-full bg-green-500 animate-pulse m-1" />,
+      icon: <div className="w-3 h-3 sm:w-4 sm:h-4 rounded-full bg-success-solid animate-pulse m-1" />,
       label: "Suporte WhatsApp",
       sub: "Seg à Sex, 08h às 18h • Online agora"
     }
@@ -488,7 +488,7 @@ const Catalogo = () => {
                   >
                     <ShoppingCart className="w-5 h-5" />
                     {cartCount > 0 && (
-                      <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-white text-[9px] font-bold flex items-center justify-center border-2 border-background shadow-sm">
+                      <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-danger-solid text-white text-[9px] font-bold flex items-center justify-center border-2 border-background shadow-sm">
                         {cartCount}
                       </span>
                     )}
@@ -500,7 +500,7 @@ const Catalogo = () => {
                   >
                     <Filter className="w-5 h-5" />
                     {activeFiltersCount > 0 && (
-                      <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-white text-[9px] font-bold flex items-center justify-center border-2 border-background shadow-sm">
+                      <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-danger-solid text-white text-[9px] font-bold flex items-center justify-center border-2 border-background shadow-sm">
                         {activeFiltersCount}
                       </span>
                     )}
@@ -578,7 +578,7 @@ const Catalogo = () => {
                 >
                   <Filter className="w-5 h-5" />
                   {activeFiltersCount > 0 && (
-                    <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-red-500 text-white text-[9px] font-bold flex items-center justify-center">
+                    <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-danger-solid text-white text-[9px] font-bold flex items-center justify-center">
                       {activeFiltersCount}
                     </span>
                   )}
@@ -791,7 +791,7 @@ const Catalogo = () => {
               <div className="p-3 bg-surface-alt rounded-b-2xl">
                 <button
                   onClick={clearAllFilters}
-                  className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-card border border-border text-xs font-bold text-red-500 hover:bg-red-50 hover:border-red-200 transition-all shadow-sm"
+                  className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-card border border-border text-xs font-bold text-danger hover:bg-danger-subtle hover:border-danger-border transition-all shadow-sm"
                 >
                   <Trash2 className="w-3 h-3" />
                   LIMPAR FILTROS
@@ -922,7 +922,7 @@ const Catalogo = () => {
                 })}
                 <button
                   onClick={clearAllFilters}
-                  className="text-[10px] sm:text-xs text-muted-foreground hover:text-red-500 underline ml-0.5 transition-colors"
+                  className="text-[10px] sm:text-xs text-muted-foreground hover:text-danger underline ml-0.5 transition-colors"
                 >
                   Limpar
                 </button>
@@ -939,7 +939,7 @@ const Catalogo = () => {
 
             {/* Error */}
             {error && (
-              <div className="mb-6 p-4 rounded-lg bg-red-50 border border-red-200 text-red-700">
+              <div className="mb-6 p-4 rounded-lg bg-danger-subtle border border-danger-border text-danger">
                 <p className="font-medium">Erro ao carregar catálogo</p>
                 <p className="text-sm">{error instanceof Error ? error.message : 'Desconhecido'}</p>
               </div>
@@ -1000,7 +1000,7 @@ const Catalogo = () => {
                               <div className="mt-auto">
                                 {/* Resale price: hidden for guest */}
                                 {!isGuest && !product.is_professional && (
-                                  <div className="text-[10px] sm:text-xs text-green-700 font-bold mb-0.5">
+                                  <div className="text-[10px] sm:text-xs text-success font-bold mb-0.5">
                                     Revenda: R$ {suggested.toFixed(2)}
                                   </div>
                                 )}
@@ -1054,7 +1054,7 @@ const Catalogo = () => {
                                       </div>
                                       <button
                                         onClick={(e) => { e.stopPropagation(); handleAddItem(product); }}
-                                        className={`flex-1 h-7 flex items-center justify-center gap-1 rounded-md text-[10px] font-semibold transition-all uppercase tracking-wider shadow-sm ${addedId === product.id ? 'bg-green-600 text-white' : 'btn-primary'}`}
+                                        className={`flex-1 h-7 flex items-center justify-center gap-1 rounded-md text-[10px] font-semibold transition-all uppercase tracking-wider shadow-sm ${addedId === product.id ? 'bg-success-solid text-white' : 'btn-primary'}`}
                                       >
                                         {addedId === product.id
                                           ? <><Check className="w-3.5 h-3.5" /> OK</>
@@ -1388,7 +1388,7 @@ const Catalogo = () => {
                         setSelectedProduct(null);
                       }}
                       className={`w-full flex items-center justify-center gap-2 py-3 sm:py-3.5 rounded-xl text-sm sm:text-base font-semibold text-white transition-all shadow-sm uppercase tracking-wide ${addedId === selectedProduct.id
-                        ? 'bg-green-600 hover:bg-green-700'
+                        ? 'bg-success-solid hover:bg-success-solid/90'
                         : 'btn-primary'
                         }`}
                     >

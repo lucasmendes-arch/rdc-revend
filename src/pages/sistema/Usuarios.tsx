@@ -9,6 +9,7 @@ import {
   AlertTriangle, TrendingUp, Briefcase,
 } from 'lucide-react'
 import AdminLayout from '@/components/admin/AdminLayout'
+import { ORDER_STATUS, ORDER_STATUS_SEQUENCE, toneClasses } from '@/lib/design/orderStatus'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -114,17 +115,14 @@ const revenueLabels: Record<string, string> = {
   '30k_50k': 'R$ 30.000 a R$ 50.000/mês',
   'acima_50k': 'Mais de R$ 50.000/mês',
 }
-const orderStatusLabels: Record<string, { label: string; color: string }> = {
-  recebido:             { label: 'Recebido',        color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' },
-  aguardando_pagamento: { label: 'Aguardando Pgto', color: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' },
-  pago:                 { label: 'Pago',            color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' },
-  separacao:            { label: 'Separação',       color: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' },
-  enviado:              { label: 'Enviado',         color: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400' },
-  entregue:             { label: 'Entregue',        color: 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400' },
-  concluido:            { label: 'Concluído',       color: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' },
-  cancelado:            { label: 'Cancelado',       color: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' },
-  expirado:             { label: 'Expirado',        color: 'bg-muted text-muted-foreground' },
-}
+// Cor e rótulo vêm de orderStatus.ts — o mesmo status tem a mesma cor em qualquer tela.
+const orderStatusLabels: Record<string, { label: string; color: string }> = Object.fromEntries(
+  ORDER_STATUS_SEQUENCE.map((s) => {
+    const meta = ORDER_STATUS[s]
+    const t = toneClasses(meta.tone)
+    return [s, { label: meta.label, color: `${t.bg} ${t.text}` }]
+  }),
+)
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
@@ -956,8 +954,8 @@ function PartnerAccessPanel({ client, queryKey }: { client: ClientStats; queryKe
 
   const statusConfig = {
     not_created: { label: 'Sem acesso', classes: 'bg-muted text-muted-foreground ring-border' },
-    active:      { label: 'Ativo',      classes: 'bg-emerald-100 text-emerald-700 ring-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:ring-emerald-700/40' },
-    blocked:     { label: 'Bloqueado',  classes: 'bg-red-100 text-red-600 ring-red-200 dark:bg-red-900/30 dark:text-red-400 dark:ring-red-700/40' },
+    active:      { label: 'Ativo',      classes: 'bg-success-subtle text-success ring-success-border' },
+    blocked:     { label: 'Bloqueado',  classes: 'bg-danger-subtle text-danger ring-danger-border' },
   }
   const statusInfo = statusConfig[accessStatus as keyof typeof statusConfig] ?? statusConfig.not_created
 
@@ -1027,7 +1025,7 @@ function PartnerAccessPanel({ client, queryKey }: { client: ClientStats; queryKe
               Definir senha
             </button>
             <button onClick={() => blockMutation.mutate()} disabled={isLoading}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold border border-red-200 text-red-600 bg-red-50 rounded-lg hover:bg-red-100 dark:border-red-700/40 dark:text-red-400 dark:bg-red-900/20 dark:hover:bg-red-900/30 disabled:opacity-50 transition-colors">
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold border border-danger-border text-danger bg-danger-subtle rounded-lg hover:bg-danger-subtle disabled:opacity-50 transition-colors">
               {blockMutation.isPending ? <Loader className="w-3.5 h-3.5 animate-spin" /> : <Lock className="w-3.5 h-3.5" />}
               Bloquear
             </button>
@@ -1415,7 +1413,7 @@ function SystemUserSidePanel({
                       onClick={() => onPermissionChange(user.id, key, !enabled)}
                       disabled={isPending}
                       className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none disabled:opacity-50 mt-0.5 ${
-                        enabled ? 'bg-green-500' : 'bg-ink-200'
+                        enabled ? 'bg-success-solid' : 'bg-ink-200'
                       }`}
                     >
                       <span className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-card shadow transform transition-transform duration-200 ${
@@ -1445,8 +1443,8 @@ function LoadingState({ label }: { label: string }) {
 }
 
 function AccessBadge({ status }: { status: string | null }) {
-  if (status === 'active')  return <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">Ativo</span>
-  if (status === 'blocked') return <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-red-100 text-red-700">Bloqueado</span>
+  if (status === 'active')  return <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-success-subtle text-success">Ativo</span>
+  if (status === 'blocked') return <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-danger-subtle text-danger">Bloqueado</span>
   return <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-ink-100 text-muted-foreground">Sem acesso</span>
 }
 

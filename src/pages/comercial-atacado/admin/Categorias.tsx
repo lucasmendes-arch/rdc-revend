@@ -83,7 +83,7 @@ export default function AdminCategorias() {
           <h1 className="text-xl sm:text-2xl font-bold text-foreground">Categorias</h1>
           <button
             onClick={() => setCreating(true)}
-            className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg bg-green-600 hover:bg-green-700 text-white text-sm font-medium transition-colors"
+            className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg bg-success-solid hover:bg-success-solid/90 text-white text-sm font-medium transition-colors"
           >
             <Plus className="w-4 h-4" />
             <span className="hidden sm:inline">Nova Categoria</span>
@@ -94,7 +94,7 @@ export default function AdminCategorias() {
       {/* Main */}
       <div className="px-4 sm:px-6 py-8">
         {error && (
-          <div className="mb-6 p-4 rounded-lg bg-red-50 border border-red-200 text-red-700">
+          <div className="mb-6 p-4 rounded-lg bg-danger-subtle border border-danger-border text-danger">
             <p className="font-medium">Erro ao carregar categorias</p>
             <p className="text-sm">{error instanceof Error ? error.message : 'Desconhecido'}</p>
           </div>
@@ -158,7 +158,7 @@ export default function AdminCategorias() {
                         </button>
                         <button
                           onClick={() => setDeleteId(cat.id)}
-                          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-red-600 hover:bg-red-50 transition-all text-xs font-medium"
+                          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-danger hover:bg-danger-subtle transition-all text-xs font-medium"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                           <span className="hidden sm:inline">Deletar</span>
@@ -205,7 +205,7 @@ export default function AdminCategorias() {
               <button
                 onClick={handleCreate}
                 disabled={createMutation.isPending}
-                className="flex-1 px-4 py-2.5 rounded-lg bg-green-600 hover:bg-green-700 text-white font-medium disabled:opacity-70 transition-colors"
+                className="flex-1 px-4 py-2.5 rounded-lg bg-success-solid hover:bg-success-solid/90 text-white font-medium disabled:opacity-70 transition-colors"
               >
                 {createMutation.isPending ? 'Criando...' : 'Criar Categoria'}
               </button>
@@ -276,7 +276,7 @@ export default function AdminCategorias() {
               <button
                 onClick={handleDelete}
                 disabled={deleteMutation.isPending}
-                className="flex-1 px-4 py-2.5 rounded-lg bg-red-600 text-white font-medium hover:bg-red-700 disabled:opacity-70"
+                className="flex-1 px-4 py-2.5 rounded-lg bg-danger-solid text-white font-medium hover:bg-danger-solid/90 disabled:opacity-70"
               >
                 {deleteMutation.isPending ? 'Deletando...' : 'Deletar'}
               </button>

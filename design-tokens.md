@@ -51,8 +51,8 @@ botão primário, que vira branco com texto preto sem nenhuma regra extra.
 Classes Tailwind: `bg-ink-50`, `text-ink-500`, `border-ink-300`…
 
 > A rampa foi calibrada de propósito para ficar próxima do `gray-*` do Tailwind.
-> Sobraram ~200 usos legados de `gray-*`/`slate-*` nas telas admin; com a rampa
-> fria eles harmonizam sozinhos no light. A borda quente antiga (`#E8E4DC`) era
+> Os `gray-*`/`slate-*` legados foram trocados pela rampa em 2026-09-30; não
+> use Tailwind `gray` em código novo. A borda quente antiga (`#E8E4DC`) era
 > a origem real da sujeira visual.
 
 ### Semântico base (alias da rampa)
@@ -397,16 +397,35 @@ demais tons → `ink-N`), e as regras correspondentes saíram do `index.css`.
 `PedidoSucesso` e `OrderCouponModal` derivam de `ORDER_STATUS`. Onde `<Badge>`
 não serve (bolinha, chip com ring, painel), usar `toneClasses(tone)`.
 
+**Famílias semânticas (2026-09-30, 2ª passada):** `red-*` → `danger`,
+`green-*`/`emerald-*` → `success`, e os `yellow/orange/blue/teal` que eram
+**estado** (estoque baixo, sem compra, ainda não contado, em separação, tabela
+de preço aplicada, zerado) → `warning`/`info`/`danger`. Mapas de status de
+pedido em `admin/Clientes` e `sistema/Usuarios` também passaram a derivar de
+`orderStatus.ts`. Com isso a **camada de coerência dark do `index.css` foi
+apagada inteira**; só sobrou o ajuste do Recharts.
+
+**Cabeçalho de `/estoque` e `/salao`:** saiu a barra `bg-gold` com texto branco.
+Agora segue o shell do portal/admin: `bg-background` + hairline, marca num
+tile 32px com borda, título ink 13px, ações `text-ink-500 hover:bg-muted`,
+item de nav ativo `bg-muted text-foreground`.
+
+### Exceções deliberadas (não são dívida)
+
+Cor **categórica**, que identifica *qual*, não *como está*. Trocar por uma
+família semântica mentiria (origem "Site" não é "sucesso"). Ficam hardcoded,
+sempre com variante `dark:` própria:
+
+- Origem do pedido (`originConfig` em `admin/Pedidos`: WhatsApp, Site, Salão, Loja)
+- Papel do usuário (`sistema/Usuarios`: admin roxo, administrativo azul)
+- Segmento "Comprador Atacado" (teal, par do dourado de "Parceiro da Rede")
+- Fonte do candidato (violeta) e selo "automação" (RH/DP)
+- Etapas do funil de cliente e ícones de KPI do Financeiro
+- Chip de unidade/loja no estoque (violeta)
+- Verde WhatsApp: botões "enviar pelo WhatsApp" e bolha da conversa (marca do WhatsApp)
+
 ### Dívida conhecida
 
-- **Famílias semânticas hardcoded**: ~750 usos de `red/emerald/green/blue/
-  indigo/yellow/purple/teal/sky/violet/orange-*` em ~54 arquivos. Parte ainda
-  depende do remap dark de `index.css` (só `red`, `emerald`/`green`, `blue`/
-  `indigo`, `yellow`). Migrar para `danger/success/info/warning` muda a cor
-  no light, então pede revisão tela a tela, não troca mecânica.
-- **Cabeçalho dourado** de `/estoque` (`EstoqueLayout`) e `/salao` (`Inicio`,
-  `NovoPedido`): barra `bg-gold` com texto branco. Contraria a regra do dourado
-  raro, mas trocar é decisão de produto (identidade dos apps de operação).
 - **Escala legada `gold-*`** (~130 usos: `text-gold-text`, `bg-gold`…): aponta
   para os tokens `brand`, então é só nome. Em código novo, `brand-*`.
 - `statusConfig` de **acesso** (não de pedido) em `admin/Clientes.tsx` e

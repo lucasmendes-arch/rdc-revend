@@ -423,8 +423,8 @@ export default function EstoqueConfirmacao() {
     return (
       <EstoqueLayout>
         <div className="bg-card rounded-2xl border border-border shadow-card p-6 text-center space-y-4">
-          <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto">
-            <CheckCircle2 className="w-8 h-8 text-green-600" />
+          <div className="w-16 h-16 rounded-full bg-success-subtle flex items-center justify-center mx-auto">
+            <CheckCircle2 className="w-8 h-8 text-success" />
           </div>
           <div>
             <h1 className="text-lg font-bold text-foreground">Contagem confirmada</h1>
@@ -445,9 +445,9 @@ export default function EstoqueConfirmacao() {
                 <p className="text-xl font-bold text-warning">{summary.items_replenished}</p>
                 <p className="text-[11px] text-warning">{isCentral ? 'Abaixo da meta' : 'Geraram reposição'}</p>
               </div>
-              <div className="bg-green-50 rounded-xl p-3">
-                <p className="text-xl font-bold text-green-700">{summary.items_sufficient}</p>
-                <p className="text-[11px] text-green-700">Estoque suficiente</p>
+              <div className="bg-success-subtle rounded-xl p-3">
+                <p className="text-xl font-bold text-success">{summary.items_sufficient}</p>
+                <p className="text-[11px] text-success">Estoque suficiente</p>
               </div>
             </div>
           )}
@@ -551,11 +551,11 @@ export default function EstoqueConfirmacao() {
                                   ) : item.total_units == null ? (
                                     <span className="text-muted-foreground">{previous}</span>
                                   ) : item.total_units > previous ? (
-                                    <span className="inline-flex items-center gap-0.5 text-green-600 font-semibold">
+                                    <span className="inline-flex items-center gap-0.5 text-success font-semibold">
                                       <TrendingUp className="w-3 h-3" /> {previous}
                                     </span>
                                   ) : item.total_units < previous ? (
-                                    <span className="inline-flex items-center gap-0.5 text-red-600 font-semibold">
+                                    <span className="inline-flex items-center gap-0.5 text-danger font-semibold">
                                       <TrendingDown className="w-3 h-3" /> {previous}
                                     </span>
                                   ) : (
@@ -566,9 +566,9 @@ export default function EstoqueConfirmacao() {
                                   {saldo === null ? (
                                     <span className="text-muted-foreground font-normal">—</span>
                                   ) : saldo > 0 ? (
-                                    <span className="text-green-600">+{saldo}</span>
+                                    <span className="text-success">+{saldo}</span>
                                   ) : saldo < 0 ? (
-                                    <span className="text-red-600">{saldo}</span>
+                                    <span className="text-danger">{saldo}</span>
                                   ) : (
                                     <span className="text-muted-foreground font-normal">0</span>
                                   )}
@@ -579,11 +579,11 @@ export default function EstoqueConfirmacao() {
                                   ) : !hasTarget ? (
                                     <span className="text-[10px] text-muted-foreground">sem meta</span>
                                   ) : isLow ? (
-                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-red-100 text-red-700">
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-danger-subtle text-danger">
                                       <AlertTriangle className="w-3 h-3" /> {isCentral ? 'Comprar do fornecedor' : 'Abaixo da meta'}
                                     </span>
                                   ) : (
-                                    <span className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold bg-green-100 text-green-700">OK</span>
+                                    <span className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold bg-success-subtle text-success">OK</span>
                                   )}
                                 </td>
                               </tr>
@@ -649,9 +649,9 @@ export default function EstoqueConfirmacao() {
         )}
 
         {missingCount > 0 && (
-          <div className="flex items-start gap-2 bg-red-50 border border-red-200 rounded-xl p-3">
-            <AlertTriangle className="w-4 h-4 text-red-700 shrink-0 mt-0.5" />
-            <p className="text-xs text-red-800">
+          <div className="flex items-start gap-2 bg-danger-subtle border border-danger-border rounded-xl p-3">
+            <AlertTriangle className="w-4 h-4 text-danger shrink-0 mt-0.5" />
+            <p className="text-xs text-danger">
               Faltam {missingCount} produto{missingCount !== 1 ? 's' : ''} contar. Volte e preencha todos os itens antes de confirmar.
             </p>
           </div>
@@ -684,7 +684,7 @@ export default function EstoqueConfirmacao() {
                     <td className="px-4 py-3 text-sm font-medium text-foreground">
                       {item.catalog_products?.name || 'Produto'}
                       {item.closed_boxes === 0 && item.loose_units === 0 && (
-                        <span className="ml-2 text-[9px] font-bold px-1.5 py-0.5 rounded bg-teal-100 text-teal-700 uppercase align-middle">Zerado</span>
+                        <span className="ml-2 text-[9px] font-bold px-1.5 py-0.5 rounded bg-danger-subtle text-danger uppercase align-middle">Zerado</span>
                       )}
                     </td>
                     <td className="px-4 py-3 text-sm text-center">{item.closed_boxes}</td>

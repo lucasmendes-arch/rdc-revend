@@ -197,7 +197,7 @@ export default function EditOrder() {
     return (
       <AdminLayout>
         <div className="flex flex-col items-center justify-center py-32 gap-4">
-          <AlertTriangle className="w-10 h-10 text-red-500" />
+          <AlertTriangle className="w-10 h-10 text-danger" />
           <p className="text-foreground font-semibold">Sem permissão para editar pedidos.</p>
           <p className="text-sm text-muted-foreground">Solicite ao administrador que habilite <code>can_edit_orders</code> no seu perfil.</p>
           <button onClick={() => navigate('/admin/pedidos')} className="btn-action px-4 py-2 rounded-xl text-sm font-semibold">
@@ -250,7 +250,7 @@ export default function EditOrder() {
         <button
           onClick={() => saveMutation.mutate()}
           disabled={saveMutation.isPending || items.length === 0}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold transition-colors disabled:opacity-60"
+          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-success-solid hover:bg-success-solid/90 text-white text-sm font-bold transition-colors disabled:opacity-60"
         >
           {saveMutation.isPending ? <Loader className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
           Salvar
@@ -354,7 +354,7 @@ export default function EditOrder() {
                 </span>
                 <button
                   onClick={() => removeItem(idx)}
-                  className="text-muted-foreground/50 hover:text-red-500 hover:bg-red-500/10 p-1.5 rounded-md transition-colors shrink-0"
+                  className="text-muted-foreground/50 hover:text-danger hover:bg-danger-subtle p-1.5 rounded-md transition-colors shrink-0"
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
@@ -382,7 +382,7 @@ export default function EditOrder() {
               </div>
               <div className="flex items-center justify-between text-base font-bold pt-2 border-t border-border">
                 <span>Total</span>
-                <span className="text-emerald-600">R$ {total.toFixed(2)}</span>
+                <span className="text-success">R$ {total.toFixed(2)}</span>
               </div>
             </div>
           )}
@@ -460,7 +460,7 @@ export default function EditOrder() {
           <button
             onClick={() => saveMutation.mutate()}
             disabled={saveMutation.isPending || items.length === 0}
-            className="flex items-center gap-2 px-6 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold transition-colors disabled:opacity-60"
+            className="flex items-center gap-2 px-6 py-3 rounded-xl bg-success-solid hover:bg-success-solid/90 text-white text-sm font-bold transition-colors disabled:opacity-60"
           >
             {saveMutation.isPending ? <Loader className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
             Salvar alterações

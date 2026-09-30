@@ -179,7 +179,7 @@ export default function CompactProductCarousel({
                                             Revenda: -
                                         </div>
                                     ) : (
-                                        <div className="text-[10px] sm:text-xs md:text-xs lg:text-[13px] text-green-700 font-bold mb-0.5 sm:mb-1">
+                                        <div className="text-[10px] sm:text-xs md:text-xs lg:text-[13px] text-success font-bold mb-0.5 sm:mb-1">
                                             Revenda: R$ {suggested.toFixed(2)}
                                         </div>
                                     ))}

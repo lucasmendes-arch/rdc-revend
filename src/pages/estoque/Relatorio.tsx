@@ -198,7 +198,7 @@ export default function EstoqueRelatorio() {
           <p className="text-muted-foreground">Carregando…</p>
         </div>
       ) : error ? (
-        <div className="bg-card rounded-2xl border border-border shadow-card p-6 text-center text-sm text-red-600">
+        <div className="bg-card rounded-2xl border border-border shadow-card p-6 text-center text-sm text-danger">
           Erro ao carregar relatório: {error instanceof Error ? error.message : 'desconhecido'}
         </div>
       ) : rows.length === 0 ? (
@@ -261,11 +261,11 @@ export default function EstoqueRelatorio() {
                                   {!hasTarget ? (
                                     <span className="text-xs text-muted-foreground">sem meta</span>
                                   ) : isLow ? (
-                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-700">
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-danger-subtle text-danger">
                                       <AlertTriangle className="w-3 h-3" /> Abaixo
                                     </span>
                                   ) : (
-                                    <span className="inline-flex px-2 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-700">OK</span>
+                                    <span className="inline-flex px-2 py-0.5 rounded-full text-xs font-semibold bg-success-subtle text-success">OK</span>
                                   )}
                                 </td>
                               </tr>

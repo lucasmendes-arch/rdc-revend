@@ -171,7 +171,7 @@ export default function DistratarParceiroModal({ processo, onConfirmEncerrar, on
     return (
       <label className="block text-[11px] text-muted-foreground mb-1">
         {CONTRACT_DATA_FIELD_LABELS[field]}
-        {optional ? null : <span className="text-red-500"> *</span>}
+        {optional ? null : <span className="text-danger"> *</span>}
       </label>
     )
   }
@@ -196,7 +196,7 @@ export default function DistratarParceiroModal({ processo, onConfirmEncerrar, on
           <div>
             <label className="block text-[11px] text-muted-foreground mb-1">Modelo base do distrato</label>
             {templatesError ? (
-              <p className="text-[11px] text-red-500">
+              <p className="text-[11px] text-danger">
                 Não foi possível carregar os modelos: {templatesError instanceof Error ? templatesError.message : 'erro desconhecido'}
               </p>
             ) : (
@@ -216,13 +216,13 @@ export default function DistratarParceiroModal({ processo, onConfirmEncerrar, on
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-[11px] text-muted-foreground mb-1">
-                Data do distrato <span className="text-red-500">*</span>
+                Data do distrato <span className="text-danger">*</span>
               </label>
               <DateField value={termStart || null} onChange={(v) => setTermStart(v ?? '')} placeholder="Selecionar" />
             </div>
             <div>
               <label className="block text-[11px] text-muted-foreground mb-1">
-                Data do contrato de parceria <span className="text-red-500">*</span>
+                Data do contrato de parceria <span className="text-danger">*</span>
               </label>
               <DateField value={contractDate || null} onChange={(v) => setContractDate(v ?? '')} placeholder="Selecionar" />
             </div>
@@ -271,7 +271,7 @@ export default function DistratarParceiroModal({ processo, onConfirmEncerrar, on
             onClick={() => confirmar.mutate()}
             disabled={busy || missingFields.length > 0 || !termStart || !contractDate || !templateId}
             title={missingFields.length > 0 ? 'Preencha os dados obrigatórios' : undefined}
-            className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-red-600 text-white font-medium hover:bg-red-700 disabled:opacity-50 transition-colors"
+            className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-danger-solid text-white font-medium hover:bg-danger-solid/90 disabled:opacity-50 transition-colors"
           >
             <FileSignature className="w-4 h-4" />
             {confirmar.isPending ? 'Gerando distrato...' : 'Encerrar e gerar distrato'}
