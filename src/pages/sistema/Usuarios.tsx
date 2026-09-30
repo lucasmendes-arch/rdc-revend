@@ -73,7 +73,7 @@ interface ClientOrder {
 const ROLE_LABELS: Record<string, string> = { admin: 'Admin', salao: 'Salão', administrativo: 'Administrativo' }
 const ROLE_STYLES: Record<string, string> = {
   admin: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
-  salao: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
+  salao: 'bg-brand-subtle text-brand-strong',
   administrativo: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
 }
 const ROLE_ICONS: Record<string, React.ReactNode> = {
@@ -88,7 +88,7 @@ const SEGMENT_OPTIONS = [
   { value: 'wholesale_buyer', label: 'Comprador Atacado' },
 ]
 const segmentBadge = (v: string | null) => {
-  if (v === 'network_partner') return 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+  if (v === 'network_partner') return 'bg-brand-subtle text-brand-strong'
   if (v === 'wholesale_buyer') return 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400'
   return 'bg-muted text-muted-foreground'
 }
@@ -673,7 +673,7 @@ function ClientSidePanel({
 
         {/* Header */}
         <div className="border-b border-border px-5 py-4 flex items-start gap-3.5 flex-shrink-0">
-          <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-sm flex-shrink-0 ${isPartner ? 'bg-amber-700' : 'bg-muted-foreground/40'}`}>
+          <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-sm flex-shrink-0 ${isPartner ? 'bg-brand' : 'bg-muted-foreground/40'}`}>
             {initials}
           </div>
           <div className="flex-1 min-w-0">
@@ -801,7 +801,7 @@ function ClientSidePanel({
                 {client.employees  && <InfoRow icon={Users}     label="Funcionários"        value={employeesLabels[client.employees] || client.employees} />}
                 {client.revenue    && <InfoRow icon={DollarSign} label="Faturamento"        value={revenueLabels[client.revenue] || client.revenue} />}
                 {!client.full_name && !client.phone && (
-                  <div className="bg-amber-50 ring-1 ring-inset ring-amber-200 text-amber-700 dark:bg-amber-900/20 dark:ring-amber-700/40 dark:text-amber-400 p-3 rounded-lg text-xs flex items-center gap-2">
+                  <div className="bg-warning-subtle ring-1 ring-inset ring-warning-border text-warning p-3 rounded-lg text-xs flex items-center gap-2">
                     <AlertTriangle className="w-4 h-4 flex-shrink-0" />
                     Perfil incompleto — clique em Editar para preencher.
                   </div>
@@ -1043,22 +1043,22 @@ function PartnerAccessPanel({ client, queryKey }: { client: ClientStats; queryKe
       </div>
 
       {credResult && (
-        <div className="mt-4 bg-zinc-900 rounded-xl p-4 space-y-3">
-          <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Credenciais geradas</p>
+        <div className="mt-4 bg-ink-900 rounded-xl p-4 space-y-3">
+          <p className="text-[10px] font-bold text-ink-400 uppercase tracking-widest">Credenciais geradas</p>
           {[{ label: 'Login', value: credResult.phone }, { label: 'Senha', value: credResult.created_password }].map(({ label, value }) => (
-            <div key={label} className="flex items-center justify-between gap-2 bg-zinc-800 rounded-lg px-3 py-2">
+            <div key={label} className="flex items-center justify-between gap-2 bg-ink-800 rounded-lg px-3 py-2">
               <div>
-                <p className="text-[10px] text-zinc-500 leading-none">{label}</p>
+                <p className="text-[10px] text-muted-foreground leading-none">{label}</p>
                 <p className="text-sm font-mono font-bold text-white mt-0.5">{value}</p>
               </div>
-              <button onClick={() => copyToClipboard(value, label)} className="p-1.5 rounded-md hover:bg-zinc-700 text-zinc-400 hover:text-white transition-colors">
+              <button onClick={() => copyToClipboard(value, label)} className="p-1.5 rounded-md hover:bg-ink-700 text-ink-400 hover:text-white transition-colors">
                 <Copy className="w-3.5 h-3.5" />
               </button>
             </div>
           ))}
           <div className="flex gap-2 pt-1">
             <button onClick={() => copyToClipboard(buildWhatsAppMessage(credResult), 'Mensagem')}
-              className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-bold bg-zinc-700 text-white rounded-lg hover:bg-zinc-600 transition-colors">
+              className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-bold bg-ink-700 text-white rounded-lg hover:bg-ink-600 transition-colors">
               <Copy className="w-3.5 h-3.5" />Copiar msg WA
             </button>
             <a href={`https://wa.me/${credResult.phone.replace(/\D/g, '')}?text=${encodeURIComponent(buildWhatsAppMessage(credResult))}`}
@@ -1067,7 +1067,7 @@ function PartnerAccessPanel({ client, queryKey }: { client: ClientStats; queryKe
               <Phone className="w-3.5 h-3.5" />Abrir WhatsApp
             </a>
           </div>
-          <button onClick={() => setCredResult(null)} className="w-full text-[10px] text-zinc-500 hover:text-zinc-300 transition-colors pt-1">
+          <button onClick={() => setCredResult(null)} className="w-full text-[10px] text-muted-foreground hover:text-ink-300 transition-colors pt-1">
             Fechar
           </button>
         </div>
@@ -1142,7 +1142,7 @@ function SystemTab({
                     <p className="text-xs text-muted-foreground">{user.email}</p>
                   </td>
                   <td className="px-4 py-3">
-                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${ROLE_STYLES[user.role] ?? 'bg-gray-100 text-gray-700'}`}>
+                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${ROLE_STYLES[user.role] ?? 'bg-ink-100 text-ink-700'}`}>
                       {ROLE_LABELS[user.role] ?? user.role}
                     </span>
                     {user.role === 'salao' && user.store_name && (
@@ -1208,7 +1208,7 @@ function SystemUserSidePanel({
   const [selectedStoreId, setSelectedStoreId] = useState(user.store_id ?? '')
 
   const initials = (user.full_name || user.email).split(/[\s@]/).map(w => w[0]).join('').slice(0, 2).toUpperCase()
-  const roleColor = user.role === 'admin' ? 'bg-purple-700' : user.role === 'administrativo' ? 'bg-blue-700' : 'bg-amber-700'
+  const roleColor = user.role === 'admin' ? 'bg-purple-700' : user.role === 'administrativo' ? 'bg-blue-700' : 'bg-brand'
 
   const hasRoleChange = selectedRole !== user.role || (selectedRole === 'salao' && selectedStoreId !== (user.store_id ?? ''))
 
@@ -1246,39 +1246,39 @@ function SystemUserSidePanel({
 
   return (
     <>
-      <div className="fixed inset-0 bg-zinc-900/40 z-40 backdrop-blur-sm" onClick={onClose} />
-      <div className="fixed right-0 top-0 bottom-0 w-full max-w-sm bg-white z-50 shadow-2xl flex flex-col">
+      <div className="fixed inset-0 bg-ink-950/45 z-40 backdrop-blur-sm" onClick={onClose} />
+      <div className="fixed right-0 top-0 bottom-0 w-full max-w-sm bg-card z-50 shadow-2xl flex flex-col">
 
         {/* Header */}
-        <div className="border-b border-zinc-200 px-5 py-4 flex items-start gap-3.5 flex-shrink-0">
+        <div className="border-b border-border px-5 py-4 flex items-start gap-3.5 flex-shrink-0">
           <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-sm flex-shrink-0 ${roleColor}`}>
             {initials}
           </div>
           <div className="flex-1 min-w-0">
-            <h2 className="text-base font-bold text-zinc-900 truncate">{user.full_name || '—'}</h2>
-            <p className="text-xs text-zinc-500 mt-0.5">{user.email}</p>
-            <span className={`inline-block mt-1.5 text-[10px] font-bold px-1.5 py-0.5 rounded-md ${ROLE_STYLES[user.role] ?? 'bg-gray-100 text-gray-700'}`}>
+            <h2 className="text-base font-bold text-foreground truncate">{user.full_name || '—'}</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">{user.email}</p>
+            <span className={`inline-block mt-1.5 text-[10px] font-bold px-1.5 py-0.5 rounded-md ${ROLE_STYLES[user.role] ?? 'bg-ink-100 text-ink-700'}`}>
               {ROLE_LABELS[user.role] ?? user.role}
             </span>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-zinc-100 transition-colors text-zinc-400 hover:text-zinc-600 flex-shrink-0">
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-ink-100 transition-colors text-ink-400 hover:text-ink-600 flex-shrink-0">
             <X className="w-5 h-5" />
           </button>
         </div>
 
         <div className="flex-1 overflow-y-auto">
           {/* Datas */}
-          <div className="px-5 py-4 border-b border-zinc-100 flex gap-6">
+          <div className="px-5 py-4 border-b border-border flex gap-6">
             <div>
-              <p className="text-[10px] text-zinc-400 uppercase tracking-wider">Criado em</p>
-              <p className="text-sm font-medium text-zinc-700">
+              <p className="text-[10px] text-ink-400 uppercase tracking-wider">Criado em</p>
+              <p className="text-sm font-medium text-ink-700">
                 {new Date(user.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}
               </p>
             </div>
             {user.last_sign_in_at && (
               <div>
-                <p className="text-[10px] text-zinc-400 uppercase tracking-wider">Último acesso</p>
-                <p className="text-sm font-medium text-zinc-700">
+                <p className="text-[10px] text-ink-400 uppercase tracking-wider">Último acesso</p>
+                <p className="text-sm font-medium text-ink-700">
                   {new Date(user.last_sign_in_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}
                 </p>
               </div>
@@ -1286,17 +1286,17 @@ function SystemUserSidePanel({
           </div>
 
           {/* Nome */}
-          <div className="px-5 py-4 border-b border-zinc-200">
+          <div className="px-5 py-4 border-b border-border">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-[11px] font-bold text-zinc-400 uppercase tracking-widest">Nome</h3>
+              <h3 className="text-[11px] font-bold text-ink-400 uppercase tracking-widest">Nome</h3>
               {!editingName ? (
                 <button onClick={() => { setNameValue(user.full_name ?? ''); setEditingName(true) }}
-                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium text-zinc-600 hover:bg-zinc-100 border border-zinc-200 transition-colors">
+                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium text-ink-600 hover:bg-ink-100 border border-border transition-colors">
                   <Edit2 className="w-3.5 h-3.5" />Editar
                 </button>
               ) : (
                 <button onClick={() => setEditingName(false)}
-                  className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium text-zinc-400 hover:bg-zinc-50 transition-colors">
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium text-ink-400 hover:bg-surface transition-colors">
                   <X className="w-3.5 h-3.5" />Cancelar
                 </button>
               )}
@@ -1305,31 +1305,31 @@ function SystemUserSidePanel({
               <div className="flex gap-2">
                 <input type="text" value={nameValue} onChange={e => setNameValue(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && nameMutation.mutate(nameValue)}
-                  className="flex-1 px-3 py-2 text-sm rounded-lg border border-zinc-200 bg-white focus:outline-none focus:ring-2 focus:ring-zinc-400"
+                  className="flex-1 px-3 py-2 text-sm rounded-lg border border-border bg-card focus:outline-none focus:ring-2 focus:ring-ring"
                   placeholder="Nome completo" autoFocus />
                 <button onClick={() => nameMutation.mutate(nameValue)} disabled={nameMutation.isPending}
-                  className="px-3 py-2 rounded-lg bg-zinc-900 text-white text-sm font-medium disabled:opacity-50 hover:bg-zinc-700 transition-colors">
+                  className="px-3 py-2 rounded-lg bg-ink-900 text-white text-sm font-medium disabled:opacity-50 hover:bg-ink-700 transition-colors">
                   {nameMutation.isPending ? <Loader className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
                 </button>
               </div>
             ) : (
-              <p className="text-sm font-medium text-zinc-800">{user.full_name || <span className="text-zinc-400 italic">Não informado</span>}</p>
+              <p className="text-sm font-medium text-foreground">{user.full_name || <span className="text-ink-400 italic">Não informado</span>}</p>
             )}
           </div>
 
           {/* WhatsApp — usado pra notificar quando o usuário é responsável por
               um candidato e um contrato é gerado automaticamente (DP). */}
-          <div className="px-5 py-4 border-b border-zinc-200">
+          <div className="px-5 py-4 border-b border-border">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-[11px] font-bold text-zinc-400 uppercase tracking-widest">WhatsApp</h3>
+              <h3 className="text-[11px] font-bold text-ink-400 uppercase tracking-widest">WhatsApp</h3>
               {!editingWhatsapp ? (
                 <button onClick={() => { setWhatsappValue(user.whatsapp_number ?? ''); setEditingWhatsapp(true) }}
-                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium text-zinc-600 hover:bg-zinc-100 border border-zinc-200 transition-colors">
+                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium text-ink-600 hover:bg-ink-100 border border-border transition-colors">
                   <Edit2 className="w-3.5 h-3.5" />Editar
                 </button>
               ) : (
                 <button onClick={() => setEditingWhatsapp(false)}
-                  className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium text-zinc-400 hover:bg-zinc-50 transition-colors">
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium text-ink-400 hover:bg-surface transition-colors">
                   <X className="w-3.5 h-3.5" />Cancelar
                 </button>
               )}
@@ -1338,21 +1338,21 @@ function SystemUserSidePanel({
               <div className="flex gap-2">
                 <input type="tel" value={whatsappValue} onChange={e => setWhatsappValue(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && whatsappMutation.mutate(whatsappValue)}
-                  className="flex-1 px-3 py-2 text-sm rounded-lg border border-zinc-200 bg-white focus:outline-none focus:ring-2 focus:ring-zinc-400"
+                  className="flex-1 px-3 py-2 text-sm rounded-lg border border-border bg-card focus:outline-none focus:ring-2 focus:ring-ring"
                   placeholder="(27) 99999-9999" autoFocus />
                 <button onClick={() => whatsappMutation.mutate(whatsappValue)} disabled={whatsappMutation.isPending}
-                  className="px-3 py-2 rounded-lg bg-zinc-900 text-white text-sm font-medium disabled:opacity-50 hover:bg-zinc-700 transition-colors">
+                  className="px-3 py-2 rounded-lg bg-ink-900 text-white text-sm font-medium disabled:opacity-50 hover:bg-ink-700 transition-colors">
                   {whatsappMutation.isPending ? <Loader className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
                 </button>
               </div>
             ) : (
-              <p className="text-sm font-medium text-zinc-800">{user.whatsapp_number || <span className="text-zinc-400 italic">Não informado</span>}</p>
+              <p className="text-sm font-medium text-foreground">{user.whatsapp_number || <span className="text-ink-400 italic">Não informado</span>}</p>
             )}
           </div>
 
           {/* Nível de acesso */}
-          <div className="px-5 py-4 border-b border-zinc-200">
-            <h3 className="text-[11px] font-bold text-zinc-400 uppercase tracking-widest mb-3">Nível de Acesso</h3>
+          <div className="px-5 py-4 border-b border-border">
+            <h3 className="text-[11px] font-bold text-ink-400 uppercase tracking-widest mb-3">Nível de Acesso</h3>
             <div className="grid grid-cols-3 gap-2">
               {(['salao', 'administrativo', 'admin'] as const).map(r => (
                 <button key={r} type="button"
@@ -1361,7 +1361,7 @@ function SystemUserSidePanel({
                   className={`flex items-center justify-center gap-2 py-2.5 rounded-lg border text-xs sm:text-sm font-semibold transition-all disabled:cursor-default ${
                     selectedRole === r
                       ? `${ROLE_STYLES[r]} border-current/30`
-                      : 'bg-white text-muted-foreground border-border hover:bg-surface-alt disabled:opacity-50'
+                      : 'bg-card text-muted-foreground border-border hover:bg-surface-alt disabled:opacity-50'
                   }`}>
                   {ROLE_ICONS[r]}{ROLE_LABELS[r]}
                 </button>
@@ -1370,12 +1370,12 @@ function SystemUserSidePanel({
 
             {selectedRole === 'salao' && (
               <div className="mt-3">
-                <label className="block text-[11px] text-zinc-500 mb-1">Loja vinculada (opcional)</label>
-                <p className="text-[11px] text-zinc-400 mb-1">Sem loja, acessa só o módulo de venda.</p>
+                <label className="block text-[11px] text-muted-foreground mb-1">Loja vinculada (opcional)</label>
+                <p className="text-[11px] text-ink-400 mb-1">Sem loja, acessa só o módulo de venda.</p>
                 <select
                   value={selectedStoreId}
                   onChange={e => setSelectedStoreId(e.target.value)}
-                  className="w-full px-3 py-2 text-sm rounded-lg border border-zinc-200 bg-white focus:outline-none focus:ring-2 focus:ring-zinc-400"
+                  className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-card focus:outline-none focus:ring-2 focus:ring-ring"
                 >
                   <option value="">Nenhuma (só vendas)</option>
                   {stores.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
@@ -1397,8 +1397,8 @@ function SystemUserSidePanel({
           </div>
 
           {/* Permissões granulares */}
-          <div className="px-5 py-4 border-b border-zinc-200">
-            <h3 className="text-[11px] font-bold text-zinc-400 uppercase tracking-widest mb-3">Permissões</h3>
+          <div className="px-5 py-4 border-b border-border">
+            <h3 className="text-[11px] font-bold text-ink-400 uppercase tracking-widest mb-3">Permissões</h3>
             <div className="space-y-3">
               {[
                 { key: 'can_edit_orders', label: 'Editar pedidos', description: 'Permite alterar itens, vendedor e pagamento de pedidos criados' },
@@ -1408,17 +1408,17 @@ function SystemUserSidePanel({
                 return (
                   <div key={key} className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="text-sm font-medium text-zinc-800">{label}</p>
-                      <p className="text-[11px] text-zinc-400 leading-snug mt-0.5">{description}</p>
+                      <p className="text-sm font-medium text-foreground">{label}</p>
+                      <p className="text-[11px] text-ink-400 leading-snug mt-0.5">{description}</p>
                     </div>
                     <button
                       onClick={() => onPermissionChange(user.id, key, !enabled)}
                       disabled={isPending}
                       className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none disabled:opacity-50 mt-0.5 ${
-                        enabled ? 'bg-green-500' : 'bg-zinc-200'
+                        enabled ? 'bg-green-500' : 'bg-ink-200'
                       }`}
                     >
-                      <span className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow transform transition-transform duration-200 ${
+                      <span className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-card shadow transform transition-transform duration-200 ${
                         enabled ? 'translate-x-4' : 'translate-x-0'
                       }`} />
                     </button>
@@ -1447,18 +1447,18 @@ function LoadingState({ label }: { label: string }) {
 function AccessBadge({ status }: { status: string | null }) {
   if (status === 'active')  return <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">Ativo</span>
   if (status === 'blocked') return <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-red-100 text-red-700">Bloqueado</span>
-  return <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">Sem acesso</span>
+  return <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-ink-100 text-muted-foreground">Sem acesso</span>
 }
 
 function InfoRow({ icon: Icon, label, value }: { icon: typeof User; label: string; value: string }) {
   return (
     <div className="flex items-center gap-3">
-      <div className="w-8 h-8 rounded-lg bg-zinc-100 flex items-center justify-center flex-shrink-0">
-        <Icon className="w-4 h-4 text-zinc-500" />
+      <div className="w-8 h-8 rounded-lg bg-ink-100 flex items-center justify-center flex-shrink-0">
+        <Icon className="w-4 h-4 text-muted-foreground" />
       </div>
       <div className="min-w-0">
-        <p className="text-[11px] text-zinc-500 leading-none">{label}</p>
-        <p className="text-sm font-medium text-zinc-800 truncate mt-0.5">{value}</p>
+        <p className="text-[11px] text-muted-foreground leading-none">{label}</p>
+        <p className="text-sm font-medium text-foreground truncate mt-0.5">{value}</p>
       </div>
     </div>
   )
@@ -1467,7 +1467,7 @@ function InfoRow({ icon: Icon, label, value }: { icon: typeof User; label: strin
 function FormField({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <label className="block text-[11px] text-zinc-500 mb-1">{label}</label>
+      <label className="block text-[11px] text-muted-foreground mb-1">{label}</label>
       {children}
     </div>
   )

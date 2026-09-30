@@ -75,7 +75,7 @@ function NumberField({ label, value, onChange }: { label: string; value: number;
           min={0}
           value={value}
           onChange={(e) => onChange(Math.max(0, parseInt(e.target.value) || 0))}
-          className="w-14 h-9 rounded-xl border border-input text-center text-base font-bold bg-white focus:outline-none focus:ring-2 focus:ring-amber-400"
+          className="w-14 h-9 rounded-xl border border-input text-center text-base font-bold bg-card focus:outline-none focus:ring-2 focus:ring-ring"
         />
         <button
           type="button"
@@ -108,10 +108,10 @@ function EditCountModal({
 
   return (
     <div className="fixed inset-0 z-50 bg-black/40 flex items-end sm:items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-white rounded-2xl w-full max-w-sm p-5 space-y-4" onClick={(e) => e.stopPropagation()}>
+      <div className="bg-card rounded-2xl w-full max-w-sm p-5 space-y-4" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-start justify-between gap-2">
           <div>
-            <p className="text-[11px] font-bold text-amber-700 uppercase tracking-wide">Corrigir contagem (admin)</p>
+            <p className="eyebrow">Corrigir contagem (admin)</p>
             <h2 className="text-base font-bold text-foreground">{item.catalog_products?.name || 'Produto'}</h2>
           </div>
           <button type="button" onClick={onClose} className="text-muted-foreground hover:text-foreground shrink-0">
@@ -409,7 +409,7 @@ export default function EstoqueConfirmacao() {
       <EstoqueLayout>
         <div className="text-center py-16">
           <p className="text-muted-foreground mb-4">Contagem não encontrada.</p>
-          <Link to="/estoque/contagem" className="text-sm text-amber-700 font-semibold hover:underline">
+          <Link to="/estoque/contagem" className="text-sm text-foreground font-semibold hover:underline">
             Voltar ao histórico
           </Link>
         </div>
@@ -422,7 +422,7 @@ export default function EstoqueConfirmacao() {
     const summary = result
     return (
       <EstoqueLayout>
-        <div className="bg-white rounded-2xl border border-border shadow-card p-6 text-center space-y-4">
+        <div className="bg-card rounded-2xl border border-border shadow-card p-6 text-center space-y-4">
           <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto">
             <CheckCircle2 className="w-8 h-8 text-green-600" />
           </div>
@@ -441,9 +441,9 @@ export default function EstoqueConfirmacao() {
                 <p className="text-xl font-bold text-foreground">{summary.items_total}</p>
                 <p className="text-[11px] text-muted-foreground">Itens contados</p>
               </div>
-              <div className="bg-amber-50 rounded-xl p-3">
-                <p className="text-xl font-bold text-amber-700">{summary.items_replenished}</p>
-                <p className="text-[11px] text-amber-700">{isCentral ? 'Abaixo da meta' : 'Geraram reposição'}</p>
+              <div className="bg-warning-subtle rounded-xl p-3">
+                <p className="text-xl font-bold text-warning">{summary.items_replenished}</p>
+                <p className="text-[11px] text-warning">{isCentral ? 'Abaixo da meta' : 'Geraram reposição'}</p>
               </div>
               <div className="bg-green-50 rounded-xl p-3">
                 <p className="text-xl font-bold text-green-700">{summary.items_sufficient}</p>
@@ -453,12 +453,12 @@ export default function EstoqueConfirmacao() {
           )}
 
           {summary && summary.items_skipped.length > 0 && (
-            <div className="text-left bg-amber-50/50 border border-amber-200 rounded-xl p-3 space-y-1.5">
-              <p className="text-xs font-semibold text-amber-800 flex items-center gap-1.5">
+            <div className="text-left bg-warning-subtle border border-warning-border rounded-xl p-3 space-y-1.5">
+              <p className="text-xs font-semibold text-warning flex items-center gap-1.5">
                 <AlertTriangle className="w-3.5 h-3.5" /> Itens não conciliados ({summary.items_skipped.length})
               </p>
               {summary.items_skipped.map((skip) => (
-                <p key={skip.product_id} className="text-xs text-amber-700">
+                <p key={skip.product_id} className="text-xs text-warning">
                   {productNameById.get(skip.product_id) || skip.product_id} — {SKIP_REASON_LABEL[skip.reason] || skip.reason}
                 </p>
               ))}
@@ -493,7 +493,7 @@ export default function EstoqueConfirmacao() {
                   >
                     {category}
                   </span>
-                  <div className="bg-white rounded-2xl border border-border shadow-card overflow-hidden">
+                  <div className="bg-card rounded-2xl border border-border shadow-card overflow-hidden">
                     <div className="overflow-x-auto">
                       <table className="w-full table-fixed min-w-[640px]">
                         <colgroup>
@@ -529,13 +529,13 @@ export default function EstoqueConfirmacao() {
                                 </td>
                                 <td className="px-4 py-2.5 text-sm text-center font-bold">
                                   <div className="inline-flex items-center gap-1.5">
-                                    <span>{item.total_units ?? <span className="text-amber-600 text-xs font-semibold">não classif.</span>}</span>
+                                    <span>{item.total_units ?? <span className="text-warning text-xs font-semibold">não classif.</span>}</span>
                                     {isAdmin && (
                                       <button
                                         type="button"
                                         onClick={() => setEditingItem(item)}
                                         title="Corrigir quantidade (admin)"
-                                        className="text-muted-foreground hover:text-amber-700 transition-colors"
+                                        className="text-muted-foreground hover:text-foreground transition-colors"
                                       >
                                         <Pencil className="w-3.5 h-3.5" />
                                       </button>
@@ -623,7 +623,7 @@ export default function EstoqueConfirmacao() {
 
   return (
     <EstoqueLayout>
-      <div className="bg-white rounded-2xl border border-border shadow-card p-5 space-y-3">
+      <div className="bg-card rounded-2xl border border-border shadow-card p-5 space-y-3">
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div>
             <h1 className="text-lg font-bold text-foreground">Revisar contagem</h1>
@@ -640,9 +640,9 @@ export default function EstoqueConfirmacao() {
         </div>
 
         {itemsUnclassified.length > 0 && (
-          <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl p-3">
-            <AlertTriangle className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
-            <p className="text-xs text-amber-800">
+          <div className="flex items-start gap-2 bg-warning-subtle border border-warning-border rounded-xl p-3">
+            <AlertTriangle className="w-4 h-4 text-warning shrink-0 mt-0.5" />
+            <p className="text-xs text-warning">
               {itemsUnclassified.length} produto{itemsUnclassified.length !== 1 ? 's' : ''} sem itens/caixa cadastrado — não vão gerar total nem conciliação até serem classificados pelo admin.
             </p>
           </div>
@@ -663,11 +663,11 @@ export default function EstoqueConfirmacao() {
           <Loader className="w-6 h-6 animate-spin text-gold-text mx-auto" />
         </div>
       ) : countedItems.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-border shadow-card p-8 text-center">
+        <div className="bg-card rounded-2xl border border-border shadow-card p-8 text-center">
           <p className="text-muted-foreground">Nenhum item preenchido ainda. Volte para a tela de contagem.</p>
         </div>
       ) : (
-        <div className="bg-white rounded-2xl border border-border shadow-card overflow-hidden">
+        <div className="bg-card rounded-2xl border border-border shadow-card overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
@@ -690,7 +690,7 @@ export default function EstoqueConfirmacao() {
                     <td className="px-4 py-3 text-sm text-center">{item.closed_boxes}</td>
                     <td className="px-4 py-3 text-sm text-center">{item.loose_units}</td>
                     <td className="px-4 py-3 text-sm text-center font-bold">
-                      {item.total_units ?? <span className="text-amber-600 text-xs font-semibold">não classificado</span>}
+                      {item.total_units ?? <span className="text-warning text-xs font-semibold">não classificado</span>}
                     </td>
                   </tr>
                 ))}

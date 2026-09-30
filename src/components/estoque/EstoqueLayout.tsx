@@ -41,7 +41,7 @@ export default function EstoqueLayout({ children }: EstoqueLayoutProps) {
     // overflow-x-clip: nenhuma tela do módulo pode alargar a página no mobile —
     // conteúdo largo (tabelas) rola dentro do próprio wrapper overflow-x-auto.
     <div className="min-h-screen bg-surface-alt overflow-x-clip">
-      <header className="bg-gold border-b border-amber-600 px-3 sm:px-6 h-14 flex items-center sticky top-0 z-40">
+      <header className="bg-gold border-b border-brand-strong px-3 sm:px-6 h-14 flex items-center sticky top-0 z-40">
         <div className="w-full max-w-6xl mx-auto flex items-center justify-between gap-2 sm:gap-4">
           <div className="flex items-center gap-2.5 shrink-0">
             <Warehouse className="w-6 h-6 text-white" />

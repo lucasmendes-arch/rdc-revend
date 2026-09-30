@@ -105,13 +105,13 @@ export function ProfileCompletionModal({ userId, onClose, onComplete }: Props) {
       />
 
       {/* Modal */}
-      <div className="relative bg-white w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl shadow-2xl overflow-hidden animate-in slide-in-from-bottom-4 sm:zoom-in-95 duration-300">
+      <div className="relative bg-card w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl shadow-2xl overflow-hidden animate-in slide-in-from-bottom-4 sm:zoom-in-95 duration-300">
 
         {/* Header */}
         <div className="px-5 pt-5 pb-4 border-b border-border">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <span className="inline-block text-[10px] font-bold uppercase tracking-widest text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full mb-2">
+              <span className="inline-block text-[10px] font-bold uppercase tracking-widest text-brand-strong bg-brand-subtle px-2 py-0.5 rounded-full mb-2">
                 Perfil incompleto
               </span>
               <h2 className="text-[15px] font-semibold text-foreground tracking-tight leading-tight">
@@ -154,14 +154,14 @@ export function ProfileCompletionModal({ userId, onClose, onComplete }: Props) {
                     <button
                       type="button"
                       onClick={() => handleDocTypeToggle('CPF')}
-                      className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all ${docType === 'CPF' ? 'bg-amber-100 text-amber-700 shadow-sm border border-amber-300' : 'text-muted-foreground'}`}
+                      className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all ${docType === 'CPF' ? 'bg-card text-foreground shadow-sm border border-border' : 'text-muted-foreground'}`}
                     >
                       CPF (Pessoa Física)
                     </button>
                     <button
                       type="button"
                       onClick={() => handleDocTypeToggle('CNPJ')}
-                      className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all ${docType === 'CNPJ' ? 'bg-amber-100 text-amber-700 shadow-sm border border-amber-300' : 'text-muted-foreground'}`}
+                      className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all ${docType === 'CNPJ' ? 'bg-card text-foreground shadow-sm border border-border' : 'text-muted-foreground'}`}
                     >
                       CNPJ (Empresa)
                     </button>
@@ -173,7 +173,7 @@ export function ProfileCompletionModal({ userId, onClose, onComplete }: Props) {
                     onChange={handleChange}
                     maxLength={docType === 'CPF' ? 14 : 18}
                     placeholder={docType === 'CPF' ? '000.000.000-00' : '00.000.000/0000-00'}
-                    className="w-full px-4 py-2.5 rounded-xl border border-input bg-surface focus:outline-none focus:ring-2 focus:ring-amber-300 transition-all text-sm font-mono"
+                    className="w-full px-4 py-2.5 rounded-xl border border-input bg-surface focus:outline-none focus:ring-2 focus:ring-ring transition-all text-sm font-mono"
                   />
                 </div>
               )}
@@ -192,13 +192,13 @@ export function ProfileCompletionModal({ userId, onClose, onComplete }: Props) {
                       value={formData.address_city}
                       onChange={handleChange}
                       placeholder="Sua cidade"
-                      className="w-full px-3 py-2.5 rounded-xl border border-input bg-surface focus:outline-none focus:ring-2 focus:ring-amber-300 transition-all text-sm"
+                      className="w-full px-3 py-2.5 rounded-xl border border-input bg-surface focus:outline-none focus:ring-2 focus:ring-ring transition-all text-sm"
                     />
                     <select
                       name="address_state"
                       value={formData.address_state}
                       onChange={handleChange}
-                      className="w-full px-3 py-2.5 rounded-xl border border-input bg-surface focus:outline-none focus:ring-2 focus:ring-amber-300 transition-all text-sm"
+                      className="w-full px-3 py-2.5 rounded-xl border border-input bg-surface focus:outline-none focus:ring-2 focus:ring-ring transition-all text-sm"
                     >
                       <option value="">UF</option>
                       {BR_STATES.map(s => (

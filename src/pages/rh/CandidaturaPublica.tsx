@@ -208,7 +208,7 @@ export default function CandidaturaPublica() {
       {/* Altura fixa (com teto pra tela pequena): o "popup" mantém sempre o
           mesmo formato entre as etapas — só o miolo rola, cabeçalho e rodapé
           de navegação ficam parados no lugar. */}
-      <div className="w-full max-w-lg bg-white rounded-2xl border border-border shadow-card flex flex-col h-[640px] max-h-[85vh]">
+      <div className="w-full max-w-lg bg-card rounded-2xl border border-border shadow-card flex flex-col h-[640px] max-h-[85vh]">
         <div className="flex flex-col items-center text-center px-6 sm:px-8 pt-6 sm:pt-8 pb-4 shrink-0">
           <img src={logo} alt="Rei dos Cachos" className="h-10 w-auto mb-3" />
           <h1 className="text-xl font-bold text-foreground">Faça parte do nosso time!</h1>
@@ -235,9 +235,9 @@ export default function CandidaturaPublica() {
                 Recebemos suas informações e vamos analisar seu perfil. Se avançarmos, entraremos em contato
                 pelo WhatsApp informado.
               </p>
-              <div className="flex items-start gap-2 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2.5 mt-4 text-left">
-                <Info className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-                <p className="text-xs text-amber-800 leading-relaxed">
+              <div className="flex items-start gap-2 rounded-lg bg-info-subtle border border-info-border px-3 py-2.5 mt-4 text-left">
+                <Info className="w-4 h-4 text-info shrink-0 mt-0.5" />
+                <p className="text-xs text-info leading-relaxed">
                   Aguarde até 72h para que a equipe de recrutamento analise as candidaturas. Devido ao volume de
                   inscrições, <strong className="font-semibold">apenas os candidatos selecionados para entrevista serão contatados</strong>.
                 </p>
@@ -321,7 +321,7 @@ export default function CandidaturaPublica() {
       {viewingJob && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-foreground/40 backdrop-blur-sm" onClick={() => setViewingJobId(null)} />
-          <div className="relative bg-white rounded-2xl shadow-2xl border border-border p-6 w-full max-w-md max-h-[85vh] overflow-y-auto">
+          <div className="relative bg-card rounded-2xl shadow-2xl border border-border p-6 w-full max-w-md max-h-[85vh] overflow-y-auto">
             <div className="flex items-start justify-between mb-4">
               <div>
                 <h2 className="text-lg font-bold text-foreground">{viewingJob.role_title}</h2>

@@ -101,7 +101,7 @@ export default function PackageCards({ products, isGuest = false, isPartner = fa
               onClick={() => setDetailsPkgId(pkg.id)}
               className={`flex-shrink-0 w-[270px] sm:w-[300px] lg:w-[260px] xl:w-[280px] snap-start rounded-lg border p-4 sm:p-5 flex flex-col transition-all cursor-pointer ${pkg.highlight
                 ? 'border-ink-300 bg-muted shadow-md relative'
-                : 'border-border bg-white shadow-xs'
+                : 'border-border bg-card shadow-xs'
                 }`}
             >
               {pkg.highlight && (
@@ -161,7 +161,7 @@ export default function PackageCards({ products, isGuest = false, isPartner = fa
                       {displayImages.map((imgUrl, i) => (
                         <div
                           key={i}
-                          className="w-14 h-14 sm:w-10 sm:h-10 shrink-0 rounded-full border-2 border-white bg-white overflow-hidden shadow-sm relative hover:scale-110 transition-transform"
+                          className="w-14 h-14 sm:w-10 sm:h-10 shrink-0 rounded-full border-2 border-white bg-card overflow-hidden shadow-sm relative hover:scale-110 transition-transform"
                           style={{ zIndex: i }}
                         >
                           <img src={imgUrl} alt="Produto" loading="lazy" className="w-full h-full object-cover" />
@@ -276,7 +276,7 @@ export default function PackageCards({ products, isGuest = false, isPartner = fa
                       <X className="w-5 h-5" />
                     </button>
                   </div>
-                  <div className="p-4 sm:p-5 overflow-y-auto flex-1 bg-white">
+                  <div className="p-4 sm:p-5 overflow-y-auto flex-1 bg-card">
                     <table className="w-full text-sm text-left">
                       <thead className="text-[11px] uppercase tracking-wider text-muted-foreground border-b border-border bg-surface-alt font-bold">
                         <tr>

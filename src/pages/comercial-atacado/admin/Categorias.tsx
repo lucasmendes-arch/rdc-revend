@@ -78,7 +78,7 @@ export default function AdminCategorias() {
   return (
     <AdminLayout>
       {/* Page Header */}
-      <div className="bg-white border-b border-border sticky top-0 lg:top-0 z-30">
+      <div className="bg-card border-b border-border sticky top-0 lg:top-0 z-30">
         <div className="px-4 sm:px-6 py-4 flex items-center justify-between gap-4">
           <h1 className="text-xl sm:text-2xl font-bold text-foreground">Categorias</h1>
           <button
@@ -110,7 +110,7 @@ export default function AdminCategorias() {
             <p className="text-muted-foreground">Nenhuma categoria cadastrada</p>
           </div>
         ) : (
-          <div className="bg-white rounded-xl border border-border shadow-card overflow-hidden">
+          <div className="bg-card rounded-xl border border-border shadow-card overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
@@ -177,7 +177,7 @@ export default function AdminCategorias() {
       {creating && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-foreground/40 backdrop-blur-sm" onClick={() => setCreating(false)} />
-          <div className="relative bg-white rounded-2xl shadow-lg p-6 w-full max-w-md">
+          <div className="relative bg-card rounded-2xl shadow-lg p-6 w-full max-w-md">
             <h2 className="text-xl font-bold text-foreground mb-4">Nova Categoria</h2>
             <div className="space-y-4">
               <div>
@@ -186,7 +186,7 @@ export default function AdminCategorias() {
                   type="text"
                   value={createForm.name}
                   onChange={(e) => setCreateForm({ name: e.target.value, slug: generateSlug(e.target.value) })}
-                  className="w-full px-3 py-2 rounded-lg border border-border bg-white focus:outline-none focus:ring-2 focus:ring-gold"
+                  className="w-full px-3 py-2 rounded-lg border border-border bg-card focus:outline-none focus:ring-2 focus:ring-ring"
                   placeholder="Ex: Condicionador"
                 />
               </div>
@@ -196,7 +196,7 @@ export default function AdminCategorias() {
                   type="text"
                   value={createForm.slug}
                   onChange={(e) => setCreateForm({ ...createForm, slug: e.target.value })}
-                  className="w-full px-3 py-2 rounded-lg border border-border bg-white focus:outline-none focus:ring-2 focus:ring-gold font-mono text-sm"
+                  className="w-full px-3 py-2 rounded-lg border border-border bg-card focus:outline-none focus:ring-2 focus:ring-ring font-mono text-sm"
                   placeholder="gerado-automaticamente"
                 />
               </div>
@@ -211,7 +211,7 @@ export default function AdminCategorias() {
               </button>
               <button
                 onClick={() => setCreating(false)}
-                className="flex-1 px-4 py-2.5 rounded-lg border border-border bg-white text-foreground font-medium hover:bg-surface-alt"
+                className="flex-1 px-4 py-2.5 rounded-lg border border-border bg-card text-foreground font-medium hover:bg-surface-alt"
               >
                 Cancelar
               </button>
@@ -224,7 +224,7 @@ export default function AdminCategorias() {
       {editingId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-foreground/40 backdrop-blur-sm" onClick={() => setEditingId(null)} />
-          <div className="relative bg-white rounded-2xl shadow-lg p-6 w-full max-w-md">
+          <div className="relative bg-card rounded-2xl shadow-lg p-6 w-full max-w-md">
             <h2 className="text-xl font-bold text-foreground mb-4">Editar Categoria</h2>
             <div className="space-y-4">
               <div>
@@ -233,7 +233,7 @@ export default function AdminCategorias() {
                   type="text"
                   value={editForm.name}
                   onChange={(e) => setEditForm({ name: e.target.value, slug: generateSlug(e.target.value) })}
-                  className="w-full px-3 py-2 rounded-lg border border-border bg-white focus:outline-none focus:ring-2 focus:ring-gold"
+                  className="w-full px-3 py-2 rounded-lg border border-border bg-card focus:outline-none focus:ring-2 focus:ring-ring"
                 />
               </div>
               <div>
@@ -242,7 +242,7 @@ export default function AdminCategorias() {
                   type="text"
                   value={editForm.slug}
                   onChange={(e) => setEditForm({ ...editForm, slug: e.target.value })}
-                  className="w-full px-3 py-2 rounded-lg border border-border bg-white focus:outline-none focus:ring-2 focus:ring-gold font-mono text-sm"
+                  className="w-full px-3 py-2 rounded-lg border border-border bg-card focus:outline-none focus:ring-2 focus:ring-ring font-mono text-sm"
                 />
               </div>
             </div>
@@ -256,7 +256,7 @@ export default function AdminCategorias() {
               </button>
               <button
                 onClick={() => setEditingId(null)}
-                className="flex-1 px-4 py-2.5 rounded-lg border border-border bg-white text-foreground font-medium hover:bg-surface-alt"
+                className="flex-1 px-4 py-2.5 rounded-lg border border-border bg-card text-foreground font-medium hover:bg-surface-alt"
               >
                 Cancelar
               </button>
@@ -269,7 +269,7 @@ export default function AdminCategorias() {
       {deleteId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-foreground/40 backdrop-blur-sm" onClick={() => setDeleteId(null)} />
-          <div className="relative bg-white rounded-2xl shadow-lg p-6 w-full max-w-sm">
+          <div className="relative bg-card rounded-2xl shadow-lg p-6 w-full max-w-sm">
             <h2 className="text-lg font-bold text-foreground mb-2">Deletar Categoria?</h2>
             <p className="text-sm text-muted-foreground mb-6">Produtos desta categoria ficarao sem categoria. Esta acao nao pode ser desfeita.</p>
             <div className="flex gap-3">
@@ -282,7 +282,7 @@ export default function AdminCategorias() {
               </button>
               <button
                 onClick={() => setDeleteId(null)}
-                className="flex-1 px-4 py-2.5 rounded-lg border border-border bg-white text-foreground font-medium hover:bg-surface-alt"
+                className="flex-1 px-4 py-2.5 rounded-lg border border-border bg-card text-foreground font-medium hover:bg-surface-alt"
               >
                 Cancelar
               </button>

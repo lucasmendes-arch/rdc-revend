@@ -313,7 +313,7 @@ export default function GerarContratoModal({ processo, onClose }: GerarContratoM
               Tipo: <span className="font-medium">{CONTRACT_TYPE_LABELS[contractType]}</span>
             </p>
           ) : (
-            <p className="text-sm text-amber-600 dark:text-amber-400">
+            <p className="text-sm text-warning">
               Este vínculo (CLT) ainda não tem template de contrato configurado — geração automática indisponível.
             </p>
           )}
@@ -355,7 +355,7 @@ export default function GerarContratoModal({ processo, onClose }: GerarContratoM
             </>
           )}
           {contractType && missingFields.length > 0 && (
-            <p className="text-[11px] text-amber-600 dark:text-amber-400">
+            <p className="text-[11px] text-warning">
               Faltam dados obrigatórios pra este tipo de contrato: {missingFields.map((f) => CONTRACT_DATA_FIELD_LABELS[f]).join(', ')}.
             </p>
           )}

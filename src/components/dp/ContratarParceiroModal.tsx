@@ -239,7 +239,7 @@ export default function ContratarParceiroModal({ processo, onConfirmStage, onClo
           <div className="flex items-center justify-between gap-2 text-[11px]">
             <span className="text-muted-foreground">Retenção do salão / comissão de produtos</span>
             {missingPercentages ? (
-              <span className="text-amber-600 dark:text-amber-400 font-medium text-right">
+              <span className="text-warning font-medium text-right">
                 não definidos no cargo
               </span>
             ) : (
@@ -249,7 +249,7 @@ export default function ContratarParceiroModal({ processo, onConfirmStage, onClo
             )}
           </div>
           {missingPercentages && (
-            <p className="text-[10px] text-amber-600 dark:text-amber-400 -mt-2">
+            <p className="text-[10px] text-warning -mt-2">
               Preencha em /admin/rh/cargos (ou na vaga) antes de gerar — eles vão impressos no contrato.
             </p>
           )}
@@ -297,7 +297,7 @@ export default function ContratarParceiroModal({ processo, onConfirmStage, onClo
         </div>
 
         {missingFields.length > 0 && (
-          <p className="text-[11px] text-amber-600 dark:text-amber-400 mb-3">
+          <p className="text-[11px] text-warning mb-3">
             Faltam: {missingFields.map((f) => CONTRACT_DATA_FIELD_LABELS[f]).join(', ')}.
           </p>
         )}

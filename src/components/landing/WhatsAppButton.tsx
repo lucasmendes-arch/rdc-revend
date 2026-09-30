@@ -31,14 +31,14 @@ const WhatsAppButton = () => {
           : 'opacity-0 translate-y-3 scale-95 pointer-events-none'
           }`}
       >
-        <div className="bg-white px-4 py-3 rounded-2xl rounded-br-none shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-green-100 flex items-center gap-3 pointer-events-auto">
+        <div className="bg-card px-4 py-3 rounded-2xl rounded-br-none shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-green-100 flex items-center gap-3 pointer-events-auto">
           <div className="flex-1">
             <p className="text-sm font-bold text-foreground leading-tight mb-0.5">Precisa de ajuda?</p>
             <p className="text-xs text-muted-foreground leading-tight">Clique e tenha suporte imediatamente</p>
           </div>
         </div>
         {/* Little triangle pointing to the button */}
-        <div className="w-3 h-3 bg-white border-r border-b border-green-100 transform rotate-45 mr-4 -mt-1.5 shadow-[2px_2px_5px_rgb(0,0,0,0.05)]"></div>
+        <div className="w-3 h-3 bg-card border-r border-b border-green-100 transform rotate-45 mr-4 -mt-1.5 shadow-[2px_2px_5px_rgb(0,0,0,0.05)]"></div>
       </div>
 
       {/* FAB Button */}

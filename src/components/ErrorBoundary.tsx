@@ -52,7 +52,7 @@ export class ErrorBoundary extends Component<Props, State> {
     if (this.state.hasError) {
       return (
         <div className="min-h-screen flex items-center justify-center bg-surface-alt p-6">
-          <div className="bg-white rounded-2xl shadow-card p-8 max-w-md text-center">
+          <div className="bg-card rounded-2xl shadow-card p-8 max-w-md text-center">
             <h1 className="text-xl font-bold text-foreground mb-2">Algo deu errado</h1>
             <p className="text-sm text-muted-foreground mb-6">
               Ocorreu um erro inesperado. Tente recarregar a pagina.

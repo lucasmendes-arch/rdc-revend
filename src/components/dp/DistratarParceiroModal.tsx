@@ -261,7 +261,7 @@ export default function DistratarParceiroModal({ processo, onConfirmEncerrar, on
         </div>
 
         {missingFields.length > 0 && (
-          <p className="text-[11px] text-amber-600 dark:text-amber-400 mb-3">
+          <p className="text-[11px] text-warning mb-3">
             Faltam: {missingFields.map((f) => CONTRACT_DATA_FIELD_LABELS[f]).join(', ')}.
           </p>
         )}

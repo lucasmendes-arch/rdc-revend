@@ -511,11 +511,10 @@ export default function AdminFinanceiro() {
           <div className="grid grid-cols-2 lg:grid-cols-[1fr_0.7fr_0.7fr_1fr] gap-2 sm:gap-3 lg:gap-4">
 
             {/* 1 — Faturamento (hero) */}
-            <div className="col-span-2 lg:col-span-1 bg-card rounded-xl p-3 lg:p-4 border border-[hsl(var(--gold-border)/0.35)] shadow-[var(--shadow-card)] relative overflow-hidden flex flex-col justify-between">
-              <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[hsl(var(--gold-border))] to-transparent" />
+            <div className="col-span-2 lg:col-span-1 bg-card rounded-xl p-3 lg:p-4 border border-brand-border shadow-xs relative overflow-hidden flex flex-col justify-between">
               <div className="relative">
                 <div className="flex items-center gap-2 mb-1.5">
-                  <div className="w-6 h-6 rounded-md bg-[hsl(var(--gold-light))] flex items-center justify-center">
+                  <div className="w-6 h-6 rounded-md bg-brand-subtle flex items-center justify-center">
                     <DollarSign className="w-3.5 h-3.5 text-gold-text" />
                   </div>
                   <span className="text-[10px] lg:text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Faturamento</span>
@@ -565,7 +564,7 @@ export default function AdminFinanceiro() {
                   <div className="flex items-center gap-1">
                     <input
                       type="number" value={goalInput} onChange={e => setGoalInput(e.target.value)}
-                      className="w-20 px-1.5 py-0.5 text-xs border border-border rounded focus:ring-2 focus:ring-gold"
+                      className="w-20 px-1.5 py-0.5 text-xs border border-border rounded focus:ring-2 focus:ring-ring"
                     />
                     <button
                       onClick={async () => {
@@ -599,8 +598,8 @@ export default function AdminFinanceiro() {
                     stats.goalPct >= 100
                       ? 'bg-emerald-500'
                       : stats.goalPct >= 70
-                        ? 'bg-gold'
-                        : 'bg-amber-400'
+                        ? 'bg-primary'
+                        : 'bg-warning-solid'
                   }`}
                   style={{ width: `${stats.goalPct}%` }}
                 />
@@ -758,7 +757,7 @@ export default function AdminFinanceiro() {
                         <div className="text-right flex-shrink-0">
                           <p className="text-xs font-bold text-foreground">R$ {fmt(seller.revenue)}</p>
                           {seller.commission_pct > 0 ? (
-                            <span className="inline-block mt-1 px-2 py-0.5 rounded-md bg-amber-500/10 text-[11px] font-semibold text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-500/25">
+                            <span className="inline-block mt-1 px-2 py-0.5 rounded-md bg-surface-alt text-[11px] font-semibold text-foreground border border-border">
                               R$ {fmt(commission)} com.
                             </span>
                           ) : (
@@ -802,14 +801,14 @@ export default function AdminFinanceiro() {
                                 </span>
                               )}
                             </div>
-                            <span className={`text-xs font-black ${pct >= 100 ? 'text-emerald-600' : pct >= 70 ? 'text-foreground' : 'text-amber-600'}`}>
+                            <span className={`text-xs font-black ${pct >= 100 ? 'text-emerald-600' : pct >= 70 ? 'text-foreground' : 'text-warning'}`}>
                               {pct.toFixed(0)}%
                             </span>
                           </div>
                           <div className="w-full bg-surface-alt rounded-full h-1.5 overflow-hidden">
                             <div
                               className={`h-full rounded-full transition-all duration-500 ${
-                                pct >= 100 ? 'bg-emerald-500' : pct >= 70 ? 'bg-gold' : 'bg-amber-400'
+                                pct >= 100 ? 'bg-emerald-500' : pct >= 70 ? 'bg-primary' : 'bg-warning-solid'
                               }`}
                               style={{ width: `${pct}%` }}
                             />
@@ -902,7 +901,7 @@ export default function AdminFinanceiro() {
                     <div className="pt-2 mt-2 border-t border-border">
                       <div className="flex items-center justify-between">
                         <span className="text-[10px] font-semibold text-muted-foreground uppercase">Comissão total</span>
-                        <span className="text-xs font-bold text-amber-700">R$ {fmt(stats.periodCommission)}</span>
+                        <span className="text-xs font-bold text-foreground">R$ {fmt(stats.periodCommission)}</span>
                       </div>
                     </div>
                   )}

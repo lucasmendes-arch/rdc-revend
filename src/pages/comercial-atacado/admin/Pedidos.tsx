@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { useImageUpload } from '@/hooks/useImageUpload';
+import { ORDER_STATUS, ORDER_STATUS_SEQUENCE, toneClasses } from '@/lib/design/orderStatus';
 import { toast } from 'sonner';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { AdminHeader } from '@/components/admin/ui/AdminHeader';
@@ -49,24 +50,22 @@ interface Order {
 const originConfig: Record<string, { label: string; bg: string; text: string; ring: string }> = {
   whatsapp:   { label: 'WhatsApp',  bg: 'bg-green-500/10',  text: 'text-green-700 dark:text-green-400',  ring: 'ring-green-600/20' },
   site:       { label: 'Site',      bg: 'bg-blue-500/10',   text: 'text-blue-700 dark:text-blue-400',    ring: 'ring-blue-600/20' },
-  portal:     { label: 'Portal',    bg: 'bg-amber-500/10',  text: 'text-amber-700 dark:text-amber-400',  ring: 'ring-amber-600/20' },
+  portal:     { label: 'Portal',    bg: 'bg-brand-subtle',  text: 'text-brand-strong',  ring: 'ring-brand-border' },
   salao:      { label: 'Salão',     bg: 'bg-violet-500/10', text: 'text-violet-700 dark:text-violet-400',ring: 'ring-violet-600/20' },
   loja_fisica:{ label: 'Loja',      bg: 'bg-orange-500/10', text: 'text-orange-700 dark:text-orange-400',ring: 'ring-orange-600/20' },
   manual:     { label: 'Manual',    bg: 'bg-muted',         text: 'text-muted-foreground',               ring: 'ring-muted-foreground/20' },
   outro:      { label: 'Outro',     bg: 'bg-muted',         text: 'text-muted-foreground',               ring: 'ring-muted-foreground/20' },
 };
 
-const statusConfig: Record<string, { label: string; bg: string; text: string; ring: string; indicator: string }> = {
-  recebido: { label: 'Recebido', bg: 'bg-blue-500/10', text: 'text-blue-600 dark:text-blue-400', ring: 'ring-blue-600/20', indicator: 'bg-blue-400' },
-  aguardando_pagamento: { label: 'Aguard. Pgto', bg: 'bg-amber-500/10', text: 'text-amber-600 dark:text-amber-400', ring: 'ring-amber-600/20', indicator: 'bg-amber-400' },
-  pago: { label: 'Pago', bg: 'bg-emerald-500/10', text: 'text-emerald-600 dark:text-emerald-400', ring: 'ring-emerald-600/20', indicator: 'bg-emerald-400' },
-  separacao: { label: 'Em Separação', bg: 'bg-purple-500/10', text: 'text-purple-600 dark:text-purple-400', ring: 'ring-purple-600/20', indicator: 'bg-purple-400' },
-  enviado: { label: 'Enviado', bg: 'bg-sky-500/10', text: 'text-sky-600 dark:text-sky-400', ring: 'ring-sky-600/20', indicator: 'bg-sky-400' },
-  entregue: { label: 'Entregue', bg: 'bg-teal-500/10', text: 'text-teal-600 dark:text-teal-400', ring: 'ring-teal-600/20', indicator: 'bg-teal-400' },
-  concluido: { label: 'Concluído', bg: 'bg-muted', text: 'text-muted-foreground', ring: 'ring-muted-foreground/20', indicator: 'bg-muted-foreground' },
-  cancelado: { label: 'Cancelado', bg: 'bg-red-500/10', text: 'text-red-600 dark:text-red-400', ring: 'ring-red-600/20', indicator: 'bg-red-400' },
-  expirado: { label: 'Expirado', bg: 'bg-muted', text: 'text-muted-foreground', ring: 'ring-muted-foreground/15', indicator: 'bg-muted-foreground/50' },
-};
+// Cor e rótulo vêm de orderStatus.ts — o mesmo status tem a mesma cor em qualquer tela.
+const statusConfig: Record<string, { label: string; bg: string; text: string; ring: string; indicator: string }> =
+  Object.fromEntries(
+    ORDER_STATUS_SEQUENCE.map((s) => {
+      const meta = ORDER_STATUS[s];
+      const t = toneClasses(meta.tone);
+      return [s, { label: meta.label, bg: t.bg, text: t.text, ring: t.ring, indicator: t.dot }];
+    }),
+  );
 
 const statusOptions = ['recebido', 'aguardando_pagamento', 'pago', 'separacao', 'enviado', 'entregue', 'concluido', 'cancelado', 'expirado'] as const;
 
@@ -453,7 +452,7 @@ const AdminPedidos = () => {
                               </button>
                               <button
                                 onClick={(e) => { e.stopPropagation(); setOrderToCoupon(order); }}
-                                className="text-muted-foreground/40 hover:text-amber-500 hover:bg-amber-500/10 p-1.5 rounded-md transition-colors shrink-0"
+                                className="text-muted-foreground/40 hover:text-foreground hover:bg-surface-alt p-1.5 rounded-md transition-colors shrink-0"
                                 title="Emitir cupom não fiscal"
                               >
                                 <Receipt className="w-4 h-4" />
@@ -500,7 +499,7 @@ const AdminPedidos = () => {
                               </span>
                             )}
                             {order.payment_method === 'pay_on_delivery' && (
-                              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-bold ring-1 ring-inset ring-amber-600/20 bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-bold ring-1 ring-inset ring-warning-border bg-warning-subtle text-warning">
                                 <Truck className="w-3 h-3" />
                                 PAGAR NA ENTREGA
                               </span>

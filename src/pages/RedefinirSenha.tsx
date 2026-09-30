@@ -61,7 +61,7 @@ const RedefinirSenha = () => {
   return (
     <div className="min-h-screen bg-surface-alt flex flex-col">
       {/* Header */}
-      <header className="bg-white border-b border-border px-4 sm:px-6 h-16 flex items-center">
+      <header className="bg-card border-b border-border px-4 sm:px-6 h-16 flex items-center">
         <div className="container mx-auto flex items-center justify-between">
           <div className="select-none pointer-events-none">
             <img src={logo} alt="Rei dos Cachos" className="h-12 w-auto" />
@@ -134,7 +134,7 @@ const RedefinirSenha = () => {
                         value={password}
                         onChange={(e) => { setPassword(e.target.value); setError(""); }}
                         placeholder="Mínimo 6 caracteres"
-                        className="w-full pl-10 pr-4 py-3 rounded-lg border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-gold focus:border-gold-border transition-all"
+                        className="w-full pl-10 pr-4 py-3 rounded-lg border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-ink-300 transition-all"
                       />
                     </div>
                   </div>
@@ -151,7 +151,7 @@ const RedefinirSenha = () => {
                         value={confirmPassword}
                         onChange={(e) => { setConfirmPassword(e.target.value); setError(""); }}
                         placeholder="Repita a nova senha"
-                        className="w-full pl-10 pr-4 py-3 rounded-lg border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-gold focus:border-gold-border transition-all"
+                        className="w-full pl-10 pr-4 py-3 rounded-lg border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-ink-300 transition-all"
                       />
                     </div>
                   </div>

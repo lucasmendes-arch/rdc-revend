@@ -320,7 +320,7 @@ export default function AdminVendedores() {
                           title={seller.active ? 'Desativar' : 'Ativar'}
                         >
                           <span
-                            className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${
+                            className={`inline-block h-3.5 w-3.5 transform rounded-full bg-card shadow transition-transform ${
                               seller.active ? 'translate-x-4.5' : 'translate-x-0.5'
                             }`}
                           />
@@ -328,15 +328,15 @@ export default function AdminVendedores() {
                       </td>
                       <td className="px-4 py-3 text-center">
                         {seller.is_default ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-xs font-semibold dark:bg-amber-900/30 dark:text-amber-400">
-                            <Star className="w-3 h-3 fill-amber-500 text-amber-500 dark:fill-amber-400 dark:text-amber-400" />
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-brand-subtle text-brand-strong text-xs font-semibold">
+                            <Star className="w-3 h-3 fill-brand-solid text-brand-solid" />
                             Padrão
                           </span>
                         ) : (
                           <button
                             onClick={() => setDefaultMutation.mutate(seller.id)}
                             disabled={setDefaultMutation.isPending}
-                            className="text-xs text-muted-foreground hover:text-amber-600 hover:underline transition-colors disabled:opacity-50"
+                            className="text-xs text-muted-foreground hover:text-foreground hover:underline transition-colors disabled:opacity-50"
                           >
                             Tornar padrão
                           </button>
@@ -518,17 +518,17 @@ export default function AdminVendedores() {
                     type="checkbox"
                     checked={form.is_default}
                     onChange={(e) => setForm({ ...form, is_default: e.target.checked })}
-                    className="w-4 h-4 rounded border-border accent-amber-500"
+                    className="w-4 h-4 rounded border-border accent-ink-900"
                   />
                   <span className="text-sm font-medium text-foreground flex items-center gap-1">
-                    <Star className="w-3.5 h-3.5 text-amber-500" />
+                    <Star className="w-3.5 h-3.5 text-brand-solid" />
                     Vendedor padrão
                   </span>
                 </label>
               </div>
 
               {form.is_default && (
-                <p className="text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 rounded-lg px-3 py-2">
+                <p className="text-xs text-muted-foreground bg-surface rounded-lg px-3 py-2">
                   Definir como padrão removerá o padrão do vendedor atual automaticamente.
                 </p>
               )}

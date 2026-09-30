@@ -606,7 +606,7 @@ export default function AdminTabelasPreco() {
       {currentList && (
         <>
           <div
-            className="fixed inset-0 bg-zinc-900/40 z-40 backdrop-blur-sm transition-opacity"
+            className="fixed inset-0 bg-ink-950/45 z-40 backdrop-blur-sm transition-opacity"
             onClick={closePanel}
           />
           <div className="fixed right-0 top-0 bottom-0 w-full max-w-lg bg-card z-50 shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
@@ -727,8 +727,8 @@ export default function AdminTabelasPreco() {
                       <p className="text-[11px] text-muted-foreground pl-5">{currentList.description}</p>
                     )}
                     {!currentList.is_active && (
-                      <div className="mt-2 flex items-start gap-2 bg-amber-50 dark:bg-amber-900/20 ring-1 ring-inset ring-amber-200 dark:ring-amber-700/30 rounded-lg px-3 py-2">
-                        <p className="text-[11px] text-amber-700 dark:text-amber-400">
+                      <div className="mt-2 flex items-start gap-2 bg-surface ring-1 ring-inset ring-border rounded-lg px-3 py-2">
+                        <p className="text-[11px] text-muted-foreground">
                           Lista inativa — parceiros vinculados recebem preço padrão do catálogo.
                         </p>
                       </div>
@@ -1001,7 +1001,7 @@ export default function AdminTabelasPreco() {
                           <span
                             className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md ring-1 ring-inset flex-shrink-0 ${
                               partner.customer_segment === 'network_partner'
-                                ? 'bg-amber-100 text-amber-700 ring-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:ring-amber-700/40'
+                                ? 'bg-brand-subtle text-brand-strong ring-brand-border'
                                 : 'bg-teal-100 text-teal-700 ring-teal-200 dark:bg-teal-900/30 dark:text-teal-400 dark:ring-teal-700/40'
                             }`}
                           >
@@ -1038,7 +1038,7 @@ export default function AdminTabelasPreco() {
                   ) : (
                     <button
                       onClick={() => setArchiveConfirmId(currentList.id)}
-                      className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-amber-200 bg-amber-50 text-amber-700 text-sm font-semibold hover:bg-amber-100 dark:border-amber-700/40 dark:bg-amber-900/20 dark:text-amber-400 dark:hover:bg-amber-900/30 transition-colors"
+                      className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-border bg-card text-foreground text-sm font-semibold hover:bg-surface-alt transition-colors"
                     >
                       <Archive className="w-4 h-4" />
                       Arquivar tabela
@@ -1158,14 +1158,14 @@ export default function AdminTabelasPreco() {
           <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
             <div className="absolute inset-0 bg-foreground/40 backdrop-blur-sm" onClick={() => setArchiveConfirmId(null)} />
             <div className="relative bg-card rounded-2xl shadow-2xl border border-border p-6 w-full max-w-sm">
-              <div className="w-12 h-12 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center mx-auto mb-4">
-                <Archive className="w-6 h-6 text-amber-600 dark:text-amber-400" />
+              <div className="w-12 h-12 rounded-full bg-warning-subtle flex items-center justify-center mx-auto mb-4">
+                <Archive className="w-6 h-6 text-warning" />
               </div>
               <h2 className="text-lg font-bold text-foreground mb-2 text-center">Arquivar tabela?</h2>
               {partners.length > 0 ? (
-                <div className="flex items-start gap-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/40 rounded-xl px-3 py-2.5 mb-5">
-                  <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
-                  <p className="text-sm text-amber-800 dark:text-amber-300">
+                <div className="flex items-start gap-2 bg-warning-subtle border border-warning-border rounded-xl px-3 py-2.5 mb-5">
+                  <AlertTriangle className="w-4 h-4 text-warning shrink-0 mt-0.5" />
+                  <p className="text-sm text-warning">
                     <strong>{partners.length} parceiro{partners.length > 1 ? 's' : ''}</strong> perderão os preços especiais e passarão a ver o preço de catálogo.
                   </p>
                 </div>
@@ -1178,7 +1178,7 @@ export default function AdminTabelasPreco() {
                 <button
                   onClick={() => archiveListMutation.mutate(archiveConfirmId)}
                   disabled={archiveListMutation.isPending}
-                  className="flex-1 px-4 py-2.5 rounded-lg bg-amber-600 text-white font-medium hover:bg-amber-700 disabled:opacity-70 transition-colors"
+                  className="flex-1 px-4 py-2.5 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 disabled:opacity-70 transition-colors"
                 >
                   {archiveListMutation.isPending ? 'Arquivando...' : 'Arquivar'}
                 </button>

@@ -150,7 +150,7 @@ const Marketing = () => {
         <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-              <Megaphone className="w-6 h-6 text-amber-500" />
+              <Megaphone className="w-6 h-6 text-muted-foreground" />
               Marketing e Promoções
             </h1>
             <p className="text-muted-foreground">Gerencie cupons e regras de negócio da loja.</p>
@@ -166,9 +166,9 @@ const Marketing = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* SESSÃO A: Configurações da Loja */}
           <section className="lg:col-span-1 space-y-6">
-            <div className="bg-white rounded-2xl border border-border shadow-sm p-6">
+            <div className="bg-card rounded-2xl border border-border shadow-sm p-6">
               <h2 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
-                <DollarSign className="w-5 h-5 text-amber-500" />
+                <DollarSign className="w-5 h-5 text-muted-foreground" />
                 Configurações de Pedido
               </h2>
               
@@ -184,7 +184,7 @@ const Marketing = () => {
                       step="0.01"
                       value={minCartValue}
                       onChange={(e) => setMinCartValue(e.target.value)}
-                      className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-input focus:ring-2 focus:ring-amber-400 focus:outline-none bg-surface-alt/50 font-bold text-lg"
+                      className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-input focus:ring-2 focus:ring-ring focus:outline-none bg-surface-alt/50 font-bold text-lg"
                       placeholder="500.00"
                     />
                   </div>
@@ -204,9 +204,9 @@ const Marketing = () => {
               </div>
             </div>
 
-            <div className="bg-amber-50 rounded-2xl border border-amber-100 p-6">
-              <h3 className="text-sm font-bold text-amber-800 mb-2">Dica de Marketing</h3>
-              <p className="text-xs text-amber-700 leading-relaxed">
+            <div className="bg-surface rounded-2xl border border-border p-6">
+              <h3 className="text-sm font-bold text-foreground mb-2">Dica de Marketing</h3>
+              <p className="text-xs text-muted-foreground leading-relaxed">
                 Valoradores mínimos de pedido são excelentes para garantir a rentabilidade em operações de atacado. Experimente baixar o valor mínimo durante feriados para aumentar o volume de pedidos.
               </p>
             </div>
@@ -215,9 +215,9 @@ const Marketing = () => {
           {/* SESSÃO B: Gestão de Cupons */}
           <section className="lg:col-span-2 space-y-6">
             {/* Create Coupon Form */}
-            <div className="bg-white rounded-2xl border border-border shadow-sm p-6">
+            <div className="bg-card rounded-2xl border border-border shadow-sm p-6">
               <h2 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
-                <Plus className="w-5 h-5 text-amber-500" />
+                <Plus className="w-5 h-5 text-muted-foreground" />
                 Criar Novo Cupom
               </h2>
 
@@ -231,7 +231,7 @@ const Marketing = () => {
                       value={newCoupon.code}
                       onChange={(e) => setNewCoupon(prev => ({ ...prev, code: e.target.value.toUpperCase() }))}
                       placeholder="EX: BEMVINDO10"
-                      className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-input text-sm focus:ring-2 focus:ring-amber-400 focus:outline-none font-mono uppercase"
+                      className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-input text-sm focus:ring-2 focus:ring-ring focus:outline-none font-mono uppercase"
                     />
                   </div>
                 </div>
@@ -241,7 +241,7 @@ const Marketing = () => {
                   <select
                     value={newCoupon.discount_type}
                     onChange={(e) => setNewCoupon(prev => ({ ...prev, discount_type: e.target.value as 'fixed' | 'percent' | 'free_shipping' | 'shipping_percent' }))}
-                    className="w-full px-3 py-2.5 rounded-xl border border-input text-sm focus:ring-2 focus:ring-amber-400 focus:outline-none bg-white"
+                    className="w-full px-3 py-2.5 rounded-xl border border-input text-sm focus:ring-2 focus:ring-ring focus:outline-none bg-card"
                   >
                     <option value="percent">Porcentagem (%)</option>
                     <option value="fixed">Valor Fixo (R$)</option>
@@ -264,7 +264,7 @@ const Marketing = () => {
                       disabled={newCoupon.discount_type === 'free_shipping'}
                       onChange={(e) => setNewCoupon(prev => ({ ...prev, discount_value: e.target.value }))}
                       placeholder={newCoupon.discount_type === 'shipping_percent' ? '50' : '10'}
-                      className={`w-full ${newCoupon.discount_type === 'fixed' ? 'pl-9' : 'pr-10'} py-2.5 rounded-xl border border-input text-sm focus:ring-2 focus:ring-amber-400 focus:outline-none disabled:bg-surface-alt disabled:cursor-not-allowed`}
+                      className={`w-full ${newCoupon.discount_type === 'fixed' ? 'pl-9' : 'pr-10'} py-2.5 rounded-xl border border-input text-sm focus:ring-2 focus:ring-ring focus:outline-none disabled:bg-surface-alt disabled:cursor-not-allowed`}
                     />
                   </div>
                 </div>
@@ -289,7 +289,7 @@ const Marketing = () => {
                       value={newCoupon.usage_limit}
                       onChange={(e) => setNewCoupon(prev => ({ ...prev, usage_limit: e.target.value }))}
                       placeholder="Ilimitado"
-                      className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-input text-sm focus:ring-2 focus:ring-amber-400 focus:outline-none"
+                      className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-input text-sm focus:ring-2 focus:ring-ring focus:outline-none"
                     />
                   </div>
                 </div>
@@ -298,7 +298,7 @@ const Marketing = () => {
                   <button
                     type="submit"
                     disabled={creatingCoupon}
-                    className="w-full py-2.5 rounded-xl bg-amber-500 text-white font-bold hover:bg-amber-600 transition-all shadow-sm flex items-center justify-center gap-2 disabled:opacity-50"
+                    className="w-full py-2.5 rounded-xl bg-primary text-primary-foreground font-bold hover:bg-primary/90 transition-all shadow-sm flex items-center justify-center gap-2 disabled:opacity-50"
                   >
                     {creatingCoupon ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
                     CRIAR CUPOM
@@ -308,10 +308,10 @@ const Marketing = () => {
             </div>
 
             {/* Coupons List */}
-            <div className="bg-white rounded-2xl border border-border shadow-sm overflow-hidden">
+            <div className="bg-card rounded-2xl border border-border shadow-sm overflow-hidden">
               <div className="p-6 border-b border-border">
                 <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
-                  <Tag className="w-5 h-5 text-amber-500" />
+                  <Tag className="w-5 h-5 text-muted-foreground" />
                   Cupons Ativos
                 </h2>
               </div>
@@ -338,7 +338,7 @@ const Marketing = () => {
                       coupons.map((coupon) => (
                         <tr key={coupon.id} className={`hover:bg-surface/30 transition-colors ${!coupon.is_active ? 'opacity-50 grayscale-[0.5]' : ''}`}>
                           <td className="px-6 py-4">
-                            <span className="px-2 py-1 rounded bg-amber-100 text-amber-700 font-mono font-bold text-xs uppercase border border-amber-200">
+                            <span className="px-2 py-1 rounded bg-surface-alt text-foreground font-mono font-bold text-xs uppercase border border-border">
                               {coupon.code}
                             </span>
                           </td>

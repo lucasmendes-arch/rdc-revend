@@ -192,13 +192,13 @@ export default function EstoqueHistorico() {
 
   return (
     <EstoqueLayout>
-      <div className="bg-white rounded-2xl border border-border shadow-card p-5 space-y-3">
+      <div className="bg-card rounded-2xl border border-border shadow-card p-5 space-y-3">
         <h1 className="text-lg font-bold text-foreground">Histórico de contagens</h1>
         <div className="flex flex-wrap gap-2">
           <select
             value={storeFilter}
             onChange={(e) => setStoreFilter(e.target.value)}
-            className="h-9 rounded-lg border border-input text-sm bg-white px-2 focus:outline-none focus:ring-2 focus:ring-amber-400"
+            className="h-9 rounded-lg border border-input text-sm bg-card px-2 focus:outline-none focus:ring-2 focus:ring-ring"
           >
             <option value="">Todas as lojas</option>
             {stores.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
@@ -206,7 +206,7 @@ export default function EstoqueHistorico() {
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="h-9 rounded-lg border border-input text-sm bg-white px-2 focus:outline-none focus:ring-2 focus:ring-amber-400"
+            className="h-9 rounded-lg border border-input text-sm bg-card px-2 focus:outline-none focus:ring-2 focus:ring-ring"
           >
             <option value="">Todos os status</option>
             <option value="draft">Rascunho</option>
@@ -215,7 +215,7 @@ export default function EstoqueHistorico() {
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl border border-border shadow-card overflow-hidden">
+      <div className="bg-card rounded-2xl border border-border shadow-card overflow-hidden">
         {countsLoading ? (
           <div className="text-center py-10"><Loader className="w-6 h-6 animate-spin text-gold-text mx-auto" /></div>
         ) : filtered.length === 0 ? (
@@ -254,7 +254,7 @@ export default function EstoqueHistorico() {
                       </td>
                       <td className="px-4 py-2.5 text-center">
                         <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-semibold ${
-                          count.status === 'confirmed' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
+                          count.status === 'confirmed' ? 'bg-success-subtle text-success' : 'bg-surface-alt text-muted-foreground'
                         }`}>
                           {count.status === 'confirmed' ? 'Confirmada' : 'Rascunho'}
                         </span>
@@ -268,7 +268,7 @@ export default function EstoqueHistorico() {
                             <button
                               onClick={(e) => { e.stopPropagation(); handleReopen(count) }}
                               disabled={reopenCount.isPending}
-                              className="text-muted-foreground hover:text-amber-600 disabled:opacity-40 transition-colors"
+                              className="text-muted-foreground hover:text-foreground disabled:opacity-40 transition-colors"
                               title="Reabrir contagem"
                             >
                               <RotateCcw className="w-4 h-4" />

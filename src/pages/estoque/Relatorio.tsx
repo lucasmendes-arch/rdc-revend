@@ -162,9 +162,9 @@ export default function EstoqueRelatorio() {
 
   return (
     <EstoqueLayout>
-      <div className="bg-white rounded-2xl border border-border shadow-card p-5 space-y-3">
+      <div className="bg-card rounded-2xl border border-border shadow-card p-5 space-y-3">
         <div className="flex items-center gap-2">
-          <BarChart3 className="w-5 h-5 text-amber-600" />
+          <BarChart3 className="w-5 h-5 text-muted-foreground" />
           <h1 className="text-lg font-bold text-foreground">Relatório de estoque por loja</h1>
         </div>
         <p className="text-xs text-muted-foreground">
@@ -174,7 +174,7 @@ export default function EstoqueRelatorio() {
           <select
             value={selectedStoreId}
             onChange={(e) => setSelectedStoreId(e.target.value)}
-            className="h-9 rounded-lg border border-input text-sm bg-white px-2 focus:outline-none focus:ring-2 focus:ring-amber-400"
+            className="h-9 rounded-lg border border-input text-sm bg-card px-2 focus:outline-none focus:ring-2 focus:ring-ring"
           >
             <option value="">Todas as lojas (consolidado)</option>
             {stores.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
@@ -183,7 +183,7 @@ export default function EstoqueRelatorio() {
             type="button"
             onClick={handleExportCsv}
             disabled={rows.length === 0}
-            className="flex items-center gap-1.5 px-3 h-9 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="flex items-center gap-1.5 px-3 h-9 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             title={rows.length === 0 ? 'Nada pra exportar ainda' : 'Baixar planilha (.csv)'}
           >
             <Download className="w-3.5 h-3.5" />
@@ -198,11 +198,11 @@ export default function EstoqueRelatorio() {
           <p className="text-muted-foreground">Carregando…</p>
         </div>
       ) : error ? (
-        <div className="bg-white rounded-2xl border border-border shadow-card p-6 text-center text-sm text-red-600">
+        <div className="bg-card rounded-2xl border border-border shadow-card p-6 text-center text-sm text-red-600">
           Erro ao carregar relatório: {error instanceof Error ? error.message : 'desconhecido'}
         </div>
       ) : rows.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-border shadow-card p-8 text-center">
+        <div className="bg-card rounded-2xl border border-border shadow-card p-8 text-center">
           <p className="text-muted-foreground">Nenhuma contagem confirmada ainda para {selectedStoreId ? 'esta loja' : 'nenhuma loja'}.</p>
         </div>
       ) : (
@@ -237,7 +237,7 @@ export default function EstoqueRelatorio() {
                     </span>
                   </div>
 
-                  <div className="bg-white rounded-2xl border border-border shadow-card overflow-hidden">
+                  <div className="bg-card rounded-2xl border border-border shadow-card overflow-hidden">
                     <div className="overflow-x-auto">
                       <table className="w-full">
                         <thead>

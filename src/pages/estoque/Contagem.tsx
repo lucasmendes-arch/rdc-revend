@@ -117,7 +117,7 @@ export default function EstoqueContagem() {
 
   return (
     <EstoqueLayout>
-      <div className="bg-white rounded-2xl border border-border shadow-card p-5 space-y-1">
+      <div className="bg-card rounded-2xl border border-border shadow-card p-5 space-y-1">
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div>
             <h1 className="text-lg font-bold text-foreground">Contagem de estoque</h1>
@@ -134,7 +134,7 @@ export default function EstoqueContagem() {
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl border border-border shadow-card overflow-hidden">
+      <div className="bg-card rounded-2xl border border-border shadow-card overflow-hidden">
         <div className="px-5 py-3 border-b border-border">
           <h2 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground">Histórico</h2>
         </div>
@@ -153,7 +153,7 @@ export default function EstoqueContagem() {
               >
                 <div className="flex items-center gap-3 min-w-0">
                   <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
-                    count.status === 'confirmed' ? 'bg-green-100 text-green-600' : 'bg-amber-100 text-amber-600'
+                    count.status === 'confirmed' ? 'bg-success-subtle text-success' : 'bg-surface-alt text-muted-foreground'
                   }`}>
                     {count.status === 'confirmed' ? <PackageCheck className="w-4 h-4" /> : <ClipboardList className="w-4 h-4" />}
                   </div>
@@ -178,9 +178,9 @@ export default function EstoqueContagem() {
           className="fixed inset-0 z-50 bg-black/40 flex items-end sm:items-center justify-center p-4"
           onClick={() => !createDraft.isPending && setShowNamePrompt(false)}
         >
-          <div className="bg-white rounded-2xl w-full max-w-sm p-5 space-y-4" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-card rounded-2xl w-full max-w-sm p-5 space-y-4" onClick={(e) => e.stopPropagation()}>
             <div>
-              <p className="text-[11px] font-bold text-amber-700 uppercase tracking-wide">Nova contagem</p>
+              <p className="eyebrow">Nova contagem</p>
               <h2 className="text-base font-bold text-foreground">Quem está contando?</h2>
               <p className="text-xs text-muted-foreground mt-1">Esse nome fica registrado na contagem, no campo Parceiro.</p>
             </div>
@@ -191,7 +191,7 @@ export default function EstoqueContagem() {
               onChange={(e) => setEmployeeName(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter') handleConfirmName() }}
               placeholder="Seu nome"
-              className="w-full h-11 rounded-xl border border-input text-sm bg-white px-3 focus:outline-none focus:ring-2 focus:ring-amber-400"
+              className="w-full h-11 rounded-xl border border-input text-sm bg-card px-3 focus:outline-none focus:ring-2 focus:ring-ring"
             />
             <div className="flex gap-2">
               <button

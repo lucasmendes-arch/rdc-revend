@@ -304,7 +304,7 @@ export default function RhCargos() {
                     type="checkbox"
                     checked={form.requires_experience}
                     onChange={(e) => setForm({ ...form, requires_experience: e.target.checked })}
-                    className="w-4 h-4 rounded border-border accent-amber-500 mt-0.5"
+                    className="w-4 h-4 rounded border-border accent-ink-900 mt-0.5"
                   />
                   <span className="text-sm text-foreground">
                     Exige experiência prévia

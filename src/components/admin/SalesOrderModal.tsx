@@ -107,7 +107,7 @@ const SalesOrderModal = ({ data, onClose }: Props) => {
         <div className="flex-1 overflow-y-auto p-4">
           <div
             ref={docRef}
-            className="bg-white text-gray-900 rounded-xl overflow-hidden"
+            className="bg-card text-foreground rounded-xl overflow-hidden"
             style={{ fontFamily: 'system-ui, sans-serif', minWidth: 320 }}
           >
             {/* Dark header */}
@@ -127,34 +127,34 @@ const SalesOrderModal = ({ data, onClose }: Props) => {
             <div className="h-1 bg-gradient-to-r from-[#c9a84c] via-[#f0d080] to-[#c9a84c]" />
 
             {/* Date + client */}
-            <div className="px-5 py-4 border-b border-dashed border-gray-100 flex items-start justify-between gap-3">
+            <div className="px-5 py-4 border-b border-dashed border-border flex items-start justify-between gap-3">
               <div>
                 {data.customer_name && (
                   <>
-                    <p className="text-[9px] text-gray-400 uppercase tracking-wide mb-0.5">Para</p>
-                    <p className="text-[13px] font-bold text-gray-900 leading-tight">{data.customer_name}</p>
+                    <p className="text-[9px] text-ink-400 uppercase tracking-wide mb-0.5">Para</p>
+                    <p className="text-[13px] font-bold text-foreground leading-tight">{data.customer_name}</p>
                     {data.customer_phone && (
-                      <p className="text-[10px] text-gray-400 mt-0.5">{data.customer_phone}</p>
+                      <p className="text-[10px] text-ink-400 mt-0.5">{data.customer_phone}</p>
                     )}
                   </>
                 )}
               </div>
               <div className="text-right shrink-0">
-                <p className="text-[9px] text-gray-400 uppercase tracking-wide mb-0.5">Data</p>
-                <p className="text-[11px] font-semibold text-gray-700">{today}</p>
+                <p className="text-[9px] text-ink-400 uppercase tracking-wide mb-0.5">Data</p>
+                <p className="text-[11px] font-semibold text-ink-700">{today}</p>
                 {data.order_number && (
-                  <p className="text-[9px] text-gray-400 mt-0.5">#{data.order_number}</p>
+                  <p className="text-[9px] text-ink-400 mt-0.5">#{data.order_number}</p>
                 )}
               </div>
             </div>
 
             {/* Items */}
-            <div className="px-5 py-4 border-b border-dashed border-gray-100">
-              <p className="text-[9px] text-gray-400 uppercase tracking-wide mb-3">Produtos</p>
+            <div className="px-5 py-4 border-b border-dashed border-border">
+              <p className="text-[9px] text-ink-400 uppercase tracking-wide mb-3">Produtos</p>
               <div className="space-y-3">
                 {data.items.map((item, idx) => (
                   <div key={idx} className="flex items-center gap-3">
-                    <div className="w-14 h-14 rounded-xl overflow-hidden shrink-0 bg-gray-50 border border-gray-100">
+                    <div className="w-14 h-14 rounded-xl overflow-hidden shrink-0 bg-surface border border-border">
                       {item.main_image ? (
                         <img
                           src={item.main_image}
@@ -164,19 +164,19 @@ const SalesOrderModal = ({ data, onClose }: Props) => {
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center">
-                          <Package className="w-5 h-5 text-gray-300" />
+                          <Package className="w-5 h-5 text-ink-300" />
                         </div>
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-[12px] font-semibold text-gray-800 leading-snug">
+                      <p className="text-[12px] font-semibold text-foreground leading-snug">
                         {item.product_name}
                       </p>
-                      <p className="text-[10px] text-gray-400 mt-0.5">
+                      <p className="text-[10px] text-ink-400 mt-0.5">
                         {item.quantity}x · R$ {item.unit_price.toFixed(2)}
                       </p>
                     </div>
-                    <p className="text-[13px] font-bold text-gray-900 whitespace-nowrap shrink-0">
+                    <p className="text-[13px] font-bold text-foreground whitespace-nowrap shrink-0">
                       R$ {item.line_total.toFixed(2)}
                     </p>
                   </div>
@@ -187,26 +187,26 @@ const SalesOrderModal = ({ data, onClose }: Props) => {
             {/* Totals */}
             <div className="px-5 py-4 space-y-1.5">
               <div className="flex items-center justify-between text-[12px]">
-                <span className="text-gray-500">Subtotal</span>
-                <span className="font-medium text-gray-700">R$ {data.subtotal.toFixed(2)}</span>
+                <span className="text-muted-foreground">Subtotal</span>
+                <span className="font-medium text-ink-700">R$ {data.subtotal.toFixed(2)}</span>
               </div>
               {discount > 0 && (
                 <div className="flex items-center justify-between text-[12px]">
-                  <span className="text-gray-500">Desconto</span>
+                  <span className="text-muted-foreground">Desconto</span>
                   <span className="font-medium text-emerald-600">− R$ {discount.toFixed(2)}</span>
                 </div>
               )}
-              <div className="flex items-center justify-between text-[15px] font-extrabold pt-2 border-t border-gray-100">
-                <span className="text-gray-900">Total</span>
+              <div className="flex items-center justify-between text-[15px] font-extrabold pt-2 border-t border-border">
+                <span className="text-foreground">Total</span>
                 <span className="text-[#c9a84c]">R$ {data.total.toFixed(2)}</span>
               </div>
             </div>
 
             {/* Notes */}
             {data.notes && (
-              <div className="px-5 pb-4 border-t border-dashed border-gray-100 pt-3">
-                <p className="text-[9px] text-gray-400 uppercase tracking-wide mb-1">Observações</p>
-                <p className="text-[11px] text-gray-700 leading-relaxed">{data.notes}</p>
+              <div className="px-5 pb-4 border-t border-dashed border-border pt-3">
+                <p className="text-[9px] text-ink-400 uppercase tracking-wide mb-1">Observações</p>
+                <p className="text-[11px] text-ink-700 leading-relaxed">{data.notes}</p>
               </div>
             )}
 
@@ -215,7 +215,7 @@ const SalesOrderModal = ({ data, onClose }: Props) => {
               <p className="text-[10px] font-bold text-[#c9a84c] uppercase tracking-widest">
                 Confira e confirme seu pedido
               </p>
-              <p className="text-[9px] text-gray-400 mt-0.5">reidoscachos.com.br</p>
+              <p className="text-[9px] text-ink-400 mt-0.5">reidoscachos.com.br</p>
             </div>
           </div>
         </div>

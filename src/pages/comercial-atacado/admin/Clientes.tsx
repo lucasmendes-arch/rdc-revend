@@ -81,7 +81,7 @@ const funnelStages = [
     label: 'Visitou o Site',
     subtitle: 'Navegou no catálogo',
     icon: Eye,
-    indicatorColor: 'bg-slate-300',
+    indicatorColor: 'bg-ink-300',
   },
   {
     key: 'visualizou_produto',
@@ -95,7 +95,7 @@ const funnelStages = [
     label: 'Carrinho',
     subtitle: 'Tem itens pendentes',
     icon: ShoppingCart,
-    indicatorColor: 'bg-amber-400',
+    indicatorColor: 'bg-warning-solid',
   },
   {
     key: 'iniciou_checkout',
@@ -202,9 +202,9 @@ const QUEUE_PRIORITY_CONFIG: Record<QueuePriority, {
   },
   hoje: {
     label: 'Hoje',
-    badgeClasses: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 ring-amber-500/25',
-    borderClasses: 'border-amber-500/25 hover:border-amber-500/40',
-    barClasses: 'bg-amber-400',
+    badgeClasses: 'bg-warning-subtle text-warning ring-warning-border',
+    borderClasses: 'border-warning-border hover:border-warning-border',
+    barClasses: 'bg-warning-solid',
   },
   sem_acao: {
     label: 'Sem ação',
@@ -429,7 +429,7 @@ function WorkQueueCard({ session, priority, onOpen }: WorkQueueCardProps) {
               {nextActionDate && (
                 <p className={`text-[10px] font-medium mt-0.5 ${
                   priority === 'vencido' ? 'text-red-500 dark:text-red-400' :
-                  priority === 'hoje' ? 'text-amber-600 dark:text-amber-400' :
+                  priority === 'hoje' ? 'text-warning' :
                   'text-muted-foreground'
                 }`}>
                   {priority === 'vencido' ? 'Venceu ' : 'Agendado '}{nextActionDate}
@@ -484,7 +484,7 @@ const segmentLabel = (v: string | null) =>
   SEGMENT_OPTIONS.find(o => o.value === (v || ''))?.label || v || 'Não classificado'
 
 const segmentBadgeColor = (v: string | null) => {
-  if (v === 'network_partner') return 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30'
+  if (v === 'network_partner') return 'bg-brand-subtle text-brand-strong border-brand-border'
   if (v === 'wholesale_buyer') return 'bg-teal-500/10 text-teal-600 dark:text-teal-400 border-teal-500/30'
   return 'bg-muted text-muted-foreground border-border'
 }
@@ -852,7 +852,7 @@ function ClientDetailPanel({ session, onClose, onDeleteClick }: { session: Clien
                   <InfoRow icon={DollarSign} label="Faturamento Estimado" value={revenueLabels[profile.revenue] || profile.revenue} />
                 )}
                 {profile && !profile.full_name && !profile.phone && !profile.document && (
-                  <div className="bg-amber-50 ring-1 ring-inset ring-amber-200 text-amber-700 p-3 rounded-lg text-xs flex items-center gap-2">
+                  <div className="bg-warning-subtle ring-1 ring-inset ring-warning-border text-warning p-3 rounded-lg text-xs flex items-center gap-2">
                     <AlertTriangle className="w-4 h-4 flex-shrink-0" />
                     <p>Perfil incompleto — clique em Editar para preencher.</p>
                   </div>
@@ -953,15 +953,15 @@ function ClientDetailPanel({ session, onClose, onDeleteClick }: { session: Clien
           {session.cart_items_count > 0 && orders.length === 0 && (
             <div className="px-5 py-4 border-b border-border">
               <h3 className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest mb-3.5">Carrinho</h3>
-              <div className="flex items-center gap-3 bg-amber-50 rounded-lg p-3.5 ring-1 ring-inset ring-amber-200">
-                <div className="w-9 h-9 rounded-lg bg-amber-100 flex items-center justify-center flex-shrink-0">
-                  <ShoppingCart className="w-4 h-4 text-amber-600" />
+              <div className="flex items-center gap-3 bg-warning-subtle rounded-lg p-3.5 ring-1 ring-inset ring-warning-border">
+                <div className="w-9 h-9 rounded-lg bg-warning-subtle flex items-center justify-center flex-shrink-0">
+                  <ShoppingCart className="w-4 h-4 text-warning" />
                 </div>
                 <div>
-                  <p className="text-sm font-bold text-amber-800">
+                  <p className="text-sm font-bold text-warning">
                     {session.cart_items_count} {session.cart_items_count === 1 ? 'item' : 'itens'} no carrinho
                   </p>
-                  <p className="text-[11px] text-amber-600 mt-0.5">
+                  <p className="text-[11px] text-warning mt-0.5">
                     Armazenado no navegador do cliente
                   </p>
                 </div>
@@ -977,7 +977,7 @@ function ClientDetailPanel({ session, onClose, onDeleteClick }: { session: Clien
               </h3>
               <div className="space-y-3">
                 {orders.map((order) => {
-                  const statusInfo = orderStatusLabels[order.status] || { label: order.status, color: 'bg-gray-100 text-gray-600' }
+                  const statusInfo = orderStatusLabels[order.status] || { label: order.status, color: 'bg-ink-100 text-ink-600' }
                   return (
                     <div key={order.id} className="bg-muted/30 rounded-xl border border-border overflow-hidden">
                       <div className="px-3.5 py-2.5 flex items-center justify-between border-b border-border bg-card">
@@ -1219,7 +1219,7 @@ function PartnerAccessSection({ session }: { session: ClientSession }) {
             onChange={e => setManualPassword(e.target.value)}
             className="flex-1 px-3 py-1.5 text-sm border border-border rounded-lg focus:ring-2 focus:ring-ring/40 focus:outline-none bg-card text-foreground"
           />
-          <button onClick={() => { setShowPasswordInput(false); setManualPassword('') }} className="text-zinc-400 hover:text-zinc-600 p-1">
+          <button onClick={() => { setShowPasswordInput(false); setManualPassword('') }} className="text-ink-400 hover:text-ink-600 p-1">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -1277,7 +1277,7 @@ function PartnerAccessSection({ session }: { session: ClientSession }) {
           <button
             onClick={() => unblockMutation.mutate()}
             disabled={isLoading}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold bg-zinc-900 text-white rounded-lg hover:bg-zinc-700 disabled:opacity-50 transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold bg-ink-900 text-white rounded-lg hover:bg-ink-700 disabled:opacity-50 transition-colors"
           >
             {unblockMutation.isPending ? <Loader className="w-3.5 h-3.5 animate-spin" /> : <Unlock className="w-3.5 h-3.5" />}
             Desbloquear
@@ -1287,25 +1287,25 @@ function PartnerAccessSection({ session }: { session: ClientSession }) {
 
       {/* Credential result box */}
       {credResult && (
-        <div className="mt-4 bg-zinc-900 rounded-xl p-4 space-y-3">
-          <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Credenciais geradas</p>
+        <div className="mt-4 bg-ink-900 rounded-xl p-4 space-y-3">
+          <p className="text-[10px] font-bold text-ink-400 uppercase tracking-widest">Credenciais geradas</p>
 
-          <div className="flex items-center justify-between gap-2 bg-zinc-800 rounded-lg px-3 py-2">
+          <div className="flex items-center justify-between gap-2 bg-ink-800 rounded-lg px-3 py-2">
             <div>
-              <p className="text-[10px] text-zinc-500 leading-none">Login</p>
+              <p className="text-[10px] text-muted-foreground leading-none">Login</p>
               <p className="text-sm font-mono font-bold text-white mt-0.5">{credResult.phone}</p>
             </div>
-            <button onClick={() => copyToClipboard(credResult.phone, 'Login')} className="p-1.5 rounded-md hover:bg-zinc-700 text-zinc-400 hover:text-white transition-colors">
+            <button onClick={() => copyToClipboard(credResult.phone, 'Login')} className="p-1.5 rounded-md hover:bg-ink-700 text-ink-400 hover:text-white transition-colors">
               <Copy className="w-3.5 h-3.5" />
             </button>
           </div>
 
-          <div className="flex items-center justify-between gap-2 bg-zinc-800 rounded-lg px-3 py-2">
+          <div className="flex items-center justify-between gap-2 bg-ink-800 rounded-lg px-3 py-2">
             <div>
-              <p className="text-[10px] text-zinc-500 leading-none">Senha</p>
+              <p className="text-[10px] text-muted-foreground leading-none">Senha</p>
               <p className="text-sm font-mono font-bold text-white mt-0.5">{credResult.created_password}</p>
             </div>
-            <button onClick={() => copyToClipboard(credResult.created_password, 'Senha')} className="p-1.5 rounded-md hover:bg-zinc-700 text-zinc-400 hover:text-white transition-colors">
+            <button onClick={() => copyToClipboard(credResult.created_password, 'Senha')} className="p-1.5 rounded-md hover:bg-ink-700 text-ink-400 hover:text-white transition-colors">
               <Copy className="w-3.5 h-3.5" />
             </button>
           </div>
@@ -1313,7 +1313,7 @@ function PartnerAccessSection({ session }: { session: ClientSession }) {
           <div className="flex gap-2 pt-1">
             <button
               onClick={() => copyToClipboard(buildWhatsAppMessage(credResult), 'Mensagem')}
-              className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-bold bg-zinc-700 text-white rounded-lg hover:bg-zinc-600 transition-colors"
+              className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-bold bg-ink-700 text-white rounded-lg hover:bg-ink-600 transition-colors"
             >
               <Copy className="w-3.5 h-3.5" />
               Copiar msg WA
@@ -1329,7 +1329,7 @@ function PartnerAccessSection({ session }: { session: ClientSession }) {
             </a>
           </div>
 
-          <button onClick={() => setCredResult(null)} className="w-full text-[10px] text-zinc-600 hover:text-zinc-400 transition-colors pt-1">
+          <button onClick={() => setCredResult(null)} className="w-full text-[10px] text-ink-600 hover:text-ink-400 transition-colors pt-1">
             Fechar
           </button>
         </div>
@@ -1543,7 +1543,7 @@ export default function AdminClientes() {
   const stageColorConfig: Record<string, { ring: string; bg: string; text: string }> = {
     visitou:              { ring: 'ring-muted-foreground/15', bg: 'bg-muted',          text: 'text-muted-foreground' },
     visualizou_produto:   { ring: 'ring-blue-600/20',         bg: 'bg-blue-500/10',    text: 'text-blue-600 dark:text-blue-400' },
-    adicionou_carrinho:   { ring: 'ring-amber-600/20',        bg: 'bg-amber-500/10',   text: 'text-amber-600 dark:text-amber-400' },
+    adicionou_carrinho:   { ring: 'ring-warning-border',        bg: 'bg-warning-subtle',   text: 'text-warning' },
     iniciou_checkout:     { ring: 'ring-purple-600/20',       bg: 'bg-purple-500/10',  text: 'text-purple-600 dark:text-purple-400' },
     comprou:              { ring: 'ring-emerald-600/20',      bg: 'bg-emerald-500/10', text: 'text-emerald-600 dark:text-emerald-400' },
     abandonou:            { ring: 'ring-red-600/20',          bg: 'bg-red-500/10',     text: 'text-red-600 dark:text-red-400' },
@@ -1713,7 +1713,7 @@ export default function AdminClientes() {
           <div className="w-full border-t border-border bg-muted/30 py-3 px-4 sm:px-6 lg:px-8 overflow-x-auto flex flex-nowrap gap-3 items-center" style={{ scrollbarWidth: 'thin' }}>
             <AdminSummaryCard
               icon={Users}
-              iconColor="text-zinc-500"
+              iconColor="text-muted-foreground"
               label="Total clientes"
               value={String(totalSessions)}
               subtitle={
@@ -1721,7 +1721,7 @@ export default function AdminClientes() {
                   {funnelStages.length} etapas
                 </span>
               }
-              className="min-w-[120px] sm:min-w-[120px] sm:min-w-[150px] flex-1 shrink-0 ring-inset ring-1 ring-zinc-600/10"
+              className="min-w-[120px] sm:min-w-[120px] sm:min-w-[150px] flex-1 shrink-0 ring-inset ring-1 ring-border"
             />
             <AdminSummaryCard
               label="Compraram"
@@ -1755,7 +1755,7 @@ export default function AdminClientes() {
                   visitou → comprou
                 </span>
               }
-              className="min-w-[120px] sm:min-w-[150px] flex-1 shrink-0 ring-inset ring-1 ring-gold/20"
+              className="min-w-[120px] sm:min-w-[150px] flex-1 shrink-0"
             />
           </div>
         )}
@@ -1974,7 +1974,7 @@ export default function AdminClientes() {
               <h3 className="text-lg font-bold text-foreground mb-2">Excluir Cliente?</h3>
               {clientToDelete.orders && clientToDelete.orders.length > 0 ? (
                 <>
-                  <p className="text-sm text-amber-600 dark:text-amber-400 font-medium bg-amber-500/10 p-3 rounded-lg border border-amber-500/20 mb-6">
+                  <p className="text-sm text-warning font-medium bg-warning-subtle p-3 rounded-lg border border-warning-border mb-6">
                     Bloqueado: Este cliente possui {clientToDelete.orders.length} pedido(s) vinculados. Você deve excluir os pedidos antes de excluir o cliente.
                   </p>
                   <button onClick={() => setClientToDelete(null)} className="w-full py-3 px-4 bg-muted hover:bg-muted/80 text-foreground rounded-xl font-bold transition-colors">Voltar</button>

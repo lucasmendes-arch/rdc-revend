@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowRight, CheckCircle, Loader, ShoppingCart } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useTrackConversion } from '@/lib/hooks/useFacebookConversion';
+import { getOrderStatus, toneClasses } from '@/lib/design/orderStatus';
 
 interface Order {
   id: string;
@@ -24,17 +25,6 @@ interface Order {
   }>;
 }
 
-const statusConfig: Record<string, { label: string; color: string; bgColor: string }> = {
-  recebido:             { label: 'Recebido',             color: 'bg-blue-100 text-blue-700',    bgColor: 'bg-blue-50' },
-  aguardando_pagamento: { label: 'Aguardando Pagamento', color: 'bg-orange-100 text-orange-700', bgColor: 'bg-orange-50' },
-  pago:                 { label: 'Pago',                 color: 'bg-emerald-100 text-emerald-700', bgColor: 'bg-emerald-50' },
-  separacao:            { label: 'Separação',            color: 'bg-yellow-100 text-yellow-700', bgColor: 'bg-yellow-50' },
-  enviado:              { label: 'Enviado',              color: 'bg-purple-100 text-purple-700', bgColor: 'bg-purple-50' },
-  entregue:             { label: 'Entregue',             color: 'bg-teal-100 text-teal-700',    bgColor: 'bg-teal-50' },
-  concluido:            { label: 'Concluído',            color: 'bg-green-100 text-green-700',  bgColor: 'bg-green-50' },
-  cancelado:            { label: 'Cancelado',            color: 'bg-red-100 text-red-700',      bgColor: 'bg-red-50' },
-  expirado:             { label: 'Expirado',             color: 'bg-gray-100 text-gray-500',    bgColor: 'bg-gray-50' },
-};
 
 function splitFullName(name: string): { firstName?: string; lastName?: string } {
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -128,7 +118,7 @@ const PedidoSucesso = () => {
   if (error || !order) {
     return (
       <div className="min-h-screen bg-surface-alt flex items-center justify-center p-4">
-        <div className="bg-white rounded-lg p-8 text-center max-w-md">
+        <div className="bg-card rounded-lg p-8 text-center max-w-md">
           <p className="text-red-600 font-medium mb-4">{error || 'Pedido não encontrado'}</p>
           <button
             onClick={() => navigate('/catalogo')}
@@ -142,7 +132,9 @@ const PedidoSucesso = () => {
     );
   }
 
-  const statusInfo = statusConfig[order.status] ?? { label: order.status, color: 'bg-gray-100 text-gray-600', bgColor: 'bg-gray-50' };
+  const statusMeta = getOrderStatus(order.status);
+  const statusTone = toneClasses(statusMeta.tone);
+  const statusInfo = { label: statusMeta.label, color: `${statusTone.bg} ${statusTone.text}`, bgColor: statusTone.panel };
   const orderNumber = order.id.slice(0, 8).toUpperCase();
   const orderDate = new Date(order.created_at).toLocaleDateString('pt-BR', {
     day: '2-digit',
@@ -157,7 +149,7 @@ const PedidoSucesso = () => {
       <div className="container mx-auto px-4 sm:px-6 py-8">
         {/* Success Banner */}
         <div className="mb-8">
-          <div className="bg-white rounded-lg p-8 text-center shadow-card">
+          <div className="bg-card rounded-lg p-8 text-center shadow-card">
             <div className="flex justify-center mb-4">
               <CheckCircle className="w-16 h-16 text-green-600" />
             </div>
@@ -186,7 +178,7 @@ const PedidoSucesso = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Order Details */}
           <div className="lg:col-span-2">
-            <div className="bg-white rounded-lg p-6 shadow-card">
+            <div className="bg-card rounded-lg p-6 shadow-card">
               <h2 className="text-xl font-bold text-foreground mb-6 flex items-center gap-2">
                 <ShoppingCart className="w-5 h-5 text-gold-text" />
                 Itens do Pedido
@@ -253,7 +245,7 @@ const PedidoSucesso = () => {
 
           {/* Sidebar CTA */}
           <div className="lg:col-span-1">
-            <div className="bg-white rounded-lg p-6 shadow-card sticky top-24">
+            <div className="bg-card rounded-lg p-6 shadow-card sticky top-24">
               <h3 className="font-bold text-foreground mb-4">Próximos Passos</h3>
 
               <div className="space-y-3 mb-6">
@@ -298,7 +290,7 @@ const PedidoSucesso = () => {
                 </button>
                 <button
                   onClick={() => navigate('/catalogo')}
-                  className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg font-semibold text-sm border border-border bg-white text-foreground hover:bg-surface-alt transition-colors"
+                  className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg font-semibold text-sm border border-border bg-card text-foreground hover:bg-surface-alt transition-colors"
                 >
                   Continuar Comprando
                   <ArrowRight className="w-4 h-4" />

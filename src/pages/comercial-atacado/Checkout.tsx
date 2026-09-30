@@ -375,7 +375,7 @@ const Checkout = () => {
   return (
     <div className="min-h-screen bg-surface-alt">
       {/* Header */}
-      <header className="bg-white border-b border-border sticky top-0 z-40">
+      <header className="bg-card border-b border-border sticky top-0 z-40">
         <div className="container mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
           <button
             onClick={() => step === 1 ? navigate('/catalogo') : handleBack()}
@@ -390,7 +390,7 @@ const Checkout = () => {
       </header>
 
       {/* Step Indicator */}
-      <div className="bg-white border-b border-border">
+      <div className="bg-card border-b border-border">
         <div className="container mx-auto px-4 sm:px-6 py-3">
           <div className="flex items-center justify-center gap-2 sm:gap-4">
             {steps.map((s, i) => (
@@ -428,7 +428,7 @@ const Checkout = () => {
         {/* ================================================================ */}
         {step === 1 && (
           <div className="space-y-6">
-            <div className="bg-white rounded-lg p-5 sm:p-6 shadow-card">
+            <div className="bg-card rounded-lg p-5 sm:p-6 shadow-card">
               <div className="flex items-center gap-2 mb-5">
                 <ShoppingCart className="w-5 h-5 text-gold-text" />
                 <h2 className="text-lg font-bold text-foreground">Confirme seu Pedido</h2>
@@ -507,7 +507,7 @@ const Checkout = () => {
           <div className="space-y-6">
             {/* Pre-filled Client Info (read-only summary) */}
             {/* Progressive Profiling: Only show inputs for missing fields or if editing */}
-            <div className="bg-white rounded-lg p-5 sm:p-6 shadow-sm border border-border">
+            <div className="bg-card rounded-lg p-5 sm:p-6 shadow-sm border border-border">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
                   <Check className="w-5 h-5 text-green-500" />
@@ -540,7 +540,7 @@ const Checkout = () => {
                     <label className="block text-xs font-medium text-muted-foreground mb-1">Nome Completo</label>
                     <input
                       type="text" name="customer_name" value={formData.customer_name} onChange={handleChange} required
-                      className="w-full px-3 py-2.5 rounded-lg border border-border bg-surface text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-gold"
+                      className="w-full px-3 py-2.5 rounded-lg border border-border bg-surface text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                       placeholder="Nome completo"
                     />
                   </div>
@@ -551,7 +551,7 @@ const Checkout = () => {
                     <label className="block text-xs font-medium text-muted-foreground mb-1">WhatsApp</label>
                     <input
                       type="tel" name="customer_whatsapp" value={formData.customer_whatsapp} onChange={handleChange} required
-                      className="w-full px-3 py-2.5 rounded-lg border border-border bg-surface text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-gold"
+                      className="w-full px-3 py-2.5 rounded-lg border border-border bg-surface text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                       placeholder="11999999999"
                     />
                   </div>
@@ -562,7 +562,7 @@ const Checkout = () => {
                     <label className="block text-xs font-medium text-muted-foreground mb-1">E-mail</label>
                     <input
                       type="email" name="customer_email" value={formData.customer_email} onChange={handleChange} required
-                      className="w-full px-3 py-2.5 rounded-lg border border-border bg-surface text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-gold"
+                      className="w-full px-3 py-2.5 rounded-lg border border-border bg-surface text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                     />
                   </div>
                 )}
@@ -572,7 +572,7 @@ const Checkout = () => {
                     <label className="block text-xs font-medium text-muted-foreground mb-1">CPF ou CNPJ</label>
                     <input
                       type="text" name="customer_document" value={formData.customer_document} onChange={handleChange} required
-                      className="w-full px-3 py-2.5 rounded-lg border border-border bg-surface text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-gold"
+                      className="w-full px-3 py-2.5 rounded-lg border border-border bg-surface text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                       placeholder="000.000.000-00"
                       inputMode="numeric"
                     />
@@ -613,7 +613,7 @@ const Checkout = () => {
 
 
             {/* Delivery Method Selector */}
-            <div className="bg-white rounded-lg p-5 sm:p-6 shadow-sm border border-border">
+            <div className="bg-card rounded-lg p-5 sm:p-6 shadow-sm border border-border">
               <h2 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
                 <Store className="w-5 h-5 text-ink-400" />
                 Entrega
@@ -681,35 +681,35 @@ const Checkout = () => {
                       <div>
                         <label className="block text-xs font-medium text-muted-foreground mb-1">CEP *</label>
                         <input type="text" name="cep" required value={formData.cep} onChange={handleChange} placeholder="00000-000"
-                          className="w-full px-3 py-2.5 rounded-lg border border-border bg-white text-sm focus:ring-2 focus:ring-gold" />
+                          className="w-full px-3 py-2.5 rounded-lg border border-border bg-card text-sm focus:ring-2 focus:ring-ring" />
                       </div>
                     )}
                     {(isEditingProfile || !initialProfile.address_street) && (
                       <div>
                         <label className="block text-xs font-medium text-muted-foreground mb-1">Rua *</label>
                         <input type="text" name="street" required value={formData.street} onChange={handleChange} placeholder="Av. Principal"
-                          className="w-full px-3 py-2.5 rounded-lg border border-border bg-white text-sm focus:ring-2 focus:ring-gold" />
+                          className="w-full px-3 py-2.5 rounded-lg border border-border bg-card text-sm focus:ring-2 focus:ring-ring" />
                       </div>
                     )}
                     {(isEditingProfile || !initialProfile.address_number) && (
                       <div>
                         <label className="block text-xs font-medium text-muted-foreground mb-1">Numero *</label>
                         <input type="text" name="number" required value={formData.number} onChange={handleChange} placeholder="123"
-                          className="w-full px-3 py-2.5 rounded-lg border border-border bg-white text-sm focus:ring-2 focus:ring-gold" />
+                          className="w-full px-3 py-2.5 rounded-lg border border-border bg-card text-sm focus:ring-2 focus:ring-ring" />
                       </div>
                     )}
                     {(isEditingProfile || initialProfile.address_complement === undefined) && (
                       <div>
                         <label className="block text-xs font-medium text-muted-foreground mb-1">Complemento</label>
                         <input type="text" name="complement" value={formData.complement} onChange={handleChange} placeholder="Apto 101"
-                          className="w-full px-3 py-2.5 rounded-lg border border-border bg-white text-sm focus:ring-2 focus:ring-gold" />
+                          className="w-full px-3 py-2.5 rounded-lg border border-border bg-card text-sm focus:ring-2 focus:ring-ring" />
                       </div>
                     )}
                     {(isEditingProfile || !initialProfile.address_neighborhood) && (
                       <div>
                         <label className="block text-xs font-medium text-muted-foreground mb-1">Bairro *</label>
                         <input type="text" name="neighborhood" required value={formData.neighborhood} onChange={handleChange} placeholder="Centro"
-                          className="w-full px-3 py-2.5 rounded-lg border border-border bg-white text-sm focus:ring-2 focus:ring-gold" />
+                          className="w-full px-3 py-2.5 rounded-lg border border-border bg-card text-sm focus:ring-2 focus:ring-ring" />
                       </div>
                     )}
                     {(isEditingProfile || !initialProfile.address_city || !initialProfile.address_state) && (
@@ -717,12 +717,12 @@ const Checkout = () => {
                         <div className="flex-1">
                           <label className="block text-xs font-medium text-muted-foreground mb-1">Cidade *</label>
                           <input type="text" name="city" required value={formData.city} onChange={handleChange} placeholder="Sao Paulo"
-                            className="w-full px-3 py-2.5 rounded-lg border border-border bg-white text-sm focus:ring-2 focus:ring-gold" />
+                            className="w-full px-3 py-2.5 rounded-lg border border-border bg-card text-sm focus:ring-2 focus:ring-ring" />
                         </div>
                         <div className="w-20">
                           <label className="block text-xs font-medium text-muted-foreground mb-1">UF *</label>
                           <input type="text" name="state" required maxLength={2} value={formData.state} onChange={handleChange} placeholder="SP"
-                            className="w-full px-3 py-2.5 rounded-lg border border-border bg-white text-sm focus:ring-2 focus:ring-gold uppercase" />
+                            className="w-full px-3 py-2.5 rounded-lg border border-border bg-card text-sm focus:ring-2 focus:ring-ring uppercase" />
                         </div>
                       </div>
                     )}
@@ -756,7 +756,7 @@ const Checkout = () => {
                     <label className={`relative block p-4 rounded-xl border cursor-pointer transition-all ${pickupUnitSlug === 'linhares' ? 'border-foreground bg-muted' : 'border-border bg-surface hover:border-ink-300'}`}>
                       <input type="radio" name="pickup_unit" className="sr-only" checked={pickupUnitSlug === 'linhares'} onChange={() => setPickupUnitSlug('linhares')} />
                       <div className="flex items-start gap-4">
-                        <div className={`mt-0.5 flex-shrink-0 w-5 h-5 rounded-full border flex items-center justify-center transition-colors ${pickupUnitSlug === 'linhares' ? 'border-foreground bg-muted0 text-white' : 'border-slate-300'}`}>
+                        <div className={`mt-0.5 flex-shrink-0 w-5 h-5 rounded-full border flex items-center justify-center transition-colors ${pickupUnitSlug === 'linhares' ? 'border-foreground bg-muted0 text-white' : 'border-ink-300'}`}>
                           {pickupUnitSlug === 'linhares' && <Check className="w-3 h-3" />}
                         </div>
                         <div className="flex-1">
@@ -770,7 +770,7 @@ const Checkout = () => {
                     <label className={`relative block p-4 rounded-xl border cursor-pointer transition-all ${pickupUnitSlug === 'serra' ? 'border-foreground bg-muted' : 'border-border bg-surface hover:border-ink-300'}`}>
                       <input type="radio" name="pickup_unit" className="sr-only" checked={pickupUnitSlug === 'serra'} onChange={() => setPickupUnitSlug('serra')} />
                       <div className="flex items-start gap-4">
-                        <div className={`mt-0.5 flex-shrink-0 w-5 h-5 rounded-full border flex items-center justify-center transition-colors ${pickupUnitSlug === 'serra' ? 'border-foreground bg-muted0 text-white' : 'border-slate-300'}`}>
+                        <div className={`mt-0.5 flex-shrink-0 w-5 h-5 rounded-full border flex items-center justify-center transition-colors ${pickupUnitSlug === 'serra' ? 'border-foreground bg-muted0 text-white' : 'border-ink-300'}`}>
                           {pickupUnitSlug === 'serra' && <Check className="w-3 h-3" />}
                         </div>
                         <div className="flex-1">
@@ -784,7 +784,7 @@ const Checkout = () => {
                     <label className={`relative block p-4 rounded-xl border cursor-pointer transition-all ${pickupUnitSlug === 'teixeira' ? 'border-foreground bg-muted' : 'border-border bg-surface hover:border-ink-300'}`}>
                       <input type="radio" name="pickup_unit" className="sr-only" checked={pickupUnitSlug === 'teixeira'} onChange={() => setPickupUnitSlug('teixeira')} />
                       <div className="flex items-start gap-4">
-                        <div className={`mt-0.5 flex-shrink-0 w-5 h-5 rounded-full border flex items-center justify-center transition-colors ${pickupUnitSlug === 'teixeira' ? 'border-foreground bg-muted0 text-white' : 'border-slate-300'}`}>
+                        <div className={`mt-0.5 flex-shrink-0 w-5 h-5 rounded-full border flex items-center justify-center transition-colors ${pickupUnitSlug === 'teixeira' ? 'border-foreground bg-muted0 text-white' : 'border-ink-300'}`}>
                           {pickupUnitSlug === 'teixeira' && <Check className="w-3 h-3" />}
                         </div>
                         <div className="flex-1">
@@ -799,17 +799,17 @@ const Checkout = () => {
             </div>
 
             {/* Notes */}
-            <div className="bg-white rounded-lg p-5 sm:p-6 shadow-card">
+            <div className="bg-card rounded-lg p-5 sm:p-6 shadow-card">
               <label className="block text-xs font-medium text-muted-foreground mb-1">Observacoes</label>
               <textarea
                 name="notes" value={formData.notes} onChange={handleChange} rows={3}
-                className="w-full px-3 py-2.5 rounded-lg border border-border bg-white text-sm focus:ring-2 focus:ring-gold"
+                className="w-full px-3 py-2.5 rounded-lg border border-border bg-card text-sm focus:ring-2 focus:ring-ring"
                 placeholder="Alguma observacao para o pedido..."
               />
             </div>
 
             {/* Cupom de Desconto — oculto para parceiro da rede */}
-            {!isNetworkPartner && <div className="bg-white rounded-lg p-5 sm:p-6 shadow-card">
+            {!isNetworkPartner && <div className="bg-card rounded-lg p-5 sm:p-6 shadow-card">
               <label className="block text-xs font-bold text-muted-foreground uppercase mb-2">Cupom de Desconto</label>
               <div className="flex gap-2">
                 <input
@@ -818,7 +818,7 @@ const Checkout = () => {
                   onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
                   placeholder="Código do cupom"
                   disabled={couponDiscount > 0 || isValidatingCoupon}
-                  className="flex-1 px-3 py-2 rounded-lg border border-border focus:ring-2 focus:ring-gold outline-none uppercase font-mono text-sm"
+                  className="flex-1 px-3 py-2 rounded-lg border border-border focus:ring-2 focus:ring-ring outline-none uppercase font-mono text-sm"
                 />
                 {couponDiscount > 0 ? (
                   <button
@@ -845,13 +845,13 @@ const Checkout = () => {
             </div>}
 
             {/* Order Total Summary */}
-            <div className="bg-white rounded-lg p-5 sm:p-6 shadow-card space-y-3">
+            <div className="bg-card rounded-lg p-5 sm:p-6 shadow-card space-y-3">
               <div className="flex items-center justify-between text-sm text-muted-foreground">
                 <span>Subtotal ({cartCount} itens)</span>
                 <span>R$ {cartTotal.toFixed(2)}</span>
               </div>
 
-              <div className="flex flex-col text-slate-600 bg-slate-50 p-2 rounded">
+              <div className="flex flex-col text-ink-600 bg-surface p-2 rounded">
                 <div className="flex items-center justify-between text-sm">
                   <span>Frete</span>
                   {isNetworkPartner ? (
@@ -922,7 +922,7 @@ const Checkout = () => {
         {/* ================================================================ */}
         {step === 3 && (
           <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
-            <div className="bg-white rounded-lg p-5 sm:p-6 shadow-card">
+            <div className="bg-card rounded-lg p-5 sm:p-6 shadow-card">
               <h2 className="text-lg font-bold text-foreground mb-6 flex items-center gap-2">
                 <Check className="w-5 h-5 text-green-500" />
                 Forma de Pagamento

@@ -93,7 +93,7 @@ function formatAnswerValue(a: { value: string; form_fields: { field_type: string
 
 function ProcessoPhoto({ name, photoUrl }: { name: string; photoUrl: string | null | undefined }) {
   return (
-    <div className="h-[120px] w-full bg-slate-100 shrink-0">
+    <div className="h-[120px] w-full bg-ink-100 shrink-0">
       {photoUrl ? (
         // Ver comentário equivalente em CandidatePhoto (src/pages/rh/Candidatos.tsx):
         // sem lazy, abrir o kanban dispara um request por card de todas as colunas.
@@ -108,7 +108,7 @@ function ProcessoPhoto({ name, photoUrl }: { name: string; photoUrl: string | nu
         />
       ) : (
         <div className="w-full h-full flex items-center justify-center">
-          <span className="text-lg font-bold text-slate-400">{initials(name)}</span>
+          <span className="text-lg font-bold text-ink-400">{initials(name)}</span>
         </div>
       )}
     </div>
@@ -146,7 +146,7 @@ function ProcessoCard({
       {...listeners}
       {...attributes}
       onClick={() => !isDragging && onOpen(processo)}
-      className={`relative bg-white rounded-lg border border-border/60 border-l-4 shadow-[0_1px_2px_rgba(0,0,0,0.06)] overflow-hidden cursor-grab active:cursor-grabbing touch-none select-none ${
+      className={`relative bg-card rounded-lg border border-border/60 border-l-4 shadow-[0_1px_2px_rgba(0,0,0,0.06)] overflow-hidden cursor-grab active:cursor-grabbing touch-none select-none ${
         isDragging ? 'opacity-50' : ''
       }`}
     >
@@ -171,7 +171,7 @@ function ProcessoCard({
           </span>
           {candidate && (
             <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-md ${
-              candidate.source === 'manual' ? 'bg-slate-100 text-slate-600' : 'bg-violet-100 text-violet-700 dark:bg-violet-500/20 dark:text-violet-300'
+              candidate.source === 'manual' ? 'bg-ink-100 text-ink-600' : 'bg-violet-100 text-violet-700 dark:bg-violet-500/20 dark:text-violet-300'
             }`}>
               {candidate.source === 'manual' ? 'Manual' : 'Formulário'}
             </span>
@@ -222,7 +222,7 @@ function ProcessoCard({
               )}
             </div>
             {showAttach && candidate && (
-              <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-amber-100 text-amber-700 flex items-center gap-0.5 shrink-0">
+              <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-surface-alt text-muted-foreground flex items-center gap-0.5 shrink-0">
                 <Paperclip className="w-2.5 h-2.5" /> {attachmentCount(candidate)}
               </span>
             )}
@@ -714,7 +714,7 @@ export default function DpContratacao() {
             <DragOverlay dropAnimation={null}>
               {activeProcesso ? (
                 <div
-                  className="bg-white rounded-lg border border-border/60 border-l-4 shadow-lg overflow-hidden w-56"
+                  className="bg-card rounded-lg border border-border/60 border-l-4 shadow-lg overflow-hidden w-56"
                   style={{ borderLeftColor: getStageColumn(activeProcesso.employment_type, activeProcesso.current_stage)?.accent }}
                 >
                   <ProcessoPhoto name={activeProcesso.candidates?.name || ''} photoUrl={activeProcesso.candidates?.photo_url} />

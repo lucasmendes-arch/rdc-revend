@@ -28,7 +28,7 @@ interface ReplenishmentRequest {
 }
 
 const COLUMNS = [
-  { status: 'open' as const, label: 'Aberto', dot: 'bg-amber-500', header: 'text-amber-700' },
+  { status: 'open' as const, label: 'Aberto', dot: 'bg-warning-solid', header: 'text-warning' },
   { status: 'picking' as const, label: 'Em separação', dot: 'bg-blue-500', header: 'text-blue-700' },
   { status: 'shipped' as const, label: 'Enviado', dot: 'bg-green-500', header: 'text-green-700' },
 ]
@@ -115,8 +115,8 @@ function RequestCard({
     <div
       id={`pedido-${request.id}`}
       onClick={() => isShipped && setExpanded((v) => !v)}
-      className={`bg-white rounded-2xl border shadow-card p-4 space-y-3 scroll-mt-24 transition-shadow ${
-        highlighted ? 'border-amber-400 ring-2 ring-amber-300' : 'border-border'
+      className={`bg-card rounded-2xl border shadow-card p-4 space-y-3 scroll-mt-24 transition-shadow ${
+        highlighted ? 'border-foreground ring-2 ring-ink-300' : 'border-border'
       } ${isShipped ? 'cursor-pointer' : ''}`}
     >
       <div className="flex items-start justify-between gap-2">
@@ -171,7 +171,7 @@ function RequestCard({
             key={item.id}
             className={`text-sm rounded-xl border p-1.5 transition-colors ${
               declareItemId === item.id && isPicking && !shipping
-                ? 'border-amber-300 bg-amber-50/70'
+                ? 'border-warning-border bg-warning-subtle'
                 : 'border-transparent'
             }`}
           >
@@ -182,14 +182,14 @@ function RequestCard({
                 type="button"
                 onClick={() => onTogglePicked(item.id, item.picked_at === null)}
                 className={`w-8 h-8 rounded-lg border flex items-center justify-center shrink-0 transition-colors ${
-                  item.picked_at ? 'bg-green-600 border-green-600 text-white' : 'bg-white border-border text-transparent hover:border-green-400'
+                  item.picked_at ? 'bg-green-600 border-green-600 text-white' : 'bg-card border-border text-transparent hover:border-green-400'
                 }`}
                 title={item.picked_at ? 'Desmarcar separação' : 'Marcar como separado'}
               >
                 <Check className="w-[18px] h-[18px]" />
               </button>
             )}
-            <div className="w-11 h-11 rounded-lg overflow-hidden shrink-0 bg-white border border-border">
+            <div className="w-11 h-11 rounded-lg overflow-hidden shrink-0 bg-card border border-border">
               {item.catalog_products?.main_image ? (
                 <img src={item.catalog_products.main_image} alt="" className="w-full h-full object-contain" />
               ) : (
@@ -213,7 +213,7 @@ function RequestCard({
               item.shipped_quantity === 0 ? (
                 <span className="text-[10px] font-bold px-2 py-1 rounded-md bg-red-100 text-red-600 uppercase shrink-0">Em falta</span>
               ) : item.shipped_quantity < item.suggested_quantity ? (
-                <span className="text-[10px] font-bold px-2 py-1 rounded-md bg-amber-100 text-amber-700 shrink-0">
+                <span className="text-[10px] font-bold px-2 py-1 rounded-md bg-warning-subtle text-warning shrink-0">
                   {item.shipped_quantity} de {item.suggested_quantity}
                 </span>
               ) : null
@@ -225,7 +225,7 @@ function RequestCard({
                 min={0}
                 value={shipQty[item.id] ?? ''}
                 onChange={(e) => setShipQty((prev) => ({ ...prev, [item.id]: e.target.value }))}
-                className="w-16 h-9 rounded-lg border border-input text-center text-sm font-semibold bg-white focus:outline-none focus:ring-2 focus:ring-green-400 shrink-0"
+                className="w-16 h-9 rounded-lg border border-input text-center text-sm font-semibold bg-card focus:outline-none focus:ring-2 focus:ring-green-400 shrink-0"
               />
             ) : (
               <span className="text-base font-bold shrink-0 tabular-nums">
@@ -235,7 +235,7 @@ function RequestCard({
           </div>
 
           {declareItemId === item.id && isPicking && !shipping && (
-            <div className="mt-2 pt-2 border-t border-amber-200 space-y-1.5">
+            <div className="mt-2 pt-2 border-t border-warning-border space-y-1.5">
               <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
                 Separação parcial — sugerido: {item.suggested_quantity}
               </p>
@@ -247,7 +247,7 @@ function RequestCard({
                   max={item.suggested_quantity}
                   value={declareQty}
                   onChange={(e) => setDeclareQty(e.target.value)}
-                  className="w-16 h-8 rounded-lg border border-input text-center font-semibold bg-white focus:outline-none focus:ring-2 focus:ring-amber-400"
+                  className="w-16 h-8 rounded-lg border border-input text-center font-semibold bg-card focus:outline-none focus:ring-2 focus:ring-ring"
                 />
                 <button
                   type="button"
@@ -260,7 +260,7 @@ function RequestCard({
                     onDeclareQty(item.id, parsed)
                     setDeclareItemId(null)
                   }}
-                  className="px-2.5 h-8 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-[11px] font-bold transition-colors"
+                  className="px-2.5 h-8 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground text-[11px] font-bold transition-colors"
                 >
                   Declarar
                 </button>
@@ -299,7 +299,7 @@ function RequestCard({
         <button
           onClick={() => onAdvance(request.id, 'picking')}
           disabled={isPending}
-          className="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-sm font-semibold transition-colors disabled:opacity-60"
+          className="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-semibold transition-colors disabled:opacity-60"
         >
           <PlayCircle className="w-4 h-4" /> Iniciar separação
         </button>
@@ -497,7 +497,7 @@ export default function EstoquePedidos() {
 
   return (
     <EstoqueLayout>
-      <div className="bg-white rounded-2xl border border-border shadow-card p-5">
+      <div className="bg-card rounded-2xl border border-border shadow-card p-5">
         <h1 className="text-lg font-bold text-foreground">Pedidos de reposição</h1>
         <p className="text-xs text-muted-foreground mt-1">
           Um pedido consolidado por loja, gerado automaticamente na confirmação da contagem — com todos os itens abaixo da meta.

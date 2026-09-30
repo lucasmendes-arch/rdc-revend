@@ -562,7 +562,7 @@ const NewOrder = () => {
   return (
     <AdminLayout>
       {/* Header */}
-      <div className="bg-white border-b border-border sticky top-0 z-30">
+      <div className="bg-card border-b border-border sticky top-0 z-30">
         <div className="px-4 sm:px-6 py-4 flex items-center gap-3">
           <button
             onClick={() => navigate('/admin/pedidos')}
@@ -577,7 +577,7 @@ const NewOrder = () => {
       <div className="px-4 sm:px-6 py-6 max-w-5xl mx-auto space-y-6">
 
         {/* ── 1. Seleção de Cliente ────────────────────────────────────────── */}
-        <section className="bg-white rounded-2xl border border-border shadow-card p-5 space-y-3">
+        <section className="bg-card rounded-2xl border border-border shadow-card p-5 space-y-3">
           <h2 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground">
             1. Cliente
           </h2>
@@ -589,7 +589,7 @@ const NewOrder = () => {
                 <p className="text-xs text-muted-foreground">
                   {selectedCustomer.phone || 'Sem telefone'} · {selectedCustomer.business_type || '—'}
                   {selectedCustomer.price_list_name && (
-                    <span className="ml-2 text-amber-600 font-semibold">· Tabela: {selectedCustomer.price_list_name}</span>
+                    <span className="ml-2 text-foreground font-semibold">· Tabela: {selectedCustomer.price_list_name}</span>
                   )}
                 </p>
               </div>
@@ -609,7 +609,7 @@ const NewOrder = () => {
                   value={customerSearch}
                   onChange={e => setCustomerSearch(e.target.value)}
                   placeholder="Buscar cliente por nome ou telefone…"
-                  className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-input text-sm focus:ring-2 focus:ring-amber-400 focus:outline-none"
+                  className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-input text-sm focus:ring-2 focus:ring-ring focus:outline-none"
                 />
               </div>
 
@@ -620,7 +620,7 @@ const NewOrder = () => {
                   {filteredCustomers.length === 0 && (
                     <div className="py-4 text-center">
                        <p className="text-xs text-muted-foreground mb-3">Nenhum cliente encontrado</p>
-                       <button onClick={() => setIsCreatingClient(true)} className="text-xs flex items-center gap-1 mx-auto text-amber-600 font-medium bg-amber-50 px-3 py-1.5 rounded-lg border border-amber-200 hover:bg-amber-100 transition-colors">
+                       <button onClick={() => setIsCreatingClient(true)} className="text-xs flex items-center gap-1 mx-auto text-foreground font-medium bg-card px-3 py-1.5 rounded-lg border border-border hover:bg-surface-alt transition-colors">
                          <Plus className="w-3 h-3" /> Cadastrar Novo
                        </button>
                     </div>
@@ -634,15 +634,15 @@ const NewOrder = () => {
                       <p className="text-sm font-medium text-foreground">
                         {profile.full_name || 'Sem nome'}
                         {profile.is_partner && (
-                           <span className="ml-2 text-[10px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded font-bold uppercase">Parceiro</span>
+                           <span className="ml-2 text-[10px] bg-brand-subtle text-brand-strong px-1.5 py-0.5 rounded font-bold uppercase">Parceiro</span>
                         )}
                       </p>
                       <p className="text-xs text-muted-foreground">{profile.phone || 'Sem telefone'} · {profile.business_type || '—'}</p>
                     </button>
                   ))}
                   {filteredCustomers.length > 0 && (
-                      <div className="p-3 bg-amber-50 border-t-2 border-amber-200 text-center">
-                         <button onClick={() => setIsCreatingClient(true)} className="flex items-center gap-1.5 mx-auto text-sm text-amber-700 font-bold hover:text-amber-900 transition-colors">
+                      <div className="p-3 bg-surface border-t border-border text-center">
+                         <button onClick={() => setIsCreatingClient(true)} className="flex items-center gap-1.5 mx-auto text-sm text-foreground font-bold hover:underline transition-colors">
                             <Plus className="w-4 h-4" /> Cadastrar Cliente Novo
                          </button>
                       </div>
@@ -654,13 +654,13 @@ const NewOrder = () => {
         </section>
 
         {/* ── 2. Pacotes Virtuais ─────────────────────────────────────────── */}
-        <section className="bg-white rounded-2xl border border-border shadow-card p-5 space-y-4">
+        <section className="bg-card rounded-2xl border border-border shadow-card p-5 space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground flex items-center gap-2">
               <ShoppingCart className="w-4 h-4" />
               2. Pacotes Virtuais do Catálogo
             </h2>
-            <span className="text-[10px] bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-bold">
+            <span className="text-[10px] bg-surface-alt text-muted-foreground px-2 py-0.5 rounded-full font-bold">
               Explosão Automática
             </span>
           </div>
@@ -684,12 +684,12 @@ const NewOrder = () => {
               return (
                 <div 
                   key={pkg.id} 
-                  className="flex-shrink-0 w-64 p-4 rounded-xl border border-border bg-white hover:border-amber-400 transition-all flex flex-col gap-3 group"
+                  className="flex-shrink-0 w-64 p-4 rounded-xl border border-border bg-card hover:border-ink-300 transition-all flex flex-col gap-3 group"
                 >
                   <div className="flex flex-col">
-                    <h3 className="font-bold text-sm text-foreground group-hover:text-amber-600 transition-colors">{pkg.name}</h3>
+                    <h3 className="font-bold text-sm text-foreground group-hover:text-foreground transition-colors">{pkg.name}</h3>
                     <p className="text-[10px] text-muted-foreground line-clamp-1">{pkg.description}</p>
-                    <span className="text-[11px] font-bold text-amber-600 mt-0.5">
+                    <span className="text-[11px] font-bold text-muted-foreground mt-0.5">
                       {pkg.displayProductCount} Produtos Inclusos
                     </span>
                   </div>
@@ -697,12 +697,12 @@ const NewOrder = () => {
                   <div className="flex items-center">
                     <div className="flex -space-x-3">
                       {displayImages.map((imgUrl, i) => (
-                        <div key={i} className="w-8 h-8 rounded-full border-2 border-white bg-white overflow-hidden shadow-sm">
+                        <div key={i} className="w-8 h-8 rounded-full border-2 border-white bg-card overflow-hidden shadow-sm">
                           <img src={imgUrl as string} className="w-full h-full object-cover" />
                         </div>
                       ))}
                       {remaining > 0 && (
-                        <div className="w-8 h-8 rounded-full border-2 border-white bg-slate-50 flex items-center justify-center text-[10px] font-bold text-slate-400">
+                        <div className="w-8 h-8 rounded-full border-2 border-white bg-surface flex items-center justify-center text-[10px] font-bold text-ink-400">
                           +{remaining}
                         </div>
                       )}
@@ -716,7 +716,7 @@ const NewOrder = () => {
                     </div>
                     <button
                       onClick={() => handleSelectPackage(pkg.id)}
-                      className="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-[10px] font-bold transition-colors shadow-sm"
+                      className="px-3 py-1.5 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground text-[10px] font-bold transition-colors shadow-sm"
                     >
                       ADICIONAR
                     </button>
@@ -728,7 +728,7 @@ const NewOrder = () => {
         </section>
 
         {/* ── 3. Seleção de Produtos ───────────────────────────────────────── */}
-        <section className="bg-white rounded-2xl border border-border shadow-card p-5 space-y-3">
+        <section className="bg-card rounded-2xl border border-border shadow-card p-5 space-y-3">
           <h2 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground">
             3. Itens Individuais
           </h2>
@@ -741,7 +741,7 @@ const NewOrder = () => {
                 value={productSearch}
                 onChange={e => setProductSearch(e.target.value)}
                 placeholder="Buscar produto por nome…"
-                className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-input text-sm focus:ring-2 focus:ring-amber-400 focus:outline-none"
+                className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-input text-sm focus:ring-2 focus:ring-ring focus:outline-none"
               />
             </div>
             {selectedProductIds.size > 0 && (
@@ -770,10 +770,10 @@ const NewOrder = () => {
                     onClick={() => toggleProductSelection(product.id)}
                     className={`flex items-center gap-3 p-3 rounded-xl border text-left cursor-pointer transition-all ${
                       isSelected
-                        ? 'border-amber-500 bg-amber-50 ring-1 ring-amber-500'
+                        ? 'border-foreground bg-surface ring-1 ring-foreground'
                         : inCart 
                           ? 'border-green-200 bg-green-50'
-                          : 'border-border hover:border-amber-300 hover:bg-surface-alt'
+                          : 'border-border hover:border-ink-300 hover:bg-surface-alt'
                     }`}
                   >
                     <div className="relative w-10 h-10 rounded-lg overflow-hidden shrink-0 bg-surface-alt border border-border">
@@ -785,8 +785,8 @@ const NewOrder = () => {
                         </div>
                       )}
                       {isSelected && (
-                        <div className="absolute inset-0 bg-amber-500/20 flex items-center justify-center">
-                          <Plus className="w-5 h-5 text-amber-600 font-bold" />
+                        <div className="absolute inset-0 bg-foreground/10 flex items-center justify-center">
+                          <Plus className="w-5 h-5 text-foreground font-bold" />
                         </div>
                       )}
                     </div>
@@ -799,7 +799,7 @@ const NewOrder = () => {
                       type="checkbox"
                       checked={isSelected}
                       onChange={() => {}} // Controlled by div click
-                      className="w-4 h-4 rounded border-border text-amber-500 focus:ring-amber-500"
+                      className="w-4 h-4 rounded border-border text-primary focus:ring-ring"
                     />
                   </div>
                 );
@@ -810,7 +810,7 @@ const NewOrder = () => {
 
         {/* ── 4. Carrinho ──────────────────────────────────────────────────── */}
         {cartItems.length > 0 && (
-          <section className="bg-white rounded-2xl border border-border shadow-card p-5 space-y-3">
+          <section className="bg-card rounded-2xl border border-border shadow-card p-5 space-y-3">
             <div className="flex items-center gap-2">
               <ShoppingCart className="w-4 h-4 text-muted-foreground" />
               <h2 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground">
@@ -818,7 +818,7 @@ const NewOrder = () => {
               </h2>
               <button
                 onClick={() => setShowSalesOrder(true)}
-                className="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-amber-200 bg-amber-50 text-amber-700 text-xs font-semibold hover:bg-amber-100 transition-colors"
+                className="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-card text-foreground text-xs font-semibold hover:bg-surface-alt transition-colors"
               >
                 <FileText className="w-3.5 h-3.5" />
                 Pedido de Venda
@@ -852,7 +852,7 @@ const NewOrder = () => {
                         step="0.01"
                         value={item.price}
                         onChange={e => updatePrice(item.product_id, e.target.value)}
-                        className="w-20 text-xs border border-input rounded-lg px-2 py-1 focus:ring-2 focus:ring-amber-400 focus:outline-none"
+                        className="w-20 text-xs border border-input rounded-lg px-2 py-1 focus:ring-2 focus:ring-ring focus:outline-none"
                       />
                     </div>
                   </div>
@@ -871,7 +871,7 @@ const NewOrder = () => {
                       value={item.quantity}
                       onChange={e => setQtyAbsolute(item.product_id, e.target.value)}
                       onBlur={e => { if (!e.target.value || parseInt(e.target.value) < 1) setQtyAbsolute(item.product_id, '1'); }}
-                      className="w-10 text-center text-sm font-semibold border border-border rounded-lg px-1 py-0.5 focus:outline-none focus:ring-2 focus:ring-amber-400 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                      className="w-10 text-center text-sm font-semibold border border-border rounded-lg px-1 py-0.5 focus:outline-none focus:ring-2 focus:ring-ring [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                     />
                     <button
                       onClick={() => updateQty(item.product_id, 1)}
@@ -905,13 +905,13 @@ const NewOrder = () => {
                 <div className="flex rounded-lg border border-border overflow-hidden shrink-0">
                   <button
                     onClick={() => setDiscountType('fixed')}
-                    className={`px-3 py-1.5 text-xs font-bold transition-colors ${discountType === 'fixed' ? 'bg-foreground text-white' : 'bg-white text-muted-foreground hover:bg-surface-alt'}`}
+                    className={`px-3 py-1.5 text-xs font-bold transition-colors ${discountType === 'fixed' ? 'bg-foreground text-white' : 'bg-card text-muted-foreground hover:bg-surface-alt'}`}
                   >
                     R$
                   </button>
                   <button
                     onClick={() => setDiscountType('percent')}
-                    className={`px-3 py-1.5 text-xs font-bold transition-colors ${discountType === 'percent' ? 'bg-foreground text-white' : 'bg-white text-muted-foreground hover:bg-surface-alt'}`}
+                    className={`px-3 py-1.5 text-xs font-bold transition-colors ${discountType === 'percent' ? 'bg-foreground text-white' : 'bg-card text-muted-foreground hover:bg-surface-alt'}`}
                   >
                     %
                   </button>
@@ -924,7 +924,7 @@ const NewOrder = () => {
                   value={discountValue}
                   onChange={e => setDiscountValue(e.target.value)}
                   placeholder={discountType === 'percent' ? 'Ex: 10' : 'Ex: 50,00'}
-                  className="flex-1 text-sm border border-input rounded-lg px-3 py-1.5 focus:ring-2 focus:ring-amber-400 focus:outline-none"
+                  className="flex-1 text-sm border border-input rounded-lg px-3 py-1.5 focus:ring-2 focus:ring-ring focus:outline-none"
                 />
                 {discountAmount > 0 && (
                   <span className="text-xs text-emerald-600 font-semibold shrink-0">
@@ -974,7 +974,7 @@ const NewOrder = () => {
                   onChange={e => setCouponCode(e.target.value.toUpperCase())}
                   placeholder="EX: BEMVINDO10"
                   disabled={!!appliedCoupon || isValidatingCoupon}
-                  className="flex-1 text-sm border border-input rounded-lg px-3 py-1.5 focus:ring-2 focus:ring-amber-400 focus:outline-none uppercase font-mono"
+                  className="flex-1 text-sm border border-input rounded-lg px-3 py-1.5 focus:ring-2 focus:ring-ring focus:outline-none uppercase font-mono"
                 />
                 {appliedCoupon ? (
                   <button
@@ -1003,7 +1003,7 @@ const NewOrder = () => {
         )}
 
         {/* ── 5. Campos Adicionais ─────────────────────────────────────────── */}
-        <section className="bg-white rounded-2xl border border-border shadow-card p-5 space-y-4">
+        <section className="bg-card rounded-2xl border border-border shadow-card p-5 space-y-4">
           <h2 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground">
             5. Detalhes do Pedido
           </h2>
@@ -1015,7 +1015,7 @@ const NewOrder = () => {
               <select
                 value={status}
                 onChange={e => setStatus(e.target.value)}
-                className="w-full px-3 py-2.5 rounded-xl border border-input text-sm focus:ring-2 focus:ring-amber-400 focus:outline-none bg-white"
+                className="w-full px-3 py-2.5 rounded-xl border border-input text-sm focus:ring-2 focus:ring-ring focus:outline-none bg-card"
               >
                 {STATUS_OPTIONS.map(opt => (
                   <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -1029,7 +1029,7 @@ const NewOrder = () => {
               <select
                 value={origin}
                 onChange={e => setOrigin(e.target.value)}
-                className="w-full px-3 py-2.5 rounded-xl border border-input text-sm focus:ring-2 focus:ring-amber-400 focus:outline-none bg-white"
+                className="w-full px-3 py-2.5 rounded-xl border border-input text-sm focus:ring-2 focus:ring-ring focus:outline-none bg-card"
               >
                 {ORIGIN_OPTIONS.map(opt => (
                   <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -1044,7 +1044,7 @@ const NewOrder = () => {
                 type="datetime-local"
                 value={createdAt}
                 onChange={e => setCreatedAt(e.target.value)}
-                className="w-full px-3 py-2.5 rounded-xl border border-input text-sm focus:ring-2 focus:ring-amber-400 focus:outline-none bg-white font-medium"
+                className="w-full px-3 py-2.5 rounded-xl border border-input text-sm focus:ring-2 focus:ring-ring focus:outline-none bg-card font-medium"
               />
             </div>
 
@@ -1054,7 +1054,7 @@ const NewOrder = () => {
               <select
                 value={paymentMethod}
                 onChange={e => setPaymentMethod(e.target.value)}
-                className="w-full px-3 py-2.5 rounded-xl border border-input text-sm focus:ring-2 focus:ring-amber-400 focus:outline-none bg-white font-medium"
+                className="w-full px-3 py-2.5 rounded-xl border border-input text-sm focus:ring-2 focus:ring-ring focus:outline-none bg-card font-medium"
               >
                 {PAYMENT_METHODS.map(opt => (
                   <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -1066,13 +1066,13 @@ const NewOrder = () => {
             {sellers.length > 0 && (
               <div className="sm:col-span-2">
                 <label className="block text-xs font-semibold text-foreground mb-1.5 flex items-center gap-1.5">
-                  <UserCheck className="w-3.5 h-3.5 text-amber-600" />
+                  <UserCheck className="w-3.5 h-3.5 text-muted-foreground" />
                   Vendedor
                 </label>
                 <select
                   value={selectedSellerId}
                   onChange={e => setSelectedSellerId(e.target.value)}
-                  className="w-full px-3 py-2.5 rounded-xl border border-input text-sm focus:ring-2 focus:ring-amber-400 focus:outline-none bg-white"
+                  className="w-full px-3 py-2.5 rounded-xl border border-input text-sm focus:ring-2 focus:ring-ring focus:outline-none bg-card"
                 >
                   <option value="">Usar vendedor padrão</option>
                   {sellers.map(s => (
@@ -1089,12 +1089,12 @@ const NewOrder = () => {
           <div className="pt-4 border-t border-border mt-4">
             <label className="block text-xs font-semibold text-foreground mb-1.5">Método de Entrega</label>
             <div className="grid grid-cols-2 gap-3 mb-3">
-              <label className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-colors ${deliveryMethod === 'shipping' ? 'border-amber-500 bg-amber-50' : 'border-border hover:bg-surface-alt'}`}>
-                <input type="radio" checked={deliveryMethod === 'shipping'} onChange={() => setDeliveryMethod('shipping')} className="text-amber-600 focus:ring-amber-500" />
+              <label className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-colors ${deliveryMethod === 'shipping' ? 'border-foreground bg-surface' : 'border-border hover:bg-surface-alt'}`}>
+                <input type="radio" checked={deliveryMethod === 'shipping'} onChange={() => setDeliveryMethod('shipping')} className="text-primary focus:ring-ring" />
                 <span className="font-semibold text-sm">Entrega Normal</span>
               </label>
-              <label className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-colors ${deliveryMethod === 'pickup' ? 'border-amber-500 bg-amber-50' : 'border-border hover:bg-surface-alt'}`}>
-                <input type="radio" checked={deliveryMethod === 'pickup'} onChange={() => { setDeliveryMethod('pickup'); setPickupUnitSlug('linhares'); }} className="text-amber-600 focus:ring-amber-500" />
+              <label className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-colors ${deliveryMethod === 'pickup' ? 'border-foreground bg-surface' : 'border-border hover:bg-surface-alt'}`}>
+                <input type="radio" checked={deliveryMethod === 'pickup'} onChange={() => { setDeliveryMethod('pickup'); setPickupUnitSlug('linhares'); }} className="text-primary focus:ring-ring" />
                 <span className="font-semibold text-sm">Retirar na Loja</span>
               </label>
             </div>
@@ -1109,7 +1109,7 @@ const NewOrder = () => {
                   value={shippingValue}
                   onChange={e => setShippingValue(e.target.value)}
                   placeholder="0,00"
-                  className="w-32 px-3 py-2 rounded-xl border border-input text-sm focus:ring-2 focus:ring-amber-400 focus:outline-none"
+                  className="w-32 px-3 py-2 rounded-xl border border-input text-sm focus:ring-2 focus:ring-ring focus:outline-none"
                 />
               </div>
             )}
@@ -1118,15 +1118,15 @@ const NewOrder = () => {
               <div className="p-3 bg-surface-alt rounded-xl border border-border space-y-2">
                 <p className="text-xs font-semibold text-muted-foreground mb-2">Selecione a Unidade</p>
                 <label className="flex items-center gap-2 cursor-pointer">
-                  <input type="radio" name="admin_pickup_unit" checked={pickupUnitSlug === 'linhares'} onChange={() => setPickupUnitSlug('linhares')} className="text-amber-600 focus:ring-amber-500" />
+                  <input type="radio" name="admin_pickup_unit" checked={pickupUnitSlug === 'linhares'} onChange={() => setPickupUnitSlug('linhares')} className="text-primary focus:ring-ring" />
                   <span className="text-sm font-medium text-foreground">Rei dos Cachos (Linhares)</span>
                 </label>
                 <label className="flex items-center gap-2 cursor-pointer">
-                  <input type="radio" name="admin_pickup_unit" checked={pickupUnitSlug === 'serra'} onChange={() => setPickupUnitSlug('serra')} className="text-amber-600 focus:ring-amber-500" />
+                  <input type="radio" name="admin_pickup_unit" checked={pickupUnitSlug === 'serra'} onChange={() => setPickupUnitSlug('serra')} className="text-primary focus:ring-ring" />
                   <span className="text-sm font-medium text-foreground">Rei dos Cachos (Serra)</span>
                 </label>
                 <label className="flex items-center gap-2 cursor-pointer">
-                  <input type="radio" name="admin_pickup_unit" checked={pickupUnitSlug === 'teixeira'} onChange={() => setPickupUnitSlug('teixeira')} className="text-amber-600 focus:ring-amber-500" />
+                  <input type="radio" name="admin_pickup_unit" checked={pickupUnitSlug === 'teixeira'} onChange={() => setPickupUnitSlug('teixeira')} className="text-primary focus:ring-ring" />
                   <span className="text-sm font-medium text-foreground">Rei dos Cachos (Teixeira de Freitas)</span>
                 </label>
               </div>
@@ -1141,7 +1141,7 @@ const NewOrder = () => {
               onChange={e => setNotes(e.target.value)}
               rows={3}
               placeholder="Ex: Pagou via Pix, enviar para endereço comercial…"
-              className="w-full px-3 py-2.5 rounded-xl border border-input text-sm focus:ring-2 focus:ring-amber-400 focus:outline-none resize-none"
+              className="w-full px-3 py-2.5 rounded-xl border border-input text-sm focus:ring-2 focus:ring-ring focus:outline-none resize-none"
             />
           </div>
         </section>
@@ -1193,10 +1193,10 @@ const NewOrder = () => {
       {isCreatingClient && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => !isCreating && setIsCreatingClient(false)} />
-          <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 flex flex-col gap-5 animate-in fade-in zoom-in-95 duration-200">
+          <div className="relative bg-card rounded-2xl shadow-xl w-full max-w-sm p-6 flex flex-col gap-5 animate-in fade-in zoom-in-95 duration-200">
             <div>
               <h3 className="font-bold text-lg text-foreground mb-1 flex items-center gap-2">
-                <UserCheck className="w-5 h-5 text-amber-500" />
+                <UserCheck className="w-5 h-5 text-muted-foreground" />
                 Novo Cliente
               </h3>
               <p className="text-xs text-muted-foreground">O cadastro será criado rapidamente sem necessidade de e-mail.</p>
@@ -1211,7 +1211,7 @@ const NewOrder = () => {
                   onChange={e => setNewClientName(e.target.value)}
                   placeholder="Ex: João Silva"
                   disabled={isCreating}
-                  className="w-full px-3 py-2 rounded-xl border border-input focus:ring-2 focus:ring-amber-400 focus:outline-none disabled:opacity-50"
+                  className="w-full px-3 py-2 rounded-xl border border-input focus:ring-2 focus:ring-ring focus:outline-none disabled:opacity-50"
                 />
               </div>
               <div className="space-y-1.5">
@@ -1226,7 +1226,7 @@ const NewOrder = () => {
                   placeholder="27999999999"
                   disabled={isCreating}
                   maxLength={15}
-                  className="w-full px-3 py-2 rounded-xl border border-input focus:ring-2 focus:ring-amber-400 focus:outline-none disabled:opacity-50 font-mono"
+                  className="w-full px-3 py-2 rounded-xl border border-input focus:ring-2 focus:ring-ring focus:outline-none disabled:opacity-50 font-mono"
                 />
               </div>
             </div>
@@ -1242,7 +1242,7 @@ const NewOrder = () => {
               <button
                 onClick={handleCreateClient}
                 disabled={isCreating || !newClientName.trim() || !newClientPhone.trim() || newClientPhone.replace(/\D/g, '').length < 10}
-                className="flex-1 py-2.5 rounded-xl bg-amber-500 text-white font-bold hover:bg-amber-600 transition-colors disabled:opacity-50 flex justify-center items-center"
+                className="flex-1 py-2.5 rounded-xl bg-primary text-primary-foreground font-bold hover:bg-primary/90 transition-colors disabled:opacity-50 flex justify-center items-center"
               >
                 {isCreating ? <Loader className="w-4 h-4 animate-spin" /> : 'Cadastrar'}
               </button>

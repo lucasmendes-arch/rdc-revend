@@ -60,7 +60,7 @@ function QuantityCell({ item, onSave }: { item: InventoryItem; onSave: (id: stri
         min={0}
         value={qty}
         onChange={(e) => save(parseInt(e.target.value) || 0)}
-        className={`w-16 h-8 rounded-lg border text-center font-bold text-sm focus:outline-none focus:ring-2 focus:ring-gold transition-colors ${dirty ? 'border-amber-400 bg-amber-50' : 'border-border bg-white'}`}
+        className={`w-16 h-8 rounded-lg border text-center font-bold text-sm focus:outline-none focus:ring-2 focus:ring-ring transition-colors ${dirty ? 'border-warning-border bg-warning-subtle' : 'border-border bg-card'}`}
       />
       <button
         onClick={() => save(qty + 1)}
@@ -70,7 +70,7 @@ function QuantityCell({ item, onSave }: { item: InventoryItem; onSave: (id: stri
       </button>
       {dirty && (
         <div className="w-4 h-4 ml-0.5">
-          <Loader className="w-4 h-4 animate-spin text-amber-500" />
+          <Loader className="w-4 h-4 animate-spin text-muted-foreground" />
         </div>
       )}
     </div>
@@ -117,7 +117,7 @@ function EditableCell({ value, onSave, type = 'text', placeholder = '', classNam
       onChange={(e) => setLocalVal(type === 'number' ? parseInt(e.target.value) || 0 : e.target.value)}
       onBlur={commit}
       onKeyDown={(e) => { if (e.key === 'Enter') commit(); if (e.key === 'Escape') { setLocalVal(value); setEditing(false) } }}
-      className="w-20 px-2 py-1 rounded border border-gold bg-white text-sm text-center font-medium focus:outline-none focus:ring-2 focus:ring-gold"
+      className="w-20 px-2 py-1 rounded border border-gold bg-card text-sm text-center font-medium focus:outline-none focus:ring-2 focus:ring-ring"
       min={type === 'number' ? 0 : undefined}
     />
   )
@@ -230,7 +230,7 @@ export default function AdminEstoque() {
 
   return (
     <AdminLayout>
-      <div className="bg-white border-b border-border sticky top-0 lg:top-0 z-30">
+      <div className="bg-card border-b border-border sticky top-0 lg:top-0 z-30">
         <div className="px-4 sm:px-6 py-4 flex items-center justify-between gap-4">
           <div>
             <h1 className="text-xl sm:text-2xl font-bold text-foreground">Estoque</h1>
@@ -291,16 +291,16 @@ export default function AdminEstoque() {
         </div>
       ) : (
         <div className="px-4 sm:px-6 py-8">
-          <div className="mb-6 bg-amber-50 rounded-xl border border-amber-200 p-4 flex items-start gap-2.5">
-            <Boxes className="w-4 h-4 text-amber-700 mt-0.5 shrink-0" />
-            <p className="text-xs text-amber-800">
+          <div className="mb-6 bg-info-subtle rounded-xl border border-info-border p-4 flex items-start gap-2.5">
+            <Boxes className="w-4 h-4 text-info mt-0.5 shrink-0" />
+            <p className="text-xs text-info">
               Quantidade atualizada automaticamente sempre que uma contagem de Linhares é confirmada em <strong>/estoque/contagem</strong>. Editar aqui é um ajuste pontual (ex: avaria) — a próxima contagem confirmada sobrescreve o valor.
             </p>
           </div>
 
           {/* Stats */}
           <div className="grid grid-cols-3 gap-3 mb-6">
-            <div className="bg-white rounded-xl border border-border p-4 text-center">
+            <div className="bg-card rounded-xl border border-border p-4 text-center">
               <p className="text-2xl font-bold text-foreground">{inventory.length}</p>
               <p className="text-xs text-muted-foreground mt-1">Total</p>
             </div>
@@ -322,7 +322,7 @@ export default function AdminEstoque() {
               placeholder="Buscar por nome ou SKU..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-border bg-white text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-gold"
+              className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-border bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
             />
           </div>
 
@@ -334,7 +334,7 @@ export default function AdminEstoque() {
           ) : (
             <>
               {filteredInventory.length > 0 && (
-                <div className="bg-white rounded-xl border border-border shadow-card overflow-hidden mb-8">
+                <div className="bg-card rounded-xl border border-border shadow-card overflow-hidden mb-8">
                   <div className="overflow-x-auto">
                     <table className="w-full">
                       <thead>
@@ -405,7 +405,7 @@ export default function AdminEstoque() {
               {filteredProductsWithoutStock.length > 0 && (
                 <div>
                   <h2 className="text-lg font-bold text-foreground mb-3">Produtos sem estoque cadastrado</h2>
-                  <div className="bg-white rounded-xl border border-border shadow-card overflow-hidden">
+                  <div className="bg-card rounded-xl border border-border shadow-card overflow-hidden">
                     <div className="overflow-x-auto">
                       <table className="w-full">
                         <thead>

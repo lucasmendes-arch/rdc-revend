@@ -464,7 +464,7 @@ export default function SalaoNovoPedido() {
       <div className="min-h-screen bg-surface-alt">
         <SalaoHeader onLogout={handleLogout} isDark={isDark} onToggleTheme={toggleTheme} />
         <div className="flex items-center justify-center px-4 py-16">
-          <div className="bg-white rounded-2xl border border-border shadow-card p-8 max-w-md w-full text-center">
+          <div className="bg-card rounded-2xl border border-border shadow-card p-8 max-w-md w-full text-center">
             <div className="w-16 h-16 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mx-auto mb-4">
               <ShoppingCart className="w-8 h-8 text-green-600 dark:text-green-400" />
             </div>
@@ -496,7 +496,7 @@ export default function SalaoNovoPedido() {
       <div className="px-4 sm:px-6 py-6 max-w-5xl mx-auto space-y-6">
 
         {/* ── 1. Seleção de Cliente ────────────────────────────────────────── */}
-        <section className="bg-white rounded-2xl border border-border shadow-card p-5 space-y-3">
+        <section className="bg-card rounded-2xl border border-border shadow-card p-5 space-y-3">
           <h2 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground">
             1. Cliente
           </h2>
@@ -509,7 +509,7 @@ export default function SalaoNovoPedido() {
                   <p className="font-semibold text-foreground flex items-center flex-wrap gap-1">
                     {selectedCustomer.full_name || 'Sem nome'}
                     {selectedCustomer.is_partner && (
-                       <span className="text-[10px] bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-400 px-1.5 py-0.5 rounded font-bold uppercase">Parceiro</span>
+                       <span className="text-[10px] bg-brand-subtle text-brand-strong px-1.5 py-0.5 rounded font-bold uppercase">Parceiro</span>
                     )}
                     {selectedCustomer.price_list_id && (
                        <span className="text-[10px] bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-400 px-1.5 py-0.5 rounded font-bold uppercase flex items-center gap-0.5">
@@ -538,7 +538,7 @@ export default function SalaoNovoPedido() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                  <div className="space-y-1">
                     <label className="text-[11px] font-semibold text-muted-foreground uppercase">Nome do Cliente *</label>
-                    <input type="text" required value={newClientName} onChange={e => setNewClientName(e.target.value)} className="w-full px-3 py-2 rounded-lg border border-input text-sm bg-white text-foreground focus:ring-2 focus:ring-amber-400 focus:outline-none" placeholder="Nome Completo" />
+                    <input type="text" required value={newClientName} onChange={e => setNewClientName(e.target.value)} className="w-full px-3 py-2 rounded-lg border border-input text-sm bg-card text-foreground focus:ring-2 focus:ring-ring focus:outline-none" placeholder="Nome Completo" />
                  </div>
                  <div className="space-y-1">
                     <label className="text-[11px] font-semibold text-muted-foreground uppercase">WhatsApp *</label>
@@ -549,13 +549,13 @@ export default function SalaoNovoPedido() {
                        maxLength={11}
                        value={newClientPhone}
                        onChange={e => setNewClientPhone(e.target.value.replace(/\D/g, '').slice(0, 11))}
-                       className="w-full px-3 py-2 rounded-lg border border-input text-sm bg-white text-foreground focus:ring-2 focus:ring-amber-400 focus:outline-none"
+                       className="w-full px-3 py-2 rounded-lg border border-input text-sm bg-card text-foreground focus:ring-2 focus:ring-ring focus:outline-none"
                        placeholder="DDD + número (10 ou 11 dígitos)"
                      />
                  </div>
                  <div className="space-y-1 sm:col-span-2">
                     <label className="text-[11px] font-semibold text-muted-foreground uppercase">E-mail (opcional)</label>
-                    <input type="email" value={newClientEmail} onChange={e => setNewClientEmail(e.target.value)} className="w-full px-3 py-2 rounded-lg border border-input text-sm bg-white text-foreground focus:ring-2 focus:ring-amber-400 focus:outline-none" placeholder="cliente@email.com" />
+                    <input type="email" value={newClientEmail} onChange={e => setNewClientEmail(e.target.value)} className="w-full px-3 py-2 rounded-lg border border-input text-sm bg-card text-foreground focus:ring-2 focus:ring-ring focus:outline-none" placeholder="cliente@email.com" />
                  </div>
               </div>
               <button disabled={isSaving} type="submit" className="w-full py-2.5 rounded-lg font-semibold btn-gold text-sm mt-4">
@@ -571,14 +571,14 @@ export default function SalaoNovoPedido() {
                   value={customerSearch}
                   onChange={e => setCustomerSearch(e.target.value)}
                   placeholder="Buscar cliente por nome ou telefone…"
-                  className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-input text-sm bg-white text-foreground focus:ring-2 focus:ring-amber-400 focus:outline-none"
+                  className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-input text-sm bg-card text-foreground focus:ring-2 focus:ring-ring focus:outline-none"
                 />
               </div>
 
               {customerSearch.trim().length === 0 ? (
                 <div className="py-2 text-center">
                   <p className="text-xs text-muted-foreground mb-3">Digite ao menos 2 caracteres para buscar</p>
-                  <button onClick={() => setIsCreatingClient(true)} className="text-xs flex items-center gap-1 mx-auto text-amber-600 dark:text-amber-400 font-medium bg-amber-50 dark:bg-amber-900/20 px-3 py-1.5 rounded-lg border border-amber-200 dark:border-amber-800 hover:bg-amber-100 dark:hover:bg-amber-900/30 transition-colors">
+                  <button onClick={() => setIsCreatingClient(true)} className="text-xs flex items-center gap-1 mx-auto text-foreground font-medium bg-card px-3 py-1.5 rounded-lg border border-border hover:bg-surface-alt transition-colors">
                      <Plus className="w-3 h-3" /> Cadastrar Cliente Express
                   </button>
                 </div>
@@ -596,7 +596,7 @@ export default function SalaoNovoPedido() {
                   {searchedCustomers.length === 0 && (
                     <div className="py-4 text-center">
                        <p className="text-xs text-muted-foreground mb-3">Nenhum cliente encontrado</p>
-                       <button onClick={() => setIsCreatingClient(true)} className="text-xs flex items-center gap-1 mx-auto text-amber-600 dark:text-amber-400 font-medium bg-amber-50 dark:bg-amber-900/20 px-3 py-1.5 rounded-lg border border-amber-200 dark:border-amber-800 hover:bg-amber-100 dark:hover:bg-amber-900/30 transition-colors">
+                       <button onClick={() => setIsCreatingClient(true)} className="text-xs flex items-center gap-1 mx-auto text-foreground font-medium bg-card px-3 py-1.5 rounded-lg border border-border hover:bg-surface-alt transition-colors">
                          <Plus className="w-3 h-3" /> Cadastrar Novo
                        </button>
                     </div>
@@ -610,7 +610,7 @@ export default function SalaoNovoPedido() {
                       <p className="text-sm font-medium text-foreground">
                         {profile.full_name || 'Sem nome'}
                         {profile.is_partner && (
-                           <span className="ml-2 text-[10px] bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-400 px-1.5 py-0.5 rounded font-bold uppercase">Parceiro</span>
+                           <span className="ml-2 text-[10px] bg-brand-subtle text-brand-strong px-1.5 py-0.5 rounded font-bold uppercase">Parceiro</span>
                         )}
                       </p>
                       <p className="text-xs text-muted-foreground">
@@ -620,7 +620,7 @@ export default function SalaoNovoPedido() {
                   ))}
                   {searchedCustomers.length > 0 && (
                      <div className="p-2 bg-surface-alt text-center">
-                        <button onClick={() => setIsCreatingClient(true)} className="text-xs text-amber-600 font-medium hover:underline">
+                        <button onClick={() => setIsCreatingClient(true)} className="text-xs text-foreground font-medium hover:underline">
                            + Ou cadastre um cliente novo
                         </button>
                      </div>
@@ -633,7 +633,7 @@ export default function SalaoNovoPedido() {
 
 
         {/* ── 3. Itens Individuais ────────────────────────────────────────── */}
-        <section className="bg-white rounded-2xl border border-border shadow-card p-5 space-y-3">
+        <section className="bg-card rounded-2xl border border-border shadow-card p-5 space-y-3">
           <h2 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground">
             3. Itens Individuais
           </h2>
@@ -645,7 +645,7 @@ export default function SalaoNovoPedido() {
               value={productSearch}
               onChange={e => setProductSearch(e.target.value)}
               placeholder="Buscar produto por nome…"
-              className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-input text-sm bg-white text-foreground focus:ring-2 focus:ring-amber-400 focus:outline-none"
+              className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-input text-sm bg-card text-foreground focus:ring-2 focus:ring-ring focus:outline-none"
             />
           </div>
 
@@ -682,7 +682,7 @@ export default function SalaoNovoPedido() {
                     className={`flex items-center gap-3 p-3 rounded-xl border text-left cursor-pointer transition-all ${
                       inCart
                         ? 'border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20'
-                        : 'border-border hover:border-amber-300 hover:bg-surface-alt'
+                        : 'border-border hover:border-ink-300 hover:bg-surface-alt'
                     }`}
                   >
                     <div className="relative w-10 h-10 rounded-lg overflow-hidden shrink-0 bg-surface-alt border border-border">
@@ -699,7 +699,7 @@ export default function SalaoNovoPedido() {
                       {hasPriceOverride ? (
                         <div className="flex items-center gap-1.5 mt-0.5">
                           <span className="text-[10px] line-through text-muted-foreground/50">R$ {product.price.toFixed(2)}</span>
-                          <span className="text-[10px] font-bold text-amber-600">R$ {displayPrice.toFixed(2)}</span>
+                          <span className="text-[10px] font-bold text-foreground">R$ {displayPrice.toFixed(2)}</span>
                         </div>
                       ) : (
                         <p className="text-[10px] text-muted-foreground">R$ {displayPrice.toFixed(2)}</p>
@@ -719,7 +719,7 @@ export default function SalaoNovoPedido() {
 
         {/* ── 4. Resumo do Pedido (Carrinho) — espelha NewOrder.tsx L638-810 ──── */}
         {cartItems.length > 0 && (
-          <section className="bg-white rounded-2xl border border-border shadow-card p-5 space-y-3">
+          <section className="bg-card rounded-2xl border border-border shadow-card p-5 space-y-3">
             <div className="flex items-center gap-2">
               <ShoppingCart className="w-4 h-4 text-muted-foreground" />
               <h2 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground">
@@ -752,7 +752,7 @@ export default function SalaoNovoPedido() {
                         step="0.01"
                         value={item.price}
                         onChange={e => updatePrice(item.product_id, e.target.value)}
-                        className="w-20 text-xs border border-input rounded-lg px-2 py-1 bg-white text-foreground focus:ring-2 focus:ring-amber-400 focus:outline-none"
+                        className="w-20 text-xs border border-input rounded-lg px-2 py-1 bg-card text-foreground focus:ring-2 focus:ring-ring focus:outline-none"
                       />
                     </div>
                   </div>
@@ -805,7 +805,7 @@ export default function SalaoNovoPedido() {
         )}
 
         {/* ── 5. Detalhes do Pedido ────────────────────────────────────────── */}
-        <section className="bg-white rounded-2xl border border-border shadow-card p-5 space-y-4">
+        <section className="bg-card rounded-2xl border border-border shadow-card p-5 space-y-4">
           <div className="flex items-center gap-2 mb-2">
             <Tag className="w-4 h-4 text-muted-foreground" />
             <h2 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground">
@@ -818,9 +818,9 @@ export default function SalaoNovoPedido() {
             <div>
               <label className="block text-xs font-semibold text-foreground mb-1.5">Status do Pagamento</label>
               <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl border border-border bg-surface-alt">
-                <Tag className="w-3.5 h-3.5 text-amber-600" />
+                <Tag className="w-3.5 h-3.5 text-muted-foreground" />
                 <span className="text-sm font-medium text-muted-foreground">Recebido</span>
-                <span className="ml-auto text-[10px] text-muted-foreground bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 px-1.5 py-0.5 rounded-full font-bold">fixo</span>
+                <span className="ml-auto text-[10px] text-muted-foreground bg-surface-alt px-1.5 py-0.5 rounded-full font-bold">fixo</span>
               </div>
             </div>
 
@@ -828,23 +828,23 @@ export default function SalaoNovoPedido() {
             <div>
               <label className="block text-xs font-semibold text-foreground mb-1.5">Origem do Pedido</label>
               <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl border border-border bg-surface-alt">
-                <Tag className="w-3.5 h-3.5 text-amber-600" />
+                <Tag className="w-3.5 h-3.5 text-muted-foreground" />
                 <span className="text-sm font-medium text-muted-foreground">Salão</span>
-                <span className="ml-auto text-[10px] text-muted-foreground bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 px-1.5 py-0.5 rounded-full font-bold">fixo</span>
+                <span className="ml-auto text-[10px] text-muted-foreground bg-surface-alt px-1.5 py-0.5 rounded-full font-bold">fixo</span>
               </div>
             </div>
 
             {/* Vendedor */}
             <div>
               <label className="text-xs font-semibold text-foreground mb-1.5 flex items-center gap-1.5">
-                <UserCheck className="w-3.5 h-3.5 text-amber-600" />
+                <UserCheck className="w-3.5 h-3.5 text-muted-foreground" />
                 Vendedor
               </label>
               <select
                 value={selectedSellerId}
                 onChange={e => setSelectedSellerId(e.target.value)}
                 disabled={loadingSellers}
-                className="w-full px-3 py-2.5 rounded-xl border border-input text-sm focus:ring-2 focus:ring-amber-400 focus:outline-none bg-white font-medium"
+                className="w-full px-3 py-2.5 rounded-xl border border-input text-sm focus:ring-2 focus:ring-ring focus:outline-none bg-card font-medium"
               >
                 <option value="" disabled>Selecione um vendedor...</option>
                 {sellers.map((s) => (
@@ -856,13 +856,13 @@ export default function SalaoNovoPedido() {
             {/* Unidade */}
             <div>
               <label className="text-xs font-semibold text-foreground mb-1.5 flex items-center gap-1.5">
-                <MapPin className="w-3.5 h-3.5 text-amber-600" />
+                <MapPin className="w-3.5 h-3.5 text-muted-foreground" />
                 Unidade do Salão *
               </label>
               <select
                 value={selectedUnitSlug}
                 onChange={e => setSelectedUnitSlug(e.target.value)}
-                className="w-full px-3 py-2.5 rounded-xl border border-input text-sm focus:ring-2 focus:ring-amber-400 focus:outline-none bg-white font-medium"
+                className="w-full px-3 py-2.5 rounded-xl border border-input text-sm focus:ring-2 focus:ring-ring focus:outline-none bg-card font-medium"
               >
                 <option value="" disabled>Selecione a unidade...</option>
                 <option value="linhares">Linhares</option>
@@ -890,7 +890,7 @@ export default function SalaoNovoPedido() {
                   type="datetime-local"
                   value={orderDate}
                   onChange={e => setOrderDate(e.target.value)}
-                  className="w-full px-3 py-2.5 rounded-xl border border-input text-sm focus:ring-2 focus:ring-amber-400 focus:outline-none bg-white cursor-pointer"
+                  className="w-full px-3 py-2.5 rounded-xl border border-input text-sm focus:ring-2 focus:ring-ring focus:outline-none bg-card cursor-pointer"
                 />
               </div>
               <p className="text-[10px] text-muted-foreground mt-1">Deixe em branco para usar a data atual</p>
@@ -908,8 +908,8 @@ export default function SalaoNovoPedido() {
                   }}
                   className={`text-[10px] font-bold px-2.5 py-1 rounded-lg border transition-colors ${
                     splitMode
-                      ? 'border-amber-400 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400'
-                      : 'border-border bg-white text-muted-foreground hover:bg-surface-alt'
+                      ? 'border-foreground bg-surface text-foreground'
+                      : 'border-border bg-card text-muted-foreground hover:bg-surface-alt'
                   }`}
                 >
                   {splitMode ? 'Pagamento único' : 'Dividir pagamento'}
@@ -925,8 +925,8 @@ export default function SalaoNovoPedido() {
                       onClick={() => setPaymentMethod(pm.value)}
                       className={`px-4 py-2 rounded-xl text-xs font-semibold transition-colors border ${
                         paymentMethod === pm.value
-                          ? 'border-amber-400 bg-amber-50 dark:bg-amber-900/20 text-amber-900 dark:text-amber-300'
-                          : 'border-border bg-white text-muted-foreground hover:bg-surface-alt'
+                          ? 'border-foreground bg-surface text-foreground'
+                          : 'border-border bg-card text-muted-foreground hover:bg-surface-alt'
                       }`}
                     >
                       {pm.label}
@@ -940,7 +940,7 @@ export default function SalaoNovoPedido() {
                       <select
                         value={split.method}
                         onChange={e => setPaymentSplits(prev => prev.map((s, i) => i === idx ? { ...s, method: e.target.value } : s))}
-                        className="flex-1 px-3 py-2 rounded-xl border border-input text-sm focus:ring-2 focus:ring-amber-400 focus:outline-none bg-white font-medium"
+                        className="flex-1 px-3 py-2 rounded-xl border border-input text-sm focus:ring-2 focus:ring-ring focus:outline-none bg-card font-medium"
                       >
                         {PAYMENT_METHODS.map(pm => <option key={pm.value} value={pm.value}>{pm.label}</option>)}
                       </select>
@@ -953,7 +953,7 @@ export default function SalaoNovoPedido() {
                           placeholder="0,00"
                           value={split.amount}
                           onChange={e => setPaymentSplits(prev => prev.map((s, i) => i === idx ? { ...s, amount: e.target.value } : s))}
-                          className="w-28 pl-8 pr-2 py-2 rounded-xl border border-input text-sm bg-white text-foreground focus:ring-2 focus:ring-amber-400 focus:outline-none"
+                          className="w-28 pl-8 pr-2 py-2 rounded-xl border border-input text-sm bg-card text-foreground focus:ring-2 focus:ring-ring focus:outline-none"
                         />
                       </div>
                       {paymentSplits.length > 2 && (
@@ -971,7 +971,7 @@ export default function SalaoNovoPedido() {
                   <button
                     type="button"
                     onClick={() => setPaymentSplits(prev => [...prev, { method: 'PIX', amount: '' }])}
-                    className="flex items-center gap-1.5 text-xs text-amber-700 font-semibold hover:underline mt-1"
+                    className="flex items-center gap-1.5 text-xs text-foreground font-semibold hover:underline mt-1"
                   >
                     <Plus className="w-3.5 h-3.5" /> Adicionar forma
                   </button>
@@ -979,7 +979,7 @@ export default function SalaoNovoPedido() {
                   <div className={`flex items-center justify-between text-xs font-semibold px-3 py-2 rounded-lg border ${
                     Math.abs(splitsDiff) < 0.01
                       ? 'border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400'
-                      : 'border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400'
+                      : 'border-warning-border bg-warning-subtle text-warning'
                   }`}>
                     <span>Total a distribuir: R$ {total.toFixed(2)}</span>
                     <span>
@@ -1002,7 +1002,7 @@ export default function SalaoNovoPedido() {
                 onChange={e => setNotes(e.target.value)}
                 rows={3}
                 placeholder="Ex: cliente pediu embalagem especial, entregar no endereço comercial…"
-                className="w-full px-3 py-2.5 rounded-xl border border-input text-sm bg-white text-foreground focus:ring-2 focus:ring-amber-400 focus:outline-none resize-none"
+                className="w-full px-3 py-2.5 rounded-xl border border-input text-sm bg-card text-foreground focus:ring-2 focus:ring-ring focus:outline-none resize-none"
               />
             </div>
           </div>
@@ -1032,7 +1032,7 @@ export default function SalaoNovoPedido() {
 
 function SalaoHeader({ onLogout, isDark, onToggleTheme }: { onLogout: () => void; isDark: boolean; onToggleTheme: () => void }) {
   return (
-    <header className="bg-gold border-b border-amber-600 px-4 sm:px-6 h-14 flex items-center sticky top-0 z-40">
+    <header className="bg-gold border-b border-brand-strong px-4 sm:px-6 h-14 flex items-center sticky top-0 z-40">
       <div className="w-full max-w-5xl mx-auto flex items-center justify-between">
         <div className="flex items-center gap-2.5">
           <img src={logo} alt="Rei dos Cachos" className="h-8 w-auto brightness-0 invert" />

@@ -13,9 +13,9 @@ export default function EstoqueAtual() {
 
   return (
     <EstoqueLayout>
-      <div className="bg-white rounded-2xl border border-border shadow-card p-5 space-y-2">
+      <div className="bg-card rounded-2xl border border-border shadow-card p-5 space-y-2">
         <div className="flex items-center gap-2">
-          <Boxes className="w-5 h-5 text-amber-600" />
+          <Boxes className="w-5 h-5 text-muted-foreground" />
           <h1 className="text-lg font-bold text-foreground">Estoque atual por unidade</h1>
         </div>
         <p className="text-xs text-muted-foreground">

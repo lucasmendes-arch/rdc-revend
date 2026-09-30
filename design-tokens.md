@@ -367,27 +367,50 @@ lê como site institucional.
 
 ## 8. Cobertura e dívida
 
-### Migrado (0 usos de `amber-*` restantes)
+### Migrado (0 usos de `amber-*`, `ring-gold`, `gray/slate/zinc-*` e `bg-white`)
 
 Portal (dashboard, layout, shell) · autenticação (Login, Cadastro,
 RedefinirSenha) · funil de compra (Catálogo, Checkout) · vitrine
 (`components/catalog/*`) · pedidos (MeusPedidos, PedidoSucesso) · guards de rota.
 
+Admin inteiro (2026-09-30): `comercial-atacado/admin`, `rh`, `dp`, `estoque`,
+`sistema`, `financeiro`, `marketing`, `salao`. Critério usado na troca do
+`amber-*`, para repetir em código novo:
+
+| Era `amber` porque… | Virou |
+|---|---|
+| anel de foco | `ring-ring` (ink) |
+| ação principal (botão sólido) | `bg-primary text-primary-foreground hover:bg-primary/90` |
+| item selecionado (card, radio, pill) | `border-foreground bg-surface` |
+| checkbox / radio | `text-primary` / `accent-ink-900` |
+| parceiro, preço de parceiro, destaque, vendedor padrão, origem Portal | `brand-*` |
+| pendência real (aguardando, sem cargo, não classificado, divergência) | `warning-*` |
+| informativo sem ação | `info-*` |
+| decoração (ícone de título, link, chip, eyebrow) | neutro (`text-muted-foreground`, `bg-surface-alt`, `.eyebrow`) |
+
+`gray-*`/`slate-*`/`zinc-*`/`bg-white` foram trocados pelo equivalente exato
+que a camada dark já aplicava (`bg-white`→`bg-card`, `bg-gray-50`→`bg-surface`,
+`text-gray-500`→`text-muted-foreground`, `border-gray-200`→`border-border`,
+demais tons → `ink-N`), e as regras correspondentes saíram do `index.css`.
+
+`statusConfig` de pedido não existe mais fora de `orderStatus.ts`: `admin/Pedidos`,
+`PedidoSucesso` e `OrderCouponModal` derivam de `ORDER_STATUS`. Onde `<Badge>`
+não serve (bolinha, chip com ring, painel), usar `toneClasses(tone)`.
+
 ### Dívida conhecida
 
-- **Área admin: ~390 usos de `amber-*`** em `comercial-atacado/admin`, `rh`,
-  `dp`, `estoque`, `sistema`, `financeiro`, `marketing`, `salao`. Essas telas
-  herdaram tokens, tipografia e primitivos, mas não passaram por revisão tela a
-  tela. É o maior bloco restante.
-- **Camada de coerência dark** (`.dark .bg-white`, `.dark .text-gray-500`… em
-  `index.css`): traduz ~200 classes hardcoded legadas sem tocar 42 arquivos. É
-  dívida consciente — o alvo é migrar as telas para tokens semânticos e ir
-  apagando regras de lá.
-- **`ring-gold`** (51 usos, telas admin) ainda pinta o anel de foco de bronze
-  em vez do ink global. Resolver junto com a migração do admin.
-- **`statusConfig` local** ainda existe em `admin/Pedidos.tsx`,
-  `admin/Clientes.tsx`, `PedidoSucesso.tsx`, `sistema/Usuarios.tsx` e
-  `OrderCouponModal.tsx`. Devem passar a importar `orderStatus.ts`.
+- **Famílias semânticas hardcoded**: ~750 usos de `red/emerald/green/blue/
+  indigo/yellow/purple/teal/sky/violet/orange-*` em ~54 arquivos. Parte ainda
+  depende do remap dark de `index.css` (só `red`, `emerald`/`green`, `blue`/
+  `indigo`, `yellow`). Migrar para `danger/success/info/warning` muda a cor
+  no light, então pede revisão tela a tela, não troca mecânica.
+- **Cabeçalho dourado** de `/estoque` (`EstoqueLayout`) e `/salao` (`Inicio`,
+  `NovoPedido`): barra `bg-gold` com texto branco. Contraria a regra do dourado
+  raro, mas trocar é decisão de produto (identidade dos apps de operação).
+- **Escala legada `gold-*`** (~130 usos: `text-gold-text`, `bg-gold`…): aponta
+  para os tokens `brand`, então é só nome. Em código novo, `brand-*`.
+- `statusConfig` de **acesso** (não de pedido) em `admin/Clientes.tsx` e
+  `sistema/Usuarios.tsx` segue local — é outro domínio.
 - **`/portal/comprar`** é rota órfã: nunca foi terminada e hoje redireciona
   para `/catalogo`. Remover a rota é decisão de produto.
 - **`/lookbook`** usa `stone-*` + Playfair de propósito (peça de impressão) e

@@ -80,7 +80,7 @@ export function CadastroAtacado({ onSubmit }: CadastroAtacadoProps) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 rounded-2xl border border-border bg-white p-6 shadow-card">
+    <form onSubmit={handleSubmit} className="space-y-4 rounded-2xl border border-border bg-card p-6 shadow-card">
       <div>
         <h2 className="text-lg font-semibold text-foreground tracking-tight">Cadastro Atacado</h2>
         <p className="text-sm text-muted-foreground">
@@ -132,7 +132,7 @@ export function CadastroAtacado({ onSubmit }: CadastroAtacadoProps) {
       <button
         type="submit"
         disabled={loading}
-        className="w-full rounded-xl bg-amber-500 px-4 py-3 font-bold text-white transition-colors hover:bg-amber-600 disabled:cursor-not-allowed disabled:opacity-70"
+        className="w-full rounded-xl bg-primary px-4 py-3 font-bold text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-70"
       >
         {loading ? 'Enviando...' : 'Cadastrar e rastrear Lead'}
       </button>

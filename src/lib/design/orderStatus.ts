@@ -90,3 +90,34 @@ export function getOrderStatus(status: string | null | undefined): OrderStatusMe
   if (!status) return FALLBACK;
   return ORDER_STATUS[status as OrderStatus] ?? { ...FALLBACK, label: status, short: status };
 }
+
+type SemanticTone = "neutral" | "success" | "warning" | "danger" | "info";
+
+export interface ToneClasses {
+  /** Fundo de chip/pill. */
+  bg: string;
+  text: string;
+  /** Hairline de chip com `ring-1 ring-inset`. */
+  ring: string;
+  /** Bolinha/indicador sólido. */
+  dot: string;
+  /** Painel tingido (bloco de destaque, não chip). */
+  panel: string;
+}
+
+const TONE_CLASSES: Record<SemanticTone, ToneClasses> = {
+  neutral: { bg: "bg-muted",           text: "text-ink-600", ring: "ring-border",         dot: "bg-ink-400",        panel: "bg-surface" },
+  success: { bg: "bg-success-subtle",  text: "text-success", ring: "ring-success-border", dot: "bg-success-solid",  panel: "bg-success-subtle" },
+  warning: { bg: "bg-warning-subtle",  text: "text-warning", ring: "ring-warning-border", dot: "bg-warning-solid",  panel: "bg-warning-subtle" },
+  danger:  { bg: "bg-danger-subtle",   text: "text-danger",  ring: "ring-danger-border",  dot: "bg-danger-solid",   panel: "bg-danger-subtle" },
+  info:    { bg: "bg-info-subtle",     text: "text-info",    ring: "ring-info-border",    dot: "bg-info-solid",     panel: "bg-info-subtle" },
+};
+
+/**
+ * Classes cruas de um tom, para onde `<Badge>` não serve (bolinha de coluna,
+ * chip com ring, painel tingido, `<select>` colorido). Tom fora do set
+ * semântico degrada para neutro.
+ */
+export function toneClasses(tone: StatusTone): ToneClasses {
+  return TONE_CLASSES[tone as SemanticTone] ?? TONE_CLASSES.neutral;
+}

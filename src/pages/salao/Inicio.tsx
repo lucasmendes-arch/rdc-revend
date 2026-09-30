@@ -29,7 +29,7 @@ export default function SalaoInicio() {
 
   return (
     <div className="min-h-screen bg-surface-alt">
-      <header className="bg-gold border-b border-amber-600 px-4 sm:px-6 h-14 flex items-center sticky top-0 z-40">
+      <header className="bg-gold border-b border-brand-strong px-4 sm:px-6 h-14 flex items-center sticky top-0 z-40">
         <div className="w-full max-w-3xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <img src={logo} alt="Rei dos Cachos" className="h-8 w-auto brightness-0 invert" />
@@ -62,7 +62,7 @@ export default function SalaoInicio() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Link
             to="/salao/pedido"
-            className="flex flex-col items-center gap-3 p-8 rounded-2xl bg-white border border-border shadow-card hover:border-amber-300 hover:shadow-lg transition-all"
+            className="flex flex-col items-center gap-3 p-8 rounded-2xl bg-card border border-border shadow-card hover:border-ink-300 hover:shadow-lg transition-all"
           >
             <div className="w-14 h-14 rounded-2xl gradient-gold flex items-center justify-center">
               <ShoppingCart className="w-7 h-7 text-white" />
@@ -76,7 +76,7 @@ export default function SalaoInicio() {
           {storeId ? (
             <Link
               to="/estoque/contagem"
-              className="flex flex-col items-center gap-3 p-8 rounded-2xl bg-white border border-border shadow-card hover:border-amber-300 hover:shadow-lg transition-all"
+              className="flex flex-col items-center gap-3 p-8 rounded-2xl bg-card border border-border shadow-card hover:border-ink-300 hover:shadow-lg transition-all"
             >
               <div className="w-14 h-14 rounded-2xl gradient-gold flex items-center justify-center">
                 <Warehouse className="w-7 h-7 text-white" />
@@ -87,7 +87,7 @@ export default function SalaoInicio() {
               </div>
             </Link>
           ) : (
-            <div className="flex flex-col items-center gap-3 p-8 rounded-2xl bg-white border border-border opacity-50 cursor-not-allowed">
+            <div className="flex flex-col items-center gap-3 p-8 rounded-2xl bg-card border border-border opacity-50 cursor-not-allowed">
               <div className="w-14 h-14 rounded-2xl bg-muted flex items-center justify-center">
                 <Warehouse className="w-7 h-7 text-muted-foreground" />
               </div>

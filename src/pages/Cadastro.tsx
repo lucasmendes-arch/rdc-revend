@@ -142,7 +142,7 @@ export default function Cadastro() {
     return (
         <div className="min-h-screen bg-surface-alt flex flex-col">
             {/* Header */}
-            <header className="bg-white border-b border-border px-4 sm:px-6 h-16 flex items-center sticky top-0 z-10">
+            <header className="bg-card border-b border-border px-4 sm:px-6 h-16 flex items-center sticky top-0 z-10">
                 <div className="container mx-auto flex items-center justify-between">
                     <Link to="/login" className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
                         <ArrowLeft className="w-5 h-5" />
@@ -187,7 +187,7 @@ export default function Cadastro() {
                     ))}
                 </div>
 
-                <form onSubmit={handleSubmit} className="bg-white rounded-lg p-5 sm:p-8 shadow-sm border border-border space-y-4">
+                <form onSubmit={handleSubmit} className="bg-card rounded-lg p-5 sm:p-8 shadow-sm border border-border space-y-4">
 
                     {error && (
                         <div ref={errorRef} className="px-4 py-3 rounded-lg bg-danger-subtle border border-danger-border text-danger text-sm">

@@ -72,7 +72,7 @@ function Stepper({
           disabled={disabled}
           value={value}
           onChange={(e) => onChange(Math.max(0, parseInt(e.target.value) || 0))}
-          className="w-12 h-9 rounded-xl border border-input text-center text-base font-bold bg-white disabled:bg-surface-alt disabled:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-amber-400"
+          className="w-12 h-9 rounded-xl border border-input text-center text-base font-bold bg-card disabled:bg-surface-alt disabled:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
         />
         <button
           type="button"
@@ -143,7 +143,7 @@ function ProductCard({
   return (
     <div className={`rounded-2xl border p-3 flex gap-3 transition-colors ${
       unclassified
-        ? 'border-amber-200 bg-amber-50/40'
+        ? 'border-warning-border bg-warning-subtle'
         : isZeroed
           // Zerado = em falta: o card inteiro fica permanentemente vermelho claro
           ? 'border-red-200 bg-red-50/50 hover:bg-red-50'
@@ -155,7 +155,7 @@ function ProductCard({
       {/* Imagem grande à esquerda — identificação visual rápida do produto */}
       {/* Escalona pela largura real do aparelho — em telas ≤ 400px a imagem
           encolhe pra sobrar largura mínima pros steppers sem estourar a página */}
-      <div className="w-24 h-24 min-[420px]:w-28 min-[420px]:h-28 sm:w-32 sm:h-32 rounded-xl overflow-hidden shrink-0 bg-white border border-border self-center">
+      <div className="w-24 h-24 min-[420px]:w-28 min-[420px]:h-28 sm:w-32 sm:h-32 rounded-xl overflow-hidden shrink-0 bg-card border border-border self-center">
         {product.main_image ? (
           <img src={product.main_image} alt="" className="w-full h-full object-contain" />
         ) : (
@@ -171,7 +171,7 @@ function ProductCard({
           <div className="min-w-0">
             <p className="text-sm font-semibold text-foreground leading-snug">{product.name}</p>
             {unclassified ? (
-              <p className="flex items-center gap-1 text-[11px] text-amber-700 font-medium mt-0.5">
+              <p className="flex items-center gap-1 text-[11px] text-warning font-medium mt-0.5">
                 <AlertTriangle className="w-3 h-3 shrink-0" /> não classificado
               </p>
             ) : (
@@ -186,7 +186,7 @@ function ProductCard({
             )}
           </div>
           <div className="flex items-center gap-1.5 shrink-0">
-            {dirty && <Loader className="w-3.5 h-3.5 animate-spin text-amber-500" />}
+            {dirty && <Loader className="w-3.5 h-3.5 animate-spin text-muted-foreground" />}
             {previewTotal != null && (
               <div className="text-right">
                 <p className="text-xl font-black text-foreground leading-none">{previewTotal}</p>
@@ -215,14 +215,14 @@ function ProductCard({
 
         {!disabled && (
           isZeroed ? (
-            <p className="flex items-center justify-center gap-1 py-0.5 rounded-lg border border-red-300 bg-white text-[11px] font-semibold text-red-500">
+            <p className="flex items-center justify-center gap-1 py-0.5 rounded-lg border border-red-300 bg-card text-[11px] font-semibold text-red-500">
               <CircleSlash className="w-3 h-3" /> Zerado — sem estoque
             </p>
           ) : (
             <button
               type="button"
               onClick={markZero}
-              className="w-full flex items-center justify-center gap-1 py-0.5 rounded-lg border border-red-200 bg-white text-[11px] font-medium text-red-400 hover:text-red-600 hover:border-red-300 active:scale-[0.99] transition-all"
+              className="w-full flex items-center justify-center gap-1 py-0.5 rounded-lg border border-red-200 bg-card text-[11px] font-medium text-red-400 hover:text-red-600 hover:border-red-300 active:scale-[0.99] transition-all"
             >
               <CircleSlash className="w-3 h-3" /> Zerado — sem estoque
             </button>
@@ -510,7 +510,7 @@ export default function EstoqueContagemDetalhe() {
       <EstoqueLayout>
         <div className="text-center py-16">
           <p className="text-muted-foreground mb-4">Contagem não encontrada.</p>
-          <Link to="/estoque/contagem" className="text-sm text-amber-700 font-semibold hover:underline">
+          <Link to="/estoque/contagem" className="text-sm text-foreground font-semibold hover:underline">
             Voltar ao histórico
           </Link>
         </div>
@@ -536,7 +536,7 @@ export default function EstoqueContagemDetalhe() {
             <div className="flex items-center gap-2">
               <div className="flex-1 h-2 rounded-full bg-border/70 overflow-hidden">
                 <div
-                  className={`h-full rounded-full transition-all duration-300 ${progressPct === 100 ? 'bg-green-500' : 'bg-amber-500'}`}
+                  className={`h-full rounded-full transition-all duration-300 ${progressPct === 100 ? 'bg-success-solid' : 'bg-primary'}`}
                   style={{ width: `${progressPct}%` }}
                 />
               </div>
@@ -563,14 +563,14 @@ export default function EstoqueContagemDetalhe() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Buscar produto…"
-                className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-input text-sm bg-white text-foreground focus:ring-2 focus:ring-amber-400 focus:outline-none"
+                className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-input text-sm bg-card text-foreground focus:ring-2 focus:ring-ring focus:outline-none"
               />
             </div>
             {groups.length > 1 && (
               <select
                 value=""
                 onChange={(e) => { if (e.target.value) jumpToCategory(e.target.value) }}
-                className="h-[42px] rounded-xl border border-input text-sm bg-white px-2.5 text-foreground focus:ring-2 focus:ring-amber-400 focus:outline-none shrink-0 max-w-[45%]"
+                className="h-[42px] rounded-xl border border-input text-sm bg-card px-2.5 text-foreground focus:ring-2 focus:ring-ring focus:outline-none shrink-0 max-w-[45%]"
               >
                 <option value="">Ir pra categoria…</option>
                 {groups.map(([category]) => (
@@ -610,7 +610,7 @@ export default function EstoqueContagemDetalhe() {
       {/* Barra fixa de confirmação — só libera quando todo o sortimento foi contado,
           pra não deixar item esquecido passar batido pra reposição. */}
       {!readOnly && (
-        <div className="fixed bottom-0 left-0 right-0 z-30 bg-white border-t border-border px-4 sm:px-6 py-3 shadow-[0_-2px_10px_rgba(0,0,0,0.06)]">
+        <div className="fixed bottom-0 left-0 right-0 z-30 bg-card border-t border-border px-4 sm:px-6 py-3 shadow-[0_-2px_10px_rgba(0,0,0,0.06)]">
           <button
             onClick={() => navigate(`/estoque/contagem/${id}/confirmar`)}
             disabled={!allCounted}

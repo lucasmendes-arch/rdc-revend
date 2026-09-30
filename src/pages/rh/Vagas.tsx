@@ -294,7 +294,7 @@ export default function RhVagas() {
                               restritas a cargo no formulário público. */}
                           {!job.job_role_id && (
                             <span
-                              className="px-1.5 py-0.5 rounded-md text-[10px] font-semibold whitespace-nowrap bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
+                              className="px-1.5 py-0.5 rounded-md text-[10px] font-semibold whitespace-nowrap bg-warning-subtle text-warning"
                               title="Vaga preenchida manualmente, sem vínculo com o catálogo de cargos: fica sem descrição no formulário público e as perguntas restritas a um cargo (ex: Currículo) não aparecem pro candidato."
                             >
                               Sem cargo
@@ -384,7 +384,7 @@ export default function RhVagas() {
                 />
                 <p className="text-xs text-muted-foreground mt-1">Selecionar um cargo preenche os campos abaixo — dá pra ajustar depois.</p>
                 {!form.job_role_id && (
-                  <p className="text-xs text-amber-700 dark:text-amber-400 mt-1.5 flex items-start gap-1.5">
+                  <p className="text-xs text-warning mt-1.5 flex items-start gap-1.5">
                     <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-px" />
                     <span>
                       Sem cargo do catálogo, o formulário público mostra a vaga sem descrição e esconde as perguntas

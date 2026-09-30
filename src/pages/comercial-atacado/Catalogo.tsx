@@ -661,7 +661,7 @@ const Catalogo = () => {
       <div className="flex flex-col lg:flex-row lg:gap-6 w-full max-w-full">
         {/* Sidebar Filters (Desktop) */}
         <aside className="hidden lg:block w-64 px-3 pt-4 pb-6">
-          <div className="sticky top-24 bg-white rounded-lg p-1 shadow-sm border border-border">
+          <div className="sticky top-24 bg-card rounded-lg p-1 shadow-sm border border-border">
             <div className="p-3 border-b border-border mb-1">
               <h3 className="font-bold text-foreground">Filtros</h3>
             </div>
@@ -680,7 +680,7 @@ const Catalogo = () => {
                   <select
                     value={sortBy}
                     onChange={(e) => setSortBy(e.target.value as SortOption)}
-                    className="w-full px-3 py-2 rounded-lg border border-border bg-white text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-gold"
+                    className="w-full px-3 py-2 rounded-lg border border-border bg-card text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                   >
                     <option value="default">Padrão</option>
                     <option value="name_asc">Nome (A-Z)</option>
@@ -709,14 +709,14 @@ const Catalogo = () => {
                     placeholder="Mín"
                     value={filterMinPrice}
                     onChange={(e) => setFilterMinPrice(e.target.value === '' ? '' : parseFloat(e.target.value))}
-                    className="w-full px-3 py-2 rounded-lg border border-border bg-white text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-gold"
+                    className="w-full px-3 py-2 rounded-lg border border-border bg-card text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                   />
                   <input
                     type="number"
                     placeholder="Máx"
                     value={filterMaxPrice}
                     onChange={(e) => setFilterMaxPrice(e.target.value === '' ? '' : parseFloat(e.target.value))}
-                    className="w-full px-3 py-2 rounded-lg border border-border bg-white text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-gold"
+                    className="w-full px-3 py-2 rounded-lg border border-border bg-card text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                   />
                 </div>
               )}
@@ -740,7 +740,7 @@ const Catalogo = () => {
                           type="checkbox"
                           checked={filterCategories.includes(cat.id)}
                           onChange={() => toggleCategory(cat.id)}
-                          className="w-4 h-4 rounded border-border text-gold focus:ring-gold"
+                          className="w-4 h-4 rounded border-border text-gold focus:ring-ring"
                         />
                         <span className="text-sm text-foreground group-hover:text-foreground transition-colors">{cat.name}</span>
                       </label>
@@ -766,7 +766,7 @@ const Catalogo = () => {
                       type="checkbox"
                       checked={filterProfessional}
                       onChange={(e) => setFilterProfessional(e.target.checked)}
-                      className="w-4 h-4 rounded border-border text-gold focus:ring-gold"
+                      className="w-4 h-4 rounded border-border text-gold focus:ring-ring"
                     />
                     <span className="text-sm text-foreground group-hover:text-foreground font-medium">Uso Profissional</span>
                   </label>
@@ -777,7 +777,7 @@ const Catalogo = () => {
                         type="checkbox"
                         checked={filterOnlySuggested}
                         onChange={(e) => setFilterOnlySuggested(e.target.checked)}
-                        className="w-4 h-4 rounded border-border text-gold focus:ring-gold"
+                        className="w-4 h-4 rounded border-border text-gold focus:ring-ring"
                       />
                       <span className="text-sm text-foreground group-hover:text-foreground font-medium">Preço sugerido</span>
                     </label>
@@ -791,7 +791,7 @@ const Catalogo = () => {
               <div className="p-3 bg-surface-alt rounded-b-2xl">
                 <button
                   onClick={clearAllFilters}
-                  className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-white border border-border text-xs font-bold text-red-500 hover:bg-red-50 hover:border-red-200 transition-all shadow-sm"
+                  className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-card border border-border text-xs font-bold text-red-500 hover:bg-red-50 hover:border-red-200 transition-all shadow-sm"
                 >
                   <Trash2 className="w-3 h-3" />
                   LIMPAR FILTROS
@@ -964,7 +964,7 @@ const Catalogo = () => {
                         return (
                           <div
                             key={product.id}
-                            className="bg-white rounded-lg border border-border shadow-xs transition-all flex flex-col overflow-hidden group"
+                            className="bg-card rounded-lg border border-border shadow-xs transition-all flex flex-col overflow-hidden group"
                           >
                             <div
                               className="w-full aspect-square bg-surface-alt flex items-center justify-center overflow-hidden cursor-pointer relative"
@@ -1135,9 +1135,9 @@ const Catalogo = () => {
         {filtersOpen && (
           <div className="fixed inset-0 z-50 lg:hidden flex justify-end">
             <div className="absolute inset-0 bg-foreground/40 backdrop-blur-sm" onClick={() => setFiltersOpen(false)} />
-            <div className="relative bg-white w-full sm:max-w-sm h-full flex flex-col shadow-2xl overflow-y-auto">
+            <div className="relative bg-card w-full sm:max-w-sm h-full flex flex-col shadow-2xl overflow-y-auto">
               {/* Header */}
-              <div className="flex items-center justify-between p-3 sm:p-4 border-b border-border sticky top-0 bg-white">
+              <div className="flex items-center justify-between p-3 sm:p-4 border-b border-border sticky top-0 bg-card">
                 <h2 className="font-bold text-foreground text-base sm:text-lg">Filtros</h2>
                 <button onClick={() => setFiltersOpen(false)} className="text-muted-foreground hover:text-foreground">
                   <X className="w-5 h-5" />
@@ -1152,7 +1152,7 @@ const Catalogo = () => {
                   <select
                     value={sortBy}
                     onChange={(e) => setSortBy(e.target.value as SortOption)}
-                    className="w-full px-3 py-2 rounded-lg border border-border bg-white text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-gold"
+                    className="w-full px-3 py-2 rounded-lg border border-border bg-card text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                   >
                     <option value="default">Padrão</option>
                     <option value="name_asc">Nome (A-Z)</option>
@@ -1172,14 +1172,14 @@ const Catalogo = () => {
                       placeholder="Mín"
                       value={filterMinPrice}
                       onChange={(e) => setFilterMinPrice(e.target.value === '' ? '' : parseFloat(e.target.value))}
-                      className="w-full px-3 py-2 rounded-lg border border-border bg-white text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-gold"
+                      className="w-full px-3 py-2 rounded-lg border border-border bg-card text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                     />
                     <input
                       type="number"
                       placeholder="Máx"
                       value={filterMaxPrice}
                       onChange={(e) => setFilterMaxPrice(e.target.value === '' ? '' : parseFloat(e.target.value))}
-                      className="w-full px-3 py-2 rounded-lg border border-border bg-white text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-gold"
+                      className="w-full px-3 py-2 rounded-lg border border-border bg-card text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                     />
                   </div>
                 </div>
@@ -1194,7 +1194,7 @@ const Catalogo = () => {
                           type="checkbox"
                           checked={filterCategories.includes(cat.id)}
                           onChange={() => toggleCategory(cat.id)}
-                          className="w-4 h-4 rounded border-border text-gold focus:ring-gold"
+                          className="w-4 h-4 rounded border-border text-gold focus:ring-ring"
                         />
                         <span className="text-sm text-foreground">{cat.name}</span>
                       </label>
@@ -1208,7 +1208,7 @@ const Catalogo = () => {
                     type="checkbox"
                     checked={filterProfessional}
                     onChange={(e) => setFilterProfessional(e.target.checked)}
-                    className="w-4 h-4 rounded border-border text-gold focus:ring-gold"
+                    className="w-4 h-4 rounded border-border text-gold focus:ring-ring"
                   />
                   <span className="text-sm text-foreground font-medium">Uso Profissional</span>
                 </label>
@@ -1220,7 +1220,7 @@ const Catalogo = () => {
                       type="checkbox"
                       checked={filterOnlySuggested}
                       onChange={(e) => setFilterOnlySuggested(e.target.checked)}
-                      className="w-4 h-4 rounded border-border text-gold focus:ring-gold"
+                      className="w-4 h-4 rounded border-border text-gold focus:ring-ring"
                     />
                     <span className="text-sm text-foreground font-medium">Somente com preço sugerido</span>
                   </label>
@@ -1255,11 +1255,11 @@ const Catalogo = () => {
               className="absolute inset-0 bg-foreground/40 backdrop-blur-sm"
               onClick={() => setSelectedProduct(null)}
             />
-            <div className="relative bg-white rounded-xl sm:rounded-lg shadow-lg w-full sm:max-w-xl max-h-[92vh] overflow-y-auto">
+            <div className="relative bg-card rounded-xl sm:rounded-lg shadow-lg w-full sm:max-w-xl max-h-[92vh] overflow-y-auto">
               {/* Close button */}
               <button
                 onClick={() => setSelectedProduct(null)}
-                className="absolute top-3 right-3 z-10 w-7 h-7 flex items-center justify-center rounded-full bg-white/80 backdrop-blur-sm text-muted-foreground hover:text-foreground hover:bg-white transition-all shadow-sm"
+                className="absolute top-3 right-3 z-10 w-7 h-7 flex items-center justify-center rounded-full bg-white/80 backdrop-blur-sm text-muted-foreground hover:text-foreground hover:bg-card transition-all shadow-sm"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -1344,7 +1344,7 @@ const Catalogo = () => {
                     <button
                       onClick={() => setQty(selectedProduct.id, getQty(selectedProduct.id) - 1)}
                       disabled={getQty(selectedProduct.id) <= 1}
-                      className="w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center text-muted-foreground bg-white border border-border hover:bg-surface-alt rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed text-lg font-medium flex-shrink-0"
+                      className="w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center text-muted-foreground bg-card border border-border hover:bg-surface-alt rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed text-lg font-medium flex-shrink-0"
                     >
                       −
                     </button>
@@ -1360,11 +1360,11 @@ const Catalogo = () => {
                         const v = parseInt(e.target.value, 10);
                         if (isNaN(v) || v < 1) setQty(selectedProduct.id, 1);
                       }}
-                      className="flex-1 min-w-0 h-10 sm:h-12 text-center text-base sm:text-lg font-semibold text-foreground border border-border rounded-lg bg-white shadow-inner focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition-all"
+                      className="flex-1 min-w-0 h-10 sm:h-12 text-center text-base sm:text-lg font-semibold text-foreground border border-border rounded-lg bg-card shadow-inner focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition-all"
                     />
                     <button
                       onClick={() => setQty(selectedProduct.id, getQty(selectedProduct.id) + 1)}
-                      className="w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center text-muted-foreground bg-white border border-border hover:bg-surface-alt rounded-lg transition-colors text-lg font-medium flex-shrink-0"
+                      className="w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center text-muted-foreground bg-card border border-border hover:bg-surface-alt rounded-lg transition-colors text-lg font-medium flex-shrink-0"
                     >
                       +
                     </button>

@@ -59,7 +59,7 @@ export function AdminPeriodFilter({
                 placeholder="—"
                 hideIcon
                 clearable={false}
-                className="px-1.5 py-1 text-xs rounded-md bg-transparent text-foreground font-semibold hover:bg-surface-alt transition-colors outline-none focus:ring-2 focus:ring-gold"
+                className="px-1.5 py-1 text-xs rounded-md bg-transparent text-foreground font-semibold hover:bg-surface-alt transition-colors outline-none focus:ring-2 focus:ring-ring"
               />
             </div>
           </div>
@@ -73,7 +73,7 @@ export function AdminPeriodFilter({
                 placeholder="—"
                 hideIcon
                 clearable={false}
-                className="px-1.5 py-1 text-xs rounded-md bg-transparent text-foreground font-semibold hover:bg-surface-alt transition-colors outline-none focus:ring-2 focus:ring-gold"
+                className="px-1.5 py-1 text-xs rounded-md bg-transparent text-foreground font-semibold hover:bg-surface-alt transition-colors outline-none focus:ring-2 focus:ring-ring"
               />
             </div>
           </div>

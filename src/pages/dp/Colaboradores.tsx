@@ -277,7 +277,7 @@ export default function DpParceiros() {
                           <span>{p.candidates?.name || 'Candidato removido'}</span>
                           {isExperienceTagActive(p) ? (
                             <span
-                              className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300 shrink-0"
+                              className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-info-subtle text-info shrink-0"
                               title="Período de experiência em andamento"
                             >
                               {getExperienceInfo(p)?.label}

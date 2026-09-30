@@ -35,7 +35,7 @@ function SortableProductRow({ product }: { product: CatalogProduct }) {
     <div
       ref={setNodeRef}
       style={style}
-      className="flex items-center gap-3 bg-white border border-border rounded-lg px-3 py-2.5 shadow-sm"
+      className="flex items-center gap-3 bg-card border border-border rounded-lg px-3 py-2.5 shadow-sm"
     >
       <button
         {...attributes}
@@ -246,7 +246,7 @@ export default function AdminCatalogo() {
   return (
     <AdminLayout>
       {/* Page Header */}
-      <div className="bg-white border-b border-border sticky top-0 lg:top-0 z-30">
+      <div className="bg-card border-b border-border sticky top-0 lg:top-0 z-30">
         <div className="px-4 sm:px-6 py-4 flex items-center justify-between gap-4">
           <h1 className="text-xl sm:text-2xl font-bold text-foreground">Catálogo</h1>
           <div className="flex items-center gap-2">
@@ -261,7 +261,7 @@ export default function AdminCatalogo() {
             <div className="relative">
               <button
                 onClick={() => setShowReorderPicker(v => !v)}
-                className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg border border-border bg-white hover:bg-surface-alt text-sm font-medium text-foreground transition-colors"
+                className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg border border-border bg-card hover:bg-surface-alt text-sm font-medium text-foreground transition-colors"
               >
                 <ListOrdered className="w-4 h-4" />
                 <span className="hidden sm:inline">Reordenar</span>
@@ -269,7 +269,7 @@ export default function AdminCatalogo() {
               {showReorderPicker && (
                 <>
                   <div className="fixed inset-0 z-30" onClick={() => setShowReorderPicker(false)} />
-                  <div className="absolute right-0 top-full mt-1 bg-white border border-border rounded-xl shadow-lg py-1 min-w-[200px] z-40">
+                  <div className="absolute right-0 top-full mt-1 bg-card border border-border rounded-xl shadow-lg py-1 min-w-[200px] z-40">
                     <p className="px-3 py-1.5 text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Escolha a categoria</p>
                     {categories.map(c => (
                       <button
@@ -300,7 +300,7 @@ export default function AdminCatalogo() {
               setSearchTerm(e.target.value)
               setCurrentPage(1)
             }}
-            className="w-full px-4 py-2.5 rounded-lg border border-border bg-white text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-gold"
+            className="w-full px-4 py-2.5 rounded-lg border border-border bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
           />
 
           <div className="flex flex-wrap items-center gap-2">
@@ -308,19 +308,19 @@ export default function AdminCatalogo() {
             <div className="flex rounded-lg border border-border overflow-hidden text-xs font-medium">
               <button
                 onClick={() => { setFilterStatus('all'); setCurrentPage(1) }}
-                className={`px-3 py-1.5 transition-colors ${filterStatus === 'all' ? 'bg-foreground text-white' : 'bg-white text-foreground hover:bg-surface-alt'}`}
+                className={`px-3 py-1.5 transition-colors ${filterStatus === 'all' ? 'bg-foreground text-white' : 'bg-card text-foreground hover:bg-surface-alt'}`}
               >
                 Todos ({products.length})
               </button>
               <button
                 onClick={() => { setFilterStatus('active'); setCurrentPage(1) }}
-                className={`px-3 py-1.5 border-l border-border transition-colors ${filterStatus === 'active' ? 'bg-green-600 text-white' : 'bg-white text-foreground hover:bg-surface-alt'}`}
+                className={`px-3 py-1.5 border-l border-border transition-colors ${filterStatus === 'active' ? 'bg-green-600 text-white' : 'bg-card text-foreground hover:bg-surface-alt'}`}
               >
                 Ativos ({activeCount})
               </button>
               <button
                 onClick={() => { setFilterStatus('paused'); setCurrentPage(1) }}
-                className={`px-3 py-1.5 border-l border-border transition-colors ${filterStatus === 'paused' ? 'bg-gray-600 text-white' : 'bg-white text-foreground hover:bg-surface-alt'}`}
+                className={`px-3 py-1.5 border-l border-border transition-colors ${filterStatus === 'paused' ? 'bg-ink-600 text-white' : 'bg-card text-foreground hover:bg-surface-alt'}`}
               >
                 Pausados ({pausedCount})
               </button>
@@ -330,7 +330,7 @@ export default function AdminCatalogo() {
             <select
               value={filterCategory}
               onChange={(e) => { setFilterCategory(e.target.value); setCurrentPage(1) }}
-              className="px-3 py-1.5 rounded-lg border border-border bg-white text-xs font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-gold"
+              className="px-3 py-1.5 rounded-lg border border-border bg-card text-xs font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
             >
               <option value="">Todas categorias</option>
               {categories.map(c => (
@@ -375,7 +375,7 @@ export default function AdminCatalogo() {
         ) : (
           <>
             {/* Table */}
-            <div className="bg-white rounded-xl border border-border shadow-card overflow-hidden">
+            <div className="bg-card rounded-xl border border-border shadow-card overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[800px]">
                   <thead>
@@ -415,7 +415,7 @@ export default function AdminCatalogo() {
                           <div className="flex flex-col gap-1">
                             <span className="text-sm font-black text-foreground">R$ {product.price.toFixed(2)}</span>
                             {product.partner_price != null && product.partner_price > 0 && (
-                              <div className="text-xs font-bold text-amber-700 bg-amber-100 px-1 inline-block rounded self-start">
+                              <div className="text-xs font-bold text-brand-strong bg-brand-subtle px-1 inline-block rounded self-start">
                                 Parc: R$ {product.partner_price.toFixed(2)}
                               </div>
                             )}
@@ -430,7 +430,7 @@ export default function AdminCatalogo() {
                           <select
                             value={product.category_id || ''}
                             onChange={(e) => handleUpdateCategory(product.id, e.target.value)}
-                            className="bg-amber-50 text-amber-800 border-amber-200 hover:border-amber-300 hover:bg-amber-100 rounded-lg px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-semibold transition-all cursor-pointer outline-none focus:ring-2 focus:ring-amber-500/30 max-w-[140px] sm:max-w-full truncate"
+                            className="bg-surface text-foreground border-border hover:border-ink-300 hover:bg-surface-alt rounded-lg px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-semibold transition-all cursor-pointer outline-none focus:ring-2 focus:ring-ring max-w-[140px] sm:max-w-full truncate"
                           >
                             <option value="">Sem categoria</option>
                             {categories.map((c) => (
@@ -443,13 +443,13 @@ export default function AdminCatalogo() {
                             onClick={() => handleToggleActive(product)}
                             className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold transition-all ${product.is_active
                               ? 'bg-green-100 text-green-700 hover:bg-green-200'
-                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                              : 'bg-ink-100 text-ink-700 hover:bg-ink-200'
                               }`}
                           >
                             {product.is_active ? 'Ativo' : 'Pausado'}
                           </button>
                           {product.is_highlight && (
-                            <span className="inline-block mt-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-[10px] font-bold">
+                            <span className="inline-block mt-1 px-2 py-0.5 rounded-full bg-brand-subtle text-brand-strong text-[10px] font-bold">
                               Destaque
                             </span>
                           )}
@@ -488,7 +488,7 @@ export default function AdminCatalogo() {
                 <button
                   onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                   disabled={currentPage === 1}
-                  className="p-2 rounded-lg border border-border hover:bg-white disabled:opacity-50 transition-all"
+                  className="p-2 rounded-lg border border-border hover:bg-card disabled:opacity-50 transition-all"
                 >
                   <ChevronLeft className="w-4 h-4" />
                 </button>
@@ -498,7 +498,7 @@ export default function AdminCatalogo() {
                 <button
                   onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                   disabled={currentPage === totalPages}
-                  className="p-2 rounded-lg border border-border hover:bg-white disabled:opacity-50 transition-all"
+                  className="p-2 rounded-lg border border-border hover:bg-card disabled:opacity-50 transition-all"
                 >
                   <ChevronRight className="w-4 h-4" />
                 </button>
@@ -512,7 +512,7 @@ export default function AdminCatalogo() {
       {showReorder && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-foreground/40 backdrop-blur-sm" onClick={() => setShowReorder(false)} />
-          <div className="relative bg-white rounded-2xl shadow-lg w-full max-w-md max-h-[85vh] flex flex-col">
+          <div className="relative bg-card rounded-2xl shadow-lg w-full max-w-md max-h-[85vh] flex flex-col">
             {/* Header */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-border flex-shrink-0">
               <div>
@@ -551,7 +551,7 @@ export default function AdminCatalogo() {
               <div className="flex gap-2 ml-auto">
                 <button
                   onClick={() => setShowReorder(false)}
-                  className="px-4 py-2 rounded-lg border border-border text-sm hover:bg-gray-50 transition-colors"
+                  className="px-4 py-2 rounded-lg border border-border text-sm hover:bg-surface transition-colors"
                 >
                   Fechar
                 </button>
@@ -575,7 +575,7 @@ export default function AdminCatalogo() {
             className="absolute inset-0 bg-foreground/40 backdrop-blur-sm"
             onClick={() => setCreating(false)}
           />
-          <div className="relative bg-white rounded-2xl shadow-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
+          <div className="relative bg-card rounded-2xl shadow-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
             <h2 className="text-xl font-bold text-foreground mb-4">Novo Produto</h2>
 
             <div className="space-y-4">
@@ -585,7 +585,7 @@ export default function AdminCatalogo() {
                   type="text"
                   value={createForm.name}
                   onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })}
-                  className="w-full px-3 py-2 rounded-lg border border-border bg-white focus:outline-none focus:ring-2 focus:ring-gold"
+                  className="w-full px-3 py-2 rounded-lg border border-border bg-card focus:outline-none focus:ring-2 focus:ring-ring"
                   placeholder="Nome do produto"
                 />
               </div>
@@ -599,7 +599,7 @@ export default function AdminCatalogo() {
                     step="0.01"
                     value={createForm.price || ''}
                     onChange={(e) => setCreateForm({ ...createForm, price: parseFloat(e.target.value) || 0 })}
-                    className="w-full px-3 py-2 rounded-lg border border-border bg-white focus:outline-none focus:ring-2 focus:ring-gold"
+                    className="w-full px-3 py-2 rounded-lg border border-border bg-card focus:outline-none focus:ring-2 focus:ring-ring"
                   />
                   <input
                     placeholder="Preço Parceiro"
@@ -607,7 +607,7 @@ export default function AdminCatalogo() {
                     step="0.01"
                     value={createForm.partner_price || ''}
                     onChange={(e) => setCreateForm({ ...createForm, partner_price: parseFloat(e.target.value) || 0 })}
-                    className="w-full px-3 py-2 rounded-lg border border-amber-300 bg-amber-50 focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder:text-amber-700 placeholder:opacity-70 text-amber-900"
+                    className="w-full px-3 py-2 rounded-lg border border-brand-border bg-brand-subtle focus:outline-none focus:ring-2 focus:ring-ring placeholder:text-brand-strong placeholder:opacity-70 text-foreground"
                   />
                 </div>
               </div>
@@ -619,7 +619,7 @@ export default function AdminCatalogo() {
                   step="0.01"
                   value={createForm.compare_at_price || ''}
                   onChange={(e) => setCreateForm({ ...createForm, compare_at_price: e.target.value ? parseFloat(e.target.value) : null })}
-                  className="w-full px-3 py-2 rounded-lg border border-border bg-white focus:outline-none focus:ring-2 focus:ring-gold"
+                  className="w-full px-3 py-2 rounded-lg border border-border bg-card focus:outline-none focus:ring-2 focus:ring-ring"
                 />
               </div>
 
@@ -659,7 +659,7 @@ export default function AdminCatalogo() {
                     type="button"
                     onClick={() => createFileRef.current?.click()}
                     disabled={uploading}
-                    className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border bg-white hover:bg-surface-alt text-sm font-medium text-foreground transition-colors disabled:opacity-60"
+                    className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border bg-card hover:bg-surface-alt text-sm font-medium text-foreground transition-colors disabled:opacity-60"
                   >
                     {uploading ? (
                       <><RefreshCw className="w-4 h-4 animate-spin" /> Enviando...</>
@@ -723,7 +723,7 @@ export default function AdminCatalogo() {
                 <select
                   value={createForm.category_id || ''}
                   onChange={(e) => setCreateForm({ ...createForm, category_id: e.target.value || null })}
-                  className="w-full px-3 py-2 rounded-lg border border-border bg-white focus:outline-none focus:ring-2 focus:ring-gold"
+                  className="w-full px-3 py-2 rounded-lg border border-border bg-card focus:outline-none focus:ring-2 focus:ring-ring"
                 >
                   <option value="">Sem categoria</option>
                   {categories.map(c => (
@@ -737,7 +737,7 @@ export default function AdminCatalogo() {
                 <select
                   value={createForm.category_type || ''}
                   onChange={(e) => setCreateForm({ ...createForm, category_type: e.target.value || null })}
-                  className="w-full px-3 py-2 rounded-lg border border-border bg-white focus:outline-none focus:ring-2 focus:ring-gold"
+                  className="w-full px-3 py-2 rounded-lg border border-border bg-card focus:outline-none focus:ring-2 focus:ring-ring"
                 >
                   <option value="">Sem classificacao</option>
                   <option value="alto_giro">Alto Giro</option>
@@ -757,7 +757,7 @@ export default function AdminCatalogo() {
               </button>
               <button
                 onClick={() => setCreating(false)}
-                className="flex-1 px-4 py-2.5 rounded-lg border border-border bg-white text-foreground font-medium hover:bg-surface-alt"
+                className="flex-1 px-4 py-2.5 rounded-lg border border-border bg-card text-foreground font-medium hover:bg-surface-alt"
               >
                 Cancelar
               </button>
@@ -773,7 +773,7 @@ export default function AdminCatalogo() {
             className="absolute inset-0 bg-foreground/40 backdrop-blur-sm"
             onClick={() => { setEditingId(null); setEditForm({}) }}
           />
-          <div className="relative bg-white rounded-2xl shadow-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
+          <div className="relative bg-card rounded-2xl shadow-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
             <h2 className="text-xl font-bold text-foreground mb-4">Editar Produto</h2>
 
             <div className="space-y-4">
@@ -783,7 +783,7 @@ export default function AdminCatalogo() {
                   type="text"
                   value={editForm.name || ''}
                   onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-                  className="w-full px-3 py-2 rounded-lg border border-border bg-white focus:outline-none focus:ring-2 focus:ring-gold"
+                  className="w-full px-3 py-2 rounded-lg border border-border bg-card focus:outline-none focus:ring-2 focus:ring-ring"
                 />
               </div>
 
@@ -797,17 +797,17 @@ export default function AdminCatalogo() {
                       step="0.01"
                       value={editForm.price ?? 0}
                       onChange={(e) => setEditForm({ ...editForm, price: parseFloat(e.target.value) })}
-                      className="w-full px-3 py-2 rounded-lg border border-border bg-white focus:outline-none focus:ring-2 focus:ring-gold"
+                      className="w-full px-3 py-2 rounded-lg border border-border bg-card focus:outline-none focus:ring-2 focus:ring-ring"
                     />
                   </div>
                   <div className="flex-1">
-                    <label className="block text-[10px] text-amber-700 uppercase font-bold mb-1">Parceiro</label>
+                    <label className="block text-[10px] text-brand-strong uppercase font-bold mb-1">Parceiro</label>
                     <input
                       type="number"
                       step="0.01"
                       value={editForm.partner_price ?? 0}
                       onChange={(e) => setEditForm({ ...editForm, partner_price: parseFloat(e.target.value) })}
-                      className="w-full px-3 py-2 rounded-lg border border-amber-300 bg-amber-50 focus:outline-none focus:ring-2 focus:ring-amber-500 text-amber-900"
+                      className="w-full px-3 py-2 rounded-lg border border-brand-border bg-brand-subtle focus:outline-none focus:ring-2 focus:ring-ring text-foreground"
                     />
                   </div>
                 </div>
@@ -820,7 +820,7 @@ export default function AdminCatalogo() {
                   step="0.01"
                   value={editForm.compare_at_price || ''}
                   onChange={(e) => setEditForm({ ...editForm, compare_at_price: e.target.value ? parseFloat(e.target.value) : null })}
-                  className="w-full px-3 py-2 rounded-lg border border-border bg-white focus:outline-none focus:ring-2 focus:ring-gold"
+                  className="w-full px-3 py-2 rounded-lg border border-border bg-card focus:outline-none focus:ring-2 focus:ring-ring"
                 />
               </div>
 
@@ -860,7 +860,7 @@ export default function AdminCatalogo() {
                     type="button"
                     onClick={() => editFileRef.current?.click()}
                     disabled={uploading}
-                    className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border bg-white hover:bg-surface-alt text-sm font-medium text-foreground transition-colors disabled:opacity-60"
+                    className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border bg-card hover:bg-surface-alt text-sm font-medium text-foreground transition-colors disabled:opacity-60"
                   >
                     {uploading ? (
                       <><RefreshCw className="w-4 h-4 animate-spin" /> Enviando...</>
@@ -924,7 +924,7 @@ export default function AdminCatalogo() {
                 <select
                   value={editForm.category_id || ''}
                   onChange={(e) => setEditForm({ ...editForm, category_id: e.target.value || null })}
-                  className="w-full px-3 py-2 rounded-lg border border-border bg-white focus:outline-none focus:ring-2 focus:ring-gold"
+                  className="w-full px-3 py-2 rounded-lg border border-border bg-card focus:outline-none focus:ring-2 focus:ring-ring"
                 >
                   <option value="">Sem categoria</option>
                   {categories.map(c => (
@@ -938,7 +938,7 @@ export default function AdminCatalogo() {
                 <select
                   value={editForm.category_type || ''}
                   onChange={(e) => setEditForm({ ...editForm, category_type: e.target.value as CatalogProduct['category_type'] || null })}
-                  className="w-full px-3 py-2 rounded-lg border border-border bg-white focus:outline-none focus:ring-2 focus:ring-gold"
+                  className="w-full px-3 py-2 rounded-lg border border-border bg-card focus:outline-none focus:ring-2 focus:ring-ring"
                 >
                   <option value="">Sem classificacao</option>
                   <option value="alto_giro">Alto Giro</option>
@@ -958,7 +958,7 @@ export default function AdminCatalogo() {
               </button>
               <button
                 onClick={() => { setEditingId(null); setEditForm({}) }}
-                className="flex-1 px-4 py-2.5 rounded-lg border border-border bg-white text-foreground font-medium hover:bg-surface-alt"
+                className="flex-1 px-4 py-2.5 rounded-lg border border-border bg-card text-foreground font-medium hover:bg-surface-alt"
               >
                 Cancelar
               </button>
@@ -971,7 +971,7 @@ export default function AdminCatalogo() {
       {deleteId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-foreground/40 backdrop-blur-sm" onClick={() => setDeleteId(null)} />
-          <div className="relative bg-white rounded-2xl shadow-lg p-6 w-full max-w-sm">
+          <div className="relative bg-card rounded-2xl shadow-lg p-6 w-full max-w-sm">
             <h2 className="text-lg font-bold text-foreground mb-2">Deletar Produto?</h2>
             <p className="text-sm text-muted-foreground mb-6">Esta ação não pode ser desfeita.</p>
 
@@ -985,7 +985,7 @@ export default function AdminCatalogo() {
               </button>
               <button
                 onClick={() => setDeleteId(null)}
-                className="flex-1 px-4 py-2.5 rounded-lg border border-border bg-white text-foreground font-medium hover:bg-surface-alt"
+                className="flex-1 px-4 py-2.5 rounded-lg border border-border bg-card text-foreground font-medium hover:bg-surface-alt"
               >
                 Cancelar
               </button>

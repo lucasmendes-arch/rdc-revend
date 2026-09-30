@@ -114,7 +114,7 @@ function AutomationCard({
   const accent = automation.trigger_stage ? config.stageAccent(automation.trigger_stage) : null
 
   return (
-    <div ref={setNodeRef} style={style} className={`bg-white rounded-xl border overflow-hidden ${expanded ? 'border-ring shadow-md' : 'border-border shadow-sm'}`}>
+    <div ref={setNodeRef} style={style} className={`bg-card rounded-xl border overflow-hidden ${expanded ? 'border-ring shadow-md' : 'border-border shadow-sm'}`}>
       <div className="flex items-center gap-2 px-3 py-2.5 border-b border-border/60 bg-surface-alt/50">
         <button {...attributes} {...listeners} className="text-muted-foreground hover:text-foreground cursor-grab active:cursor-grabbing touch-none shrink-0" aria-label="Arrastar">
           <GripVertical className="w-4 h-4" />
@@ -138,7 +138,7 @@ function AutomationCard({
           )}
           {automation.requires_confirmation && (
             <span
-              className="flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-amber-100 text-amber-700 shrink-0"
+              className="flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-warning-subtle text-warning shrink-0"
               title="Só executa depois de confirmação no kanban"
             >
               <ShieldCheck className="w-2.5 h-2.5" /> Confirmação

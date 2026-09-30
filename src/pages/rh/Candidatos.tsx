@@ -234,7 +234,7 @@ function isDueDateOverdue(c: Candidate) {
 
 function CandidatePhoto({ candidate }: { candidate: Pick<Candidate, 'photo_url' | 'name'> }) {
   return (
-    <div className="h-[120px] w-full bg-slate-100 shrink-0">
+    <div className="h-[120px] w-full bg-ink-100 shrink-0">
       {candidate.photo_url ? (
         // lazy/async: o kanban monta todas as colunas de uma vez, então sem isso
         // o browser dispara um request por card (inclusive os fora da tela) pro
@@ -250,7 +250,7 @@ function CandidatePhoto({ candidate }: { candidate: Pick<Candidate, 'photo_url' 
         />
       ) : (
         <div className="w-full h-full flex items-center justify-center">
-          <span className="text-lg font-bold text-slate-400">{initials(candidate.name)}</span>
+          <span className="text-lg font-bold text-ink-400">{initials(candidate.name)}</span>
         </div>
       )}
     </div>
@@ -284,7 +284,7 @@ function CandidateCard({
       {...listeners}
       {...attributes}
       onClick={() => !isDragging && onOpen(candidate)}
-      className={`relative bg-white rounded-lg border border-border/60 border-l-4 shadow-[0_1px_2px_rgba(0,0,0,0.06)] overflow-hidden cursor-grab active:cursor-grabbing touch-none select-none ${
+      className={`relative bg-card rounded-lg border border-border/60 border-l-4 shadow-[0_1px_2px_rgba(0,0,0,0.06)] overflow-hidden cursor-grab active:cursor-grabbing touch-none select-none ${
         isDragging ? 'opacity-50' : ''
       }`}
     >
@@ -306,7 +306,7 @@ function CandidateCard({
             placeholder={candidate.job_openings?.role_title || 'Vaga removida'}
           />
           <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-md ${
-            candidate.source === 'manual' ? 'bg-slate-100 text-slate-600' : 'bg-violet-100 text-violet-700 dark:bg-violet-500/20 dark:text-violet-300'
+            candidate.source === 'manual' ? 'bg-ink-100 text-ink-600' : 'bg-violet-100 text-violet-700 dark:bg-violet-500/20 dark:text-violet-300'
           }`}>
             {candidate.source === 'manual' ? 'Manual' : 'Formulário'}
           </span>
@@ -343,7 +343,7 @@ function CandidateCard({
             <div className="flex items-center justify-between gap-1.5">
               <div className="flex items-center gap-1 flex-wrap min-w-0">
                 {showAssignee && (
-                  <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-600 truncate max-w-full" title={assigneeName}>
+                  <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-md bg-ink-100 text-ink-600 truncate max-w-full" title={assigneeName}>
                     {assigneeName}
                   </span>
                 )}
@@ -356,7 +356,7 @@ function CandidateCard({
                 )}
               </div>
               {showAttach && (
-                <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-amber-100 text-amber-700 flex items-center gap-0.5 shrink-0">
+                <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-surface-alt text-muted-foreground flex items-center gap-0.5 shrink-0">
                   <Paperclip className="w-2.5 h-2.5" /> {attachmentCount(candidate)}
                 </span>
               )}
@@ -1213,7 +1213,7 @@ export default function RhCandidatos() {
             <DragOverlay dropAnimation={null}>
               {activeCandidate ? (
                 <div
-                  className="bg-white rounded-lg border border-border/60 border-l-4 shadow-lg overflow-hidden w-56"
+                  className="bg-card rounded-lg border border-border/60 border-l-4 shadow-lg overflow-hidden w-56"
                   style={{ borderLeftColor: getStageColors(activeCandidate.stage).accent }}
                 >
                   <CandidatePhoto candidate={activeCandidate} />

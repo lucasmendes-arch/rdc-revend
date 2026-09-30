@@ -547,7 +547,7 @@ export default function ProcessoDetailModal({ processo, onClose, estagio }: Proc
                 <h2 className="text-lg font-bold text-foreground truncate">{processo.candidates?.name}</h2>
                 {isExperienceTagActive(processo) ? (
                   <span
-                    className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300 shrink-0"
+                    className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-info-subtle text-info shrink-0"
                     title="Período de experiência em andamento"
                   >
                     {getExperienceInfo(processo)?.label}
@@ -832,7 +832,7 @@ export default function ProcessoDetailModal({ processo, onClose, estagio }: Proc
                     type="checkbox"
                     checked={checklist.training_applicable}
                     onChange={(e) => updateChecklist.mutate({ training_applicable: e.target.checked })}
-                    className="w-4 h-4 rounded border-border accent-amber-500"
+                    className="w-4 h-4 rounded border-border accent-ink-900"
                   />
                   <span className="text-sm text-foreground">Treinamento técnico aplicável a este cargo</span>
                 </label>

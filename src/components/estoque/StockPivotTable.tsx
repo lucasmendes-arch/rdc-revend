@@ -163,7 +163,7 @@ export default function StockPivotTable({ storeId }: StockPivotTableProps) {
 
   if (error) {
     return (
-      <div className="bg-white rounded-2xl border border-border shadow-card p-6 text-center text-sm text-red-600">
+      <div className="bg-card rounded-2xl border border-border shadow-card p-6 text-center text-sm text-red-600">
         Erro ao carregar estoque: {error instanceof Error ? error.message : 'desconhecido'}
       </div>
     )
@@ -171,7 +171,7 @@ export default function StockPivotTable({ storeId }: StockPivotTableProps) {
 
   if (groupedByCategory.length === 0) {
     return (
-      <div className="bg-white rounded-2xl border border-border shadow-card p-8 text-center">
+      <div className="bg-card rounded-2xl border border-border shadow-card p-8 text-center">
         <p className="text-muted-foreground">Nenhuma contagem confirmada ainda.</p>
       </div>
     )
@@ -189,7 +189,7 @@ export default function StockPivotTable({ storeId }: StockPivotTableProps) {
             >
               {category}
             </span>
-            <div className="bg-white rounded-2xl border border-border shadow-card overflow-hidden">
+            <div className="bg-card rounded-2xl border border-border shadow-card overflow-hidden">
               <div className="overflow-x-auto">
                 <table
                   className="table-fixed w-full"
@@ -208,7 +208,7 @@ export default function StockPivotTable({ storeId }: StockPivotTableProps) {
                           {s.name}
                         </th>
                       ))}
-                      <th className="px-2 py-2.5 text-center text-xs font-bold text-foreground bg-amber-50">{storeId ? 'Quantidade' : 'Total'}</th>
+                      <th className="px-2 py-2.5 text-center text-xs font-bold text-foreground bg-surface">{storeId ? 'Quantidade' : 'Total'}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -234,7 +234,7 @@ export default function StockPivotTable({ storeId }: StockPivotTableProps) {
                                 {value === undefined ? (
                                   <span className="text-muted-foreground">—</span>
                                 ) : value === null ? (
-                                  <span className="text-[10px] font-semibold text-amber-600">não classif.</span>
+                                  <span className="text-[10px] font-semibold text-warning">não classif.</span>
                                 ) : isOverstocked ? (
                                   <span className="inline-flex items-center gap-0.5 rounded-full bg-violet-50 px-1.5 py-0.5 text-xs font-semibold text-violet-700 ring-1 ring-inset ring-violet-200">
                                     {value}
@@ -246,12 +246,12 @@ export default function StockPivotTable({ storeId }: StockPivotTableProps) {
                               </td>
                             )
                           })}
-                          <td className="px-2 py-2.5 text-sm text-center font-bold bg-amber-50/60">
+                          <td className="px-2 py-2.5 text-sm text-center font-bold bg-surface">
                             {storeId ? (
                               lastValue === undefined ? (
                                 <span className="text-muted-foreground">—</span>
                               ) : lastValue === null ? (
-                                <span className="text-[10px] font-semibold text-amber-600">não classif.</span>
+                                <span className="text-[10px] font-semibold text-warning">não classif.</span>
                               ) : lastOverstocked ? (
                                 <span className="inline-flex items-center gap-0.5 rounded-full bg-violet-50 px-1.5 py-0.5 text-xs font-semibold text-violet-700 ring-1 ring-inset ring-violet-200">
                                   {lastValue}

@@ -116,7 +116,7 @@ export default function CompactProductCarousel({
                     return (
                         <div
                             key={product.id}
-                            className={`flex-shrink-0 w-[140px] sm:w-[160px] md:w-[180px] lg:w-[190px] xl:w-[200px] snap-start bg-white rounded-lg border border-border shadow-xs transition-all flex flex-col relative overflow-hidden group`}
+                            className={`flex-shrink-0 w-[140px] sm:w-[160px] md:w-[180px] lg:w-[190px] xl:w-[200px] snap-start bg-card rounded-lg border border-border shadow-xs transition-all flex flex-col relative overflow-hidden group`}
                         >
                             {/* Lock overlay for items 5+ when guest */}
                             {isBlocked && (

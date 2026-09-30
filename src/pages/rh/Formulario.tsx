@@ -80,7 +80,7 @@ function BuildFieldCard({
   }
 
   return (
-    <div ref={setNodeRef} style={style} className={`bg-white rounded-xl border overflow-hidden transition-shadow ${expanded ? 'border-ring shadow-md' : 'border-border shadow-sm'}`}>
+    <div ref={setNodeRef} style={style} className={`bg-card rounded-xl border overflow-hidden transition-shadow ${expanded ? 'border-ring shadow-md' : 'border-border shadow-sm'}`}>
       <div className="flex items-center gap-2 px-3 py-2 border-b border-border/60 bg-surface-alt/50">
         <button {...attributes} {...listeners} className="text-muted-foreground hover:text-foreground cursor-grab active:cursor-grabbing touch-none shrink-0" aria-label="Arrastar">
           <GripVertical className="w-4 h-4" />

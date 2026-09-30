@@ -103,11 +103,11 @@ function ClassificationRow({ product, categories, onSave, onDelete }: { product:
               <button
                 onClick={() => fileInputRef.current?.click()}
                 disabled={uploadingPhoto}
-                className="relative w-8 h-8 rounded-lg overflow-hidden shrink-0 bg-surface-alt border border-border hover:ring-2 hover:ring-amber-400 transition-shadow"
+                className="relative w-8 h-8 rounded-lg overflow-hidden shrink-0 bg-surface-alt border border-border hover:ring-2 hover:ring-ink-300 transition-shadow"
                 title={product.main_image ? 'Trocar foto' : 'Adicionar foto'}
               >
                 {uploadingPhoto ? (
-                  <div className="w-full h-full flex items-center justify-center"><Loader className="w-3.5 h-3.5 animate-spin text-amber-500" /></div>
+                  <div className="w-full h-full flex items-center justify-center"><Loader className="w-3.5 h-3.5 animate-spin text-muted-foreground" /></div>
                 ) : product.main_image ? (
                   <img src={product.main_image} alt="" className="w-full h-full object-cover" />
                 ) : (
@@ -147,11 +147,11 @@ function ClassificationRow({ product, categories, onSave, onDelete }: { product:
                   if (e.key === 'Enter') commitName()
                   if (e.key === 'Escape') { setName(product.name); setEditingName(false) }
                 }}
-                className="w-full max-w-[220px] h-7 rounded-lg border border-input text-sm bg-white px-2 focus:outline-none focus:ring-2 focus:ring-amber-400"
+                className="w-full max-w-[220px] h-7 rounded-lg border border-input text-sm bg-card px-2 focus:outline-none focus:ring-2 focus:ring-ring"
               />
             ) : (
               <span
-                className={`font-medium text-foreground truncate max-w-[220px] block ${product.stock_only ? 'cursor-pointer hover:text-amber-700' : ''}`}
+                className={`font-medium text-foreground truncate max-w-[220px] block ${product.stock_only ? 'cursor-pointer hover:text-foreground' : ''}`}
                 onClick={product.stock_only ? () => setEditingName(true) : undefined}
                 title={product.stock_only ? 'Clique para renomear' : 'Edite no Catálogo admin'}
               >
@@ -170,7 +170,7 @@ function ClassificationRow({ product, categories, onSave, onDelete }: { product:
             {product.stock_only ? (
               <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-teal-100 text-teal-700 uppercase">Só contagem</span>
             ) : (
-              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 uppercase">Catálogo atacado</span>
+              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-info-subtle text-info uppercase">Catálogo atacado</span>
             )}
           </div>
         </div>
@@ -186,7 +186,7 @@ function ClassificationRow({ product, categories, onSave, onDelete }: { product:
             setUnitsPerBox(val ?? '')
             scheduleSave({ units_per_box: val })
           }}
-          className="w-20 h-8 rounded-lg border border-input text-center text-sm bg-white focus:outline-none focus:ring-2 focus:ring-amber-400"
+          className="w-20 h-8 rounded-lg border border-input text-center text-sm bg-card focus:outline-none focus:ring-2 focus:ring-ring"
         />
       </td>
       <td className="px-4 py-2.5 text-center">
@@ -203,7 +203,7 @@ function ClassificationRow({ product, categories, onSave, onDelete }: { product:
               scheduleSave({ package_type: val })
             }
           }}
-          className="h-8 rounded-lg border border-input text-sm bg-white px-1.5 focus:outline-none focus:ring-2 focus:ring-amber-400"
+          className="h-8 rounded-lg border border-input text-sm bg-card px-1.5 focus:outline-none focus:ring-2 focus:ring-ring"
         >
           <option value="">—</option>
           <option value="CX">CX</option>
@@ -227,7 +227,7 @@ function ClassificationRow({ product, categories, onSave, onDelete }: { product:
                 })()
               : undefined
           }
-          className="w-36 h-8 rounded-lg border border-input text-sm bg-white px-1.5 font-medium focus:outline-none focus:ring-2 focus:ring-amber-400"
+          className="w-36 h-8 rounded-lg border border-input text-sm bg-card px-1.5 font-medium focus:outline-none focus:ring-2 focus:ring-ring"
         >
           <option value="">Sem categoria</option>
           {categories.map((c) => (
@@ -239,7 +239,7 @@ function ClassificationRow({ product, categories, onSave, onDelete }: { product:
           )}
         </select>
       </td>
-      <td className="w-6">{dirty && <Loader className="w-3.5 h-3.5 animate-spin text-amber-500" />}</td>
+      <td className="w-6">{dirty && <Loader className="w-3.5 h-3.5 animate-spin text-muted-foreground" />}</td>
       <td className="w-10 px-2 text-center">
         {product.stock_only && (
           <button
@@ -295,11 +295,11 @@ function TargetCell({
             setDirty(false)
           }, 800)
         }}
-        className={`w-16 h-8 rounded-lg border border-input text-center text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-amber-400 ${
-          dimZero && qty === 0 ? 'bg-surface-alt text-muted-foreground opacity-50' : 'bg-white'
+        className={`w-16 h-8 rounded-lg border border-input text-center text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-ring ${
+          dimZero && qty === 0 ? 'bg-surface-alt text-muted-foreground opacity-50' : 'bg-card'
         }`}
       />
-      {dirty && <Loader className="w-3 h-3 animate-spin text-amber-500 shrink-0" />}
+      {dirty && <Loader className="w-3 h-3 animate-spin text-muted-foreground shrink-0" />}
     </div>
   )
 }
@@ -365,7 +365,7 @@ function CategoryChip({
               if (e.key === 'Enter') commitName()
               if (e.key === 'Escape') { setName(category.name); setEditing(false) }
             }}
-            className="w-28 h-5 mx-1 rounded border-0 text-xs font-medium bg-white/80 px-1.5 focus:outline-none focus:ring-2 focus:ring-amber-400"
+            className="w-28 h-5 mx-1 rounded border-0 text-xs font-medium bg-white/80 px-1.5 focus:outline-none focus:ring-2 focus:ring-ring"
             style={{ color: color.text }}
           />
         ) : (
@@ -398,7 +398,7 @@ function CategoryChip({
         </button>
       </div>
       {showPicker && (
-        <div className="flex flex-wrap gap-1 bg-white border border-border rounded-lg p-1.5 shadow-md max-w-[160px]">
+        <div className="flex flex-wrap gap-1 bg-card border border-border rounded-lg p-1.5 shadow-md max-w-[160px]">
           {STOCK_CATEGORY_PALETTE.map((c, i) => (
             <button
               key={i}
@@ -743,7 +743,7 @@ export default function EstoqueConfig() {
 
   return (
     <EstoqueLayout>
-      <div className="bg-white rounded-2xl border border-border shadow-card overflow-hidden">
+      <div className="bg-card rounded-2xl border border-border shadow-card overflow-hidden">
         <div className="p-5 space-y-3 border-b border-border">
           <h1 className="text-lg font-bold text-foreground">Configurações do módulo de Estoque</h1>
           <p className="text-xs text-muted-foreground">
@@ -756,7 +756,7 @@ export default function EstoqueConfig() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Buscar produto…"
-              className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-input text-sm bg-white focus:ring-2 focus:ring-amber-400 focus:outline-none"
+              className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-input text-sm bg-card focus:ring-2 focus:ring-ring focus:outline-none"
             />
           </div>
         </div>
@@ -767,7 +767,7 @@ export default function EstoqueConfig() {
               onClick={() => setActiveTab(tab.key)}
               className={`flex items-center gap-1.5 px-3 py-2.5 text-sm font-medium border-b-2 transition-colors ${
                 activeTab === tab.key
-                  ? 'border-amber-500 text-foreground'
+                  ? 'border-foreground text-foreground'
                   : 'border-transparent text-muted-foreground hover:text-foreground'
               }`}
             >
@@ -786,12 +786,12 @@ export default function EstoqueConfig() {
               onChange={(e) => setNewCategoryName(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter') handleCreateCategory() }}
               placeholder="Nova categoria (ex: Óleo)"
-              className="h-9 w-48 rounded-lg border border-input text-sm bg-white px-2.5 focus:outline-none focus:ring-2 focus:ring-amber-400"
+              className="h-9 w-48 rounded-lg border border-input text-sm bg-card px-2.5 focus:outline-none focus:ring-2 focus:ring-ring"
             />
             <button
               onClick={handleCreateCategory}
               disabled={!newCategoryName.trim() || createCategory.isPending}
-              className="flex items-center gap-1 px-3 h-9 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="flex items-center gap-1 px-3 h-9 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               <Plus className="w-3.5 h-3.5" /> Categoria
             </button>
@@ -804,7 +804,7 @@ export default function EstoqueConfig() {
           </div>
 
           {categories.length > 0 && (
-            <div className="bg-white rounded-2xl border border-border shadow-card p-3">
+            <div className="bg-card rounded-2xl border border-border shadow-card p-3">
               <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide px-1 mb-2">
                 Ordem das categorias — clique no nome para renomear (contagem e classificação seguem esta ordem)
               </p>
@@ -826,7 +826,7 @@ export default function EstoqueConfig() {
           )}
 
           {showNewItemForm && (
-            <div className="bg-white rounded-2xl border border-teal-200 shadow-card p-4 space-y-3">
+            <div className="bg-card rounded-2xl border border-teal-200 shadow-card p-4 space-y-3">
               <div className="flex items-center justify-between">
                 <p className="text-xs font-semibold text-teal-700">Novos itens — só pra contagem (não entram no catálogo de venda)</p>
                 <button onClick={() => setShowNewItemForm(false)} className="text-xs text-muted-foreground hover:text-foreground">Cancelar</button>
@@ -837,12 +837,12 @@ export default function EstoqueConfig() {
                   onChange={(e) => setNewItem({ ...newItem, name: e.target.value })}
                   placeholder={'Um nome por linha — cole uma lista pra criar vários de uma vez:\nDetergente 5L\nPapel toalha\nÁlcool 70%'}
                   rows={4}
-                  className="sm:col-span-2 rounded-lg border border-input text-sm bg-white px-2.5 py-2 focus:outline-none focus:ring-2 focus:ring-amber-400 resize-y"
+                  className="sm:col-span-2 rounded-lg border border-input text-sm bg-card px-2.5 py-2 focus:outline-none focus:ring-2 focus:ring-ring resize-y"
                 />
                 <select
                   value={newItem.stock_category}
                   onChange={(e) => setNewItem({ ...newItem, stock_category: e.target.value })}
-                  className="h-9 rounded-lg border border-input text-sm bg-white px-2 focus:outline-none focus:ring-2 focus:ring-amber-400"
+                  className="h-9 rounded-lg border border-input text-sm bg-card px-2 focus:outline-none focus:ring-2 focus:ring-ring"
                 >
                   <option value="">Sem categoria</option>
                   {categories.map((c) => <option key={c.id} value={c.name}>{c.name}</option>)}
@@ -850,7 +850,7 @@ export default function EstoqueConfig() {
                 <select
                   value={newItem.package_type}
                   onChange={(e) => setNewItem({ ...newItem, package_type: e.target.value, ...(e.target.value === 'UND' ? { units_per_box: '1' } : {}) })}
-                  className="h-9 rounded-lg border border-input text-sm bg-white px-2 focus:outline-none focus:ring-2 focus:ring-amber-400"
+                  className="h-9 rounded-lg border border-input text-sm bg-card px-2 focus:outline-none focus:ring-2 focus:ring-ring"
                 >
                   <option value="">Embalagem</option>
                   <option value="CX">CX</option>
@@ -864,7 +864,7 @@ export default function EstoqueConfig() {
                   value={newItem.units_per_box}
                   onChange={(e) => setNewItem({ ...newItem, units_per_box: e.target.value })}
                   placeholder="Itens/caixa (opcional)"
-                  className="w-40 h-9 rounded-lg border border-input text-sm bg-white px-2.5 focus:outline-none focus:ring-2 focus:ring-amber-400"
+                  className="w-40 h-9 rounded-lg border border-input text-sm bg-card px-2.5 focus:outline-none focus:ring-2 focus:ring-ring"
                 />
                 <button
                   onClick={handleCreateStockOnlyItem}
@@ -881,7 +881,7 @@ export default function EstoqueConfig() {
             </div>
           )}
 
-          <div className="bg-white rounded-2xl border border-border shadow-card overflow-hidden">
+          <div className="bg-card rounded-2xl border border-border shadow-card overflow-hidden">
             {productsLoading ? (
               <div className="text-center py-10"><Loader className="w-6 h-6 animate-spin text-gold-text mx-auto" /></div>
             ) : (
@@ -921,7 +921,7 @@ export default function EstoqueConfig() {
             <select
               value={copyFromStore}
               onChange={(e) => setCopyFromStore(e.target.value)}
-              className="h-8 rounded-lg border border-input text-xs bg-white px-1.5 focus:outline-none focus:ring-2 focus:ring-amber-400"
+              className="h-8 rounded-lg border border-input text-xs bg-card px-1.5 focus:outline-none focus:ring-2 focus:ring-ring"
             >
               <option value="">Loja de origem</option>
               {stores.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
@@ -930,7 +930,7 @@ export default function EstoqueConfig() {
             <select
               value={copyToStore}
               onChange={(e) => setCopyToStore(e.target.value)}
-              className="h-8 rounded-lg border border-input text-xs bg-white px-1.5 focus:outline-none focus:ring-2 focus:ring-amber-400"
+              className="h-8 rounded-lg border border-input text-xs bg-card px-1.5 focus:outline-none focus:ring-2 focus:ring-ring"
             >
               <option value="">Loja de destino</option>
               {stores.filter((s) => s.id !== copyFromStore).map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
@@ -938,13 +938,13 @@ export default function EstoqueConfig() {
             <button
               onClick={handleCopyTargets}
               disabled={!copyFromStore || !copyToStore || copyFromStore === copyToStore || copyTargets.isPending}
-              className="flex items-center gap-1 px-3 h-8 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="flex items-center gap-1 px-3 h-8 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {copyTargets.isPending ? <Loader className="w-3.5 h-3.5 animate-spin" /> : <Copy className="w-3.5 h-3.5" />}
               Copiar
             </button>
           </div>
-          <div className="bg-white rounded-2xl border border-border shadow-card overflow-hidden">
+          <div className="bg-card rounded-2xl border border-border shadow-card overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
