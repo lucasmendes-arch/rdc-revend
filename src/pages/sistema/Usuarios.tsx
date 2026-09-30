@@ -622,7 +622,8 @@ function ClientSidePanel({
         .order('created_at', { ascending: false })
         .limit(20)
       if (error) throw error
-      return (data || []) as ClientOrder[]
+      // catalog_products é FK N:1: o PostgREST devolve objeto, mas sem tipos gerados o client infere array
+      return (data || []) as unknown as ClientOrder[]
     },
     staleTime: 60 * 1000,
   })

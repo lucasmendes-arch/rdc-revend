@@ -424,9 +424,9 @@ const AdminPedidos = () => {
                               >
                                 #{orderNumber}
                                 {order.origin === 'manual' ? (
-                                  <Hand className="w-3.5 h-3.5 text-muted-foreground" title="Pedido Manual" />
+                                  <span title="Pedido Manual"><Hand className="w-3.5 h-3.5 text-muted-foreground" /></span>
                                 ) : (
-                                  <Globe className="w-3.5 h-3.5 text-blue-400" title="Feito pelo Site" />
+                                  <span title="Feito pelo Site"><Globe className="w-3.5 h-3.5 text-blue-400" /></span>
                                 )}
                               </Link>
                               <span className="text-[11px] font-medium text-muted-foreground leading-none">

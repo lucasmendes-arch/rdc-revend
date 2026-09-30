@@ -166,6 +166,7 @@ export function selectProductsForPackage(pkg: Package, products: PublicProduct[]
           name: item.nameMatch,
           category_id: '',
           price: item.expectedPrice,
+          partner_price: null,
           compare_at_price: null,
           is_professional: false,
           main_image: '',
