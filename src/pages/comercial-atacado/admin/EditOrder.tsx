@@ -114,7 +114,7 @@ export default function EditOrder() {
       const { data, error } = await supabase
         .from('catalog_products')
         .select('id, name, price')
-        .eq('active', true)
+        .eq('is_active', true)
         .ilike('name', `%${productSearch}%`)
         .limit(10)
       if (error) throw error
@@ -186,7 +186,13 @@ export default function EditOrder() {
   }
 
   const addProduct = (p: { id: string; name: string; price: number }) => {
-    setItems(prev => [...prev, { product_id: p.id, product_name: p.name, qty: 1, unit_price: p.price }])
+    setItems(prev => {
+      const existing = prev.findIndex(i => i.product_id === p.id)
+      if (existing >= 0) {
+        return prev.map((item, i) => i === existing ? { ...item, qty: item.qty + 1 } : item)
+      }
+      return [...prev, { product_id: p.id, product_name: p.name, qty: 1, unit_price: Number(p.price) }]
+    })
     setProductSearch('')
     setShowProductSearch(false)
   }
