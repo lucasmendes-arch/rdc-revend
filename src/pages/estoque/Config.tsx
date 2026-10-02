@@ -10,6 +10,7 @@ import EstoqueLayout from '@/components/estoque/EstoqueLayout'
 import { STOCK_CATEGORY_PALETTE, getCategoryColor } from '@/lib/stockCategoryColors'
 import { naturalCompare } from '@/lib/naturalSort'
 import { sortByStoreOrder } from '@/lib/storeOrder'
+import StyledSelect from '@/components/ui/styled-select'
 
 interface Product {
   id: string
@@ -41,6 +42,11 @@ interface StockCategory {
   sort_order: number
   color_index: number
 }
+
+const PACKAGE_OPTIONS = [
+  { value: 'CX', label: 'CX' },
+  { value: 'UND', label: 'UND' },
+]
 
 function ClassificationRow({ product, categories, onSave, onDelete }: { product: Product; categories: StockCategory[]; onSave: (id: string, updates: Partial<Product>) => void; onDelete: (product: Product) => void }) {
   const [unitsPerBox, setUnitsPerBox] = useState(product.units_per_box ?? '')
@@ -190,10 +196,10 @@ function ClassificationRow({ product, categories, onSave, onDelete }: { product:
         />
       </td>
       <td className="px-4 py-2.5 text-center">
-        <select
+        <StyledSelect
           value={packageType}
-          onChange={(e) => {
-            const val = e.target.value || null
+          onChange={(v) => {
+            const val = v || null
             setPackageType(val ?? '')
             // UND = item avulso, então itens/caixa é sempre 1.
             if (val === 'UND') {
@@ -203,21 +209,30 @@ function ClassificationRow({ product, categories, onSave, onDelete }: { product:
               scheduleSave({ package_type: val })
             }
           }}
-          className="h-8 rounded-lg border border-input text-sm bg-card px-1.5 focus:outline-none focus:ring-2 focus:ring-ring"
-        >
-          <option value="">—</option>
-          <option value="CX">CX</option>
-          <option value="UND">UND</option>
-        </select>
+          options={PACKAGE_OPTIONS}
+          emptyLabel="—"
+          placeholder="—"
+          searchable={false}
+          className="w-auto h-8 rounded-lg bg-card px-1.5"
+        />
       </td>
       <td className="px-4 py-2.5 text-center">
-        <select
+        <StyledSelect
           value={stockCategory}
-          onChange={(e) => {
-            const val = e.target.value || null
+          onChange={(v) => {
+            const val = v || null
             setStockCategory(val ?? '')
             scheduleSave({ stock_category: val })
           }}
+          options={[
+            ...categories.map((c) => ({ value: c.name, label: c.name, dotColor: getCategoryColor(c.color_index).bg })),
+            // Produto pode ter uma categoria que já não está mais na lista (removida) — mantém visível pra não perder o dado
+            ...(stockCategory && !categories.some((c) => c.name === stockCategory)
+              ? [{ value: stockCategory, label: `${stockCategory} (removida da lista)` }]
+              : []),
+          ]}
+          emptyLabel="Sem categoria"
+          placeholder="Sem categoria"
           style={
             stockCategory
               ? (() => {
@@ -227,17 +242,8 @@ function ClassificationRow({ product, categories, onSave, onDelete }: { product:
                 })()
               : undefined
           }
-          className="w-36 h-8 rounded-lg border border-input text-sm bg-card px-1.5 font-medium focus:outline-none focus:ring-2 focus:ring-ring"
-        >
-          <option value="">Sem categoria</option>
-          {categories.map((c) => (
-            <option key={c.id} value={c.name}>{c.name}</option>
-          ))}
-          {/* Produto pode ter uma categoria que já não está mais na lista (removida) — mantém visível pra não perder o dado */}
-          {stockCategory && !categories.some((c) => c.name === stockCategory) && (
-            <option value={stockCategory}>{stockCategory} (removida da lista)</option>
-          )}
-        </select>
+          className="w-36 h-8 rounded-lg bg-card px-1.5 font-medium"
+        />
       </td>
       <td className="w-6">{dirty && <Loader className="w-3.5 h-3.5 animate-spin text-muted-foreground" />}</td>
       <td className="w-10 px-2 text-center">
@@ -839,23 +845,23 @@ export default function EstoqueConfig() {
                   rows={4}
                   className="sm:col-span-2 rounded-lg border border-input text-sm bg-card px-2.5 py-2 focus:outline-none focus:ring-2 focus:ring-ring resize-y"
                 />
-                <select
+                <StyledSelect
                   value={newItem.stock_category}
-                  onChange={(e) => setNewItem({ ...newItem, stock_category: e.target.value })}
-                  className="h-9 rounded-lg border border-input text-sm bg-card px-2 focus:outline-none focus:ring-2 focus:ring-ring"
-                >
-                  <option value="">Sem categoria</option>
-                  {categories.map((c) => <option key={c.id} value={c.name}>{c.name}</option>)}
-                </select>
-                <select
+                  onChange={(v) => setNewItem({ ...newItem, stock_category: v })}
+                  options={categories.map((c) => ({ value: c.name, label: c.name, dotColor: getCategoryColor(c.color_index).bg }))}
+                  emptyLabel="Sem categoria"
+                  placeholder="Sem categoria"
+                  className="w-auto rounded-lg bg-card px-2"
+                />
+                <StyledSelect
                   value={newItem.package_type}
-                  onChange={(e) => setNewItem({ ...newItem, package_type: e.target.value, ...(e.target.value === 'UND' ? { units_per_box: '1' } : {}) })}
-                  className="h-9 rounded-lg border border-input text-sm bg-card px-2 focus:outline-none focus:ring-2 focus:ring-ring"
-                >
-                  <option value="">Embalagem</option>
-                  <option value="CX">CX</option>
-                  <option value="UND">UND</option>
-                </select>
+                  onChange={(v) => setNewItem({ ...newItem, package_type: v, ...(v === 'UND' ? { units_per_box: '1' } : {}) })}
+                  options={PACKAGE_OPTIONS}
+                  emptyLabel="Embalagem"
+                  placeholder="Embalagem"
+                  searchable={false}
+                  className="w-auto rounded-lg bg-card px-2"
+                />
               </div>
               <div className="flex items-center gap-2.5">
                 <input
@@ -918,23 +924,23 @@ export default function EstoqueConfig() {
           </p>
           <div className="flex items-center flex-wrap gap-1.5 px-1">
             <span className="text-xs font-semibold text-foreground flex items-center gap-1"><Copy className="w-3.5 h-3.5" /> Copiar metas:</span>
-            <select
+            <StyledSelect
+              variant="xs"
               value={copyFromStore}
-              onChange={(e) => setCopyFromStore(e.target.value)}
-              className="h-8 rounded-lg border border-input text-xs bg-card px-1.5 focus:outline-none focus:ring-2 focus:ring-ring"
-            >
-              <option value="">Loja de origem</option>
-              {stores.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-            </select>
+              onChange={setCopyFromStore}
+              options={stores.map((s) => ({ value: s.id, label: s.name }))}
+              placeholder="Loja de origem"
+              className="h-8 rounded-lg bg-card px-1.5"
+            />
             <ArrowRight className="w-3.5 h-3.5 text-muted-foreground" />
-            <select
+            <StyledSelect
+              variant="xs"
               value={copyToStore}
-              onChange={(e) => setCopyToStore(e.target.value)}
-              className="h-8 rounded-lg border border-input text-xs bg-card px-1.5 focus:outline-none focus:ring-2 focus:ring-ring"
-            >
-              <option value="">Loja de destino</option>
-              {stores.filter((s) => s.id !== copyFromStore).map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-            </select>
+              onChange={setCopyToStore}
+              options={stores.filter((s) => s.id !== copyFromStore).map((s) => ({ value: s.id, label: s.name }))}
+              placeholder="Loja de destino"
+              className="h-8 rounded-lg bg-card px-1.5"
+            />
             <button
               onClick={handleCopyTargets}
               disabled={!copyFromStore || !copyToStore || copyFromStore === copyToStore || copyTargets.isPending}

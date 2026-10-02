@@ -7,6 +7,7 @@ import { supabase } from '@/lib/supabase'
 import EstoqueLayout from '@/components/estoque/EstoqueLayout'
 import { getCategoryColor } from '@/lib/stockCategoryColors'
 import { naturalCompare } from '@/lib/naturalSort'
+import StyledSelect from '@/components/ui/styled-select'
 
 interface Product {
   id: string
@@ -567,16 +568,13 @@ export default function EstoqueContagemDetalhe() {
               />
             </div>
             {groups.length > 1 && (
-              <select
+              <StyledSelect
                 value=""
-                onChange={(e) => { if (e.target.value) jumpToCategory(e.target.value) }}
-                className="h-[42px] rounded-xl border border-input text-sm bg-card px-2.5 text-foreground focus:ring-2 focus:ring-ring focus:outline-none shrink-0 max-w-[45%]"
-              >
-                <option value="">Ir pra categoria…</option>
-                {groups.map(([category]) => (
-                  <option key={category} value={category}>{category}</option>
-                ))}
-              </select>
+                onChange={(v) => { if (v) jumpToCategory(v) }}
+                options={groups.map(([category]) => ({ value: category, label: category }))}
+                placeholder="Ir pra categoria…"
+                className="w-auto h-[42px] rounded-xl bg-card shrink-0 max-w-[45%]"
+              />
             )}
           </div>
         </div>

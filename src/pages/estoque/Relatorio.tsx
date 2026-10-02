@@ -7,6 +7,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import EstoqueLayout from '@/components/estoque/EstoqueLayout'
 import { downloadCsv, slugifyForFilename, type CsvValue } from '@/lib/csv'
 import { getCategoryColor } from '@/lib/stockCategoryColors'
+import StyledSelect from '@/components/ui/styled-select'
 import {
   groupByStockCategory,
   UNCATEGORIZED,
@@ -171,14 +172,15 @@ export default function EstoqueRelatorio() {
           Mostra a última contagem confirmada de cada loja, agrupada por categoria e cruzada com a meta cadastrada. Não reflete vendas/consumo em tempo real — só é atualizado quando uma nova contagem é confirmada.
         </p>
         <div className="flex flex-wrap items-center gap-2">
-          <select
+          <StyledSelect
+            variant="inline"
             value={selectedStoreId}
-            onChange={(e) => setSelectedStoreId(e.target.value)}
-            className="h-9 rounded-lg border border-input text-sm bg-card px-2 focus:outline-none focus:ring-2 focus:ring-ring"
-          >
-            <option value="">Todas as lojas (consolidado)</option>
-            {stores.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-          </select>
+            onChange={setSelectedStoreId}
+            options={stores.map((s) => ({ value: s.id, label: s.name }))}
+            emptyLabel="Todas as lojas (consolidado)"
+            placeholder="Todas as lojas (consolidado)"
+            className="h-9 bg-card"
+          />
           <button
             type="button"
             onClick={handleExportCsv}

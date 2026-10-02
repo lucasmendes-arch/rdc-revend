@@ -10,6 +10,7 @@ import {
 } from 'lucide-react'
 import AdminLayout from '@/components/admin/AdminLayout'
 import { ORDER_STATUS, ORDER_STATUS_SEQUENCE, toneClasses } from '@/lib/design/orderStatus'
+import StyledSelect from '@/components/ui/styled-select'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -88,6 +89,12 @@ const SEGMENT_OPTIONS = [
   { value: 'network_partner', label: 'Parceiro da Rede' },
   { value: 'wholesale_buyer', label: 'Comprador Atacado' },
 ]
+// Mesma família de cor do segmentBadge.
+const SEGMENT_DOT: Record<string, string> = {
+  '': 'bg-ink-300',
+  network_partner: 'bg-brand-solid',
+  wholesale_buyer: 'bg-teal-500',
+}
 const segmentBadge = (v: string | null) => {
   if (v === 'network_partner') return 'bg-brand-subtle text-brand-strong'
   if (v === 'wholesale_buyer') return 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400'
@@ -390,14 +397,14 @@ export default function AdminUsuarios() {
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-1">Loja vinculada (opcional)</label>
                   <p className="text-xs text-muted-foreground mb-1.5">Sem loja, o colaborador só acessa o módulo de venda — não o de contagem de estoque.</p>
-                  <select
+                  <StyledSelect
                     value={createForm.store_id}
-                    onChange={e => setCreateForm({ ...createForm, store_id: e.target.value })}
-                    className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                  >
-                    <option value="">Nenhuma (só vendas)</option>
-                    {stores.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                  </select>
+                    onChange={(v) => setCreateForm({ ...createForm, store_id: v })}
+                    options={stores.map(s => ({ value: s.id, label: s.name }))}
+                    emptyLabel="Nenhuma (só vendas)"
+                    placeholder="Nenhuma (só vendas)"
+                    className="rounded-lg"
+                  />
                 </div>
               )}
               <div>
@@ -748,10 +755,14 @@ function ClientSidePanel({
                 <div className="flex gap-2">
                   <div className="w-24">
                     <FormField label="Tipo doc.">
-                      <select value={profileForm.document_type} onChange={e => setProfileForm(p => ({ ...p, document_type: e.target.value }))}
-                        className="w-full px-2 py-2 text-sm rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring">
-                        <option value="">—</option><option value="CPF">CPF</option><option value="CNPJ">CNPJ</option>
-                      </select>
+                      <StyledSelect
+                        value={profileForm.document_type}
+                        onChange={(v) => setProfileForm(p => ({ ...p, document_type: v }))}
+                        options={[{ value: 'CPF', label: 'CPF' }, { value: 'CNPJ', label: 'CNPJ' }]}
+                        emptyLabel="—"
+                        placeholder="—"
+                        className="px-2 rounded-lg"
+                      />
                     </FormField>
                   </div>
                   <div className="flex-1">
@@ -763,25 +774,34 @@ function ClientSidePanel({
                   </div>
                 </div>
                 <FormField label="Tipo de atuação">
-                  <select value={profileForm.business_type} onChange={e => setProfileForm(p => ({ ...p, business_type: e.target.value }))}
-                    className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring">
-                    <option value="">Não informado</option>
-                    {Object.entries(businessTypeLabels).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-                  </select>
+                  <StyledSelect
+                    value={profileForm.business_type}
+                    onChange={(v) => setProfileForm(p => ({ ...p, business_type: v }))}
+                    options={Object.entries(businessTypeLabels).map(([value, label]) => ({ value, label }))}
+                    emptyLabel="Não informado"
+                    placeholder="Não informado"
+                    className="rounded-lg"
+                  />
                 </FormField>
                 <FormField label="Funcionários">
-                  <select value={profileForm.employees} onChange={e => setProfileForm(p => ({ ...p, employees: e.target.value }))}
-                    className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring">
-                    <option value="">Não informado</option>
-                    {Object.entries(employeesLabels).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-                  </select>
+                  <StyledSelect
+                    value={profileForm.employees}
+                    onChange={(v) => setProfileForm(p => ({ ...p, employees: v }))}
+                    options={Object.entries(employeesLabels).map(([value, label]) => ({ value, label }))}
+                    emptyLabel="Não informado"
+                    placeholder="Não informado"
+                    className="rounded-lg"
+                  />
                 </FormField>
                 <FormField label="Faturamento estimado">
-                  <select value={profileForm.revenue} onChange={e => setProfileForm(p => ({ ...p, revenue: e.target.value }))}
-                    className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring">
-                    <option value="">Não informado</option>
-                    {Object.entries(revenueLabels).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-                  </select>
+                  <StyledSelect
+                    value={profileForm.revenue}
+                    onChange={(v) => setProfileForm(p => ({ ...p, revenue: v }))}
+                    options={Object.entries(revenueLabels).map(([value, label]) => ({ value, label }))}
+                    emptyLabel="Não informado"
+                    placeholder="Não informado"
+                    className="rounded-lg"
+                  />
                 </FormField>
                 <button onClick={() => profileMutation.mutate(profileForm)} disabled={profileMutation.isPending}
                   className="flex items-center gap-1.5 px-4 py-2 rounded-lg btn-action text-sm font-medium disabled:opacity-50 transition-colors">
@@ -812,11 +832,15 @@ function ClientSidePanel({
           <div className="px-5 py-4 border-b border-border">
             <h3 className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest mb-3">Segmento Comercial</h3>
             <div className="flex items-center gap-3">
-              <select value={client.customer_segment || ''} onChange={e => segmentMutation.mutate(e.target.value || null)}
+              <StyledSelect
+                variant="inline"
+                value={client.customer_segment || ''}
+                onChange={(v) => segmentMutation.mutate(v || null)}
                 disabled={segmentMutation.isPending}
-                className="appearance-none px-3 py-1.5 text-sm font-medium border border-border rounded-lg bg-background text-foreground focus:ring-2 focus:ring-ring focus:outline-none">
-                {SEGMENT_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-              </select>
+                options={SEGMENT_OPTIONS.map(o => ({ ...o, dotClassName: SEGMENT_DOT[o.value] }))}
+                searchable={false}
+                className="font-medium"
+              />
               {segmentMutation.isPending && <Loader className="w-4 h-4 animate-spin text-muted-foreground" />}
             </div>
           </div>
@@ -828,12 +852,15 @@ function ClientSidePanel({
           <div className="px-5 py-4 border-b border-border">
             <h3 className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest mb-3">Tabela de Preço</h3>
             <div className="flex items-center gap-3">
-              <select value={client.price_list_id || ''} onChange={e => priceListMutation.mutate(e.target.value || null)}
+              <StyledSelect
+                variant="inline"
+                value={client.price_list_id || ''}
+                onChange={(v) => priceListMutation.mutate(v || null)}
                 disabled={priceListMutation.isPending}
-                className="px-3 py-1.5 text-sm border border-border rounded-lg bg-background text-foreground focus:ring-2 focus:ring-ring focus:outline-none">
-                <option value="">Preço padrão do catálogo</option>
-                {priceLists.map(pl => <option key={pl.id} value={pl.id}>{pl.name}</option>)}
-              </select>
+                options={priceLists.map(pl => ({ value: pl.id, label: pl.name }))}
+                emptyLabel="Preço padrão do catálogo"
+                placeholder="Preço padrão do catálogo"
+              />
               {priceListMutation.isPending && <Loader className="w-4 h-4 animate-spin text-muted-foreground" />}
             </div>
           </div>
@@ -1370,14 +1397,14 @@ function SystemUserSidePanel({
               <div className="mt-3">
                 <label className="block text-[11px] text-muted-foreground mb-1">Loja vinculada (opcional)</label>
                 <p className="text-[11px] text-ink-400 mb-1">Sem loja, acessa só o módulo de venda.</p>
-                <select
+                <StyledSelect
                   value={selectedStoreId}
-                  onChange={e => setSelectedStoreId(e.target.value)}
-                  className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-card focus:outline-none focus:ring-2 focus:ring-ring"
-                >
-                  <option value="">Nenhuma (só vendas)</option>
-                  {stores.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                </select>
+                  onChange={setSelectedStoreId}
+                  options={stores.map(s => ({ value: s.id, label: s.name }))}
+                  emptyLabel="Nenhuma (só vendas)"
+                  placeholder="Nenhuma (só vendas)"
+                  className="rounded-lg bg-card"
+                />
               </div>
             )}
 

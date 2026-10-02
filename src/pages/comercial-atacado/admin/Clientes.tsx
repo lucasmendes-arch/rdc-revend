@@ -17,6 +17,7 @@ import { AdminSelect } from '@/components/admin/ui/AdminSelect'
 import { OPERATIONAL_FILTERS, QUEUE_VIEWS, applyQueueView, applySegmentFilter, getQueuePriority, getViewsForSegment, sortWorkQueue } from '@/lib/crmFilters'
 import type { CrmFilterSession, QueuePriority, SegmentTab } from '@/lib/crmFilters'
 import { ORDER_STATUS, ORDER_STATUS_SEQUENCE, toneClasses } from '@/lib/design/orderStatus'
+import StyledSelect from '@/components/ui/styled-select'
 
 interface OrderItem {
   id: string
@@ -120,6 +121,13 @@ const funnelStages = [
     indicatorColor: 'bg-danger-solid',
   },
 ] as const
+
+// Mesma família de cor do badge de segmento (segmentBadgeColor).
+const SEGMENT_DOT: Record<string, string> = {
+  '': 'bg-ink-300',
+  network_partner: 'bg-brand-solid',
+  wholesale_buyer: 'bg-teal-500',
+}
 
 const businessTypeLabels: Record<string, string> = {
   salao: 'Salão de Beleza',
@@ -755,15 +763,14 @@ function ClientDetailPanel({ session, onClose, onDeleteClick }: { session: Clien
                 <div className="flex gap-2">
                   <div className="w-24">
                     <label className="block text-[11px] text-muted-foreground mb-1">Tipo doc.</label>
-                    <select
+                    <StyledSelect
                       value={profileForm.document_type}
-                      onChange={e => setProfileForm(p => ({ ...p, document_type: e.target.value }))}
-                      className="w-full px-2 py-2 text-sm rounded-lg border border-border bg-card focus:outline-none focus:ring-2 focus:ring-ring/40 text-foreground"
-                    >
-                      <option value="">—</option>
-                      <option value="CPF">CPF</option>
-                      <option value="CNPJ">CNPJ</option>
-                    </select>
+                      onChange={(v) => setProfileForm(p => ({ ...p, document_type: v }))}
+                      options={[{ value: 'CPF', label: 'CPF' }, { value: 'CNPJ', label: 'CNPJ' }]}
+                      emptyLabel="—"
+                      placeholder="—"
+                      className="px-2 rounded-lg bg-card"
+                    />
                   </div>
                   <div className="flex-1">
                     <label className="block text-[11px] text-muted-foreground mb-1">Número</label>
@@ -778,42 +785,36 @@ function ClientDetailPanel({ session, onClose, onDeleteClick }: { session: Clien
                 </div>
                 <div>
                   <label className="block text-[11px] text-muted-foreground mb-1">Tipo de atuação</label>
-                  <select
+                  <StyledSelect
                     value={profileForm.business_type}
-                    onChange={e => setProfileForm(p => ({ ...p, business_type: e.target.value }))}
-                    className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-card focus:outline-none focus:ring-2 focus:ring-ring/40 text-foreground"
-                  >
-                    <option value="">Não informado</option>
-                    {Object.entries(businessTypeLabels).map(([v, l]) => (
-                      <option key={v} value={v}>{l}</option>
-                    ))}
-                  </select>
+                    onChange={(v) => setProfileForm(p => ({ ...p, business_type: v }))}
+                    options={Object.entries(businessTypeLabels).map(([value, label]) => ({ value, label }))}
+                    emptyLabel="Não informado"
+                    placeholder="Não informado"
+                    className="rounded-lg bg-card"
+                  />
                 </div>
                 <div>
                   <label className="block text-[11px] text-muted-foreground mb-1">Funcionários</label>
-                  <select
+                  <StyledSelect
                     value={profileForm.employees}
-                    onChange={e => setProfileForm(p => ({ ...p, employees: e.target.value }))}
-                    className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-card focus:outline-none focus:ring-2 focus:ring-ring/40 text-foreground"
-                  >
-                    <option value="">Não informado</option>
-                    {Object.entries(employeesLabels).map(([v, l]) => (
-                      <option key={v} value={v}>{l}</option>
-                    ))}
-                  </select>
+                    onChange={(v) => setProfileForm(p => ({ ...p, employees: v }))}
+                    options={Object.entries(employeesLabels).map(([value, label]) => ({ value, label }))}
+                    emptyLabel="Não informado"
+                    placeholder="Não informado"
+                    className="rounded-lg bg-card"
+                  />
                 </div>
                 <div>
                   <label className="block text-[11px] text-muted-foreground mb-1">Faturamento estimado</label>
-                  <select
+                  <StyledSelect
                     value={profileForm.revenue}
-                    onChange={e => setProfileForm(p => ({ ...p, revenue: e.target.value }))}
-                    className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-card focus:outline-none focus:ring-2 focus:ring-ring/40 text-foreground"
-                  >
-                    <option value="">Não informado</option>
-                    {Object.entries(revenueLabels).map(([v, l]) => (
-                      <option key={v} value={v}>{l}</option>
-                    ))}
-                  </select>
+                    onChange={(v) => setProfileForm(p => ({ ...p, revenue: v }))}
+                    options={Object.entries(revenueLabels).map(([value, label]) => ({ value, label }))}
+                    emptyLabel="Não informado"
+                    placeholder="Não informado"
+                    className="rounded-lg bg-card"
+                  />
                 </div>
                 <button
                   onClick={() => updateProfileMutation.mutate(profileForm)}
@@ -873,16 +874,15 @@ function ClientDetailPanel({ session, onClose, onDeleteClick }: { session: Clien
             <div className="px-5 py-4 border-b border-border">
               <h3 className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest mb-3">Segmento Comercial</h3>
               <div className="flex items-center gap-3">
-                <select
+                <StyledSelect
+                  variant="inline"
                   value={profile?.customer_segment || ''}
-                  onChange={e => segmentMutation.mutate(e.target.value || null)}
+                  onChange={(v) => segmentMutation.mutate(v || null)}
                   disabled={segmentMutation.isPending}
-                  className="appearance-none px-3 py-1.5 text-sm font-medium border border-border rounded-lg bg-card text-foreground focus:ring-2 focus:ring-ring/40 focus:outline-none transition-all"
-                >
-                  {SEGMENT_OPTIONS.map(o => (
-                    <option key={o.value} value={o.value}>{o.label}</option>
-                  ))}
-                </select>
+                  options={SEGMENT_OPTIONS.map(o => ({ value: o.value, label: o.label, dotClassName: SEGMENT_DOT[o.value] }))}
+                  searchable={false}
+                  className="bg-card font-medium"
+                />
                 {segmentMutation.isPending && <Loader className="w-4 h-4 animate-spin text-muted-foreground" />}
                 {profile?.customer_segment && (
                   <span className={`inline-flex items-center text-[10px] font-bold px-1.5 py-0.5 rounded-md ring-1 ring-inset ${segmentBadgeColor(profile.customer_segment).replace(/border-/g, 'ring-')}`}>

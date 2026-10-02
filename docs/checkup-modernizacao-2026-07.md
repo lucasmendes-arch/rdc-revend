@@ -2,7 +2,7 @@
 
 > Data do diagnóstico: 2026-07-02
 > Escopo: arquitetura, código, performance, design, segurança e dependências.
-> Status: **Roadmap aprovado pelo humano em 2026-07-07 (ordem mantida como proposta). Etapa 0 executada em 2026-07-07 — ver notas de execução na Fase 3. Próxima: Etapa 1 (code splitting).**
+> Status: **Roadmap aprovado pelo humano em 2026-07-07 (ordem mantida como proposta). Etapa 0 executada em 2026-07-07; Etapa 1 concluída em 2026-10-02 — ver notas de execução na Fase 3. Próxima: Etapa 2 (tema unificado).**
 
 ---
 
@@ -113,7 +113,7 @@ Cada etapa é pequena, independente e validável antes da próxima.
 | Etapa | Escopo | Esforço | Risco / mitigação |
 |-------|--------|---------|-------------------|
 | **0 — Quick wins** ✅ 2026-07-07 | Itens 1, 2, 7 e 9 da priorização | P | Zero risco funcional; não toca rota nem checkout |
-| **1 — Code splitting** | `React.lazy` por módulo no `App.tsx` + `manualChunks` para vendors pesados (recharts, html2canvas) | M | Flash de loading entre rotas → Suspense fallback. Validar tamanhos por chunk + navegar todas as rotas |
+| **1 — Code splitting** ✅ 2026-10-02 | `React.lazy` por módulo no `App.tsx` + `manualChunks` para vendors pesados (recharts, html2canvas) | M | Flash de loading entre rotas → Suspense fallback. Validar tamanhos por chunk + navegar todas as rotas |
 | **2 — Tema unificado** | Um único provider/chave; remover toggles manuais dos layouts | M | Preferência de tema salva reseta uma vez (aceitável). Validar alternância em cada módulo |
 | **3 — Estrutura + AuthContext** | Fundir `lib/{hooks,services,types}` na estrutura principal; 1 query no AuthContext | P/M | Validar login em cada role |
 | **4 — Tipos do Supabase** | `supabase gen types` + `createClient<Database>`; adotar nos hooks/páginas novas primeiro, legado gradual | M | Requer acesso ao projeto Supabase via CLI |
@@ -126,6 +126,15 @@ Cada etapa é pequena, independente e validável antes da próxima.
 - **Item 7**: `debug-sync` e `test-sync` deletadas do repositório **e do projeto Supabase remoto** (estavam deployadas). `axios` substituído por `fetch` nativo em `facebook-conversion-api.ts` (usado pela rota Vercel `api/events/track-conversion.ts`) e removido do package.json.
 - **Item 9**: migration `20260707000001_wrap_rls_functions_initplan.sql` aplicada via `supabase db push` — `ALTER POLICY` nas 20 policies do módulo de estoque (stores, stock_counts, stock_count_items, store_stock_targets, stock_categories, replenishment_orders/requests/request_items), embrulhando `is_admin()`/`is_estoque()`/`my_store_id()` em `(SELECT ...)`. Policies legadas (pré-módulo de estoque) **não** foram tocadas — ficam para quando/se aparecerem em profiling real.
 - **Extra (pedido do humano)**: regra ESLint `complexity: ['warn', 15]` adicionada ao `eslint.config.js` como trava para código novo — 41 warnings no legado de `src/`, esperados; lint não faz parte do build.
+
+### Notas de execução — Etapa 1 (2026-10-02)
+
+- A maior parte já tinha entrado aos poucos junto com os módulos (33 rotas `lazy` + `manualChunks`); faltavam as páginas avulsas, o Portal e o /salao. Agora **só o Login** (destino de `/`) fica no bundle principal.
+- **Bug encontrado:** o `clsx` era puxado para dentro do chunk do recharts, e como o bundle principal usa `clsx`, o `financeiro-vendor` (recharts, ~380 kB) era pré-carregado em **toda** página. Corrigido pondo `clsx`/`tailwind-merge` no `core-vendor`.
+- `manualChunks` agora: `core-vendor` (React, router, Supabase, React Query, clsx — estável entre deploys), `charts-vendor` (recharts/d3), `html2canvas-vendor` e `dnd-vendor` separados (antes juntos — o kanban do RH baixava html2canvas à toa).
+- **JS inicial (gzip): 353 kB → 163 kB (−54%).** Medido somando os scripts/modulepreload do `dist/index.html`.
+- Recarga automática em chunk velho pós-deploy já existia (`vite:preloadError` em `main.tsx` + `ErrorBoundary`).
+- Ao adicionar vendor pesado novo: conferir no `dist/index.html` que ele **não** aparece em `modulepreload` — dependência compartilhada arrastada para dentro de um manual chunk faz o chunk inteiro virar carga inicial.
 
 ### Fora de escopo (não tocar)
 

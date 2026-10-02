@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { X, FileText, MapPin, CheckCircle2, Loader } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { DocumentType, ProfileData, BR_STATES, applyDocMask } from '@/utils/profile'
+import StyledSelect from '@/components/ui/styled-select'
 
 interface Props {
   userId: string
@@ -194,17 +195,14 @@ export function ProfileCompletionModal({ userId, onClose, onComplete }: Props) {
                       placeholder="Sua cidade"
                       className="w-full px-3 py-2.5 rounded-xl border border-input bg-surface focus:outline-none focus:ring-2 focus:ring-ring transition-all text-sm"
                     />
-                    <select
-                      name="address_state"
+                    <StyledSelect
                       value={formData.address_state}
-                      onChange={handleChange}
-                      className="w-full px-3 py-2.5 rounded-xl border border-input bg-surface focus:outline-none focus:ring-2 focus:ring-ring transition-all text-sm"
-                    >
-                      <option value="">UF</option>
-                      {BR_STATES.map(s => (
-                        <option key={s} value={s}>{s}</option>
-                      ))}
-                    </select>
+                      onChange={(v) => setFormData(prev => ({ ...prev, address_state: v }))}
+                      options={BR_STATES.map(s => ({ value: s, label: s }))}
+                      emptyLabel="UF"
+                      placeholder="UF"
+                      className="h-[42px] rounded-xl bg-surface"
+                    />
                   </div>
                 </div>
               )}

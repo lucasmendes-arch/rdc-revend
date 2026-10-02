@@ -20,12 +20,22 @@ import B2BHero from "@/components/catalog/B2BHero";
 import HowItWorks from "@/components/catalog/HowItWorks";
 import WhatsAppCTA from "@/components/catalog/WhatsAppCTA";
 import CartDrawer from "@/components/CartDrawer";
+import StyledSelect from '@/components/ui/styled-select';
 
 // ============================================================================
 // TYPES & CONSTANTS
 // ============================================================================
 
 type SortOption = 'default' | 'name_asc' | 'name_desc' | 'price_asc' | 'price_desc' | 'profit_desc';
+
+const SORT_OPTIONS: { value: SortOption; label: string }[] = [
+  { value: 'default', label: 'Padrão' },
+  { value: 'name_asc', label: 'Nome (A-Z)' },
+  { value: 'name_desc', label: 'Nome (Z-A)' },
+  { value: 'price_asc', label: 'Menor custo' },
+  { value: 'price_desc', label: 'Maior custo' },
+  { value: 'profit_desc', label: 'Maior lucro' },
+]
 
 // ============================================================================
 // HELPERS
@@ -677,18 +687,13 @@ const Catalogo = () => {
               </button>
               {openSections.sort && (
                 <div className="px-3 pb-3 animate-in fade-in slide-in-from-top-1 duration-200">
-                  <select
+                  <StyledSelect
                     value={sortBy}
-                    onChange={(e) => setSortBy(e.target.value as SortOption)}
-                    className="w-full px-3 py-2 rounded-lg border border-border bg-card text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                  >
-                    <option value="default">Padrão</option>
-                    <option value="name_asc">Nome (A-Z)</option>
-                    <option value="name_desc">Nome (Z-A)</option>
-                    <option value="price_asc">Menor custo</option>
-                    <option value="price_desc">Maior custo</option>
-                    <option value="profit_desc">Maior lucro</option>
-                  </select>
+                    onChange={(v) => setSortBy(v as SortOption)}
+                    options={SORT_OPTIONS}
+                    searchable={false}
+                    className="rounded-lg bg-card"
+                  />
                 </div>
               )}
             </div>
@@ -1149,18 +1154,13 @@ const Catalogo = () => {
                 {/* Sort */}
                 <div>
                   <label className="text-xs font-semibold text-muted-foreground mb-2 block">Ordenar por</label>
-                  <select
+                  <StyledSelect
                     value={sortBy}
-                    onChange={(e) => setSortBy(e.target.value as SortOption)}
-                    className="w-full px-3 py-2 rounded-lg border border-border bg-card text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                  >
-                    <option value="default">Padrão</option>
-                    <option value="name_asc">Nome (A-Z)</option>
-                    <option value="name_desc">Nome (Z-A)</option>
-                    <option value="price_asc">Menor custo</option>
-                    <option value="price_desc">Maior custo</option>
-                    <option value="profit_desc">Maior lucro</option>
-                  </select>
+                    onChange={(v) => setSortBy(v as SortOption)}
+                    options={SORT_OPTIONS}
+                    searchable={false}
+                    className="rounded-lg bg-card"
+                  />
                 </div>
 
                 {/* Price Range */}

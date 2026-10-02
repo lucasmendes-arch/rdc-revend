@@ -21,6 +21,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
+import StyledSelect from '@/components/ui/styled-select'
 
 
 
@@ -55,6 +56,12 @@ function SortableProductRow({ product }: { product: CatalogProduct }) {
     </div>
   )
 }
+
+const CATEGORY_TYPE_OPTIONS = [
+  { value: 'alto_giro', label: 'Alto Giro' },
+  { value: 'maior_margem', label: 'Maior Margem' },
+  { value: 'recompra_alta', label: 'Recompra Alta' },
+]
 
 export default function AdminCatalogo() {
   const { data: products = [], isLoading, error } = useAdminProducts()
@@ -327,16 +334,15 @@ export default function AdminCatalogo() {
             </div>
 
             {/* Category filter */}
-            <select
+            <StyledSelect
+              variant="inline"
               value={filterCategory}
-              onChange={(e) => { setFilterCategory(e.target.value); setCurrentPage(1) }}
-              className="px-3 py-1.5 rounded-lg border border-border bg-card text-xs font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-            >
-              <option value="">Todas categorias</option>
-              {categories.map(c => (
-                <option key={c.id} value={c.id}>{c.name}</option>
-              ))}
-            </select>
+              onChange={(v) => { setFilterCategory(v); setCurrentPage(1) }}
+              options={categories.map(c => ({ value: c.id, label: c.name }))}
+              emptyLabel="Todas categorias"
+              placeholder="Todas categorias"
+              className="bg-card text-xs font-medium"
+            />
 
             {/* Clear filters */}
             {(filterCategory || filterStatus !== 'all' || searchTerm) && (
@@ -427,16 +433,15 @@ export default function AdminCatalogo() {
                           </div>
                         </td>
                         <td className="px-4 py-4">
-                          <select
+                          <StyledSelect
+                            variant="xs"
                             value={product.category_id || ''}
-                            onChange={(e) => handleUpdateCategory(product.id, e.target.value)}
-                            className="bg-surface text-foreground border-border hover:border-ink-300 hover:bg-surface-alt rounded-lg px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-semibold transition-all cursor-pointer outline-none focus:ring-2 focus:ring-ring max-w-[140px] sm:max-w-full truncate"
-                          >
-                            <option value="">Sem categoria</option>
-                            {categories.map((c) => (
-                              <option key={c.id} value={c.id}>{c.name}</option>
-                            ))}
-                          </select>
+                            onChange={(v) => handleUpdateCategory(product.id, v)}
+                            options={categories.map(c => ({ value: c.id, label: c.name }))}
+                            emptyLabel="Sem categoria"
+                            placeholder="Sem categoria"
+                            className="h-8 rounded-lg bg-surface font-semibold text-xs sm:text-sm max-w-[140px] sm:max-w-full"
+                          />
                         </td>
                         <td className="px-4 py-3 text-sm text-center">
                           <button
@@ -720,30 +725,24 @@ export default function AdminCatalogo() {
 
               <div>
                 <label className="block text-sm font-medium text-foreground mb-1">Categoria</label>
-                <select
+                <StyledSelect
                   value={createForm.category_id || ''}
-                  onChange={(e) => setCreateForm({ ...createForm, category_id: e.target.value || null })}
-                  className="w-full px-3 py-2 rounded-lg border border-border bg-card focus:outline-none focus:ring-2 focus:ring-ring"
-                >
-                  <option value="">Sem categoria</option>
-                  {categories.map(c => (
-                    <option key={c.id} value={c.id}>{c.name}</option>
-                  ))}
-                </select>
+                  onChange={(v) => setCreateForm({ ...createForm, category_id: v || null })}
+                  options={categories.map(c => ({ value: c.id, label: c.name }))}
+                  emptyLabel="Sem categoria"
+                  placeholder="Sem categoria"
+                />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-foreground mb-1">Classificacao de Destaque</label>
-                <select
+                <StyledSelect
                   value={createForm.category_type || ''}
-                  onChange={(e) => setCreateForm({ ...createForm, category_type: e.target.value || null })}
-                  className="w-full px-3 py-2 rounded-lg border border-border bg-card focus:outline-none focus:ring-2 focus:ring-ring"
-                >
-                  <option value="">Sem classificacao</option>
-                  <option value="alto_giro">Alto Giro</option>
-                  <option value="maior_margem">Maior Margem</option>
-                  <option value="recompra_alta">Recompra Alta</option>
-                </select>
+                  onChange={(v) => setCreateForm({ ...createForm, category_type: v || null })}
+                  options={CATEGORY_TYPE_OPTIONS}
+                  emptyLabel="Sem classificacao"
+                  placeholder="Sem classificacao"
+                />
               </div>
             </div>
 
@@ -921,30 +920,24 @@ export default function AdminCatalogo() {
 
               <div>
                 <label className="block text-sm font-medium text-foreground mb-1">Categoria</label>
-                <select
+                <StyledSelect
                   value={editForm.category_id || ''}
-                  onChange={(e) => setEditForm({ ...editForm, category_id: e.target.value || null })}
-                  className="w-full px-3 py-2 rounded-lg border border-border bg-card focus:outline-none focus:ring-2 focus:ring-ring"
-                >
-                  <option value="">Sem categoria</option>
-                  {categories.map(c => (
-                    <option key={c.id} value={c.id}>{c.name}</option>
-                  ))}
-                </select>
+                  onChange={(v) => setEditForm({ ...editForm, category_id: v || null })}
+                  options={categories.map(c => ({ value: c.id, label: c.name }))}
+                  emptyLabel="Sem categoria"
+                  placeholder="Sem categoria"
+                />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-foreground mb-1">Classificacao de Destaque</label>
-                <select
+                <StyledSelect
                   value={editForm.category_type || ''}
-                  onChange={(e) => setEditForm({ ...editForm, category_type: e.target.value as CatalogProduct['category_type'] || null })}
-                  className="w-full px-3 py-2 rounded-lg border border-border bg-card focus:outline-none focus:ring-2 focus:ring-ring"
-                >
-                  <option value="">Sem classificacao</option>
-                  <option value="alto_giro">Alto Giro</option>
-                  <option value="maior_margem">Maior Margem</option>
-                  <option value="recompra_alta">Recompra Alta</option>
-                </select>
+                  onChange={(v) => setEditForm({ ...editForm, category_type: (v || null) as CatalogProduct['category_type'] })}
+                  options={CATEGORY_TYPE_OPTIONS}
+                  emptyLabel="Sem classificacao"
+                  placeholder="Sem classificacao"
+                />
               </div>
             </div>
 

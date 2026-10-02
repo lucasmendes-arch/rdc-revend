@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { toast } from 'sonner'
 import AdminLayout from '@/components/admin/AdminLayout'
+import StyledSelect from '@/components/ui/styled-select'
 import {
   BadgeDollarSign, Plus, X, Loader, Package, Edit2,
   Check, Trash2, Search, Users, Tag, Power, ArrowRight, Layers,
@@ -857,23 +858,19 @@ export default function AdminTabelasPreco() {
                       className="w-full pl-8 pr-3 py-1.5 text-sm rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                     />
                   </div>
-                  <select
+                  <StyledSelect
                     value={addProductId}
-                    onChange={e => {
-                      setAddProductId(e.target.value)
-                      const prod = allProducts.find(p => p.id === e.target.value)
+                    onChange={(v) => {
+                      setAddProductId(v)
+                      const prod = allProducts.find(p => p.id === v)
                       if (prod) setAddPrice(String(prod.price).replace('.', ','))
                       else setAddPrice('')
                     }}
-                    className="w-full px-3 py-1.5 text-sm rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring mb-2"
-                  >
-                    <option value="">Selecionar produto...</option>
-                    {filteredAvailableProducts.map(p => (
-                      <option key={p.id} value={p.id}>
-                        {p.name} — R$ {fmt(p.price)}
-                      </option>
-                    ))}
-                  </select>
+                    options={filteredAvailableProducts.map(p => ({ value: p.id, label: `${p.name} — R$ ${fmt(p.price)}` }))}
+                    emptyLabel="Selecionar produto..."
+                    placeholder="Selecionar produto..."
+                    className="h-8 rounded-lg mb-2"
+                  />
 
                   {availableProducts.length === 0 && allProducts.length > 0 && (
                     <p className="text-[11px] text-muted-foreground text-center mb-2">
@@ -921,16 +918,14 @@ export default function AdminTabelasPreco() {
                   <p className="text-[11px] text-muted-foreground mb-3">
                     Define o mesmo preço para todos os produtos ativos de uma categoria de uma vez.
                   </p>
-                  <select
+                  <StyledSelect
                     value={applyCatId}
-                    onChange={e => setApplyCatId(e.target.value)}
-                    className="w-full px-3 py-1.5 text-sm rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring mb-2"
-                  >
-                    <option value="">Selecionar categoria...</option>
-                    {categories.map(c => (
-                      <option key={c.id} value={c.id}>{c.name}</option>
-                    ))}
-                  </select>
+                    onChange={setApplyCatId}
+                    options={categories.map(c => ({ value: c.id, label: c.name }))}
+                    emptyLabel="Selecionar categoria..."
+                    placeholder="Selecionar categoria..."
+                    className="h-8 rounded-lg mb-2"
+                  />
                   <div className="flex gap-2">
                     <div className="flex-1 relative">
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground pointer-events-none">

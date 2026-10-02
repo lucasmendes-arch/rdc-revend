@@ -6,6 +6,7 @@ import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import EstoqueLayout from '@/components/estoque/EstoqueLayout'
+import StyledSelect from '@/components/ui/styled-select'
 
 interface StockCountRow {
   id: string
@@ -195,23 +196,24 @@ export default function EstoqueHistorico() {
       <div className="bg-card rounded-2xl border border-border shadow-card p-5 space-y-3">
         <h1 className="text-lg font-bold text-foreground">Histórico de contagens</h1>
         <div className="flex flex-wrap gap-2">
-          <select
+          <StyledSelect
+            variant="inline"
             value={storeFilter}
-            onChange={(e) => setStoreFilter(e.target.value)}
-            className="h-9 rounded-lg border border-input text-sm bg-card px-2 focus:outline-none focus:ring-2 focus:ring-ring"
-          >
-            <option value="">Todas as lojas</option>
-            {stores.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-          </select>
-          <select
+            onChange={setStoreFilter}
+            options={stores.map((s) => ({ value: s.id, label: s.name }))}
+            emptyLabel="Todas as lojas"
+            placeholder="Todas as lojas"
+            className="h-9 bg-card"
+          />
+          <StyledSelect
+            variant="inline"
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="h-9 rounded-lg border border-input text-sm bg-card px-2 focus:outline-none focus:ring-2 focus:ring-ring"
-          >
-            <option value="">Todos os status</option>
-            <option value="draft">Rascunho</option>
-            <option value="confirmed">Confirmada</option>
-          </select>
+            onChange={setStatusFilter}
+            options={[{ value: 'draft', label: 'Rascunho' }, { value: 'confirmed', label: 'Confirmada' }]}
+            emptyLabel="Todos os status"
+            placeholder="Todos os status"
+            className="h-9 bg-card"
+          />
         </div>
       </div>
 

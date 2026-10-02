@@ -9,6 +9,8 @@ import { PACKAGES, selectProductsForPackage } from '@/config/packages';
 import type { PublicProduct } from '@/hooks/useCatalogProducts';
 import SalesOrderModal from '@/components/admin/SalesOrderModal';
 import type { SalesOrderData } from '@/components/admin/SalesOrderModal';
+import StyledSelect from '@/components/ui/styled-select';
+import { getOrderStatus, toneClasses } from '@/lib/design/orderStatus';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -1012,29 +1014,25 @@ const NewOrder = () => {
             {/* Status */}
             <div>
               <label className="block text-xs font-semibold text-foreground mb-1.5">Status do Pagamento</label>
-              <select
+              <StyledSelect
                 value={status}
-                onChange={e => setStatus(e.target.value)}
-                className="w-full px-3 py-2.5 rounded-xl border border-input text-sm focus:ring-2 focus:ring-ring focus:outline-none bg-card"
-              >
-                {STATUS_OPTIONS.map(opt => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
-                ))}
-              </select>
+                onChange={setStatus}
+                options={STATUS_OPTIONS.map(opt => ({ ...opt, dotClassName: toneClasses(getOrderStatus(opt.value).tone).dot }))}
+                searchable={false}
+                className="h-[42px] rounded-xl bg-card"
+              />
             </div>
 
             {/* Origem */}
             <div>
               <label className="block text-xs font-semibold text-foreground mb-1.5">Origem do Pedido</label>
-              <select
+              <StyledSelect
                 value={origin}
-                onChange={e => setOrigin(e.target.value)}
-                className="w-full px-3 py-2.5 rounded-xl border border-input text-sm focus:ring-2 focus:ring-ring focus:outline-none bg-card"
-              >
-                {ORIGIN_OPTIONS.map(opt => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
-                ))}
-              </select>
+                onChange={setOrigin}
+                options={ORIGIN_OPTIONS}
+                searchable={false}
+                className="h-[42px] rounded-xl bg-card"
+              />
             </div>
 
             {/* Data do Pedido */}
@@ -1051,15 +1049,13 @@ const NewOrder = () => {
             {/* Forma de Pagamento */}
             <div>
               <label className="block text-xs font-semibold text-foreground mb-1.5">Forma de Pagamento</label>
-              <select
+              <StyledSelect
                 value={paymentMethod}
-                onChange={e => setPaymentMethod(e.target.value)}
-                className="w-full px-3 py-2.5 rounded-xl border border-input text-sm focus:ring-2 focus:ring-ring focus:outline-none bg-card font-medium"
-              >
-                {PAYMENT_METHODS.map(opt => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
-                ))}
-              </select>
+                onChange={setPaymentMethod}
+                options={PAYMENT_METHODS}
+                searchable={false}
+                className="h-[42px] rounded-xl bg-card font-medium"
+              />
             </div>
 
             {/* Vendedor */}
@@ -1069,18 +1065,14 @@ const NewOrder = () => {
                   <UserCheck className="w-3.5 h-3.5 text-muted-foreground" />
                   Vendedor
                 </label>
-                <select
+                <StyledSelect
                   value={selectedSellerId}
-                  onChange={e => setSelectedSellerId(e.target.value)}
-                  className="w-full px-3 py-2.5 rounded-xl border border-input text-sm focus:ring-2 focus:ring-ring focus:outline-none bg-card"
-                >
-                  <option value="">Usar vendedor padrão</option>
-                  {sellers.map(s => (
-                    <option key={s.id} value={s.id}>
-                      {s.name}{s.code ? ` (${s.code})` : ''}{s.is_default ? ' — padrão' : ''}
-                    </option>
-                  ))}
-                </select>
+                  onChange={setSelectedSellerId}
+                  options={sellers.map(s => ({ value: s.id, label: `${s.name}${s.code ? ` (${s.code})` : ''}${s.is_default ? ' — padrão' : ''}` }))}
+                  emptyLabel="Usar vendedor padrão"
+                  placeholder="Usar vendedor padrão"
+                  className="h-[42px] rounded-xl bg-card"
+                />
               </div>
             )}
           </div>

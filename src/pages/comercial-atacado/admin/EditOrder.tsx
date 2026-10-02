@@ -5,6 +5,8 @@ import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import { toast } from 'sonner'
 import AdminLayout from '@/components/admin/AdminLayout'
+import StyledSelect from '@/components/ui/styled-select'
+import { getOrderStatus, toneClasses } from '@/lib/design/orderStatus'
 import {
   Loader, ArrowLeft, Plus, Trash2, Search, Save,
   UserCheck, AlertTriangle,
@@ -404,15 +406,13 @@ export default function EditOrder() {
             {/* Status */}
             <div>
               <label className="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wide">Status</label>
-              <select
+              <StyledSelect
                 value={status}
-                onChange={e => setStatus(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl border border-border bg-card text-sm font-medium focus:outline-none focus:ring-2 focus:ring-ring/40"
-              >
-                {STATUS_OPTIONS.map(s => (
-                  <option key={s} value={s}>{STATUS_LABELS[s]}</option>
-                ))}
-              </select>
+                onChange={setStatus}
+                options={STATUS_OPTIONS.map(s => ({ value: s, label: STATUS_LABELS[s], dotClassName: toneClasses(getOrderStatus(s).tone).dot }))}
+                searchable={false}
+                className="rounded-xl bg-card font-medium"
+              />
             </div>
 
             {/* Vendedor */}
@@ -420,31 +420,27 @@ export default function EditOrder() {
               <label className="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wide flex items-center gap-1">
                 <UserCheck className="w-3.5 h-3.5" /> Vendedor
               </label>
-              <select
+              <StyledSelect
                 value={sellerId}
-                onChange={e => setSellerId(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl border border-border bg-card text-sm font-medium focus:outline-none focus:ring-2 focus:ring-ring/40"
-              >
-                <option value="">Sem vendedor</option>
-                {sellers.map(s => (
-                  <option key={s.id} value={s.id}>{s.name}{s.code ? ` (${s.code})` : ''}</option>
-                ))}
-              </select>
+                onChange={setSellerId}
+                options={sellers.map(s => ({ value: s.id, label: `${s.name}${s.code ? ` (${s.code})` : ''}` }))}
+                emptyLabel="Sem vendedor"
+                placeholder="Sem vendedor"
+                className="rounded-xl bg-card font-medium"
+              />
             </div>
 
             {/* Forma de pagamento */}
             <div>
               <label className="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wide">Forma de pagamento</label>
-              <select
+              <StyledSelect
                 value={paymentMethod}
-                onChange={e => setPaymentMethod(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl border border-border bg-card text-sm font-medium focus:outline-none focus:ring-2 focus:ring-ring/40"
-              >
-                <option value="">Não informado</option>
-                {PAYMENT_OPTIONS.map(p => (
-                  <option key={p} value={p}>{PAYMENT_LABELS[p] ?? p}</option>
-                ))}
-              </select>
+                onChange={setPaymentMethod}
+                options={PAYMENT_OPTIONS.map(p => ({ value: p, label: PAYMENT_LABELS[p] ?? p }))}
+                emptyLabel="Não informado"
+                placeholder="Não informado"
+                className="rounded-xl bg-card font-medium"
+              />
             </div>
 
             {/* Observações */}

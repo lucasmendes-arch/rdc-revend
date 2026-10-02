@@ -15,19 +15,25 @@ import { SalaoRoute } from "@/components/SalaoRoute";
 import { EstoqueRoute } from "@/components/EstoqueRoute";
 import { RhRoute } from "@/components/RhRoute";
 import { PortalRoute } from "@/components/portal/PortalRoute";
-import Portal from "./pages/portal/Portal";
 import Login from "./pages/Login";
-import Lookbook from "./pages/Lookbook";
-import Cadastro from "./pages/Cadastro";
-import PedidoSucesso from "./pages/PedidoSucesso";
-import MeusPedidos from "./pages/MeusPedidos";
-import RedefinirSenha from "./pages/RedefinirSenha";
-import SalaoNovoPedido from "./pages/salao/NovoPedido";
-import SalaoInicio from "./pages/salao/Inicio";
-import NotFound from "./pages/NotFound";
 import WhatsAppButton from "./components/landing/WhatsAppButton";
 import PixelTracker from "./components/PixelTracker";
 import { useLocation } from "react-router-dom";
+
+// páginas avulsas (lazy — só o Login, destino de "/", fica no bundle principal)
+const Lookbook = lazy(() => import("./pages/Lookbook"));
+const Cadastro = lazy(() => import("./pages/Cadastro"));
+const RedefinirSenha = lazy(() => import("./pages/RedefinirSenha"));
+const PedidoSucesso = lazy(() => import("./pages/PedidoSucesso"));
+const MeusPedidos = lazy(() => import("./pages/MeusPedidos"));
+const NotFound = lazy(() => import("./pages/NotFound"));
+
+// portal do parceiro (lazy)
+const Portal = lazy(() => import("./pages/portal/Portal"));
+
+// módulo salão (lazy)
+const SalaoInicio = lazy(() => import("./pages/salao/Inicio"));
+const SalaoNovoPedido = lazy(() => import("./pages/salao/NovoPedido"));
 
 // módulo comercial-atacado (lazy — inclui vendors pesados: html2canvas, @dnd-kit)
 const Catalogo = lazy(() => import("./pages/comercial-atacado/Catalogo"));

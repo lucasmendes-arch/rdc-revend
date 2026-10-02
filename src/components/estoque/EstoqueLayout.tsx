@@ -4,6 +4,7 @@ import { ClipboardList, Truck, LogOut, Sun, Moon, Warehouse, Settings, History, 
 import { supabase } from '@/lib/supabase'
 import { useMyStore } from '@/hooks/useMyStore'
 import { useAuth } from '@/contexts/AuthContext'
+import StyledSelect from '@/components/ui/styled-select'
 
 const THEME_KEY = 'rdc-admin-theme'
 
@@ -48,18 +49,14 @@ export default function EstoqueLayout({ children }: EstoqueLayoutProps) {
             <div className="flex flex-col">
               <span className="text-foreground font-semibold text-[13px] tracking-tight leading-tight">Estoque</span>
               {isAdmin ? (
-                <select
+                <StyledSelect
+                  variant="bare"
                   value={adminStoreSlug ?? ''}
-                  onChange={(e) => setAdminStore(e.target.value)}
-                  className="text-[10px] bg-transparent text-muted-foreground border-b border-border leading-tight focus:outline-none max-w-[140px]"
-                >
-                  <option value="" disabled>Selecionar loja (teste)</option>
-                  {allStores.map((s) => (
-                    <option key={s.id} value={s.slug}>
-                      {s.name} ({s.type === 'central' ? 'central' : 'satélite'})
-                    </option>
-                  ))}
-                </select>
+                  onChange={setAdminStore}
+                  placeholder="Selecionar loja (teste)"
+                  options={allStores.map((s) => ({ value: s.slug, label: `${s.name} (${s.type === 'central' ? 'central' : 'satélite'})` }))}
+                  className="text-[10px] text-muted-foreground border-b border-border leading-tight max-w-[140px]"
+                />
               ) : (
                 <span className="text-muted-foreground text-[10px] leading-tight">{store?.name || 'Carregando loja…'}</span>
               )}

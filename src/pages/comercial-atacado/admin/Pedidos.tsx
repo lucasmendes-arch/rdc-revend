@@ -15,6 +15,7 @@ import { PeriodPresetKey } from '@/components/admin/ui/presets';
 import { AdminSummaryCard } from '@/components/admin/ui/AdminSummaryCard';
 import { AdminSelect } from '@/components/admin/ui/AdminSelect';
 import { startOfMonth, endOfMonth, startOfDay, endOfDay, subDays, subMonths, format, parseISO } from 'date-fns';
+import StyledSelect from '@/components/ui/styled-select';
 
 interface Order {
   id: string;
@@ -558,17 +559,15 @@ const AdminPedidos = () => {
                              </div>
                              
                              <div className="relative isolate shrink-0">
-                                <select
+                                <StyledSelect
+                                  variant="bare"
                                   value={order.status}
-                                  onChange={(e) => handleStatusChange(order.id, e.target.value as typeof statusOptions[number])}
+                                  onChange={(v) => handleStatusChange(order.id, v as typeof statusOptions[number])}
                                   disabled={updateStatusMutation.isPending}
-                                  className={`appearance-none pl-2 pr-6 py-1.5 rounded-lg text-[11px] font-bold border-0 ring-1 ring-inset ${style.ring} ${style.bg} ${style.text} outline-none focus:ring-2 focus:ring-ring/40 cursor-pointer transition-all disabled:opacity-50 min-w-[100px] max-w-[130px]`}
-                                >
-                                  {statusOptions.map((s) => (
-                                    <option key={s} value={s}>{statusConfig[s].label}</option>
-                                  ))}
-                                </select>
-                                <ChevronDown className={`w-3 h-3 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none ${style.text}`} />
+                                  options={statusOptions.map((s) => ({ value: s, label: statusConfig[s].label, dotClassName: statusConfig[s].indicator }))}
+                                  searchable={false}
+                                  className={`pl-2 pr-2 py-1.5 rounded-lg text-[11px] font-bold ring-1 ring-inset ${style.ring} ${style.bg} ${style.text} focus:outline-none focus:ring-2 focus:ring-ring/40 min-w-[100px] max-w-[130px]`}
+                                />
                              </div>
                           </div>
                         </div>

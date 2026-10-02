@@ -4,6 +4,7 @@ import { supabase, callEdgeFunction } from '@/lib/supabase'
 import { Loader, Plus, UserCheck, Pencil, Trash2, Star, Link2, FileText, Send, CheckCircle2, AlertCircle } from 'lucide-react'
 import AdminLayout from '@/components/admin/AdminLayout'
 import { DateField } from '@/components/ui/date-field'
+import StyledSelect from '@/components/ui/styled-select'
 
 interface Seller {
   id: string
@@ -483,19 +484,16 @@ export default function AdminVendedores() {
                   Usuário CRM vinculado
                   <span className="text-muted-foreground font-normal ml-1">(opcional)</span>
                 </label>
-                <select
+                <StyledSelect
                   value={form.linked_user_id}
-                  onChange={e => setForm({ ...form, linked_user_id: e.target.value })}
-                  className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm"
-                >
-                  <option value="">— Sem usuário vinculado —</option>
-                  {systemUsers.map(u => (
-                    <option key={u.id} value={u.id}>
-                      {u.full_name ? `${u.full_name} (${u.email})` : u.email}
-                      {u.role === 'admin' ? ' · admin' : ' · salao'}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(v) => setForm({ ...form, linked_user_id: v })}
+                  options={systemUsers.map(u => ({
+                    value: u.id,
+                    label: `${u.full_name ? `${u.full_name} (${u.email})` : u.email}${u.role === 'admin' ? ' · admin' : ' · salao'}`,
+                  }))}
+                  emptyLabel="— Sem usuário vinculado —"
+                  placeholder="— Sem usuário vinculado —"
+                />
                 <p className="text-[11px] text-muted-foreground mt-1">
                   Permite que a view "Minhas contas" no CRM seja resolvida automaticamente para este usuário.
                 </p>

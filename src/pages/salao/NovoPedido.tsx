@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 
 import logo from '@/assets/logo-rei-dos-cachos.png';
+import StyledSelect from '@/components/ui/styled-select';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -840,17 +841,14 @@ export default function SalaoNovoPedido() {
                 <UserCheck className="w-3.5 h-3.5 text-muted-foreground" />
                 Vendedor
               </label>
-              <select
+              <StyledSelect
                 value={selectedSellerId}
-                onChange={e => setSelectedSellerId(e.target.value)}
+                onChange={setSelectedSellerId}
                 disabled={loadingSellers}
-                className="w-full px-3 py-2.5 rounded-xl border border-input text-sm focus:ring-2 focus:ring-ring focus:outline-none bg-card font-medium"
-              >
-                <option value="" disabled>Selecione um vendedor...</option>
-                {sellers.map((s) => (
-                  <option key={s.id} value={s.id}>{s.name} {s.code ? `(${s.code})` : ''}</option>
-                ))}
-              </select>
+                options={sellers.map((s) => ({ value: s.id, label: `${s.name}${s.code ? ` (${s.code})` : ''}` }))}
+                placeholder="Selecione um vendedor..."
+                className="h-[42px] rounded-xl bg-card font-medium"
+              />
             </div>
 
             {/* Unidade */}
@@ -859,18 +857,20 @@ export default function SalaoNovoPedido() {
                 <MapPin className="w-3.5 h-3.5 text-muted-foreground" />
                 Unidade do Salão *
               </label>
-              <select
+              <StyledSelect
                 value={selectedUnitSlug}
-                onChange={e => setSelectedUnitSlug(e.target.value)}
-                className="w-full px-3 py-2.5 rounded-xl border border-input text-sm focus:ring-2 focus:ring-ring focus:outline-none bg-card font-medium"
-              >
-                <option value="" disabled>Selecione a unidade...</option>
-                <option value="linhares">Linhares</option>
-                <option value="teixeira">Teixeira de Freitas</option>
-                <option value="serra">Serra</option>
-                <option value="colatina">Colatina</option>
-                <option value="sao-gabriel">São Gabriel da Palha</option>
-              </select>
+                onChange={setSelectedUnitSlug}
+                options={[
+                  { value: 'linhares', label: 'Linhares' },
+                  { value: 'teixeira', label: 'Teixeira de Freitas' },
+                  { value: 'serra', label: 'Serra' },
+                  { value: 'colatina', label: 'Colatina' },
+                  { value: 'sao-gabriel', label: 'São Gabriel da Palha' },
+                ]}
+                placeholder="Selecione a unidade..."
+                searchable={false}
+                className="h-[42px] rounded-xl bg-card font-medium"
+              />
             </div>
 
             {/* Data */}
@@ -937,13 +937,13 @@ export default function SalaoNovoPedido() {
                 <div className="space-y-2">
                   {paymentSplits.map((split, idx) => (
                     <div key={idx} className="flex items-center gap-2">
-                      <select
+                      <StyledSelect
                         value={split.method}
-                        onChange={e => setPaymentSplits(prev => prev.map((s, i) => i === idx ? { ...s, method: e.target.value } : s))}
-                        className="flex-1 px-3 py-2 rounded-xl border border-input text-sm focus:ring-2 focus:ring-ring focus:outline-none bg-card font-medium"
-                      >
-                        {PAYMENT_METHODS.map(pm => <option key={pm.value} value={pm.value}>{pm.label}</option>)}
-                      </select>
+                        onChange={(v) => setPaymentSplits(prev => prev.map((s, i) => i === idx ? { ...s, method: v } : s))}
+                        options={PAYMENT_METHODS}
+                        searchable={false}
+                        className="flex-1 w-auto h-10 rounded-xl bg-card font-medium"
+                      />
                       <div className="relative">
                         <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground font-medium">R$</span>
                         <input

@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { DateField } from '@/components/ui/date-field';
 import type { StoreSettings, Coupon } from '@/types/marketing';
+import StyledSelect from '@/components/ui/styled-select';
 
 const Marketing = () => {
   const [loading, setLoading] = useState(true);
@@ -238,16 +239,17 @@ const Marketing = () => {
 
                 <div>
                   <label className="block text-xs font-bold text-muted-foreground uppercase mb-1">Tipo</label>
-                  <select
+                  <StyledSelect
                     value={newCoupon.discount_type}
-                    onChange={(e) => setNewCoupon(prev => ({ ...prev, discount_type: e.target.value as 'fixed' | 'percent' | 'free_shipping' | 'shipping_percent' }))}
-                    className="w-full px-3 py-2.5 rounded-xl border border-input text-sm focus:ring-2 focus:ring-ring focus:outline-none bg-card"
-                  >
-                    <option value="percent">Porcentagem (%)</option>
-                    <option value="fixed">Valor Fixo (R$)</option>
-                    <option value="free_shipping">Frete Grátis</option>
-                    <option value="shipping_percent">% Desconto Frete</option>
-                  </select>
+                    onChange={(v) => setNewCoupon(prev => ({ ...prev, discount_type: v as 'fixed' | 'percent' | 'free_shipping' | 'shipping_percent' }))}
+                    options={[
+                      { value: 'percent', label: 'Porcentagem (%)' },
+                      { value: 'fixed', label: 'Valor Fixo (R$)' },
+                      { value: 'free_shipping', label: 'Frete Grátis' },
+                      { value: 'shipping_percent', label: '% Desconto Frete' },
+                    ]}
+                    className="h-[42px] rounded-xl bg-card"
+                  />
                 </div>
 
                 <div>
