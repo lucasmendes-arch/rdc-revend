@@ -1,7 +1,8 @@
 import { useState, useEffect, type ReactNode } from 'react'
 import { NavLink, Link } from 'react-router-dom'
-import { ClipboardList, Truck, LogOut, Sun, Moon, Warehouse, Settings, History, BarChart3, Boxes, LayoutGrid } from 'lucide-react'
+import { ClipboardList, Truck, LogOut, Sun, Moon, Settings, History, BarChart3, Boxes, LayoutGrid } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import logo from '@/assets/logo-rei-dos-cachos.png'
 import { useMyStore } from '@/hooks/useMyStore'
 import { useAuth } from '@/contexts/AuthContext'
 import StyledSelect from '@/components/ui/styled-select'
@@ -35,17 +36,17 @@ export default function EstoqueLayout({ children }: EstoqueLayoutProps) {
 
   const navLinkClass = ({ isActive }: { isActive: boolean }) =>
     `flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-      isActive ? 'bg-muted text-foreground' : 'text-ink-500 hover:bg-muted hover:text-foreground'
+      isActive ? 'bg-muted text-foreground [&_svg]:text-brand-strong' : 'text-ink-500 hover:bg-muted hover:text-foreground'
     }`
 
   return (
     // overflow-x-clip: nenhuma tela do módulo pode alargar a página no mobile —
     // conteúdo largo (tabelas) rola dentro do próprio wrapper overflow-x-auto.
     <div className="min-h-screen bg-surface-alt overflow-x-clip">
-      <header className="bg-background border-b border-border px-3 sm:px-6 h-14 flex items-center sticky top-0 z-40">
+      <header className="bg-background/90 backdrop-blur border-b border-border px-3 sm:px-6 h-14 flex items-center sticky top-0 z-40">
         <div className="w-full max-w-6xl mx-auto flex items-center justify-between gap-2 sm:gap-4">
           <div className="flex items-center gap-2.5 shrink-0">
-            <div className="w-8 h-8 rounded-md border border-border flex items-center justify-center shrink-0"><Warehouse className="w-4 h-4 text-foreground" /></div>
+            <img src={logo} alt="Rei dos Cachos" className="h-8 w-auto shrink-0" />
             <div className="flex flex-col">
               <span className="text-foreground font-semibold text-[13px] tracking-tight leading-tight">Estoque</span>
               {isAdmin ? (

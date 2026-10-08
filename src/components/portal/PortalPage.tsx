@@ -28,21 +28,22 @@ interface PortalPageProps {
 export function PortalPage({ title, subtitle, badge, actions, children }: PortalPageProps) {
   return (
     // pb generoso no mobile: o CartDrawer e a barra do iOS comem o rodapé.
-    <div className="py-6 pb-28 sm:pb-12">
-      <header className={cn(SHELL, 'mb-7')}>
+    // bg-ambient: véu dourado suave no topo — a luz da página, não um bloco.
+    <div className="bg-ambient pt-8 sm:pt-12 pb-28 sm:pb-12">
+      <header className={cn(SHELL, 'mb-10')}>
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
-            <h1 className="text-xl sm:text-2xl font-semibold text-foreground leading-tight tracking-tight">
+            <h1 className="text-[28px] sm:text-[36px] leading-[1.1] text-foreground">
               {title}
             </h1>
-            {subtitle && <p className="text-[13px] text-muted-foreground mt-1">{subtitle}</p>}
+            {subtitle && <p className="text-[15px] text-muted-foreground mt-2 max-w-prose">{subtitle}</p>}
           </div>
-          {badge && <div className="shrink-0 mt-0.5">{badge}</div>}
+          {badge && <div className="shrink-0 mt-2">{badge}</div>}
         </div>
-        {actions && <div className="flex flex-wrap gap-2 mt-4">{actions}</div>}
+        {actions && <div className="flex flex-wrap gap-2 mt-6">{actions}</div>}
       </header>
 
-      <div className="space-y-7">{children}</div>
+      <div className="space-y-10">{children}</div>
     </div>
   )
 }
@@ -67,7 +68,7 @@ export function PortalSection({ title, aside, bleed, className, children }: Port
     <section>
       {(title || aside) && (
         <div className={cn(SHELL, 'flex items-center justify-between gap-3 mb-3')}>
-          {title ? <h2 className="eyebrow truncate">{title}</h2> : <span />}
+          {title ? <h2 className="text-[15px] font-semibold text-foreground tracking-tight truncate">{title}</h2> : <span />}
           {aside && <div className="flex items-center gap-1 shrink-0">{aside}</div>}
         </div>
       )}

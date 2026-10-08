@@ -26,31 +26,30 @@ const FACTS = [
 
 export default function B2BHero({ onScrollToKits, onScrollToProducts }: B2BHeroProps) {
   return (
-    <div className="w-full border-b border-border bg-background">
-      <div className="container mx-auto max-w-6xl px-4 sm:px-6 py-8 sm:py-10">
+    <div className="w-full bg-background bg-ambient border-b border-border">
+      <div className="container mx-auto max-w-6xl px-4 sm:px-6 py-10 sm:py-14">
         <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-8">
 
           <div className="min-w-0">
-            <p className="eyebrow mb-2.5">Catálogo B2B</p>
-            <h1 className="text-2xl sm:text-3xl font-semibold text-foreground leading-tight tracking-tight max-w-xl">
+                        <h1 className="text-[30px] sm:text-[40px] leading-[1.1] text-foreground max-w-xl">
               Catálogo exclusivo para revenda
             </h1>
-            <p className="text-[14px] text-muted-foreground mt-2.5 leading-relaxed max-w-xl">
+            <p className="text-[15px] text-muted-foreground mt-3 leading-relaxed max-w-xl">
               Compre no atacado para salão ou revenda, com kits prontos e produtos
               avulsos para montar o seu pedido.
             </p>
 
-            <div className="flex flex-col sm:flex-row gap-2 mt-5">
+            <div className="flex flex-col sm:flex-row gap-2.5 mt-7">
               <button
                 onClick={onScrollToKits}
-                className="h-9 px-3.5 rounded-md btn-primary text-[13px] flex items-center justify-center gap-1.5"
+                className="h-10 px-4 rounded-md btn-primary text-[14px] flex items-center justify-center gap-1.5"
               >
                 <ShoppingBag className="w-3.5 h-3.5" />
                 Ver kits mais vendidos
               </button>
               <button
                 onClick={onScrollToProducts}
-                className="h-9 px-3.5 rounded-md btn-secondary text-[13px] flex items-center justify-center gap-1.5"
+                className="h-10 px-4 rounded-md btn-secondary text-[14px] flex items-center justify-center gap-1.5"
               >
                 Explorar catálogo
                 <ArrowDown className="w-3.5 h-3.5" />
@@ -62,10 +61,10 @@ export default function B2BHero({ onScrollToKits, onScrollToProducts }: B2BHeroP
           <dl className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-1 gap-x-8 gap-y-3 shrink-0">
             {FACTS.map(({ icon: Icon, label, value }) => (
               <div key={label} className="flex items-center gap-2.5">
-                <Icon className="w-4 h-4 text-ink-400 shrink-0" />
+                <span className="w-8 h-8 rounded-md bg-brand-subtle ring-1 ring-inset ring-brand-border flex items-center justify-center shrink-0"><Icon className="w-4 h-4 text-brand-strong" /></span>
                 <div className="min-w-0">
-                  <dt className="text-[11px] text-muted-foreground leading-none">{label}</dt>
-                  <dd className="text-[13px] font-medium text-foreground leading-none mt-1 numeric">{value}</dd>
+                  <dt className="text-[12px] text-muted-foreground leading-none">{label}</dt>
+                  <dd className="text-[14px] font-medium text-foreground leading-none mt-1.5 numeric">{value}</dd>
                 </div>
               </div>
             ))}

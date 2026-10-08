@@ -117,12 +117,12 @@ export default function Unidades() {
   const { isDark } = useAdminTheme()
 
   const ch = {
-    grid: isDark ? 'hsl(218,14%,18%)' : '#f3f4f6',
-    axis: isDark ? 'hsl(218,14%,20%)' : '#e5e7eb',
+    grid: isDark ? 'hsl(279,18%,19%)' : '#F1EDF5',
+    axis: isDark ? 'hsl(279,18%,22%)' : '#E8E3ED',
     tick: isDark ? '#64748b' : '#9ca3af',
-    prevLine: isDark ? 'hsl(218,14%,32%)' : '#d1d5db',
-    tooltipBg: isDark ? 'hsl(218,17%,13%)' : '#ffffff',
-    tooltipBorder: isDark ? 'hsl(218,14%,22%)' : '#e5e7eb',
+    prevLine: isDark ? 'hsl(278,14%,34%)' : '#D2CCD8',
+    tooltipBg: isDark ? 'hsl(280,21%,14%)' : '#ffffff',
+    tooltipBorder: isDark ? 'hsl(279,18%,22%)' : '#E8E3ED',
     tooltipText: isDark ? 'hsl(214,18%,88%)' : '#111827',
   }
 
@@ -390,7 +390,7 @@ export default function Unidades() {
                     <Legend wrapperStyle={{ fontSize: 11 }} />
                     <Line
                       type="monotone" dataKey="Faturamento"
-                      stroke="#d4a017" strokeWidth={2} dot={false}
+                      stroke="#FF9A1A" strokeWidth={2} dot={false}
                     />
                   </LineChart>
                 </ResponsiveContainer>

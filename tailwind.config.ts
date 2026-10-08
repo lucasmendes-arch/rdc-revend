@@ -27,6 +27,7 @@ export default {
       fontFamily: {
         sans: ["Geist", "system-ui", "-apple-system", "sans-serif"],
         mono: ["Geist Mono", "ui-monospace", "SFMono-Regular", "monospace"],
+        heading: ["Geist", "system-ui", "-apple-system", "sans-serif"],
         // Playfair sobrevive apenas para o /lookbook (peça editorial impressa).
         display: ["Playfair Display", "serif"],
       },
