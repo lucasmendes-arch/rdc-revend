@@ -7,32 +7,30 @@ import { cn } from "@/lib/utils";
 /**
  * Hierarquia de ação do sistema:
  *
- *   default    → ink. A ação principal da tela. UMA por tela.
- *   secondary  → branco + hairline. O par natural do ink (Cancelar, Voltar).
+ *   default    → ouro da logo, chapado, texto quase-preto. A ação
+ *                principal da tela.
+ *   secondary  → branco + hairline. O par natural do ouro (Cancelar, Voltar).
  *   ghost      → sem superfície. Ação terciária, barra de ferramentas, ícone.
  *   destructive→ vermelho sólido. Só para exclusão confirmada.
- *   brand      → dourado. Uso raro e deliberado: CTA de marca no portal do
- *                parceiro. Não usar em tela operacional (admin/RH/DP).
+ *   brand      → preto (inverte no dark). Ação forte sem cor de marca.
  *   link       → navegação inline.
  *
  * Altura padrão é 36px (h-9), não 40px. Botão de 40px em tela densa de dado
  * empurra tudo e é a principal razão de um admin parecer "inflado".
  */
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-md text-sm font-medium tracking-snug ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-45 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
+  "inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-md text-sm font-medium tracking-snug ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:shadow-none disabled:opacity-45 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary/88",
-        secondary:
-          "border border-border bg-background text-foreground hover:bg-muted hover:border-ink-300",
+        default: "btn-primary",
+        secondary: "btn-secondary",
         // `outline` é sinônimo histórico de `secondary` — mantido para não
         // quebrar chamadas existentes, mas aponta para o mesmo visual.
-        outline:
-          "border border-border bg-background text-foreground hover:bg-muted hover:border-ink-300",
+        outline: "btn-secondary",
         ghost: "text-ink-600 hover:bg-muted hover:text-foreground",
         destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/88",
-        brand: "bg-brand text-brand-foreground hover:bg-brand/88",
+        brand: "bg-foreground text-background hover:bg-foreground/90",
         link: "text-foreground underline underline-offset-4 decoration-ink-300 hover:decoration-foreground",
       },
       size: {

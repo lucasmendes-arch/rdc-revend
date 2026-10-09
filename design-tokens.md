@@ -5,26 +5,29 @@
 
 ---
 
-## 0. A direção
+## 0. A direção (2026-10-08)
 
-Clean, minimalista, premium. Referências: **Loggi, Vercel, Stripe**.
+SaaS moderno no padrão **Linear / Lightfield**: muito branco, neutro de
+verdade, tipografia limpa, componentes chapados. A única cor de marca é o
+**ouro da logo**, medido do PNG (`#FFA000`–`#FFB800`), usado chapado.
 
-Cinco regras que explicam todas as decisões abaixo:
+Histórico: a versão "ink" (Stripe/Vercel, dourado-marrom `#BC8329`) foi
+rejeitada por ser "seca, morta", e o dourado dela não batia com a logo. A
+versão "Coroa" (roxo real + botão em degradê com glow), feita na mesma data,
+foi rejeitada como feia: o roxo brigava com o dourado e o botão parecia 3D.
+**Não voltar a nenhuma das duas.**
 
-1. **Uma rampa de neutro só.** `--ink-0` … `--ink-950`, fria-neutra. Não existe
-   cinza quente e cinza frio na mesma tela.
-2. **Ação primária é ink**, não dourada. O dourado saiu do botão e virou sinal
-   de marca: spine do nav ativo, badge de parceiro. É saturado justamente
-   porque é raro.
+Cinco regras:
+
+1. **Neutro de verdade** (`--ink-*`, hue 240, saturação mínima). Nada de
+   roxo, creme ou cinza azulado no fundo.
+2. **Ouro da logo chapado** (`--primary` = `--brand` = `#FFAA00`): ação
+   primária, item ativo, seleção, aba ativa. Sem degradê, sem bisel, sem glow.
 3. **Set semântico fechado**: `success` / `warning` / `danger` / `info` /
-   `neutral`. Status novo escolhe uma família. Não se inventa cor.
-4. **Hairline faz o trabalho da sombra.** Sombra só em overlay real (dropdown,
-   modal, drawer), sempre curta e de baixa opacidade.
-5. **Sem gradiente decorativo, sem sombra colorida, sem `translate` no hover.**
-
-Tokens semânticos são *alias* da rampa (`--background: var(--ink-0)`). O dark
-mode inverte a rampa uma vez e todo o resto acompanha sozinho — inclusive o
-botão primário, que vira branco com texto preto sem nenhuma regra extra.
+   `neutral`.
+4. **Hairline faz o trabalho da sombra.** Sombra curta e neutra.
+5. **A luz é ambiente**: `.bg-ambient` é um véu dourado suave no topo das
+   páginas de entrada (login, início do portal, catálogo). Nunca no botão.
 
 ---
 
@@ -32,141 +35,83 @@ botão primário, que vira branco com texto preto sem nenhuma regra extra.
 
 ### Rampa de neutro
 
-| Token | Light | Dark | Papel |
-|---|---|---|---|
-| `--ink-0` | `#FFFFFF` | `#0E1015` | Fundo da página |
-| `--ink-25` | `#FCFCFD` | `#12151B` | Superfície acima do fundo |
-| `--ink-50` | `#F8F9FA` | `#171A21` | Card (dark), zebra de tabela |
-| `--ink-100` | `#F1F2F4` | `#1D212A` | Muted, hover de linha |
-| `--ink-200` | `#E6E8EB` | `#282D38` | **Hairline — a borda do sistema** |
-| `--ink-300` | `#D3D6DB` | `#3A3F4B` | Borda forte, hover de borda |
-| `--ink-400` | `#9BA1AC` | `#696F7C` | Placeholder, ícone inativo |
-| `--ink-500` | `#6E7480` | `#878E9C` | Texto secundário |
-| `--ink-600` | `#545A66` | `#A9AFBB` | Texto de apoio |
-| `--ink-700` | `#3C424D` | `#C6CBD4` | |
-| `--ink-800` | `#262A31` | `#DBDFE6` | |
-| `--ink-900` | `#16181D` | `#F2F4F7` | **Texto principal / ação primária** |
-| `--ink-950` | `#0B0D10` | `#FFFFFF` | Overlay de modal |
-
-Classes Tailwind: `bg-ink-50`, `text-ink-500`, `border-ink-300`…
-
-> A rampa foi calibrada de propósito para ficar próxima do `gray-*` do Tailwind.
-> Os `gray-*`/`slate-*` legados foram trocados pela rampa em 2026-09-30; não
-> use Tailwind `gray` em código novo. A borda quente antiga (`#E8E4DC`) era
-> a origem real da sujeira visual.
-
-### Semântico base (alias da rampa)
-
-| Token | Light | Dark |
+| Token | Light | Papel |
 |---|---|---|
-| `--background` | `ink-0` | `ink-0` |
-| `--foreground` | `ink-900` | `ink-900` |
-| `--card` | `ink-0` | `ink-50` |
-| `--popover` | `ink-0` | `ink-100` |
-| `--primary` | `ink-900` | `ink-900` *(= claro)* |
-| `--primary-foreground` | `ink-0` | `ink-0` *(= escuro)* |
-| `--secondary` | `ink-100` | `ink-100` |
-| `--muted` | `ink-50` | `ink-100` |
-| `--muted-foreground` | `ink-500` | `ink-500` |
-| `--accent` | `ink-100` | `ink-100` |
-| `--border` / `--input` | `ink-200` | `ink-200` |
-| `--ring` | `ink-900` | `ink-700` |
-| `--surface` | `ink-50` | `ink-25` |
-| `--surface-alt` | `ink-100` | `ink-50` |
+| `--ink-0` | `#FFFFFF` | Fundo, card |
+| `--ink-50` | `#F9F9FA` | Sidebar, superfície |
+| `--ink-100` | `#F4F4F5` | Muted, hover |
+| `--ink-200` | `#E7E7EA` | **Hairline** e borda de input |
+| `--ink-300` | `#D4D4D8` | Borda forte / hover de borda |
+| `--ink-400` | `#A0A0A8` | Placeholder, ícone inativo |
+| `--ink-500` | `#71717A` | Texto secundário |
+| `--ink-900` | `#18181B` | **Texto principal** |
 
-### Marca (dourado)
+Dark: mesma rampa invertida em neutro escuro (`#111113` de fundo).
 
-| Token | Light | Dark | Uso |
-|---|---|---|---|
-| `--brand` | `#BC8329` | — | Marca sólida, uso contido |
-| `--brand-strong` | `#95601A` | claro | **Texto** dourado (contraste ≥ 4.5:1) |
-| `--brand-solid` | `#E4A02F` | — | Spine do nav, dot, indicador |
-| `--brand-subtle` | `#FDF6E9` | escuro | Fundo de badge de marca |
-| `--brand-border` | `#EBD9BB` | escuro | Borda de badge de marca |
+### Marca
 
-Tailwind: `bg-brand`, `text-brand-strong`, `border-brand-border`…
+| Token | Light | Uso |
+|---|---|---|
+| `--primary` / `--brand` | `#FFAA00` | Botão primário, aba/nav ativa, checkbox, contador |
+| `--primary-foreground` | `#1A140E` | Texto sobre o ouro (~11:1) |
+| `--brand-strong` | `#A85A00` | **Texto e ícone** dourado sobre branco (≥ 4.5:1) |
+| `--brand-subtle` / `--brand-border` | `#FFF8E5` / `#FDE3A1` | Badge de marca, filtro ativo, avatar |
+| `--ring` | ouro escurecido | Foco (≥ 3:1) |
 
-A escala legada `gold-*` (`text-gold-text`, `ring-gold`, `bg-gold`,
-`border-gold-border` — ~170 usos) aponta para **exatamente** os mesmos tokens.
-Não é uma segunda paleta. Em código novo, preferir `brand-*`.
+**Nunca** usar `--brand` como cor de texto sobre branco (~1.8:1). Texto e
+ícone dourados são sempre `text-brand-strong`.
 
-**Nunca** usar `--brand-solid` como cor de texto sobre branco: ele existe para
-área pequena e preenchida.
+A escala legada `gold-*` aponta para os mesmos tokens. `.gradient-gold` e
+`.bg-brand-gradient` existem só por compatibilidade e hoje são cor sólida.
 
 ### Set semântico
-
-Cada família tem quatro papéis: `DEFAULT` (texto), `solid`, `subtle` (fundo),
-`border`.
 
 | Família | Quando usar |
 |---|---|
 | `success` | Deu certo: pago, entregue, aprovado |
-| `warning` | Alguém precisa agir agora: aguardando pagamento, doc pendente |
-| `danger` | Deu errado / encerrado sem sucesso |
+| `warning` (18°, longe do ouro) | Alguém precisa agir: aguardando pagamento |
+| `danger` | Deu errado / vencido / cancelado |
 | `info` | Em movimento, sem ação pendente |
-| `neutral` | Em progresso interno ou arquivado (usa a rampa `ink`) |
-
-`--destructive` é alias de `--danger-solid`, não uma quinta cor.
-
-> `warning` foi puxado para laranja (26°) e não amarelo, para não colidir com o
-> dourado da marca (36–38°) quando os dois aparecem na mesma tela.
+| `neutral` | Em progresso interno ou arquivado |
 
 ---
 
 ## 2. Tipografia
 
-**Geist** (UI) + **Geist Mono** (código/ID), via Google Fonts.
-**Playfair Display** sobrevive apenas em `/lookbook`, uma peça editorial de
-impressão — não faz parte da identidade do portal e não deve ser usada em tela
-de produto.
+**Geist** em toda a interface (títulos inclusive) + **Geist Mono** para ID e
+SKU. `h1` é semibold com tracking `-0.03em`. Playfair só no `/lookbook`.
 
-```css
-@import url('https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500;600&family=Playfair+Display:wght@500;600;700&display=swap');
-```
+`.eyebrow` é 12px, peso 500, sentence case — sem caixa-alta com tracking.
+`.numeric` / `tabular-nums` em todo valor monetário e métrica.
 
-### Tracking negativo progressivo
+---
 
-É o detalhe que faz título grande parecer apertado e caro em vez de esparramado.
-Quanto maior o corpo, mais negativo:
+## 2.1 Navegação
 
-| Classe | Valor | Uso |
-|---|---|---|
-| `tracking-tighter` | `-0.03em` | Display |
-| `tracking-tight` | `-0.02em` | h1–h3, título de card, valor grande |
-| `tracking-snug` | `-0.01em` | Botão, input, item de nav |
-| `tracking-normal` | `0` | Body |
-| `tracking-eyebrow` | `+0.08em` | Rótulo de seção em caixa-alta |
+**Sidebar** (admin e portal): clara (`bg-sidebar` = `ink-50`), 224px, itens de
+32px em 13px. Item ativo = cartão branco com hairline + ícone em
+`text-brand-strong`. Logo no topo, sem caixa em volta.
 
-`h1..h4` já recebem `font-weight: 600` + tracking negativo via CSS global.
+**Admin em áreas + abas** (`AdminLayout.tsx`):
 
-### Escala em uso
-
-| Tamanho | Uso |
+| Área | Abas |
 |---|---|
-| `text-[11px]` | Eyebrow, badge, cabeçalho de tabela |
-| `text-[12px]` | Texto auxiliar, metadados |
-| `text-[13px]` | Item de nav, célula de tabela, botão `sm` |
-| `text-sm` (14) | Body de UI, input |
-| `text-[15px]` | Título de card, título de modal, título de página compacto |
-| `text-xl`–`text-2xl` | Título de página / saudação do portal |
+| Vendas | Pedidos · Clientes · Vendedores · Tabelas de preço |
+| Catálogo | Produtos · Categorias · Disponibilidade · Contagem de estoque |
+| Resultados | Financeiro · Unidades · Marketing |
+| CRM | Clientes · Segmentos · Campanhas (clientes dos salões, dados do Trinks) |
+| Pessoas | Vagas · Candidatos · Contratação · Parceiros · Contratos · Cargos · Formulário |
 
-### Utilitários
-
-| Classe | O que faz |
-|---|---|
-| `.eyebrow` | Rótulo de seção completo: 11px, 600, uppercase, `+0.08em`, muted |
-| `.numeric` | `tabular-nums` + tracking `-0.01em` — **todo valor monetário e métrica** |
-| `.mono` | Geist Mono + tabular — ID de pedido, SKU, código |
-
-`th`, `td`, `output`, `time` e `[data-numeric]` já recebem `tabular-nums`
-automaticamente. Número que dança de largura entre linhas é o que faz uma
-tabela parecer amadora.
+Usuários e "Ver loja" ficam no rodapé. `role='administrativo'` vê Estoque +
+Pessoas. As abas são renderizadas pelo `AdminLayout` acima do conteúdo, com a
+aba ativa sublinhada em ouro. Página nova = item novo no array da área (a área
+"possui" a rota pelo prefixo dos dois primeiros segmentos).
 
 ---
 
 ## 3. Raio e elevação
 
-`--radius: 0.5rem` (8px).
+`--radius: 0.5rem` (8px): sm 4 · md 6 · lg 8 · xl 12 · 2xl 16.
 
 | Classe | Valor | Uso |
 |---|---|---|
@@ -195,8 +140,7 @@ Mapeamento Tailwind (o `shadow-sm` do shadcn cai no token certo sem edição):
 | `shadow-lg` | `--shadow-md` |
 | `shadow-xl` / `shadow-2xl` | `--shadow-lg` |
 
-Sombra colorida foi aposentada. `.shadow-gold` sobreviveu como classe (13 usos)
-mas hoje é elevação neutra.
+Sombra curta e neutra. Não existe sombra colorida nem glow; `.shadow-gold` é só elevação neutra (legado).
 
 ---
 
@@ -208,11 +152,11 @@ Altura padrão **36px** (`h-9`), não 40px.
 
 | Variante | Visual | Uso |
 |---|---|---|
-| `default` | Ink sólido | A ação principal da tela. **Uma por tela.** |
+| `default` | Ouro da logo chapado, texto quase-preto | A ação principal da tela |
 | `secondary` / `outline` | Branco + hairline | Par natural do ink (Cancelar, Voltar) |
 | `ghost` | Sem superfície | Terciária, toolbar, ícone |
 | `destructive` | Vermelho sólido | Exclusão confirmada |
-| `brand` | Dourado | Raro e deliberado: CTA de marca no portal. Não usar em admin/RH/DP |
+| `brand` | Preto (inverte no dark) | Ação forte sem cor de marca (raro) |
 | `link` | Sublinhado | Navegação inline |
 
 Tamanhos: `xs` (28) · `sm` (32) · `default` (36) · `lg` (40) · `icon` (36) · `icon-sm` (32).
@@ -292,8 +236,8 @@ mesmo conteúdo, metade da altura.
 |---|---|
 | `.surface-card` | Card do sistema: `bg-card` + hairline + raio 8 |
 | `.surface-card-interactive` | Hover escurece **só a borda** — o card não se move |
-| `.nav-spine` | Faixa dourada de 2px do item de nav ativo |
-| `.btn-primary` / `.btn-action` / `.btn-gold` | Ação primária ink |
+| `.nav-spine` | Traço de 2px em ouro (legado; a sidebar nova usa cartão branco) |
+| `.btn-primary` / `.btn-action` / `.btn-gold` | Ação primária: ouro da logo chapado |
 | `.btn-secondary` / `.btn-gold-outline` | Ação secundária branca + hairline |
 
 > `.btn-gold` (33 usos) e `.btn-action` (59 usos) são legados **no nome**, não no

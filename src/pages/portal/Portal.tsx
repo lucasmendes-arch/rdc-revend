@@ -141,8 +141,8 @@ function Segmented<T extends string>({ value, onChange, options }: {
 
 function MetricCard({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="surface-card p-3.5">
-      <p className="eyebrow mb-2">{label}</p>
+    <div className="surface-card p-4 sm:p-5">
+      <p className="text-[12px] font-medium text-muted-foreground mb-2">{label}</p>
       {children}
     </div>
   )
@@ -204,7 +204,7 @@ function ProductRow({ products, loading }: { products: CarouselProduct[]; loadin
 
                 {product.price != null && (
                   <div className="mt-2.5 space-y-1">
-                    <p className="text-[17px] font-semibold text-foreground leading-none numeric">
+                    <p className="text-[18px] font-semibold tracking-tight text-foreground leading-none numeric">
                       R$ {brl(cost)}
                     </p>
                     <div className="flex items-baseline gap-1.5 text-[11px] leading-none">
@@ -223,7 +223,7 @@ function ProductRow({ products, loading }: { products: CarouselProduct[]; loadin
             <div className="px-3 pb-3">
               <Link
                 to="/catalogo"
-                className="flex items-center justify-center w-full h-8 rounded-md btn-primary text-[12px]"
+                className="flex items-center justify-center w-full h-8 rounded-md btn-primary text-[13px]"
               >
                 Pedir agora
               </Link>
@@ -379,20 +379,25 @@ export default function Portal() {
         badge={
           loadingProfile
             ? null
-            : <Badge variant="brand" dot>{resolveCommercialLabel(profile)}</Badge>
+            : (
+                <span className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full bg-brand-subtle text-brand-strong ring-1 ring-inset ring-brand-border text-[12px] font-medium">
+                  <span className="w-1.5 h-1.5 rounded-full bg-brand" aria-hidden />
+                  {resolveCommercialLabel(profile)}
+                </span>
+              )
         }
         actions={
           <>
             <Link
               to="/catalogo"
-              className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-md btn-primary text-[13px]"
+              className="inline-flex items-center gap-1.5 h-10 px-4 rounded-md btn-primary text-[14px]"
             >
               Fazer pedido
               <ArrowRight className="w-3.5 h-3.5" />
             </Link>
             <Link
               to="/meus-pedidos"
-              className="inline-flex items-center h-9 px-3.5 rounded-md btn-secondary text-[13px]"
+              className="inline-flex items-center h-10 px-4 rounded-md btn-secondary text-[14px]"
             >
               Meus pedidos
             </Link>
@@ -439,7 +444,7 @@ export default function Portal() {
           <PortalSection title="Resumo do mês">
             <div className="grid grid-cols-3 gap-2">
               <MetricCard label="Pedidos">
-                <p className="text-xl font-semibold text-foreground leading-none numeric">
+                <p className="text-[26px] font-semibold tracking-tight text-foreground leading-none numeric">
                   {thisMonthOrders.length}
                 </p>
                 {activeOrders.length > 0 && (
@@ -450,8 +455,8 @@ export default function Portal() {
               </MetricCard>
 
               <MetricCard label="Investido">
-                <p className="text-[15px] font-semibold text-foreground leading-tight numeric">
-                  R$ {brl(thisMonthTotal)}
+                <p className="text-[20px] sm:text-[26px] font-semibold tracking-tight text-foreground leading-none numeric">
+                  <span className="text-[14px] sm:text-[15px] text-muted-foreground font-medium mr-1">R$</span>{brl(thisMonthTotal)}
                 </p>
               </MetricCard>
 
@@ -478,10 +483,10 @@ export default function Portal() {
         {isNewPartner && (
           <PortalSection>
             <div className="surface-card p-8 text-center">
-              <div className="w-10 h-10 rounded-lg border border-border bg-muted flex items-center justify-center mx-auto mb-4">
-                <ShoppingBag className="w-4 h-4 text-ink-400" />
+              <div className="w-11 h-11 rounded-lg bg-brand-subtle ring-1 ring-brand-border flex items-center justify-center mx-auto mb-4">
+                <ShoppingBag className="w-5 h-5 text-brand-strong" />
               </div>
-              <h2 className="text-[15px] font-semibold text-foreground tracking-tight">
+              <h2 className="text-[18px] font-semibold tracking-tight text-foreground">
                 Faça o seu primeiro pedido
               </h2>
               <p className="text-[13px] text-muted-foreground mt-1 mb-5 max-w-sm mx-auto">
@@ -515,8 +520,8 @@ export default function Portal() {
                   to="/catalogo"
                   className="flex items-center gap-3 px-3 py-2.5 surface-card surface-card-interactive group"
                 >
-                  <div className="w-7 h-7 rounded-md bg-muted flex items-center justify-center shrink-0">
-                    <Package className="w-3.5 h-3.5 text-ink-500" />
+                  <div className="w-8 h-8 rounded-md bg-muted flex items-center justify-center shrink-0">
+                    <Package className="w-4 h-4 text-ink-500" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-[12px] font-medium text-foreground truncate">{name}</p>

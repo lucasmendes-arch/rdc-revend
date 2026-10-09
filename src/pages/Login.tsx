@@ -147,23 +147,17 @@ const Login = () => {
   };
 
   return (
-    // Tela de autenticação não leva header de aplicação: a marca fica centrada
-    // acima do card, que é o padrão de SaaS e tira o peso visual da barra.
-    <div className="min-h-screen bg-surface flex flex-col items-center justify-center px-4 py-12">
-      <main className="w-full max-w-sm">
-        <div className="flex flex-col items-center mb-7">
-          <div className="w-10 h-10 rounded-lg border border-border bg-background flex items-center justify-center mb-3">
-            <img src={logo} alt="" className="h-5 w-auto" />
-          </div>
-          <p className="text-[15px] font-semibold text-foreground tracking-tight">Rei dos Cachos</p>
-          <p className="eyebrow mt-1.5">Portal do Parceiro</p>
-        </div>
+    // Padrão dos SaaS atuais (Linear, Clerk, Lightfield): formulário
+    // centralizado, logo em cima, e a luz dourada da marca como fundo.
+    <div className="min-h-screen bg-background bg-ambient flex flex-col">
+      <main className="flex-1 flex items-center justify-center px-4 py-12">
+        <div className="w-full max-w-[380px]">
+          <img src={logo} alt="Rei dos Cachos" className="h-14 w-auto mx-auto mb-10" />
 
-        <div className="surface-card p-6 sm:p-7">
-          <h1 className="text-[17px] font-semibold text-foreground tracking-tight">
-            Entrar
+          <h1 className="text-[26px] leading-tight text-foreground text-center">
+            Entrar no portal
           </h1>
-          <p className="text-[13px] text-muted-foreground mt-1 mb-6">
+          <p className="text-[14px] text-muted-foreground mt-2 mb-8 text-center">
             Acesse para gerenciar os seus pedidos e o catálogo.
           </p>
 
@@ -192,7 +186,7 @@ const Login = () => {
                 E-mail ou telefone
               </label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-400 pointer-events-none" />
+                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-400 pointer-events-none" />
                 <input
                   id="identifier"
                   type="text"
@@ -202,7 +196,7 @@ const Login = () => {
                   value={form.identifier}
                   onChange={handleChange}
                   placeholder="seu@email.com"
-                  className="w-full h-9 pl-9 pr-3 rounded-md border border-input bg-background text-base md:text-sm text-foreground tracking-snug placeholder:text-ink-400 transition-colors hover:border-ink-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:border-transparent"
+                  className="w-full h-10 pl-10 pr-3 rounded-md border border-input bg-background shadow-xs text-base md:text-sm text-foreground tracking-snug placeholder:text-ink-400 transition-colors hover:border-ink-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:border-transparent"
                 />
               </div>
             </div>
@@ -212,7 +206,7 @@ const Login = () => {
                 Senha
               </label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-400 pointer-events-none" />
+                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-400 pointer-events-none" />
                 <input
                   id="password"
                   type={showPassword ? "text" : "password"}
@@ -222,13 +216,13 @@ const Login = () => {
                   value={form.password}
                   onChange={handleChange}
                   placeholder="••••••••"
-                  className="w-full h-9 pl-9 pr-10 rounded-md border border-input bg-background text-base md:text-sm text-foreground tracking-snug placeholder:text-ink-400 transition-colors hover:border-ink-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:border-transparent"
+                  className="w-full h-10 pl-10 pr-11 rounded-md border border-input bg-background shadow-xs text-base md:text-sm text-foreground tracking-snug placeholder:text-ink-400 transition-colors hover:border-ink-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:border-transparent"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
-                  className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 flex items-center justify-center rounded-md text-ink-400 hover:text-foreground hover:bg-muted transition-colors"
+                  className="absolute right-1.5 top-1/2 -translate-y-1/2 h-8 w-8 flex items-center justify-center rounded-md text-ink-400 hover:text-foreground hover:bg-muted transition-colors"
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -252,7 +246,7 @@ const Login = () => {
             <button
               type="submit"
               disabled={loading}
-              className="w-full h-10 flex items-center justify-center gap-2 rounded-md btn-primary text-sm mt-1"
+              className="w-full h-10 flex items-center justify-center gap-2 rounded-md btn-primary text-[14px] mt-2"
             >
               {loading ? (
                 <>
@@ -271,17 +265,17 @@ const Login = () => {
           <div className="mt-5 pt-5 border-t border-border text-center">
             <p className="text-[13px] text-muted-foreground">
               Ainda não tem conta?{" "}
-              <Link to="/cadastro" className="font-medium text-foreground hover:underline underline-offset-4">
+              <Link to="/cadastro" className="font-semibold text-brand-strong hover:underline underline-offset-4">
                 Cadastre-se
               </Link>
             </p>
           </div>
-        </div>
 
-        <p className="flex items-center justify-center gap-1.5 text-center text-[12px] text-ink-400 mt-5">
-          <Lock className="w-3 h-3" />
-          Acesso restrito a parceiros cadastrados
-        </p>
+          <p className="flex items-center justify-center gap-1.5 text-center text-[12px] text-ink-400 mt-5">
+            <Lock className="w-3 h-3" />
+            Acesso restrito a parceiros cadastrados
+          </p>
+        </div>
       </main>
     </div>
   );

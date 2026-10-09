@@ -1,24 +1,26 @@
 import { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { LayoutDashboard, Package, Menu, X, LogOut, MessageCircle, ShoppingCart } from 'lucide-react'
+import { LayoutDashboard, Package, Menu, X, LogOut, MessageCircle, ShoppingCart, Store } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useCart } from '@/contexts/CartContext'
 import { supabase } from '@/lib/supabase'
 import logo from '@/assets/logo-rei-dos-cachos.png'
 import CartDrawer from '@/components/CartDrawer'
 
-type NavItem = { label: string; path: string; icon: React.ElementType; external?: boolean }
+type NavItem = { label: string; path: string; icon: React.ElementType }
 
 const navItems: NavItem[] = [
-  { label: 'Início',  path: '/portal',       icon: LayoutDashboard },
-  { label: 'Pedidos', path: '/meus-pedidos', icon: Package, external: true },
+  { label: 'Início',   path: '/portal',       icon: LayoutDashboard },
+  { label: 'Catálogo', path: '/catalogo',     icon: Store },
+  { label: 'Pedidos',  path: '/meus-pedidos', icon: Package },
 ]
 
-// Linha de navegação. Ativo = superfície `accent` + texto ink + spine dourado.
-// O dourado aparece só na faixa de 2px: é o único ponto saturado da sidebar,
-// e é justamente por ser raro que ele funciona como marca.
+// Mesma linguagem do admin: sidebar clara, item ativo em cartão branco com o
+// ícone no ouro da logo.
 const NAV_ROW =
-  'relative flex items-center gap-2.5 h-9 px-3 rounded-md text-[13px] tracking-snug transition-colors'
+  'relative flex items-center gap-2.5 h-8 px-2.5 rounded-md text-[13px] font-medium tracking-snug transition-colors'
+const NAV_IDLE = 'text-ink-600 hover:text-foreground hover:bg-ink-100'
+const NAV_ACTIVE = 'bg-card text-foreground shadow-xs ring-1 ring-border'
 
 function NavLink({ item, isActive, onClick }: { item: NavItem; isActive: boolean; onClick?: () => void }) {
   const Icon = item.icon
@@ -27,14 +29,9 @@ function NavLink({ item, isActive, onClick }: { item: NavItem; isActive: boolean
       to={item.path}
       onClick={onClick}
       aria-current={isActive ? 'page' : undefined}
-      className={`${NAV_ROW} ${
-        isActive
-          ? 'bg-accent text-foreground font-medium'
-          : 'text-ink-500 hover:text-foreground hover:bg-muted'
-      }`}
+      className={`${NAV_ROW} ${isActive ? NAV_ACTIVE : NAV_IDLE}`}
     >
-      {isActive && <span className="nav-spine" aria-hidden />}
-      <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-foreground' : 'text-ink-400'}`} />
+      <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-brand-strong' : 'text-ink-400'}`} />
       <span>{item.label}</span>
     </Link>
   )
@@ -44,8 +41,6 @@ function SidebarContent({ profile, onNavClick }: { profile: { name?: string }; o
   const location = useLocation()
   const navigate = useNavigate()
   const { user } = useAuth()
-  // O contexto expõe `count`. A sidebar lia `cartCount`, que nunca existiu —
-  // o contador do carrinho ficava permanentemente escondido.
   const { count: cartCount, setCartOpen } = useCart()
 
   const handleLogout = async () => {
@@ -59,24 +54,17 @@ function SidebarContent({ profile, onNavClick }: { profile: { name?: string }; o
   }
 
   const displayName = profile.name || user?.email?.split('@')[0] || 'Parceiro'
+  const initial = displayName.charAt(0).toUpperCase()
 
   return (
     <div className="flex flex-col h-full">
-      {/* Marca */}
-      <div className="px-3 h-14 flex items-center border-b border-border">
-        <Link to="/portal" onClick={onNavClick} className="flex items-center gap-2.5 rounded-md">
-          <div className="w-7 h-7 rounded-md border border-border bg-background flex items-center justify-center shrink-0">
-            <img src={logo} alt="" className="h-3.5 w-auto" />
-          </div>
-          <div className="min-w-0">
-            <p className="text-[13px] font-semibold text-foreground leading-none tracking-tight">Rei dos Cachos</p>
-            <p className="eyebrow mt-1">Portal do Parceiro</p>
-          </div>
+      <div className="px-4 h-16 flex items-center">
+        <Link to="/portal" onClick={onNavClick} className="block rounded-md" aria-label="Rei dos Cachos — início">
+          <img src={logo} alt="Rei dos Cachos" className="h-11 w-auto" />
         </Link>
       </div>
 
-      {/* Navegação */}
-      <nav className="flex-1 px-2 py-3 space-y-0.5">
+      <nav className="flex-1 px-2.5 pt-2 space-y-0.5" aria-label="Portal">
         {navItems.map(item => (
           <NavLink
             key={item.path}
@@ -85,12 +73,9 @@ function SidebarContent({ profile, onNavClick }: { profile: { name?: string }; o
             onClick={onNavClick}
           />
         ))}
-        <button
-          onClick={handleCartClick}
-          className={`${NAV_ROW} w-full text-ink-500 hover:text-foreground hover:bg-muted`}
-        >
-          <ShoppingCart className={`w-4 h-4 shrink-0 ${cartCount > 0 ? 'text-foreground' : 'text-ink-400'}`} />
-          <span className={cartCount > 0 ? 'text-foreground font-medium' : ''}>Carrinho</span>
+        <button onClick={handleCartClick} className={`${NAV_ROW} w-full ${NAV_IDLE}`}>
+          <ShoppingCart className={`w-4 h-4 shrink-0 ${cartCount > 0 ? 'text-brand-strong' : 'text-ink-400'}`} />
+          <span>Carrinho</span>
           {cartCount > 0 && (
             <span className="ml-auto min-w-[18px] h-[18px] px-1 rounded-full bg-primary text-primary-foreground text-[10px] font-semibold flex items-center justify-center leading-none numeric">
               {cartCount > 9 ? '9+' : cartCount}
@@ -99,26 +84,27 @@ function SidebarContent({ profile, onNavClick }: { profile: { name?: string }; o
         </button>
       </nav>
 
-      {/* Rodapé — identidade + saída */}
-      <div className="px-2 pb-3 pt-2 border-t border-border space-y-0.5">
-        <div className="px-3 py-2 mb-1">
-          <p className="text-[12px] font-medium text-foreground truncate leading-tight">{displayName}</p>
-          <p className="text-[11px] text-ink-400 truncate mt-0.5">{user?.email}</p>
+      <div className="px-2.5 pb-3 pt-2 border-t border-border space-y-0.5">
+        <div className="flex items-center gap-2.5 px-2.5 py-2">
+          <div className="w-7 h-7 rounded-full bg-brand-subtle text-brand-strong ring-1 ring-brand-border flex items-center justify-center text-[12px] font-semibold shrink-0">
+            {initial}
+          </div>
+          <div className="min-w-0">
+            <p className="text-[13px] font-medium text-foreground truncate leading-tight">{displayName}</p>
+            <p className="text-[11px] text-muted-foreground truncate mt-0.5">{user?.email}</p>
+          </div>
         </div>
         <a
           href="https://wa.me/5527996865366?text=Ol%C3%A1%2C%20preciso%20de%20ajuda%20com%20meu%20pedido"
           target="_blank"
           rel="noopener noreferrer"
-          className={`${NAV_ROW} text-ink-500 hover:text-foreground hover:bg-muted`}
+          className={`${NAV_ROW} ${NAV_IDLE}`}
         >
           <MessageCircle className="w-4 h-4 shrink-0 text-ink-400" />
           <span>Falar com vendedor</span>
         </a>
-        <button
-          onClick={handleLogout}
-          className={`${NAV_ROW} w-full text-ink-500 hover:text-danger hover:bg-danger-subtle`}
-        >
-          <LogOut className="w-4 h-4 shrink-0" />
+        <button onClick={handleLogout} className={`${NAV_ROW} w-full ${NAV_IDLE}`}>
+          <LogOut className="w-4 h-4 shrink-0 text-ink-400" />
           <span>Sair</span>
         </button>
       </div>
@@ -136,29 +122,24 @@ export default function PortalLayout({ children, profile = {} }: PortalLayoutPro
   const { count: cartCount, setCartOpen } = useCart()
 
   return (
-    <div className="min-h-screen bg-surface flex">
-      {/* Sidebar desktop */}
-      <aside className="hidden lg:flex flex-col w-60 bg-background fixed inset-y-0 left-0 z-40 border-r border-border">
+    <div className="min-h-screen bg-background flex">
+      <aside className="hidden lg:flex flex-col w-56 bg-sidebar border-r border-sidebar-border fixed inset-y-0 left-0 z-40">
         <SidebarContent profile={profile} />
       </aside>
 
-      {/* Header mobile */}
-      <header className="lg:hidden fixed top-0 inset-x-0 z-40 bg-background h-14 flex items-center justify-between px-3 border-b border-border">
-        <Link to="/portal" className="flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-md border border-border flex items-center justify-center">
-            <img src={logo} alt="" className="h-3.5 w-auto" />
-          </div>
-          <span className="text-[13px] font-semibold text-foreground tracking-tight">Portal do Parceiro</span>
+      <header className="lg:hidden fixed top-0 inset-x-0 z-40 bg-background/90 backdrop-blur border-b border-border h-14 flex items-center justify-between px-3">
+        <Link to="/portal" className="flex items-center pl-1" aria-label="Rei dos Cachos — início">
+          <img src={logo} alt="Rei dos Cachos" className="h-8 w-auto" />
         </Link>
         <div className="flex items-center gap-0.5">
           <button
             onClick={() => setCartOpen(true)}
             aria-label="Ver carrinho"
-            className="relative h-9 w-9 flex items-center justify-center rounded-md text-ink-500 hover:bg-muted hover:text-foreground transition-colors"
+            className="relative h-9 w-9 flex items-center justify-center rounded-md text-ink-600 hover:bg-muted hover:text-foreground transition-colors"
           >
             <ShoppingCart className="w-[18px] h-[18px]" />
             {cartCount > 0 && (
-              <span className="absolute top-1 right-1 min-w-[15px] h-[15px] px-1 rounded-full bg-primary text-primary-foreground text-[9px] font-semibold flex items-center justify-center leading-none numeric">
+              <span className="absolute top-1 right-0.5 min-w-[16px] h-4 px-1 rounded-full bg-primary text-primary-foreground text-[9px] font-semibold flex items-center justify-center leading-none numeric">
                 {cartCount > 9 ? '9+' : cartCount}
               </span>
             )}
@@ -167,31 +148,28 @@ export default function PortalLayout({ children, profile = {} }: PortalLayoutPro
             onClick={() => setMobileOpen(!mobileOpen)}
             aria-label="Menu de navegação"
             aria-expanded={mobileOpen}
-            className="h-9 w-9 flex items-center justify-center rounded-md text-ink-500 hover:bg-muted hover:text-foreground transition-colors"
+            className="h-9 w-9 flex items-center justify-center rounded-md text-ink-600 hover:bg-muted hover:text-foreground transition-colors"
           >
-            {mobileOpen ? <X className="w-[18px] h-[18px]" /> : <Menu className="w-[18px] h-[18px]" />}
+            {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
         </div>
       </header>
 
-      {/* Menu mobile */}
       {mobileOpen && (
         <>
           <div
-            className="lg:hidden fixed inset-0 z-40 bg-ink-950/45 backdrop-blur-[2px]"
+            className="lg:hidden fixed inset-0 z-40 bg-ink-950/40 backdrop-blur-[2px]"
             onClick={() => setMobileOpen(false)}
           />
-          <div className="lg:hidden fixed top-14 left-0 bottom-0 z-50 bg-background w-72 flex flex-col border-r border-border shadow-xl">
+          <div className="lg:hidden fixed top-14 left-0 bottom-0 z-50 w-72 bg-sidebar border-r border-sidebar-border flex flex-col shadow-xl">
             <SidebarContent profile={profile} onNavClick={() => setMobileOpen(false)} />
           </div>
         </>
       )}
 
-      {/* Conteúdo
-          min-w-0: flex items podem ter min-width:auto o que impede shrink correto
-          overflow-x-hidden: clipa overflow horizontal sem criar scroll container
-          (main nunca tem altura fixa, então overflow-y:auto é seguro) */}
-      <main className="flex-1 min-w-0 lg:ml-60 pt-14 lg:pt-0 overflow-x-hidden">
+      {/* min-w-0: flex item com min-width:auto impede o shrink correto.
+          overflow-x-hidden: clipa overflow horizontal sem criar scroll container. */}
+      <main className="flex-1 min-w-0 lg:ml-56 pt-14 lg:pt-0 overflow-x-hidden">
         {children}
       </main>
 

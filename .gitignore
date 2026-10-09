@@ -94,3 +94,5 @@ dist/
 build/
 *.log
 *.sqlite
+# Relatórios exportados do Trinks: contêm dados pessoais de clientes
+relatorios-trinks/

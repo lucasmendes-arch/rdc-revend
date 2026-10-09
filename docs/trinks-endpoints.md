@@ -239,3 +239,67 @@ sempre que algo parecer errado.
 > de desistir. Se voltar vazio nas duas, aí sim é ausência de dado — foi o caso
 > de Laranjeiras antes de nov/2025 e São Gabriel antes de fev/2026, que são as
 > datas de abertura dessas unidades.
+
+---
+
+## Webhook oficial (fonte atual, desde 08/10/2026)
+
+O login automatizado (host Puppeteer `/root/trinks-auth` na VPS) está barrado
+pelo **AWS WAF** do Trinks desde 30/09/2026: o Chromium recebe a página de desafio
+(`gokuProps`) e expira em "Navigation timeout"; `curl www.trinks.com/Login` → 403.
+Decisão: não tentar contornar o WAF. A fonte do dashboard passa a ser o webhook.
+
+```
+Trinks ──SNS──► n8n "WebHook Trinks" (/webhook/1232b74f-…)
+                 ├─► "Grava evento no Supabase" → edge function trinks-webhook
+                 │       valida assinatura AWS → trinks_webhook_events
+                 └─► "Responde ao SNS" (200 só depois de gravar)
+```
+
+- O webhook já estava cadastrado no Trinks e entregando ~90–190 eventos/dia, mas o
+  workflow estava **desativado**: tudo recebia 404 e se perdeu (log do n8n, 01–08/10).
+  Ativado em 08/10/2026 ~22h20.
+- O corpo vai **bruto** (Webhook com `rawBody`, HTTP Request com `binaryData`): a
+  assinatura cobre os campos exatamente como a AWS enviou.
+- Se a gravação falhar, o n8n responde 500 e o **SNS reentrega** — não há perda
+  silenciosa. Duplicatas são descartadas pelo `MessageId`.
+- Os repasses antigos (Fechamento Conta, Boas Vindas, Novo Agendamento) estão
+  **desativados** no workflow: os fluxos de destino estão desligados e o "Boas
+  Vindas" manda WhatsApp para cliente.
+- `TRINKS_SNS_TOPIC_ARNS` (secret da função, opcional) restringe os tópicos aceitos.
+  Preencher com o `topic_arn` dos primeiros eventos reais.
+- `SubscriptionConfirmation` é gravada mas **não confirmada automaticamente**.
+- O webhook só cobre o que acontece a partir da ativação. O período de 28/07 até
+  08/10 precisa vir de importação de CSV exportado pela tela.
+
+Payloads documentados em https://trinks.readme.io/reference/webhook. Os campos
+reais devem ser conferidos em `trinks_webhook_events.payload` antes de construir a
+camada de processamento.
+
+---
+
+## Importação de relatórios exportados (histórico)
+
+`npx tsx scripts/trinks-import.ts relatorios-trinks/<slug>` — pasta por unidade
+(`stores.slug`), fora do git (dados pessoais). Idempotente por sha256; cada
+arquivo substitui o seu período numa transação e recalcula o dashboard.
+
+| Relatório (tela do Trinks) | Filtro obrigatório | Tabela | Alimenta |
+|---|---|---|---|
+| Financeiro | Data de Pagamento/Estorno | `trinks_transactions` | faturamento, comandas, pagamentos, descontos, recorrência |
+| Clientes (ativos) | — | `trinks_clients` | clientes novos, cadastro |
+| Agendamentos | — (data do agendamento) | `trinks_appointments` | agenda, faltas, cancelamentos |
+| Comissões | Data de Pagamento/Estorno | `trinks_sale_items` | rankings de serviço/produto, produção e comissão por profissional |
+| Ranking de Profissionais | — | ignorado | resumo sem data por linha |
+
+Armadilhas encontradas nos arquivos reais (Linhares, 08/10/2026):
+- **Aspas não escapadas** em nomes de cliente: um parser estrito perdia 3,5 mil de
+  6,3 mil clientes. O tokenizador só fecha aspa antes de `;`/quebra/fim, e recusa
+  campo > 5000 caracteres.
+- **Cabeçalho de Agendamentos muda** com a época (2026 ganhou "Etiqueta do
+  agendamento" no meio): colunas localizadas pelo nome.
+- **"% Comissão" = "comissão informada"** quando a comissão é valor fixo.
+- **Serviço × produto** nas comissões: é serviço o item cujo nome aparece nos
+  agendamentos. Serviços batem 100% com o financeiro; produtos 99,7%.
+- Financeiro e Comissões trazem linha de **Total**; a soma tem de bater ou o
+  arquivo é recusado.

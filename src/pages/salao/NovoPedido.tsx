@@ -1032,10 +1032,10 @@ export default function SalaoNovoPedido() {
 
 function SalaoHeader({ onLogout, isDark, onToggleTheme }: { onLogout: () => void; isDark: boolean; onToggleTheme: () => void }) {
   return (
-    <header className="bg-background border-b border-border px-4 sm:px-6 h-14 flex items-center sticky top-0 z-40">
+    <header className="bg-background/90 backdrop-blur border-b border-border px-4 sm:px-6 h-14 flex items-center sticky top-0 z-40">
       <div className="w-full max-w-5xl mx-auto flex items-center justify-between">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-md border border-border flex items-center justify-center shrink-0"><img src={logo} alt="Rei dos Cachos" className="h-4 w-auto" /></div>
+          <img src={logo} alt="Rei dos Cachos" className="h-8 w-auto shrink-0" />
           <div className="flex flex-col">
             <span className="text-foreground font-semibold text-[13px] tracking-tight leading-tight">Novo Pedido</span>
             <span className="text-muted-foreground text-[10px] leading-tight">Área do Salão</span>
