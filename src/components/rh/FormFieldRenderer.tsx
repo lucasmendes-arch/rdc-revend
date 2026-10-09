@@ -2,6 +2,9 @@ import { useRef } from 'react'
 import { Image as ImageIcon, FileText, Loader, X, FileSearch } from 'lucide-react'
 import { formatPhone } from '@/lib/phone'
 import StyledSelect from '@/components/ui/styled-select'
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
+import { DateField } from '@/components/ui/date-field'
 import type { JobRoleDescriptiveRow } from './JobRoleFieldsForm'
 
 export type FieldType = 'texto' | 'texto_longo' | 'numero' | 'telefone' | 'select' | 'checkbox' | 'data' | 'upload_imagem' | 'upload_imagens' | 'upload_arquivo'
@@ -50,7 +53,6 @@ interface FormFieldRendererProps {
   onViewJobDetails?: (jobOpeningId: string) => void
 }
 
-const inputClass = 'w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-60'
 
 export default function FormFieldRenderer({
   field, value, onChange, readOnly, jobOpenings = [], onUploadFile, uploading, onViewJobDetails,
@@ -59,10 +61,10 @@ export default function FormFieldRenderer({
 
   const labelNode = (
     <div className="mb-2">
-      <label className="block text-sm font-medium text-foreground leading-snug">
+      <label className="block text-[13px] font-medium text-foreground leading-snug">
         {field.question_text || field.label}{field.required && <span className="text-danger"> *</span>}
       </label>
-      {field.help_text && <p className="text-xs text-muted-foreground mt-1 leading-snug">{field.help_text}</p>}
+      {field.help_text && <p className="text-[12px] text-muted-foreground mt-1 leading-snug">{field.help_text}</p>}
     </div>
   )
 
@@ -84,7 +86,7 @@ export default function FormFieldRenderer({
           <button
             type="button"
             onClick={() => onViewJobDetails(value)}
-            className="flex items-center gap-1.5 text-xs font-medium text-gold-text hover:underline mt-1.5"
+            className="flex items-center gap-1.5 text-[12.5px] font-medium text-brand-strong hover:underline mt-1.5"
           >
             <FileSearch className="w-3.5 h-3.5" /> Ver descrição completa da vaga
           </button>
@@ -125,9 +127,9 @@ export default function FormFieldRenderer({
                 checked={selected.includes(opt)}
                 disabled={readOnly}
                 onChange={() => toggle(opt)}
-                className="w-4 h-4 rounded border-border accent-success-solid disabled:opacity-60"
+                className="w-4 h-4 rounded border-border accent-ink-900 disabled:opacity-60"
               />
-              <span className="text-sm text-foreground">{opt}</span>
+              <span className="text-[13px] text-foreground">{opt}</span>
             </label>
           ))}
         </div>
@@ -161,7 +163,7 @@ export default function FormFieldRenderer({
         {urls.length > 0 && (
           <div className="grid grid-cols-3 gap-2 mb-2">
             {urls.map((url, i) => (
-              <div key={url + i} className="relative rounded-lg border border-border overflow-hidden group">
+              <div key={url + i} className="relative rounded-md border border-border overflow-hidden group">
                 <a href={url} target="_blank" rel="noopener noreferrer" className="block h-16 w-full bg-surface-alt">
                   <img src={url} alt="" className="w-full h-full object-cover" />
                 </a>
@@ -184,14 +186,14 @@ export default function FormFieldRenderer({
             type="button"
             disabled={uploading}
             onClick={() => fileInputRef.current?.click()}
-            className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border border-dashed border-border text-sm text-muted-foreground hover:bg-surface-alt disabled:opacity-60"
+            className="w-full h-9 flex items-center justify-center gap-1.5 px-3 rounded-md border border-dashed border-border text-[13px] text-muted-foreground hover:border-ink-300 hover:bg-surface disabled:opacity-60"
           >
             {uploading ? <Loader className="w-4 h-4 animate-spin" /> : <ImageIcon className="w-4 h-4" />}
-            {uploading ? 'Enviando...' : `Adicionar imagem (${urls.length}/${MAX_MULTI_UPLOAD})`}
+            {uploading ? 'Enviando…' : `Adicionar imagem (${urls.length}/${MAX_MULTI_UPLOAD})`}
           </button>
         )}
         {readOnly && urls.length === 0 && (
-          <p className="text-sm text-muted-foreground">Nenhuma imagem enviada</p>
+          <p className="text-[13px] text-muted-foreground">Nenhuma imagem enviada</p>
         )}
       </div>
     )
@@ -215,7 +217,7 @@ export default function FormFieldRenderer({
         />
         {value ? (
           <div className="flex items-center gap-2">
-            <a href={value} target="_blank" rel="noopener noreferrer" className="flex-1 flex items-center gap-1.5 px-3 py-2 rounded-lg border border-border text-sm text-foreground hover:bg-surface-alt min-w-0">
+            <a href={value} target="_blank" rel="noopener noreferrer" className="flex-1 flex items-center gap-1.5 h-9 px-3 rounded-md border border-border text-[13px] text-foreground hover:bg-surface min-w-0">
               {isImage ? <ImageIcon className="w-4 h-4 shrink-0" /> : <FileText className="w-4 h-4 shrink-0" />}
               <span className="truncate">{isImage ? 'Ver foto enviada' : 'Ver arquivo enviado'}</span>
             </a>
@@ -223,7 +225,7 @@ export default function FormFieldRenderer({
               <button
                 type="button"
                 onClick={() => onChange('')}
-                className="p-2 rounded-lg border border-border text-muted-foreground hover:text-danger hover:border-danger-border hover:bg-danger-subtle transition-colors shrink-0"
+                className="h-9 w-9 flex items-center justify-center rounded-md border border-border text-muted-foreground hover:text-danger hover:border-danger-border hover:bg-danger-subtle transition-colors shrink-0"
                 title={isImage ? 'Remover foto e escolher outra' : 'Remover arquivo e escolher outro'}
               >
                 <X className="w-4 h-4" />
@@ -235,28 +237,48 @@ export default function FormFieldRenderer({
             type="button"
             disabled={readOnly || uploading}
             onClick={() => fileInputRef.current?.click()}
-            className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border border-dashed border-border text-sm text-muted-foreground hover:bg-surface-alt disabled:opacity-60"
+            className="w-full h-9 flex items-center justify-center gap-1.5 px-3 rounded-md border border-dashed border-border text-[13px] text-muted-foreground hover:border-ink-300 hover:bg-surface disabled:opacity-60"
           >
             {uploading ? <Loader className="w-4 h-4 animate-spin" /> : isImage ? <ImageIcon className="w-4 h-4" /> : <FileText className="w-4 h-4" />}
-            {uploading ? 'Enviando...' : 'Selecionar arquivo'}
+            {uploading ? 'Enviando…' : 'Selecionar arquivo'}
           </button>
         )}
       </div>
     )
   }
-
   if (field.field_type === 'texto_longo') {
     return (
       <div>
         {labelNode}
-        <textarea
+        <Textarea
           rows={4}
           value={value}
           onChange={(e) => onChange(e.target.value)}
           disabled={readOnly}
-          placeholder={field.placeholder}
-          className={`${inputClass} resize-none`}
+          placeholder={field.placeholder ?? undefined}
+          className="resize-none"
         />
+      </div>
+    )
+  }
+
+  // Data: DateField do design system — o <input type="date"> nativo abria o
+  // calendário do sistema operacional. Faixa de ano larga porque a pergunta
+  // costuma ser data de nascimento.
+  if (field.field_type === 'data') {
+    return (
+      <div>
+        {labelNode}
+        <div className={readOnly ? 'pointer-events-none opacity-60' : undefined} aria-disabled={readOnly || undefined}>
+          <DateField
+            value={value || null}
+            onChange={(v) => onChange(v ?? '')}
+            placeholder={field.placeholder || 'Selecionar data'}
+            fromYear={1940}
+            toYear={new Date().getFullYear() + 2}
+            className="w-full h-9 flex items-center gap-2 px-3 rounded-md border border-input bg-background text-foreground text-sm hover:border-ink-300 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          />
+        </div>
       </div>
     )
   }
@@ -264,8 +286,8 @@ export default function FormFieldRenderer({
   return (
     <div>
       {labelNode}
-      <input
-        type={field.field_type === 'numero' ? 'number' : field.field_type === 'data' ? 'date' : field.field_type === 'telefone' ? 'tel' : 'text'}
+      <Input
+        type={field.field_type === 'numero' ? 'number' : field.field_type === 'telefone' ? 'tel' : 'text'}
         inputMode={field.field_type === 'telefone' ? 'numeric' : undefined}
         maxLength={field.field_type === 'telefone' ? 15 : undefined}
         min={field.field_key === 'idade' ? 17 : undefined}
@@ -278,7 +300,6 @@ export default function FormFieldRenderer({
         )}
         disabled={readOnly}
         placeholder={field.placeholder || (field.field_type === 'telefone' ? '(27) 99999-9999' : undefined)}
-        className={inputClass}
       />
     </div>
   )

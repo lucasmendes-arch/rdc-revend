@@ -131,7 +131,8 @@ interface PageTabsProps<K extends string> {
 
 export function PageTabs<K extends string>({ items, value, onChange, className }: PageTabsProps<K>) {
   return (
-    <div role="tablist" className={cn('flex items-center gap-1 overflow-x-auto scrollbar-none -mb-px', className)}>
+    // -ml-2.5: o texto da primeira aba alinha com a coluna do título.
+    <div role="tablist" className={cn('flex items-center gap-1 overflow-x-auto scrollbar-none -mb-px -ml-2.5', className)}>
       {items.map((it) => {
         const active = it.key === value
         const Icon = it.icon

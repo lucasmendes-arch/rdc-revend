@@ -2,10 +2,14 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useEscapeToClose } from '@/hooks/useEscapeToClose'
-import { Loader, Plus, IdCard, Pencil, Trash2 } from 'lucide-react'
+import { Plus, IdCard, Pencil, Trash2, X } from 'lucide-react'
 import { toast } from 'sonner'
 import AdminLayout from '@/components/admin/AdminLayout'
 import StyledSelect from '@/components/ui/styled-select'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
+import { AdminPage, Panel, EmptyState, PageLoading } from '@/components/admin/ui/AdminPage'
 import {
   JobRoleFieldsForm,
   EMPTY_JOB_ROLE_FIELDS,
@@ -169,89 +173,80 @@ export default function RhCargos() {
 
   return (
     <AdminLayout>
-      <div className="bg-card border-b border-border sticky top-0 z-30">
-        <div className="px-4 sm:px-6 py-4 flex items-center justify-between gap-4">
-          <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-foreground">Cargos</h1>
-            <p className="text-sm text-muted-foreground mt-1">Catálogo de cargos para preencher vagas automaticamente</p>
-          </div>
-          <button
-            onClick={openCreate}
-            className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg btn-action text-sm font-medium transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            <span className="hidden sm:inline">Novo Cargo</span>
-          </button>
-        </div>
-      </div>
-
-      <div className="px-4 sm:px-6 py-8">
+      <AdminPage
+        title="Cargos"
+        description="Catálogo de cargos para preencher vagas automaticamente"
+        actions={
+          <Button onClick={openCreate} aria-label="Novo cargo">
+            <Plus />
+            <span className="hidden sm:inline">Novo cargo</span>
+          </Button>
+        }
+      >
         {isLoading ? (
-          <div className="text-center py-16">
-            <Loader className="w-8 h-8 animate-spin text-gold-text mx-auto mb-4" />
-            <p className="text-muted-foreground">Carregando cargos...</p>
-          </div>
+          <PageLoading label="Carregando cargos…" />
         ) : jobRoles.length === 0 ? (
-          <div className="text-center py-16">
-            <IdCard className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
-            <p className="text-muted-foreground font-medium">Nenhum cargo cadastrado.</p>
-            <p className="text-sm text-muted-foreground mt-1">Clique em "Novo Cargo" para começar.</p>
-          </div>
+          <Panel>
+            <EmptyState
+              icon={IdCard}
+              title="Nenhum cargo cadastrado"
+              description="Cadastre um cargo para preencher vagas automaticamente."
+              action={<Button onClick={openCreate}><Plus />Novo cargo</Button>}
+            />
+          </Panel>
         ) : (
-          <div className="bg-card rounded-xl border border-border shadow-[var(--shadow-card)] overflow-hidden">
+          <Panel flush className="overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="w-full">
+              <table className="data-table">
                 <thead>
-                  <tr className="border-b border-border bg-muted/50">
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-foreground">Cargo</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-foreground">Contrato</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-foreground">Remuneração</th>
-                    <th className="px-4 py-3 text-center text-sm font-semibold text-foreground">Vagas</th>
-                    <th className="px-4 py-3 text-center text-sm font-semibold text-foreground">Ativo</th>
-                    <th className="px-4 py-3 text-right text-sm font-semibold text-foreground">Ações</th>
+                  <tr>
+                    <th>Cargo</th>
+                    <th>Contrato</th>
+                    <th>Remuneração</th>
+                    <th className="!text-right">Vagas</th>
+                    <th className="!text-center">Ativo</th>
+                    <th className="!text-right">Ações</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {jobRoles.map((role, index) => (
-                    <tr key={role.id} className={`border-b border-border/40 last:border-0 ${index % 2 === 0 ? '' : 'bg-muted/30'}`}>
-                      <td className="px-4 py-3 text-sm font-medium text-foreground">
-                        <span className="inline-flex items-center gap-2">
+                  {jobRoles.map((role) => (
+                    <tr key={role.id}>
+                      <td className="font-medium text-foreground">
+                        <span className="inline-flex items-center gap-2 min-w-[140px]">
                           <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: role.color }} />
                           {role.title}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-sm text-muted-foreground">{contractTypeLabel(role.contract_type)}</td>
-                      <td className="px-4 py-3 text-sm text-muted-foreground">{compensationTypeLabel(role.compensation_type)}</td>
-                      <td className="px-4 py-3 text-sm text-center text-foreground">{role.job_openings?.[0]?.count ?? 0}</td>
-                      <td className="px-4 py-3 text-center">
+                      <td className="text-muted-foreground whitespace-nowrap">{contractTypeLabel(role.contract_type)}</td>
+                      <td className="text-muted-foreground whitespace-nowrap">{compensationTypeLabel(role.compensation_type)}</td>
+                      <td className="text-right tabular-nums text-foreground">{role.job_openings?.[0]?.count ?? 0}</td>
+                      <td className="text-center">
                         <button
+                          type="button"
                           onClick={() => toggleActiveMutation.mutate({ id: role.id, is_active: !role.is_active })}
-                          className={`px-2.5 py-1 rounded-full text-xs font-semibold transition-colors ${
-                            role.is_active
-                              ? 'bg-success-subtle text-success'
-                              : 'bg-muted text-muted-foreground'
-                          }`}
+                          className="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                           title={role.is_active ? 'Desativar cargo' : 'Reativar cargo'}
                         >
-                          {role.is_active ? 'Ativo' : 'Inativo'}
+                          <Badge variant={role.is_active ? 'success' : 'neutral'} dot className="cursor-pointer">
+                            {role.is_active ? 'Ativo' : 'Inativo'}
+                          </Badge>
                         </button>
                       </td>
-                      <td className="px-4 py-3 text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <button
-                            onClick={() => openEdit(role)}
-                            className="p-1.5 rounded-lg hover:bg-surface-alt transition-colors text-muted-foreground hover:text-foreground"
-                            title="Editar"
-                          >
-                            <Pencil className="w-4 h-4" />
-                          </button>
-                          <button
+                      <td className="text-right">
+                        <div className="flex items-center justify-end gap-0.5">
+                          <Button variant="ghost" size="icon-sm" onClick={() => openEdit(role)} title="Editar" aria-label="Editar cargo">
+                            <Pencil />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
                             onClick={() => setDeleteConfirm(role.id)}
-                            className="p-1.5 rounded-lg hover:bg-danger-subtle transition-colors text-muted-foreground hover:text-danger"
+                            className="hover:bg-danger-subtle hover:text-danger"
                             title="Excluir"
+                            aria-label="Excluir cargo"
                           >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                            <Trash2 />
+                          </Button>
                         </div>
                       </td>
                     </tr>
@@ -259,56 +254,55 @@ export default function RhCargos() {
                 </tbody>
               </table>
             </div>
-          </div>
+          </Panel>
         )}
-      </div>
+      </AdminPage>
 
       {modalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-foreground/40 backdrop-blur-sm" onClick={closeModal} />
-          <div className="relative bg-card rounded-2xl shadow-2xl border border-border p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center gap-3 mb-5">
-              <div className="w-10 h-10 rounded-xl gradient-gold flex items-center justify-center flex-shrink-0">
-                <IdCard className="w-5 h-5 text-white" />
-              </div>
-              <h2 className="text-xl font-bold text-foreground">{editingId ? 'Editar Cargo' : 'Novo Cargo'}</h2>
+          <div className="absolute inset-0 bg-ink-950/45 backdrop-blur-[2px]" onClick={closeModal} />
+          <div className="relative bg-popover rounded-xl shadow-xl border border-border w-full max-w-lg max-h-[90vh] flex flex-col">
+            <div className="flex items-center justify-between gap-3 px-5 pt-5 pb-4">
+              <h2 className="text-[16px] font-semibold text-foreground">{editingId ? 'Editar cargo' : 'Novo cargo'}</h2>
+              <Button variant="ghost" size="icon-sm" onClick={closeModal} aria-label="Fechar">
+                <X />
+              </Button>
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-4 px-5 pb-5 overflow-y-auto">
               <div>
-                <label className="block text-sm font-medium text-foreground mb-1">Nome do cargo *</label>
-                <input
+                <label className="field-label">Nome do cargo *</label>
+                <Input
                   type="text"
                   value={form.title}
                   onChange={(e) => setForm({ ...form, title: e.target.value })}
-                  className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                   placeholder="Ex: Vendedor"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-foreground mb-1">Cor (identifica a vaga no kanban de candidatos)</label>
+                <label className="field-label">Cor (identifica a vaga no kanban de candidatos)</label>
                 <input
                   type="color"
                   value={form.color}
                   onChange={(e) => setForm({ ...form, color: e.target.value })}
-                  className="w-full h-10 rounded-lg border border-border cursor-pointer"
+                  className="w-full h-9 rounded-md border border-input bg-background p-1 cursor-pointer"
                 />
               </div>
 
               <JobRoleFieldsForm value={form} onChange={(patch) => setForm({ ...form, ...patch })} />
 
               {form.contract_type === 'mei' && (
-                <label className="flex items-start gap-2 cursor-pointer bg-surface-alt rounded-lg px-3 py-2.5">
+                <label className="flex items-start gap-2.5 cursor-pointer rounded-md border border-border bg-surface px-3 py-2.5">
                   <input
                     type="checkbox"
                     checked={form.requires_experience}
                     onChange={(e) => setForm({ ...form, requires_experience: e.target.checked })}
                     className="w-4 h-4 rounded border-border accent-ink-900 mt-0.5"
                   />
-                  <span className="text-sm text-foreground">
+                  <span className="text-[13px] text-foreground">
                     Exige experiência prévia
-                    <span className="block text-xs text-muted-foreground font-normal mt-0.5">
+                    <span className="block text-[12px] text-muted-foreground font-normal mt-0.5">
                       Desmarcado = aceita candidato sem experiência, que passa pela trilha de formação MEI no Departamento Pessoal antes da contratação.
                     </span>
                   </span>
@@ -316,7 +310,7 @@ export default function RhCargos() {
               )}
 
               <div>
-                <label className="block text-sm font-medium text-foreground mb-1">Grau de Escolaridade (opcional)</label>
+                <label className="field-label">Grau de escolaridade (opcional)</label>
                 <StyledSelect
                   value={form.education_level}
                   onChange={(v) => setForm({ ...form, education_level: v })}
@@ -327,20 +321,11 @@ export default function RhCargos() {
               </div>
             </div>
 
-            <div className="flex gap-3 mt-6">
-              <button
-                onClick={handleSave}
-                disabled={saveMutation.isPending}
-                className="flex-1 px-4 py-2.5 rounded-lg btn-action font-medium disabled:opacity-70 transition-colors"
-              >
-                {saveMutation.isPending ? 'Salvando...' : editingId ? 'Salvar alterações' : 'Criar Cargo'}
-              </button>
-              <button
-                onClick={closeModal}
-                className="flex-1 px-4 py-2.5 rounded-lg border border-border bg-card text-foreground font-medium hover:bg-accent"
-              >
-                Cancelar
-              </button>
+            <div className="flex justify-end gap-2 px-5 py-4 border-t border-border">
+              <Button variant="secondary" onClick={closeModal}>Cancelar</Button>
+              <Button onClick={handleSave} disabled={saveMutation.isPending}>
+                {saveMutation.isPending ? 'Salvando…' : editingId ? 'Salvar alterações' : 'Criar cargo'}
+              </Button>
             </div>
           </div>
         </div>
@@ -348,26 +333,21 @@ export default function RhCargos() {
 
       {deleteConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-foreground/40 backdrop-blur-sm" onClick={() => setDeleteConfirm(null)} />
-          <div className="relative bg-card border border-border rounded-2xl shadow-2xl p-6 w-full max-w-sm">
-            <h2 className="text-lg font-bold text-foreground mb-2">Confirmar exclusão</h2>
-            <p className="text-sm text-muted-foreground mb-5">
+          <div className="absolute inset-0 bg-ink-950/45 backdrop-blur-[2px]" onClick={() => setDeleteConfirm(null)} />
+          <div className="relative bg-popover border border-border rounded-xl shadow-xl p-5 w-full max-w-sm">
+            <h2 className="text-[16px] font-semibold text-foreground mb-2">Excluir cargo?</h2>
+            <p className="text-[13px] text-muted-foreground mb-5">
               O cargo será removido. Só é possível excluir cargos sem vagas vinculadas — se houver vagas, desative o cargo em vez de excluir.
             </p>
-            <div className="flex gap-3">
-              <button
+            <div className="flex justify-end gap-2">
+              <Button variant="secondary" onClick={() => setDeleteConfirm(null)}>Cancelar</Button>
+              <Button
+                variant="destructive"
                 onClick={() => deleteMutation.mutate(deleteConfirm)}
                 disabled={deleteMutation.isPending}
-                className="flex-1 px-4 py-2.5 rounded-lg bg-danger-solid hover:bg-danger-solid/90 text-white font-medium disabled:opacity-70 transition-colors"
               >
-                {deleteMutation.isPending ? 'Removendo...' : 'Excluir'}
-              </button>
-              <button
-                onClick={() => setDeleteConfirm(null)}
-                className="flex-1 px-4 py-2.5 rounded-lg border border-border bg-card text-foreground font-medium hover:bg-accent"
-              >
-                Cancelar
-              </button>
+                {deleteMutation.isPending ? 'Excluindo…' : 'Excluir'}
+              </Button>
             </div>
           </div>
         </div>

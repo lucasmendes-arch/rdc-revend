@@ -56,7 +56,7 @@ function MessageBubble({ message }: { message: ConversationMessage }) {
             {typeInfo?.label ?? message.message_type}
           </p>
         )}
-        <p className={`text-[10px] mt-0.5 ${isInbound ? 'text-muted-foreground' : 'text-emerald-800/70 dark:text-emerald-100/60'}`}>
+        <p className={`text-[11px] mt-0.5 tabular-nums ${isInbound ? 'text-muted-foreground' : 'text-emerald-800/70 dark:text-emerald-100/60'}`}>
           {formatTime(message.sent_at)}
         </p>
       </div>
@@ -91,27 +91,27 @@ export default function ConversaWhatsapp({ candidateId }: { candidateId: string 
 
   return (
     <div>
-      <label className="flex items-center gap-1.5 text-sm font-medium text-foreground mb-1.5">
+      <label className="flex items-center gap-1.5 text-[13px] font-medium text-foreground mb-1.5">
         <MessageSquare className="w-3.5 h-3.5" /> Conversa no WhatsApp
         {messages.length > 0 && (
-          <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-surface-alt text-muted-foreground">
+          <span className="min-w-[18px] h-[18px] px-1 inline-flex items-center justify-center text-[11px] font-medium tabular-nums rounded-full bg-muted text-ink-500">
             {messages.length}
           </span>
         )}
       </label>
 
       {isLoading ? (
-        <div className="bg-surface-alt rounded-lg p-4 text-center">
+        <div className="bg-surface border border-border rounded-lg p-4 text-center">
           <Loader className="w-4 h-4 animate-spin text-muted-foreground mx-auto" />
         </div>
       ) : messages.length === 0 ? (
-        <div className="bg-surface-alt rounded-lg p-3">
-          <p className="text-xs text-muted-foreground">
+        <div className="bg-surface border border-border rounded-lg p-3">
+          <p className="text-[12px] text-muted-foreground">
             Nenhuma mensagem registrada. Só aparecem aqui as mensagens trocadas depois que o webhook da Uazapi foi configurado.
           </p>
         </div>
       ) : (
-        <div ref={scrollRef} className="bg-surface-alt rounded-lg p-3 space-y-2 max-h-64 overflow-y-auto scrollbar-thin">
+        <div ref={scrollRef} className="bg-surface border border-border rounded-lg p-3 space-y-2 max-h-64 overflow-y-auto scrollbar-thin">
           {messages.map((m) => <MessageBubble key={m.id} message={m} />)}
         </div>
       )}

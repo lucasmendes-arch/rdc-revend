@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Loader, ChevronDown, Plus, Globe, Tag, Hand, MessageSquare, UserCheck, Trash2, AlertTriangle, Package, Calendar, Truck, CheckCircle2, Receipt, Pencil, ImagePlus, Image, X } from 'lucide-react';
+import { Loader, Plus, Globe, Tag, Hand, MessageSquare, UserCheck, Trash2, AlertTriangle, Calendar, Truck, CheckCircle2, Receipt, Pencil, ImagePlus, Image } from 'lucide-react';
 import OrderCouponModal from '@/components/admin/OrderCouponModal';
 import { useAuth } from '@/contexts/AuthContext';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -9,7 +9,10 @@ import { useImageUpload } from '@/hooks/useImageUpload';
 import { ORDER_STATUS, ORDER_STATUS_SEQUENCE, toneClasses } from '@/lib/design/orderStatus';
 import { toast } from 'sonner';
 import AdminLayout from '@/components/admin/AdminLayout';
-import { AdminHeader } from '@/components/admin/ui/AdminHeader';
+import { AdminPage, Toolbar, Panel, EmptyState, PageLoading, PAGE_X } from '@/components/admin/ui/AdminPage';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { AdminPeriodFilter } from '@/components/admin/ui/AdminPeriodFilter';
 import { PeriodPresetKey } from '@/components/admin/ui/presets';
 import { AdminSummaryCard } from '@/components/admin/ui/AdminSummaryCard';
@@ -277,60 +280,61 @@ const AdminPedidos = () => {
     return summary;
   }, [filteredOrders]);
 
+  const chip = 'inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-[11.5px] font-medium leading-4';
+
   return (
     <AdminLayout>
-      <div className="bg-card border-b border-border sticky top-0 z-30 shadow-sm flex flex-col w-full text-left">
-        <AdminHeader 
-          title="Pedidos"
-          subtitle={`Visão gerencial e operacional das vendas do período. ${kpis.count} ativos.`}
-          badge={
-            <span className="px-2.5 py-1 rounded-full bg-muted text-muted-foreground text-xs font-semibold border border-border shadow-sm">
-              R$ {kpis.revenue.toFixed(2)}
-            </span>
-          }
-          actionNode={
-            <>
-              {sellers.length > 0 && (
-                <AdminSelect
-                  options={sellers.map(s => ({ value: s.id, label: s.code || s.name }))}
-                  value={filterSeller}
-                  onChange={setFilterSeller}
-                  placeholder="Vendedor"
-                  icon={UserCheck}
-                  allLabel="Todos"
-                />
-              )}
-              <button
-                onClick={() => navigate('/admin/pedidos/novo')}
-                className="btn-action flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold shadow-sm shrink-0"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Novo</span>
-              </button>
-            </>
-          }
-        />
-        <AdminPeriodFilter 
-          presets={[
-            { key: 'hoje', label: 'Hoje' },
-            { key: '7dias', label: '7 D' },
-            { key: '30dias', label: '30 D' },
-            { key: 'esteMes', label: 'Este Mês' },
-            { key: 'mesPassado', label: 'Mês Passado' },
-            { key: 'customizado', label: 'Personalizado' }
-          ]}
-          activePreset={dateFilterType}
-          onPresetChange={setDateFilterType}
-          customDateFrom={customDates.start}
-          customDateTo={customDates.end}
-          onCustomDateFromChange={v => setCustomDates(prev => ({ ...prev, start: v }))}
-          onCustomDateToChange={v => setCustomDates(prev => ({ ...prev, end: v }))}
-          customPresetKey="customizado"
-        />
-
-        {/* Camada 1: Resumo Executivo Horizontal (Mini cards) */}
+      <AdminPage
+        title="Pedidos"
+        description={`Visão gerencial e operacional das vendas do período · ${kpis.count} ativos`}
+        badge={
+          <Badge variant="neutral" className="tabular-nums">
+            R$ {kpis.revenue.toFixed(2)}
+          </Badge>
+        }
+        actions={
+          <Button onClick={() => navigate('/admin/pedidos/novo')}>
+            <Plus />
+            Novo pedido
+          </Button>
+        }
+        toolbar={
+          <Toolbar className="justify-between">
+            <AdminPeriodFilter
+              presets={[
+                { key: 'hoje', label: 'Hoje' },
+                { key: '7dias', label: '7 dias' },
+                { key: '30dias', label: '30 dias' },
+                { key: 'esteMes', label: 'Este mês' },
+                { key: 'mesPassado', label: 'Mês passado' },
+                { key: 'customizado', label: 'Personalizado' }
+              ]}
+              activePreset={dateFilterType}
+              onPresetChange={setDateFilterType}
+              customDateFrom={customDates.start}
+              customDateTo={customDates.end}
+              onCustomDateFromChange={v => setCustomDates(prev => ({ ...prev, start: v }))}
+              onCustomDateToChange={v => setCustomDates(prev => ({ ...prev, end: v }))}
+              customPresetKey="customizado"
+              className="max-w-full"
+            />
+            {sellers.length > 0 && (
+              <AdminSelect
+                options={sellers.map(s => ({ value: s.id, label: s.code || s.name }))}
+                value={filterSeller}
+                onChange={setFilterSeller}
+                placeholder="Vendedor"
+                icon={UserCheck}
+                allLabel="Todos"
+              />
+            )}
+          </Toolbar>
+        }
+        flush
+      >
+        {/* Resumo por status */}
         {!isLoading && !error && filteredOrders.length > 0 && (
-          <div className="w-full border-t border-border bg-muted/30 py-3 px-4 sm:px-6 lg:px-8 overflow-x-auto flex flex-nowrap gap-3 items-center" style={{ scrollbarWidth: 'thin' }}>
+          <div className={`${PAGE_X} pb-4 overflow-x-auto flex flex-nowrap gap-3`} style={{ scrollbarWidth: 'thin' }}>
             {statusOptions.map(status => {
               const summary = statusSummary[status];
               if (summary.count === 0 && (status === 'cancelado' || status === 'expirado')) return null;
@@ -343,222 +347,242 @@ const AdminPedidos = () => {
                   value={`R$ ${summary.total.toFixed(0)}`}
                   indicatorColor={style.indicator}
                   subtitle={
-                    <span className={`inline-block text-[11px] font-bold px-1.5 py-0.5 rounded-md ${summary.count === 0 ? 'bg-muted text-muted-foreground' : 'bg-muted text-muted-foreground border border-border'}`}>
+                    <span className="tabular-nums">
                       {summary.count} pedido{summary.count !== 1 ? 's' : ''}
                     </span>
                   }
-                  className={`min-w-[130px] sm:min-w-[155px] flex-1 shrink-0 ring-inset ring-1 ${summary.count > 0 ? style.ring : 'ring-transparent opacity-80'}`}
+                  className={`min-w-[140px] sm:min-w-[155px] flex-1 shrink-0 ${summary.count > 0 ? '' : 'opacity-70'}`}
                 />
               );
             })}
           </div>
         )}
-      </div>
 
-      {/* Camada 2: Board Operacional com Navegação Segura e Scroll Grosso Evidente */}
-      <div className="w-full flex-1 min-w-0 relative border-t border-border shadow-inner bg-muted/20 min-h-[calc(100vh-210px)]">
+        {/* Board operacional */}
         <style dangerouslySetInnerHTML={{__html: `
-          .kanban-scroll::-webkit-scrollbar { height: 16px; }
+          .kanban-scroll::-webkit-scrollbar { height: 12px; }
           .kanban-scroll::-webkit-scrollbar-track { background: transparent; }
           .kanban-scroll::-webkit-scrollbar-thumb { background-color: hsl(var(--muted-foreground) / 0.3); border-radius: 8px; border: 3px solid hsl(var(--background)); }
           .kanban-scroll::-webkit-scrollbar-thumb:hover { background-color: hsl(var(--muted-foreground) / 0.5); }
         `}} />
-        <div className="absolute inset-0 overflow-x-auto overflow-y-hidden kanban-scroll px-3 sm:px-6 lg:px-8 pt-3 sm:pt-5 pb-4 sm:pb-6">
         {isLoading ? (
-          <div className="flex flex-col items-center justify-center py-24 w-full">
-            <Loader className="w-8 h-8 animate-spin text-muted-foreground/40 mb-4" />
-            <p className="text-sm font-medium text-muted-foreground">Sincronizando operação...</p>
-          </div>
+          <PageLoading label="Carregando pedidos…" />
         ) : error ? (
-          <div className="p-4 rounded-xl bg-danger-subtle border border-danger-border text-danger max-w-md mx-auto mt-10 w-full">
-            <p className="font-semibold flex items-center gap-2"><AlertTriangle className="w-5 h-5"/> Erro de sistema</p>
-            <p className="text-sm mt-1 opacity-90">{error instanceof Error ? error.message : 'Falha na comunicação com o banco.'}</p>
+          <div className={PAGE_X}>
+            <div className="p-4 rounded-lg bg-danger-subtle border border-danger-border text-danger max-w-md">
+              <p className="text-[14px] font-semibold flex items-center gap-2"><AlertTriangle className="w-4 h-4" /> Não foi possível carregar os pedidos</p>
+              <p className="text-[13px] mt-1">{error instanceof Error ? error.message : 'Falha na comunicação com o banco.'} Recarregue a página para tentar de novo.</p>
+            </div>
           </div>
         ) : filteredOrders.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-32 bg-card rounded-2xl border border-border border-dashed max-w-4xl mx-auto shadow-sm w-full">
-            <Calendar className="w-12 h-12 text-muted-foreground/30 mb-4" />
-            <h3 className="text-lg font-bold text-foreground">Tudo limpo por aqui</h3>
-            <p className="text-muted-foreground text-sm mt-1 mb-6 text-center max-w-xs">Não há registros para o período e filtro selecionados.</p>
+          <div className={PAGE_X}>
+            <Panel>
+              <EmptyState
+                icon={Calendar}
+                title="Nenhum pedido no período"
+                description="Não há pedidos para o período e o filtro selecionados. Ajuste o período ou crie um pedido manual."
+                action={
+                  <Button variant="secondary" onClick={() => navigate('/admin/pedidos/novo')}>
+                    <Plus />
+                    Novo pedido
+                  </Button>
+                }
+              />
+            </Panel>
           </div>
         ) : (
-          <div className="flex gap-4 min-w-max h-full items-start">
-            {/* Camada 2: Board Operacional */}
-            {statusOptions.map((status) => {
-              const columnOrders = filteredOrders.filter((o) => o.status === status);
-              if (columnOrders.length === 0 && (status === 'cancelado' || status === 'expirado')) return null;
+          <div className={`overflow-x-auto kanban-scroll ${PAGE_X} pb-6`}>
+            <div className="flex gap-3 min-w-max items-start">
+              {statusOptions.map((status) => {
+                const columnOrders = filteredOrders.filter((o) => o.status === status);
+                if (columnOrders.length === 0 && (status === 'cancelado' || status === 'expirado')) return null;
 
-              const style = statusConfig[status];
+                const style = statusConfig[status];
 
-              return (
-                <div
-                  key={`col-${status}`}
-                  className="flex flex-col w-[260px] sm:w-[300px] lg:w-[320px] bg-muted/40 rounded-xl border border-border shrink-0 self-stretch max-h-[75vh] flex-nowrap shadow-sm"
-                  onDragOver={handleDragOver}
-                  onDrop={(e) => handleDrop(e, status as typeof statusOptions[number])}
-                >
-                  <div className={`p-3 border-b border-border/60 sticky top-0 bg-card/60 backdrop-blur-md rounded-t-xl z-20 flex items-center justify-between`}>
-                    <div className="flex items-center gap-2">
-                       <div className={`w-2 h-2 rounded-full ${style.indicator}`}></div>
-                       <h3 className="font-bold text-[13px] text-foreground tracking-tight">{style.label}</h3>
+                return (
+                  <div
+                    key={`col-${status}`}
+                    className="flex flex-col w-[272px] sm:w-[300px] lg:w-[312px] bg-surface rounded-lg border border-border shrink-0 max-h-[75vh]"
+                    onDragOver={handleDragOver}
+                    onDrop={(e) => handleDrop(e, status as typeof statusOptions[number])}
+                  >
+                    <div className="h-11 px-3 border-b border-border flex items-center justify-between gap-2 shrink-0">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className={`w-2 h-2 rounded-full shrink-0 ${style.indicator}`} />
+                        <h3 className="text-[13px] font-semibold text-foreground tracking-tight truncate">{style.label}</h3>
+                      </div>
+                      <span className="min-w-[20px] h-5 px-1.5 rounded-full bg-muted text-[11.5px] font-medium text-ink-500 tabular-nums inline-flex items-center justify-center">
+                        {columnOrders.length}
+                      </span>
                     </div>
-                  </div>
 
-                  <div className="flex-1 overflow-y-auto p-2.5 space-y-2.5 scrollbar-thin">
-                    {columnOrders.map((order) => {
-                      const orderNumber = order.id.slice(0, 8).toUpperCase();
-                      const itemsCount = order.order_items.reduce((acc, item) => acc + item.qty, 0);
+                    <div className="flex-1 overflow-y-auto p-2 space-y-2 scrollbar-thin">
+                      {columnOrders.map((order) => {
+                        const orderNumber = order.id.slice(0, 8).toUpperCase();
+                        const itemsCount = order.order_items.reduce((acc, item) => acc + item.qty, 0);
 
-                      return (
-                        <div
-                          key={order.id}
-                          draggable
-                          onDragStart={(e) => handleDragStart(e, order.id)}
-                          onDragEnd={handleDragEnd}
-                          className="bg-card p-3 md:p-3.5 rounded-xl shadow-[0_2px_8px_-4px_rgba(0,0,0,0.05)] hover:shadow-md border border-border hover:border-border/70 transition-all cursor-grab active:cursor-grabbing group relative"
-                        >
-                          <div className="flex items-start justify-between mb-2">
-                            <div className="flex flex-col gap-0.5 min-w-0">
-                               <Link
-                                to={`/pedido/sucesso/${order.id}`}
-                                className="text-[13px] font-bold text-foreground group-hover:text-muted-foreground transition-colors flex items-center gap-1.5 shrink-0"
-                              >
-                                #{orderNumber}
-                                {order.origin === 'manual' ? (
-                                  <span title="Pedido Manual"><Hand className="w-3.5 h-3.5 text-muted-foreground" /></span>
-                                ) : (
-                                  <span title="Feito pelo Site"><Globe className="w-3.5 h-3.5 text-info" /></span>
-                                )}
-                              </Link>
-                              <span className="text-[11px] font-medium text-muted-foreground leading-none">
-                                {new Date(order.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
-                              </span>
-                            </div>
-                            
-                            <div className="flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100">
-                              {canEditOrders && (
-                                <button
-                                  onClick={(e) => { e.stopPropagation(); navigate(`/admin/pedidos/${order.id}/editar`); }}
-                                  className="text-muted-foreground/40 hover:text-info hover:bg-info-subtle p-1.5 rounded-md transition-colors shrink-0"
-                                  title="Editar pedido"
+                        return (
+                          <div
+                            key={order.id}
+                            draggable
+                            onDragStart={(e) => handleDragStart(e, order.id)}
+                            onDragEnd={handleDragEnd}
+                            className="bg-card p-3 rounded-lg shadow-xs border border-border hover:border-ink-300 transition-colors cursor-grab active:cursor-grabbing group relative"
+                          >
+                            <div className="flex items-start justify-between gap-2 mb-2">
+                              <div className="flex flex-col gap-1 min-w-0">
+                                <Link
+                                  to={`/pedido/sucesso/${order.id}`}
+                                  className="font-mono text-[12.5px] font-medium text-foreground hover:underline underline-offset-4 decoration-ink-300 flex items-center gap-1.5"
                                 >
-                                  <Pencil className="w-4 h-4" />
-                                </button>
-                              )}
-                              <button
-                                onClick={(e) => { e.stopPropagation(); setOrderToProof(order); setProofFile(null); }}
-                                className={`p-1.5 rounded-md transition-colors shrink-0 ${order.payment_proof_url ? 'text-success hover:text-success hover:bg-success-subtle' : 'text-muted-foreground/40 hover:text-info hover:bg-info-subtle'}`}
-                                title={order.payment_proof_url ? 'Ver comprovante' : 'Anexar comprovante'}
-                              >
-                                {order.payment_proof_url ? <Image className="w-4 h-4" /> : <ImagePlus className="w-4 h-4" />}
-                              </button>
-                              <button
-                                onClick={(e) => { e.stopPropagation(); setOrderToCoupon(order); }}
-                                className="text-muted-foreground/40 hover:text-foreground hover:bg-surface-alt p-1.5 rounded-md transition-colors shrink-0"
-                                title="Emitir cupom não fiscal"
-                              >
-                                <Receipt className="w-4 h-4" />
-                              </button>
-                              <button
-                                onClick={(e) => { e.stopPropagation(); setOrderToDelete(order); }}
-                                className="text-muted-foreground/40 hover:text-danger hover:bg-danger-subtle p-1.5 rounded-md transition-colors shrink-0"
-                                title="Excluir"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            </div>
-                          </div>
-
-                          <div className="mb-3">
-                            <h4 className="text-[13px] md:text-[14px] font-bold text-foreground leading-snug truncate">
-                              {order.customer_name}
-                            </h4>
-                            <div className="flex items-center gap-2 mt-0.5">
-                              <span className="text-[11px] md:text-[12px] text-muted-foreground font-medium truncate">
-                                {order.customer_whatsapp}
-                              </span>
-                            </div>
-                          </div>
-
-                          <div className="flex flex-wrap items-center gap-1.5 mb-3.5">
-                            {order.origin && (() => {
-                              const o = originConfig[order.origin] ?? originConfig.outro;
-                              return (
-                                <span className={`inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-bold ring-1 ring-inset ${o.ring} ${o.bg} ${o.text}`}>
-                                  {o.label}
+                                  #{orderNumber}
+                                  {order.origin === 'manual' ? (
+                                    <span title="Pedido manual"><Hand className="w-3.5 h-3.5 text-muted-foreground" /></span>
+                                  ) : (
+                                    <span title="Feito pelo site"><Globe className="w-3.5 h-3.5 text-info" /></span>
+                                  )}
+                                </Link>
+                                <span className="text-[12px] text-muted-foreground leading-none">
+                                  {new Date(order.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
                                 </span>
-                              );
-                            })()}
-                            {order.sellers && (
-                              <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-bold ring-1 ring-inset ${style.ring} ${style.bg} ${style.text}`}>
-                                <UserCheck className="w-3 h-3" />
-                                {order.sellers.code || order.sellers.name.split(' ')[0]}
-                              </span>
-                            )}
-                            {order.delivery_method === 'pickup' && (
-                              <span className={`inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-bold tracking-tight ring-1 ring-inset ${style.ring} ${style.bg} ${style.text} opacity-90`}>
-                                RETIRADA ({order.pickup_unit_slug?.substring(0, 4).toUpperCase()})
-                              </span>
-                            )}
-                            {order.payment_method === 'pay_on_delivery' && (
-                              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-bold ring-1 ring-inset ring-warning-border bg-warning-subtle text-warning">
-                                <Truck className="w-3 h-3" />
-                                PAGAR NA ENTREGA
-                              </span>
-                            )}
-                            {order.payment_method === 'MISTO' && order.payment_splits && order.payment_splits.length > 0 && (
-                              <span className="inline-flex flex-wrap items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-bold ring-1 ring-inset ring-violet-600/20 bg-violet-500/10 text-violet-600 dark:text-violet-400">
-                                {order.payment_splits.map((s, i) => (
-                                  <span key={i}>
-                                    {s.method} R${s.amount.toFixed(2)}{i < order.payment_splits!.length - 1 ? ' +' : ''}
-                                  </span>
-                                ))}
-                              </span>
-                            )}
-                            {order.payment_method && order.payment_method !== 'pay_on_delivery' && order.payment_method !== 'MISTO' && (
-                              <span className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-bold ring-1 ring-inset ring-border bg-muted text-muted-foreground">
-                                {order.payment_method}
-                              </span>
-                            )}
-                            {itemsCount > 0 && (
-                              <span className="inline-flex items-center px-1.5 py-0.5 bg-muted text-muted-foreground border border-border rounded-md text-[10px] font-bold">
-                                {itemsCount} {itemsCount === 1 ? 'item' : 'itens'}
-                              </span>
-                            )}
-                          </div>
+                              </div>
 
-                          {order.notes && (
-                            <div className="mb-3.5 bg-muted/50 border border-border p-2 rounded-lg flex items-start gap-1.5">
-                              <MessageSquare className="w-3.5 h-3.5 text-muted-foreground mt-0.5 shrink-0" />
-                              <p className="text-[11px] font-medium text-foreground leading-relaxed line-clamp-2">
-                                {order.notes}
+                              <div className="flex items-center -mr-1 -mt-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:focus-within:opacity-100 transition-opacity">
+                                {canEditOrders && (
+                                  <Button
+                                    variant="ghost"
+                                    size="icon-sm"
+                                    className="h-7 w-7"
+                                    onClick={(e) => { e.stopPropagation(); navigate(`/admin/pedidos/${order.id}/editar`); }}
+                                    title="Editar pedido"
+                                    aria-label="Editar pedido"
+                                  >
+                                    <Pencil />
+                                  </Button>
+                                )}
+                                <Button
+                                  variant="ghost"
+                                  size="icon-sm"
+                                  className={`h-7 w-7 ${order.payment_proof_url ? 'text-success hover:text-success' : ''}`}
+                                  onClick={(e) => { e.stopPropagation(); setOrderToProof(order); setProofFile(null); }}
+                                  title={order.payment_proof_url ? 'Ver comprovante' : 'Anexar comprovante'}
+                                  aria-label={order.payment_proof_url ? 'Ver comprovante' : 'Anexar comprovante'}
+                                >
+                                  {order.payment_proof_url ? <Image /> : <ImagePlus />}
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon-sm"
+                                  className="h-7 w-7"
+                                  onClick={(e) => { e.stopPropagation(); setOrderToCoupon(order); }}
+                                  title="Emitir cupom não fiscal"
+                                  aria-label="Emitir cupom não fiscal"
+                                >
+                                  <Receipt />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon-sm"
+                                  className="h-7 w-7 hover:text-danger hover:bg-danger-subtle"
+                                  onClick={(e) => { e.stopPropagation(); setOrderToDelete(order); }}
+                                  title="Excluir pedido"
+                                  aria-label="Excluir pedido"
+                                >
+                                  <Trash2 />
+                                </Button>
+                              </div>
+                            </div>
+
+                            <div className="mb-2.5 min-w-0">
+                              <h4 className="text-[13.5px] font-semibold text-foreground leading-snug truncate">
+                                {order.customer_name}
+                              </h4>
+                              <p className="text-[12px] text-muted-foreground truncate mt-0.5">
+                                {order.customer_whatsapp}
                               </p>
                             </div>
-                          )}
 
-                          {order.payment_method === 'pay_on_delivery' && order.status === 'recebido' && (
-                            <button
-                              onClick={(e) => { e.stopPropagation(); handleStatusChange(order.id, 'pago'); }}
-                              disabled={updateStatusMutation.isPending}
-                              className="w-full mb-3 flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg bg-success-solid hover:bg-success-solid/90 text-white text-[12px] font-bold transition-colors disabled:opacity-60"
-                            >
-                              <CheckCircle2 className="w-3.5 h-3.5" />
-                              Confirmar Pagamento Recebido
-                            </button>
-                          )}
+                            <div className="flex flex-wrap items-center gap-1 mb-3">
+                              {order.origin && (() => {
+                                const o = originConfig[order.origin] ?? originConfig.outro;
+                                return (
+                                  <span className={`${chip} ring-1 ring-inset ${o.ring} ${o.bg} ${o.text}`}>
+                                    {o.label}
+                                  </span>
+                                );
+                              })()}
+                              {order.sellers && (
+                                <span className={`${chip} bg-muted text-ink-600 border border-border`}>
+                                  <UserCheck className="w-3 h-3" />
+                                  {order.sellers.code || order.sellers.name.split(' ')[0]}
+                                </span>
+                              )}
+                              {order.delivery_method === 'pickup' && (
+                                <span className={`${chip} bg-muted text-ink-600 border border-border`}>
+                                  Retirada ({order.pickup_unit_slug?.substring(0, 4).toUpperCase()})
+                                </span>
+                              )}
+                              {order.payment_method === 'pay_on_delivery' && (
+                                <span className={`${chip} border border-warning-border bg-warning-subtle text-warning`}>
+                                  <Truck className="w-3 h-3" />
+                                  Pagar na entrega
+                                </span>
+                              )}
+                              {order.payment_method === 'MISTO' && order.payment_splits && order.payment_splits.length > 0 && (
+                                <span className={`${chip} flex-wrap bg-muted text-ink-600 border border-border tabular-nums`}>
+                                  {order.payment_splits.map((s, i) => (
+                                    <span key={i}>
+                                      {s.method} R${s.amount.toFixed(2)}{i < order.payment_splits!.length - 1 ? ' +' : ''}
+                                    </span>
+                                  ))}
+                                </span>
+                              )}
+                              {order.payment_method && order.payment_method !== 'pay_on_delivery' && order.payment_method !== 'MISTO' && (
+                                <span className={`${chip} bg-muted text-ink-600 border border-border`}>
+                                  {order.payment_method}
+                                </span>
+                              )}
+                              {itemsCount > 0 && (
+                                <span className={`${chip} bg-muted text-ink-600 border border-border tabular-nums`}>
+                                  {itemsCount} {itemsCount === 1 ? 'item' : 'itens'}
+                                </span>
+                              )}
+                            </div>
 
-                          <div className="pt-3 border-t border-border flex items-center justify-between gap-3">
-                             <div className="flex flex-col min-w-0">
-                                <span className="font-extrabold text-[14px] md:text-[15px] text-foreground tracking-tight leading-none">
+                            {order.notes && (
+                              <div className="mb-3 bg-surface border border-border p-2 rounded-md flex items-start gap-1.5">
+                                <MessageSquare className="w-3.5 h-3.5 text-muted-foreground mt-0.5 shrink-0" />
+                                <p className="text-[12px] text-foreground leading-relaxed line-clamp-2">
+                                  {order.notes}
+                                </p>
+                              </div>
+                            )}
+
+                            {order.payment_method === 'pay_on_delivery' && order.status === 'recebido' && (
+                              <Button
+                                size="sm"
+                                onClick={(e) => { e.stopPropagation(); handleStatusChange(order.id, 'pago'); }}
+                                disabled={updateStatusMutation.isPending}
+                                className="w-full mb-3 bg-success-solid text-white hover:bg-success-solid/90"
+                              >
+                                <CheckCircle2 />
+                                Confirmar pagamento recebido
+                              </Button>
+                            )}
+
+                            <div className="pt-2.5 border-t border-border flex items-center justify-between gap-3">
+                              <div className="flex flex-col min-w-0">
+                                <span className="text-[14px] font-semibold text-foreground tabular-nums leading-none">
                                   R$ {order.total.toFixed(2)}
                                 </span>
                                 {order.discount_amount > 0 && (
-                                  <span className="text-[9px] text-success font-bold flex items-center gap-0.5 mt-1 whitespace-nowrap">
-                                    <Tag className="w-2 h-2" /> -R$ {order.discount_amount.toFixed(2)}
+                                  <span className="text-[12px] text-success font-medium flex items-center gap-1 mt-1 whitespace-nowrap tabular-nums">
+                                    <Tag className="w-3 h-3" /> -R$ {order.discount_amount.toFixed(2)}
                                   </span>
                                 )}
-                             </div>
-                             
-                             <div className="relative isolate shrink-0">
+                              </div>
+
+                              <div className="relative isolate shrink-0">
                                 <StyledSelect
                                   variant="bare"
                                   value={order.status}
@@ -566,27 +590,27 @@ const AdminPedidos = () => {
                                   disabled={updateStatusMutation.isPending}
                                   options={statusOptions.map((s) => ({ value: s, label: statusConfig[s].label, dotClassName: statusConfig[s].indicator }))}
                                   searchable={false}
-                                  className={`pl-2 pr-2 py-1.5 rounded-lg text-[11px] font-bold ring-1 ring-inset ${style.ring} ${style.bg} ${style.text} focus:outline-none focus:ring-2 focus:ring-ring/40 min-w-[100px] max-w-[130px]`}
+                                  className={`pl-2 pr-2 h-7 rounded-md text-[12px] font-medium ring-1 ring-inset ${style.ring} ${style.bg} ${style.text} focus:outline-none focus:ring-2 focus:ring-ring min-w-[100px] max-w-[140px]`}
                                 />
-                             </div>
+                              </div>
+                            </div>
                           </div>
-                        </div>
-                      );
-                    })}
+                        );
+                      })}
 
-                    {columnOrders.length === 0 && (
-                      <div className="h-16 flex items-center justify-center rounded-xl border border-border border-dashed bg-card/50">
-                        <span className="text-[11px] font-semibold text-muted-foreground">Nenhum pedido</span>
-                      </div>
-                    )}
+                      {columnOrders.length === 0 && (
+                        <div className="h-16 flex items-center justify-center rounded-md border border-border border-dashed">
+                          <span className="text-[12px] text-muted-foreground">Nenhum pedido</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
         )}
-        </div>
-      </div>
+      </AdminPage>
 
       {orderToCoupon && (
         <OrderCouponModal
@@ -595,109 +619,109 @@ const AdminPedidos = () => {
         />
       )}
 
-      {orderToProof && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-foreground/30 backdrop-blur-sm">
-          <div className="bg-card rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl border border-border">
-            <div className="p-5">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-bold text-foreground">
-                  Comprovante #{orderToProof.id.slice(0, 8).toUpperCase()}
-                </h3>
-                <button onClick={() => { setOrderToProof(null); setProofFile(null); }} className="text-muted-foreground hover:text-foreground p-1 rounded-lg hover:bg-muted transition-colors">
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
+      <Dialog
+        open={!!orderToProof}
+        onOpenChange={(open) => { if (!open) { setOrderToProof(null); setProofFile(null); } }}
+      >
+        <DialogContent className="max-w-sm">
+          {orderToProof && (
+            <>
+              <DialogHeader>
+                <DialogTitle className="text-[16px]">
+                  Comprovante <span className="font-mono">#{orderToProof.id.slice(0, 8).toUpperCase()}</span>
+                </DialogTitle>
+              </DialogHeader>
 
               {orderToProof.payment_proof_url && (
-                <div className="mb-4">
+                <div>
                   <a href={orderToProof.payment_proof_url} target="_blank" rel="noopener noreferrer">
                     <img
                       src={orderToProof.payment_proof_url}
                       alt="Comprovante"
-                      className="w-full rounded-xl border border-border object-contain max-h-52 bg-muted"
+                      className="w-full rounded-lg border border-border object-contain max-h-52 bg-muted"
                     />
                   </a>
-                  <button
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     onClick={() => updateProofMutation.mutate({ orderId: orderToProof.id, url: null })}
                     disabled={updateProofMutation.isPending}
-                    className="mt-2 w-full text-[11px] text-danger hover:text-danger font-medium disabled:opacity-50"
+                    className="mt-2 w-full text-danger hover:text-danger hover:bg-danger-subtle"
                   >
                     Remover comprovante
-                  </button>
+                  </Button>
                 </div>
               )}
 
               <label className="block cursor-pointer">
-                <div className={`w-full py-3 px-4 rounded-xl border-2 border-dashed transition-colors ${proofFile ? 'border-success-border bg-success-subtle' : 'border-border hover:border-muted-foreground/40'}`}>
+                <div className={`w-full py-3 px-4 rounded-lg border border-dashed transition-colors ${proofFile ? 'border-success-border bg-success-subtle' : 'border-border hover:border-ink-300'}`}>
                   <input
                     type="file"
                     accept="image/*"
                     className="hidden"
                     onChange={(e) => setProofFile(e.target.files?.[0] ?? null)}
                   />
-                  <p className="text-[12px] font-medium text-center text-muted-foreground">
+                  <p className="text-[13px] font-medium text-center text-muted-foreground truncate">
                     {proofFile ? proofFile.name : orderToProof.payment_proof_url ? 'Substituir imagem' : 'Selecionar comprovante'}
                   </p>
                 </div>
               </label>
 
-              <div className="flex gap-2 mt-3">
-                <button
-                  onClick={() => { setOrderToProof(null); setProofFile(null); }}
-                  className="flex-1 py-2.5 bg-card border border-border hover:bg-muted text-foreground rounded-xl text-sm font-bold transition-colors"
-                >
+              <DialogFooter className="gap-2 sm:gap-0">
+                <Button variant="secondary" onClick={() => { setOrderToProof(null); setProofFile(null); }}>
                   Fechar
-                </button>
-                <button
+                </Button>
+                <Button
                   onClick={() => handleProofUpload(orderToProof)}
                   disabled={!proofFile || uploadingProof}
-                  className="flex-1 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-bold transition-colors disabled:opacity-40 flex items-center justify-center gap-1.5"
                 >
-                  {uploadingProof ? <Loader className="w-4 h-4 animate-spin" /> : 'Salvar'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+                  {uploadingProof && <Loader className="animate-spin" />}
+                  Salvar comprovante
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
 
-      {orderToDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-foreground/30 backdrop-blur-sm">
-          <div className="bg-card rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl border border-border">
-            <div className="p-6 text-center">
-              <div className="w-14 h-14 bg-danger-subtle rounded-full flex items-center justify-center mx-auto mb-4 border border-danger-border">
-                <AlertTriangle className="w-6 h-6 text-danger" />
-              </div>
-              <h3 className="text-lg font-bold text-foreground mb-2">
-                Excluir Pedido #{orderToDelete.id.slice(0, 8).toUpperCase()}?
-              </h3>
-              <p className="text-sm text-muted-foreground mb-6 px-2">
-                Esta ação apagará permanentemente os dados. O histórico não poderá ser desfeito.
-              </p>
-
-              <div className="flex gap-3">
-                <button
+      <Dialog
+        open={!!orderToDelete}
+        onOpenChange={(open) => { if (!open && !deleteOrderMutation.isPending) setOrderToDelete(null); }}
+      >
+        <DialogContent className="max-w-sm">
+          {orderToDelete && (
+            <>
+              <DialogHeader>
+                <DialogTitle className="text-[16px]">
+                  Excluir pedido <span className="font-mono">#{orderToDelete.id.slice(0, 8).toUpperCase()}</span>?
+                </DialogTitle>
+                <DialogDescription>
+                  Esta ação apaga o pedido permanentemente e não pode ser desfeita.
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter className="gap-2 sm:gap-0">
+                <Button
+                  variant="secondary"
                   onClick={() => setOrderToDelete(null)}
                   disabled={deleteOrderMutation.isPending}
-                  className="flex-1 py-2.5 bg-card border border-border hover:bg-muted text-foreground rounded-xl text-sm font-bold transition-colors"
                 >
                   Cancelar
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="destructive"
                   onClick={() => deleteOrderMutation.mutate(orderToDelete.id)}
                   disabled={deleteOrderMutation.isPending}
-                  className="flex-1 py-2.5 bg-danger-solid hover:bg-danger-solid/90 text-white rounded-xl text-sm font-bold transition-colors flex items-center justify-center"
                 >
-                  {deleteOrderMutation.isPending ? <Loader className="w-4 h-4 animate-spin" /> : "Excluir"}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+                  {deleteOrderMutation.isPending && <Loader className="animate-spin" />}
+                  Excluir pedido
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </AdminLayout>
   );
 };
 
 export default AdminPedidos;
-

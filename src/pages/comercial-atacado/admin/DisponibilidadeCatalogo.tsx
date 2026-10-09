@@ -1,8 +1,13 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
-import { Loader, Minus, Plus, Search, Package, Boxes, LayoutGrid, Warehouse } from 'lucide-react'
+import { Loader, Minus, Plus, Package, Boxes, LayoutGrid, Warehouse, AlertTriangle, XCircle } from 'lucide-react'
+import { toast } from 'sonner'
 import AdminLayout from '@/components/admin/AdminLayout'
+import { AdminPage, AdminSection, PageTabs, Toolbar, SearchInput, Panel, StatCard, StatGrid, EmptyState, PageLoading } from '@/components/admin/ui/AdminPage'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table'
 import StockPivotTable from '@/components/estoque/StockPivotTable'
 import { useMyStore } from '@/hooks/useMyStore'
 
@@ -51,7 +56,8 @@ function QuantityCell({ item, onSave }: { item: InventoryItem; onSave: (id: stri
       <button
         onClick={() => save(qty - 1)}
         disabled={qty === 0}
-        className="w-8 h-8 rounded-lg border border-border hover:bg-danger-subtle hover:border-danger-border hover:text-danger flex items-center justify-center disabled:opacity-30 transition-colors active:scale-95"
+        aria-label="Diminuir"
+        className="w-8 h-8 rounded-md border border-border bg-card text-ink-600 hover:bg-danger-subtle hover:border-danger-border hover:text-danger flex items-center justify-center disabled:opacity-30 transition-colors"
       >
         <Minus className="w-3.5 h-3.5" />
       </button>
@@ -60,11 +66,12 @@ function QuantityCell({ item, onSave }: { item: InventoryItem; onSave: (id: stri
         min={0}
         value={qty}
         onChange={(e) => save(parseInt(e.target.value) || 0)}
-        className={`w-16 h-8 rounded-lg border text-center font-bold text-sm focus:outline-none focus:ring-2 focus:ring-ring transition-colors ${dirty ? 'border-warning-border bg-warning-subtle' : 'border-border bg-card'}`}
+        className={`w-16 h-8 rounded-md border text-center font-semibold text-[13px] tabular-nums focus:outline-none focus:ring-2 focus:ring-ring transition-colors ${dirty ? 'border-warning-border bg-warning-subtle' : 'border-border bg-card'}`}
       />
       <button
         onClick={() => save(qty + 1)}
-        className="w-8 h-8 rounded-lg border border-border hover:bg-success-subtle hover:border-success-border hover:text-success flex items-center justify-center transition-colors active:scale-95"
+        aria-label="Aumentar"
+        className="w-8 h-8 rounded-md border border-border bg-card text-ink-600 hover:bg-success-subtle hover:border-success-border hover:text-success flex items-center justify-center transition-colors"
       >
         <Plus className="w-3.5 h-3.5" />
       </button>
@@ -101,7 +108,7 @@ function EditableCell({ value, onSave, type = 'text', placeholder = '', classNam
     return (
       <button
         onClick={() => setEditing(true)}
-        className={`px-2 py-1 rounded hover:bg-surface-alt transition-colors cursor-text ${className}`}
+        className={`px-2 py-1 rounded-sm hover:bg-muted transition-colors cursor-text ${className}`}
         title="Clique para editar"
       >
         {value || <span className="text-muted-foreground">{placeholder || '-'}</span>}
@@ -117,7 +124,7 @@ function EditableCell({ value, onSave, type = 'text', placeholder = '', classNam
       onChange={(e) => setLocalVal(type === 'number' ? parseInt(e.target.value) || 0 : e.target.value)}
       onBlur={commit}
       onKeyDown={(e) => { if (e.key === 'Enter') commit(); if (e.key === 'Escape') { setLocalVal(value); setEditing(false) } }}
-      className="w-20 px-2 py-1 rounded border border-gold bg-card text-sm text-center font-medium focus:outline-none focus:ring-2 focus:ring-ring"
+      className="w-20 h-8 px-2 rounded-md border border-brand bg-card text-[13px] text-center font-medium focus:outline-none focus:ring-2 focus:ring-ring"
       min={type === 'number' ? 0 : undefined}
     />
   )
@@ -181,7 +188,7 @@ export default function AdminEstoque() {
       queryClient.invalidateQueries({ queryKey: ['inventory'] })
     },
     onError: (err) => {
-      alert(`Erro ao atualizar: ${err instanceof Error ? err.message : 'Desconhecido'}`)
+      toast.error(`Erro ao atualizar: ${err instanceof Error ? err.message : 'Desconhecido'}`)
     },
   })
 
@@ -203,7 +210,7 @@ export default function AdminEstoque() {
       queryClient.invalidateQueries({ queryKey: ['products-without-stock'] })
     },
     onError: (err) => {
-      alert(`Erro ao criar estoque: ${err instanceof Error ? err.message : 'Desconhecido'}`)
+      toast.error(`Erro ao criar estoque: ${err instanceof Error ? err.message : 'Desconhecido'}`)
     },
   })
 
@@ -212,9 +219,9 @@ export default function AdminEstoque() {
   }, [updateField])
 
   const getStockStatus = (qty: number, min: number) => {
-    if (qty === 0) return { label: 'Sem estoque', color: 'bg-danger-subtle text-danger' }
-    if (qty <= min) return { label: 'Baixo', color: 'bg-warning-subtle text-warning' }
-    return { label: 'OK', color: 'bg-success-subtle text-success' }
+    if (qty === 0) return { label: 'Sem estoque', tone: 'danger' as const }
+    if (qty <= min) return { label: 'Baixo', tone: 'warning' as const }
+    return { label: 'OK', tone: 'success' as const }
   }
 
   const filteredInventory = inventory.filter((item) =>
@@ -228,239 +235,193 @@ export default function AdminEstoque() {
   const lowStockCount = inventory.filter(i => i.quantity > 0 && i.quantity <= i.min_quantity).length
   const outOfStockCount = inventory.filter(i => i.quantity === 0).length
 
+  const tabDescription =
+    tab === 'checkout'
+      ? 'Estoque usado no checkout — vem da contagem física confirmada de Linhares (CD)'
+      : tab === 'linhares'
+      ? 'Tudo que foi contado em Linhares, incluindo itens que não são vendidos no B2B (ex.: material de limpeza)'
+      : 'Consulta operacional — soma o estoque de todas as unidades, não é o número usado no checkout'
+
   return (
     <AdminLayout>
-      <div className="bg-card border-b border-border sticky top-0 lg:top-0 z-30">
-        <div className="px-4 sm:px-6 py-4 flex items-center justify-between gap-4">
-          <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-foreground">Estoque</h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              {tab === 'checkout'
-                ? 'Estoque usado no checkout — vem da contagem física confirmada de Linhares (CD)'
-                : tab === 'linhares'
-                ? 'Tudo que foi contado em Linhares, incluindo itens que não são vendidos no B2B (ex: material de limpeza)'
-                : 'Consulta operacional — soma o estoque de todas as unidades, não é o número usado no checkout'}
-            </p>
-          </div>
-        </div>
-        <div className="px-4 sm:px-6 flex items-center gap-1 border-t border-border">
-          <button
-            onClick={() => setTab('checkout')}
-            className={`flex items-center gap-1.5 px-3 py-2.5 text-sm font-medium border-b-2 transition-colors ${
-              tab === 'checkout' ? 'border-gold text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            <Package className="w-4 h-4" />
-            Checkout (disponibilidade)
-          </button>
-          <button
-            onClick={() => setTab('linhares')}
-            className={`flex items-center gap-1.5 px-3 py-2.5 text-sm font-medium border-b-2 transition-colors ${
-              tab === 'linhares' ? 'border-gold text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            <Warehouse className="w-4 h-4" />
-            Linhares (CD)
-          </button>
-          <button
-            onClick={() => setTab('todas')}
-            className={`flex items-center gap-1.5 px-3 py-2.5 text-sm font-medium border-b-2 transition-colors ${
-              tab === 'todas' ? 'border-gold text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            <LayoutGrid className="w-4 h-4" />
-            Todas as unidades
-          </button>
-        </div>
-      </div>
-
-      {tab === 'todas' ? (
-        <div className="px-4 sm:px-6 py-8">
+      <AdminPage
+        title="Disponibilidade"
+        description={tabDescription}
+        tabs={
+          <PageTabs<Tab>
+            value={tab}
+            onChange={setTab}
+            items={[
+              { key: 'checkout', label: 'Checkout', icon: Package },
+              { key: 'linhares', label: 'Linhares (CD)', icon: Warehouse },
+              { key: 'todas', label: 'Todas as unidades', icon: LayoutGrid },
+            ]}
+          />
+        }
+        toolbar={tab === 'checkout' ? (
+          <Toolbar>
+            <SearchInput
+              value={searchTerm}
+              onChange={setSearchTerm}
+              placeholder="Buscar por nome ou SKU…"
+            />
+          </Toolbar>
+        ) : undefined}
+      >
+        {tab === 'todas' ? (
           <StockPivotTable />
-        </div>
-      ) : tab === 'linhares' ? (
-        <div className="px-4 sm:px-6 py-8">
-          {linhares ? (
+        ) : tab === 'linhares' ? (
+          linhares ? (
             <StockPivotTable storeId={linhares.id} />
           ) : (
-            <div className="text-center py-16">
-              <Loader className="w-8 h-8 animate-spin text-gold-text mx-auto mb-4" />
-              <p className="text-muted-foreground">Carregando loja central…</p>
+            <PageLoading label="Carregando loja central…" />
+          )
+        ) : (
+          <div className="space-y-6">
+            <div className="bg-info-subtle rounded-lg border border-info-border px-4 py-3 flex items-start gap-2.5">
+              <Boxes className="w-4 h-4 text-info mt-0.5 shrink-0" />
+              <p className="text-[13px] text-info">
+                Quantidade atualizada automaticamente sempre que uma contagem de Linhares é confirmada em <strong className="font-semibold">/estoque/contagem</strong>. Editar aqui é um ajuste pontual (ex.: avaria) — a próxima contagem confirmada sobrescreve o valor.
+              </p>
             </div>
-          )}
-        </div>
-      ) : (
-        <div className="px-4 sm:px-6 py-8">
-          <div className="mb-6 bg-info-subtle rounded-xl border border-info-border p-4 flex items-start gap-2.5">
-            <Boxes className="w-4 h-4 text-info mt-0.5 shrink-0" />
-            <p className="text-xs text-info">
-              Quantidade atualizada automaticamente sempre que uma contagem de Linhares é confirmada em <strong>/estoque/contagem</strong>. Editar aqui é um ajuste pontual (ex: avaria) — a próxima contagem confirmada sobrescreve o valor.
-            </p>
-          </div>
 
-          {/* Stats */}
-          <div className="grid grid-cols-3 gap-3 mb-6">
-            <div className="bg-card rounded-xl border border-border p-4 text-center">
-              <p className="text-2xl font-bold text-foreground">{inventory.length}</p>
-              <p className="text-xs text-muted-foreground mt-1">Total</p>
-            </div>
-            <div className="bg-warning-subtle rounded-xl border border-warning-border p-4 text-center">
-              <p className="text-2xl font-bold text-warning">{lowStockCount}</p>
-              <p className="text-xs text-warning mt-1">Estoque baixo</p>
-            </div>
-            <div className="bg-danger-subtle rounded-xl border border-danger-border p-4 text-center">
-              <p className="text-2xl font-bold text-danger">{outOfStockCount}</p>
-              <p className="text-xs text-danger mt-1">Sem estoque</p>
-            </div>
-          </div>
+            <StatGrid className="grid-cols-3 lg:grid-cols-3">
+              <StatCard label="Itens" value={inventory.length} />
+              <StatCard label="Estoque baixo" value={lowStockCount} icon={AlertTriangle} tone="warning" />
+              <StatCard label="Sem estoque" value={outOfStockCount} icon={XCircle} tone="danger" />
+            </StatGrid>
 
-          {/* Search */}
-          <div className="relative mb-6">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <input
-              type="text"
-              placeholder="Buscar por nome ou SKU..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-border bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-            />
-          </div>
-
-          {isLoading ? (
-            <div className="text-center py-16">
-              <Loader className="w-8 h-8 animate-spin text-gold-text mx-auto mb-4" />
-              <p className="text-muted-foreground">Carregando estoque...</p>
-            </div>
-          ) : (
-            <>
-              {filteredInventory.length > 0 && (
-                <div className="bg-card rounded-xl border border-border shadow-card overflow-hidden mb-8">
-                  <div className="overflow-x-auto">
-                    <table className="w-full">
-                      <thead>
-                        <tr className="border-b border-border bg-surface-alt">
-                          <th className="px-4 py-3 text-left text-sm font-semibold text-foreground">Produto</th>
-                          <th className="px-4 py-3 text-center text-sm font-semibold text-foreground">SKU</th>
-                          <th className="px-4 py-3 text-center text-sm font-semibold text-foreground">Quantidade</th>
-                          <th className="px-4 py-3 text-center text-sm font-semibold text-foreground">Mínimo</th>
-                          <th className="px-4 py-3 text-center text-sm font-semibold text-foreground">Status</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {filteredInventory.map((item, index) => {
+            {isLoading ? (
+              <PageLoading label="Carregando estoque…" />
+            ) : (
+              <>
+                {filteredInventory.length > 0 && (
+                  <Panel flush className="overflow-hidden">
+                    <Table className="min-w-[640px]">
+                      <TableHeader>
+                        <TableRow className="hover:bg-transparent">
+                          <TableHead>Produto</TableHead>
+                          <TableHead className="text-center">SKU</TableHead>
+                          <TableHead className="text-center">Quantidade</TableHead>
+                          <TableHead className="text-center">Mínimo</TableHead>
+                          <TableHead className="text-center">Status</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {filteredInventory.map((item) => {
                           const status = getStockStatus(item.quantity, item.min_quantity)
                           return (
-                            <tr key={item.id} className={`${index % 2 === 0 ? '' : 'bg-surface-alt/50'} hover:bg-surface-alt/80 transition-colors`}>
-                              <td className="px-4 py-3 text-sm">
+                            <TableRow key={item.id}>
+                              <TableCell>
                                 <div className="flex gap-3 items-center">
                                   {item.catalog_products?.main_image ? (
                                     <img
                                       src={item.catalog_products.main_image}
                                       alt={item.catalog_products.name}
-                                      className="w-10 h-10 rounded-lg object-cover border border-border flex-shrink-0"
+                                      className="w-10 h-10 rounded-md object-cover border border-border flex-shrink-0"
                                     />
                                   ) : (
-                                    <div className="w-10 h-10 rounded-lg bg-surface-alt border border-border flex items-center justify-center flex-shrink-0">
-                                      <Package className="w-4 h-4 text-muted-foreground" />
+                                    <div className="w-10 h-10 rounded-md bg-surface border border-border flex items-center justify-center flex-shrink-0">
+                                      <Package className="w-4 h-4 text-ink-400" />
                                     </div>
                                   )}
-                                  <span className="font-medium text-foreground truncate max-w-[200px]">
+                                  <span className="font-medium text-foreground truncate max-w-[240px]">
                                     {item.catalog_products?.name || 'Produto removido'}
                                   </span>
                                 </div>
-                              </td>
-                              <td className="px-4 py-3 text-sm text-center">
+                              </TableCell>
+                              <TableCell className="text-center">
                                 <EditableCell
                                   value={item.sku || ''}
-                                  placeholder="-"
+                                  placeholder="—"
                                   onSave={(val) => updateField.mutate({ id: item.id, field: 'sku', value: val })}
-                                  className="text-muted-foreground text-sm"
+                                  className="text-muted-foreground font-mono text-[12px]"
                                 />
-                              </td>
-                              <td className="px-4 py-3 text-sm">
+                              </TableCell>
+                              <TableCell>
                                 <QuantityCell item={item} onSave={handleQuantitySave} />
-                              </td>
-                              <td className="px-4 py-3 text-sm text-center">
+                              </TableCell>
+                              <TableCell className="text-center">
                                 <EditableCell
                                   value={item.min_quantity}
                                   type="number"
                                   onSave={(val) => updateField.mutate({ id: item.id, field: 'min_quantity', value: val })}
-                                  className="text-muted-foreground font-medium text-sm"
+                                  className="text-muted-foreground tabular-nums"
                                 />
-                              </td>
-                              <td className="px-4 py-3 text-sm text-center">
-                                <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-semibold ${status.color}`}>
-                                  {status.label}
-                                </span>
-                              </td>
-                            </tr>
+                              </TableCell>
+                              <TableCell className="text-center">
+                                <Badge variant={status.tone} dot>{status.label}</Badge>
+                              </TableCell>
+                            </TableRow>
                           )
                         })}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
+                      </TableBody>
+                    </Table>
+                  </Panel>
+                )}
 
-              {filteredProductsWithoutStock.length > 0 && (
-                <div>
-                  <h2 className="text-lg font-bold text-foreground mb-3">Produtos sem estoque cadastrado</h2>
-                  <div className="bg-card rounded-xl border border-border shadow-card overflow-hidden">
-                    <div className="overflow-x-auto">
-                      <table className="w-full">
-                        <thead>
-                          <tr className="border-b border-border bg-surface-alt">
-                            <th className="px-4 py-3 text-left text-sm font-semibold text-foreground">Produto</th>
-                            <th className="px-4 py-3 text-right text-sm font-semibold text-foreground">Ação</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {filteredProductsWithoutStock.map((product, index) => (
-                            <tr key={product.id} className={index % 2 === 0 ? '' : 'bg-surface-alt/50'}>
-                              <td className="px-4 py-3 text-sm">
-                                <div className="flex gap-3 items-center">
+                {filteredProductsWithoutStock.length > 0 && (
+                  <AdminSection title="Produtos sem estoque cadastrado">
+                    <Panel flush className="overflow-hidden">
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="hover:bg-transparent">
+                            <TableHead>Produto</TableHead>
+                            <TableHead className="text-right">Ação</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {filteredProductsWithoutStock.map((product) => (
+                            <TableRow key={product.id}>
+                              <TableCell>
+                                <div className="flex gap-3 items-center min-w-0">
                                   {product.main_image ? (
                                     <img
                                       src={product.main_image}
                                       alt={product.name}
-                                      className="w-10 h-10 rounded-lg object-cover border border-border flex-shrink-0"
+                                      className="w-10 h-10 rounded-md object-cover border border-border flex-shrink-0"
                                     />
                                   ) : (
-                                    <div className="w-10 h-10 rounded-lg bg-surface-alt border border-border flex items-center justify-center flex-shrink-0">
-                                      <Package className="w-4 h-4 text-muted-foreground" />
+                                    <div className="w-10 h-10 rounded-md bg-surface border border-border flex items-center justify-center flex-shrink-0">
+                                      <Package className="w-4 h-4 text-ink-400" />
                                     </div>
                                   )}
                                   <span className="font-medium text-foreground">{product.name}</span>
                                 </div>
-                              </td>
-                              <td className="px-4 py-3 text-sm text-right">
-                                <button
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <Button
+                                  variant="secondary"
+                                  size="sm"
                                   onClick={() => createMutation.mutate(product.id)}
                                   disabled={createMutation.isPending}
-                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-success-solid hover:bg-success-solid/90 text-white text-xs font-medium transition-colors disabled:opacity-60"
                                 >
-                                  <Plus className="w-3 h-3" />
+                                  <Plus />
                                   Cadastrar
-                                </button>
-                              </td>
-                            </tr>
+                                </Button>
+                              </TableCell>
+                            </TableRow>
                           ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                </div>
-              )}
+                        </TableBody>
+                      </Table>
+                    </Panel>
+                  </AdminSection>
+                )}
 
-              {filteredInventory.length === 0 && filteredProductsWithoutStock.length === 0 && (
-                <div className="text-center py-16">
-                  <p className="text-muted-foreground">Nenhum item encontrado.</p>
-                </div>
-              )}
-            </>
-          )}
-        </div>
-      )}
+                {filteredInventory.length === 0 && filteredProductsWithoutStock.length === 0 && (
+                  <Panel>
+                    <EmptyState
+                      icon={Package}
+                      title="Nenhum item encontrado"
+                      description={searchTerm ? 'Tente outro nome ou SKU.' : undefined}
+                    />
+                  </Panel>
+                )}
+              </>
+            )}
+          </div>
+        )}
+      </AdminPage>
     </AdminLayout>
   )
 }

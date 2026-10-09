@@ -2,10 +2,14 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useEscapeToClose } from '@/hooks/useEscapeToClose'
-import { Loader, Plus, Briefcase, Pencil, Trash2, Store as StoreIcon, Link2, AlertTriangle } from 'lucide-react'
+import { Plus, Briefcase, Pencil, Trash2, Store as StoreIcon, Link2, AlertTriangle, X } from 'lucide-react'
 import { toast } from 'sonner'
 import AdminLayout from '@/components/admin/AdminLayout'
 import StyledSelect from '@/components/ui/styled-select'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
+import { AdminPage, PageTabs, Panel, EmptyState, PageLoading } from '@/components/admin/ui/AdminPage'
 import {
   JobRoleFieldsForm,
   EMPTY_JOB_ROLE_FIELDS,
@@ -215,77 +219,57 @@ export default function RhVagas() {
 
   const filteredJobOpenings = storeId ? jobOpenings.filter((j) => j.store_id === storeId) : jobOpenings
 
+  const storeTabs = [
+    { key: '', label: 'Todas as unidades', icon: StoreIcon },
+    ...stores.map((s) => ({ key: s.id, label: s.name })),
+  ]
+
   return (
     <AdminLayout>
-      <div className="bg-card border-b border-border sticky top-0 z-30">
-        <div className="px-4 sm:px-6 py-4 flex items-center justify-between gap-4">
-          <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-foreground">Vagas</h1>
-            <p className="text-sm text-muted-foreground mt-1">Cadastro de vagas por unidade</p>
-          </div>
-          <button
-            onClick={openCreate}
-            disabled={stores.length === 0}
-            className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg btn-action text-sm font-medium transition-colors disabled:opacity-50"
-          >
-            <Plus className="w-4 h-4" />
-            <span className="hidden sm:inline">Nova Vaga</span>
-          </button>
-        </div>
-        <div className="px-4 sm:px-6 flex gap-1 border-t border-border overflow-x-auto scrollbar-none">
-          <button onClick={() => setStoreId('')}
-            className={`flex items-center gap-1.5 px-3 py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
-              storeId === ''
-                ? 'border-gold text-foreground'
-                : 'border-transparent text-muted-foreground hover:text-foreground'
-            }`}>
-            <StoreIcon className="w-4 h-4" />Todas as unidades
-          </button>
-          {stores.map((s) => (
-            <button key={s.id} onClick={() => setStoreId(s.id)}
-              className={`flex items-center gap-1.5 px-3 py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
-                storeId === s.id
-                  ? 'border-gold text-foreground'
-                  : 'border-transparent text-muted-foreground hover:text-foreground'
-              }`}>
-              {s.name}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="px-4 sm:px-6 py-8">
+      <AdminPage
+        title="Vagas"
+        description="Cadastro de vagas por unidade"
+        actions={
+          <Button onClick={openCreate} disabled={stores.length === 0} aria-label="Nova vaga">
+            <Plus />
+            <span className="hidden sm:inline">Nova vaga</span>
+          </Button>
+        }
+        tabs={<PageTabs items={storeTabs} value={storeId} onChange={setStoreId} />}
+      >
         {isLoading ? (
-          <div className="text-center py-16">
-            <Loader className="w-8 h-8 animate-spin text-gold-text mx-auto mb-4" />
-            <p className="text-muted-foreground">Carregando vagas...</p>
-          </div>
+          <PageLoading label="Carregando vagas…" />
         ) : filteredJobOpenings.length === 0 ? (
-          <div className="text-center py-16">
-            <Briefcase className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
-            <p className="text-muted-foreground font-medium">
-              {jobOpenings.length === 0 ? 'Nenhuma vaga cadastrada.' : 'Nenhuma vaga cadastrada nesta unidade.'}
-            </p>
-            <p className="text-sm text-muted-foreground mt-1">Clique em "Nova Vaga" para começar.</p>
-          </div>
+          <Panel>
+            <EmptyState
+              icon={Briefcase}
+              title={jobOpenings.length === 0 ? 'Nenhuma vaga cadastrada' : 'Nenhuma vaga nesta unidade'}
+              description="Cadastre uma vaga para começar a receber candidaturas."
+              action={
+                stores.length > 0 ? (
+                  <Button onClick={openCreate}><Plus />Nova vaga</Button>
+                ) : undefined
+              }
+            />
+          </Panel>
         ) : (
-          <div className="bg-card rounded-xl border border-border shadow-[var(--shadow-card)] overflow-hidden">
+          <Panel flush className="overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="w-full">
+              <table className="data-table">
                 <thead>
-                  <tr className="border-b border-border bg-muted/50">
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-foreground">Cargo</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-foreground">Unidade</th>
-                    <th className="px-4 py-3 text-center text-sm font-semibold text-foreground">Candidatos</th>
-                    <th className="px-4 py-3 text-center text-sm font-semibold text-foreground">Status</th>
-                    <th className="px-4 py-3 text-right text-sm font-semibold text-foreground">Ações</th>
+                  <tr>
+                    <th>Cargo</th>
+                    <th>Unidade</th>
+                    <th className="!text-right">Candidatos</th>
+                    <th className="!text-center">Status</th>
+                    <th className="!text-right">Ações</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredJobOpenings.map((job, index) => (
-                    <tr key={job.id} className={`border-b border-border/40 last:border-0 ${index % 2 === 0 ? '' : 'bg-muted/30'}`}>
-                      <td className="px-4 py-3 text-sm font-medium text-foreground">
-                        <div className="flex items-center gap-2">
+                  {filteredJobOpenings.map((job) => (
+                    <tr key={job.id}>
+                      <td className="font-medium text-foreground">
+                        <div className="flex items-center gap-2 min-w-[160px]">
                           <span>{job.role_title}</span>
                           {/* A coluna mostra `role_title`, que é texto livre — sem
                               esse badge uma vaga preenchida manualmente fica
@@ -293,53 +277,54 @@ export default function RhVagas() {
                               ela não tem descrição nem dispara as perguntas
                               restritas a cargo no formulário público. */}
                           {!job.job_role_id && (
-                            <span
-                              className="px-1.5 py-0.5 rounded-md text-[10px] font-semibold whitespace-nowrap bg-warning-subtle text-warning"
+                            <Badge
+                              variant="warning"
+                              className="whitespace-nowrap"
                               title="Vaga preenchida manualmente, sem vínculo com o catálogo de cargos: fica sem descrição no formulário público e as perguntas restritas a um cargo (ex: Currículo) não aparecem pro candidato."
                             >
                               Sem cargo
-                            </span>
+                            </Badge>
                           )}
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-sm text-muted-foreground">{job.stores?.name || '—'}</td>
-                      <td className="px-4 py-3 text-sm text-center text-foreground">{job.candidates?.[0]?.count ?? 0}</td>
-                      <td className="px-4 py-3 text-center">
+                      <td className="text-muted-foreground whitespace-nowrap">{job.stores?.name || '—'}</td>
+                      <td className="text-right tabular-nums text-foreground">{job.candidates?.[0]?.count ?? 0}</td>
+                      <td className="text-center">
                         <button
+                          type="button"
                           onClick={() => toggleStatusMutation.mutate({ id: job.id, status: job.status === 'aberta' ? 'fechada' : 'aberta' })}
-                          className={`px-2.5 py-1 rounded-full text-xs font-semibold transition-colors ${
-                            job.status === 'aberta'
-                              ? 'bg-success-subtle text-success'
-                              : 'bg-muted text-muted-foreground'
-                          }`}
+                          className="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                           title={job.status === 'aberta' ? 'Fechar vaga' : 'Reabrir vaga'}
                         >
-                          {job.status === 'aberta' ? 'Aberta' : 'Fechada'}
+                          <Badge variant={job.status === 'aberta' ? 'success' : 'neutral'} dot className="cursor-pointer">
+                            {job.status === 'aberta' ? 'Aberta' : 'Fechada'}
+                          </Badge>
                         </button>
                       </td>
-                      <td className="px-4 py-3 text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <button
+                      <td className="text-right">
+                        <div className="flex items-center justify-end gap-0.5">
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
                             onClick={() => copyAdLink(job)}
-                            className="p-1.5 rounded-lg hover:bg-surface-alt transition-colors text-muted-foreground hover:text-foreground"
                             title="Copiar link do anúncio (com tracking da vaga)"
+                            aria-label="Copiar link do anúncio"
                           >
-                            <Link2 className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => openEdit(job)}
-                            className="p-1.5 rounded-lg hover:bg-surface-alt transition-colors text-muted-foreground hover:text-foreground"
-                            title="Editar"
-                          >
-                            <Pencil className="w-4 h-4" />
-                          </button>
-                          <button
+                            <Link2 />
+                          </Button>
+                          <Button variant="ghost" size="icon-sm" onClick={() => openEdit(job)} title="Editar" aria-label="Editar vaga">
+                            <Pencil />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
                             onClick={() => setDeleteConfirm(job.id)}
-                            className="p-1.5 rounded-lg hover:bg-danger-subtle transition-colors text-muted-foreground hover:text-danger"
+                            className="hover:bg-danger-subtle hover:text-danger"
                             title="Excluir"
+                            aria-label="Excluir vaga"
                           >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                            <Trash2 />
+                          </Button>
                         </div>
                       </td>
                     </tr>
@@ -347,24 +332,24 @@ export default function RhVagas() {
                 </tbody>
               </table>
             </div>
-          </div>
+          </Panel>
         )}
-      </div>
+      </AdminPage>
 
       {modalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-foreground/40 backdrop-blur-sm" onClick={closeModal} />
-          <div className="relative bg-card rounded-2xl shadow-2xl border border-border p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center gap-3 mb-5">
-              <div className="w-10 h-10 rounded-xl gradient-gold flex items-center justify-center flex-shrink-0">
-                <Briefcase className="w-5 h-5 text-white" />
-              </div>
-              <h2 className="text-xl font-bold text-foreground">{editingId ? 'Editar Vaga' : 'Nova Vaga'}</h2>
+          <div className="absolute inset-0 bg-ink-950/45 backdrop-blur-[2px]" onClick={closeModal} />
+          <div className="relative bg-popover rounded-xl shadow-xl border border-border w-full max-w-lg max-h-[90vh] flex flex-col">
+            <div className="flex items-center justify-between gap-3 px-5 pt-5 pb-4">
+              <h2 className="text-[16px] font-semibold text-foreground">{editingId ? 'Editar vaga' : 'Nova vaga'}</h2>
+              <Button variant="ghost" size="icon-sm" onClick={closeModal} aria-label="Fechar">
+                <X />
+              </Button>
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-4 px-5 pb-5 overflow-y-auto">
               <div>
-                <label className="block text-sm font-medium text-foreground mb-1">Unidade *</label>
+                <label className="field-label">Unidade *</label>
                 <StyledSelect
                   value={form.store_id}
                   onChange={(v) => setForm({ ...form, store_id: v })}
@@ -374,7 +359,7 @@ export default function RhVagas() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-foreground mb-1">Cargo (catálogo)</label>
+                <label className="field-label">Cargo (catálogo)</label>
                 <StyledSelect
                   value={form.job_role_id}
                   onChange={handleSelectRole}
@@ -382,9 +367,9 @@ export default function RhVagas() {
                   emptyLabel="Preencher manualmente"
                   placeholder="Preencher manualmente"
                 />
-                <p className="text-xs text-muted-foreground mt-1">Selecionar um cargo preenche os campos abaixo — dá pra ajustar depois.</p>
+                <p className="text-[12px] text-muted-foreground mt-1.5">Selecionar um cargo preenche os campos abaixo — dá pra ajustar depois.</p>
                 {!form.job_role_id && (
-                  <p className="text-xs text-warning mt-1.5 flex items-start gap-1.5">
+                  <p className="text-[12px] text-warning mt-1.5 flex items-start gap-1.5">
                     <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-px" />
                     <span>
                       Sem cargo do catálogo, o formulário público mostra a vaga sem descrição e esconde as perguntas
@@ -395,12 +380,11 @@ export default function RhVagas() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-foreground mb-1">Título da vaga *</label>
-                <input
+                <label className="field-label">Título da vaga *</label>
+                <Input
                   type="text"
                   value={form.role_title}
                   onChange={(e) => setForm({ ...form, role_title: e.target.value })}
-                  className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                   placeholder="Ex: Aux. Administrativo"
                 />
               </div>
@@ -408,20 +392,11 @@ export default function RhVagas() {
               <JobRoleFieldsForm value={form} onChange={(patch) => setForm({ ...form, ...patch })} />
             </div>
 
-            <div className="flex gap-3 mt-6">
-              <button
-                onClick={handleSave}
-                disabled={saveMutation.isPending}
-                className="flex-1 px-4 py-2.5 rounded-lg btn-action font-medium disabled:opacity-70 transition-colors"
-              >
-                {saveMutation.isPending ? 'Salvando...' : editingId ? 'Salvar alterações' : 'Criar Vaga'}
-              </button>
-              <button
-                onClick={closeModal}
-                className="flex-1 px-4 py-2.5 rounded-lg border border-border bg-card text-foreground font-medium hover:bg-accent"
-              >
-                Cancelar
-              </button>
+            <div className="flex justify-end gap-2 px-5 py-4 border-t border-border">
+              <Button variant="secondary" onClick={closeModal}>Cancelar</Button>
+              <Button onClick={handleSave} disabled={saveMutation.isPending}>
+                {saveMutation.isPending ? 'Salvando…' : editingId ? 'Salvar alterações' : 'Criar vaga'}
+              </Button>
             </div>
           </div>
         </div>
@@ -429,26 +404,21 @@ export default function RhVagas() {
 
       {deleteConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-foreground/40 backdrop-blur-sm" onClick={() => setDeleteConfirm(null)} />
-          <div className="relative bg-card border border-border rounded-2xl shadow-2xl p-6 w-full max-w-sm">
-            <h2 className="text-lg font-bold text-foreground mb-2">Confirmar exclusão</h2>
-            <p className="text-sm text-muted-foreground mb-5">
+          <div className="absolute inset-0 bg-ink-950/45 backdrop-blur-[2px]" onClick={() => setDeleteConfirm(null)} />
+          <div className="relative bg-popover border border-border rounded-xl shadow-xl p-5 w-full max-w-sm">
+            <h2 className="text-[16px] font-semibold text-foreground mb-2">Excluir vaga?</h2>
+            <p className="text-[13px] text-muted-foreground mb-5">
               A vaga será removida. Só é possível excluir vagas sem candidatos vinculados — se houver candidatos, feche a vaga em vez de excluir.
             </p>
-            <div className="flex gap-3">
-              <button
+            <div className="flex justify-end gap-2">
+              <Button variant="secondary" onClick={() => setDeleteConfirm(null)}>Cancelar</Button>
+              <Button
+                variant="destructive"
                 onClick={() => deleteMutation.mutate(deleteConfirm)}
                 disabled={deleteMutation.isPending}
-                className="flex-1 px-4 py-2.5 rounded-lg bg-danger-solid hover:bg-danger-solid/90 text-white font-medium disabled:opacity-70 transition-colors"
               >
-                {deleteMutation.isPending ? 'Removendo...' : 'Excluir'}
-              </button>
-              <button
-                onClick={() => setDeleteConfirm(null)}
-                className="flex-1 px-4 py-2.5 rounded-lg border border-border bg-card text-foreground font-medium hover:bg-accent"
-              >
-                Cancelar
-              </button>
+                {deleteMutation.isPending ? 'Excluindo…' : 'Excluir'}
+              </Button>
             </div>
           </div>
         </div>

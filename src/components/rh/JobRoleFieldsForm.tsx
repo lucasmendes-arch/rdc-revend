@@ -1,4 +1,6 @@
 import StyledSelect from '@/components/ui/styled-select'
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 
 export interface JobRoleFieldsValue {
   description: string
@@ -110,9 +112,7 @@ interface JobRoleFieldsFormProps {
   onChange: (patch: Partial<JobRoleFieldsValue>) => void
 }
 
-const inputClass =
-  'w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring'
-const labelClass = 'block text-sm font-medium text-foreground mb-1'
+const labelClass = 'field-label'
 
 export function JobRoleFieldsForm({ value, onChange }: JobRoleFieldsFormProps) {
   const showFixed = value.compensation_type === 'fixa' || value.compensation_type === 'mista'
@@ -122,16 +122,15 @@ export function JobRoleFieldsForm({ value, onChange }: JobRoleFieldsFormProps) {
     <div className="space-y-4">
       <div>
         <label className={labelClass}>Descrição do cargo</label>
-        <textarea
+        <Textarea
           value={value.description}
           onChange={(e) => onChange({ description: e.target.value })}
-          className={inputClass}
           rows={3}
           placeholder="O que essa pessoa vai fazer no dia a dia"
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label className={labelClass}>Tipo de contrato</label>
           <StyledSelect
@@ -163,17 +162,16 @@ export function JobRoleFieldsForm({ value, onChange }: JobRoleFieldsFormProps) {
       </div>
 
       {(showFixed || showVariable) && (
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {showFixed && (
             <div>
               <label className={labelClass}>Valor fixo (R$)</label>
-              <input
+              <Input
                 type="number"
                 min="0"
                 step="0.01"
                 value={value.fixed_amount}
                 onChange={(e) => onChange({ fixed_amount: e.target.value })}
-                className={inputClass}
                 placeholder="Ex: 1800.00"
               />
             </div>
@@ -181,13 +179,12 @@ export function JobRoleFieldsForm({ value, onChange }: JobRoleFieldsFormProps) {
           {showVariable && (
             <div>
               <label className={labelClass}>Percentual variável (%)</label>
-              <input
+              <Input
                 type="number"
                 min="0"
                 step="0.01"
                 value={value.variable_percentage}
                 onChange={(e) => onChange({ variable_percentage: e.target.value })}
-                className={inputClass}
                 placeholder="Ex: 3.5"
               />
             </div>
@@ -198,11 +195,10 @@ export function JobRoleFieldsForm({ value, onChange }: JobRoleFieldsFormProps) {
       {showVariable && (
         <div>
           <label className={labelClass}>Base de cálculo da variável</label>
-          <input
+          <Input
             type="text"
             value={value.variable_basis}
             onChange={(e) => onChange({ variable_basis: e.target.value })}
-            className={inputClass}
             placeholder="Ex: % sobre vendas líquidas do mês"
           />
         </div>
@@ -214,59 +210,55 @@ export function JobRoleFieldsForm({ value, onChange }: JobRoleFieldsFormProps) {
           gerado em /admin/dp/contratos, não a remuneração variável divulgada
           na vaga (variable_percentage, acima). */}
       {value.contract_type === 'mei' && (
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className={labelClass}>Retenção do salão (%)</label>
-            <input
+            <Input
               type="number"
               min="0"
               max="100"
               step="0.01"
               value={value.partner_retention_percentage}
               onChange={(e) => onChange({ partner_retention_percentage: e.target.value })}
-              className={inputClass}
               placeholder="Ex: 50"
             />
           </div>
           <div>
             <label className={labelClass}>Comissão sobre produtos (%)</label>
-            <input
+            <Input
               type="number"
               min="0"
               max="100"
               step="0.01"
               value={value.product_commission_percentage}
               onChange={(e) => onChange({ product_commission_percentage: e.target.value })}
-              className={inputClass}
               placeholder="Ex: 10"
             />
           </div>
-          <p className="col-span-2 text-[11px] text-muted-foreground -mt-2">
+          <p className="sm:col-span-2 text-[12px] text-muted-foreground -mt-2">
             Vão impressos no Contrato de Profissional Parceiro. A vaga guarda uma cópia editável destes valores.
           </p>
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label className={labelClass}>Horário de trabalho</label>
-          <input
+          <Input
             type="text"
             value={value.work_schedule}
             onChange={(e) => onChange({ work_schedule: e.target.value })}
-            className={inputClass}
             placeholder="Ex: Seg-Sex 08h-18h, sáb 08h-12h"
           />
         </div>
         <div>
           <label className={labelClass}>Carga horária semanal (h)</label>
-          <input
+          <Input
             type="number"
             min="0"
             step="0.5"
             value={value.workload_hours}
             onChange={(e) => onChange({ workload_hours: e.target.value })}
-            className={inputClass}
             placeholder="Ex: 44"
           />
         </div>
@@ -274,10 +266,9 @@ export function JobRoleFieldsForm({ value, onChange }: JobRoleFieldsFormProps) {
 
       <div>
         <label className={labelClass}>Requisitos</label>
-        <textarea
+        <Textarea
           value={value.requirements}
           onChange={(e) => onChange({ requirements: e.target.value })}
-          className={inputClass}
           rows={2}
           placeholder="Pré-requisitos para a vaga/cargo"
         />
@@ -285,10 +276,9 @@ export function JobRoleFieldsForm({ value, onChange }: JobRoleFieldsFormProps) {
 
       <div>
         <label className={labelClass}>Benefícios</label>
-        <textarea
+        <Textarea
           value={value.benefits}
           onChange={(e) => onChange({ benefits: e.target.value })}
-          className={inputClass}
           rows={2}
           placeholder="Ex: VT, VR, plano de saúde"
         />

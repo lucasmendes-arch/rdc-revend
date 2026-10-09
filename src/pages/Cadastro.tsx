@@ -1,5 +1,6 @@
 import { useState, useRef } from "react";
-import { ArrowLeft, Check, CheckCircle2, Crown, Building2, Store, User, Mail, Lock, Phone } from "lucide-react";
+import { ArrowLeft, Check, CheckCircle2, Building2, Store, User, Mail, Lock, Phone } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Link, useNavigate } from "react-router-dom";
 import logo from "@/assets/logo-rei-dos-cachos.png";
 import { supabase } from "@/lib/supabase";
@@ -139,36 +140,40 @@ export default function Cadastro() {
         }
     };
 
-    return (
-        <div className="min-h-screen bg-surface-alt flex flex-col">
-            {/* Header */}
-            <header className="bg-card border-b border-border px-4 sm:px-6 h-16 flex items-center sticky top-0 z-10">
-                <div className="container mx-auto flex items-center justify-between">
-                    <Link to="/login" className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
-                        <ArrowLeft className="w-5 h-5" />
-                        <span className="hidden sm:inline">Voltar</span>
-                    </Link>
-                    <img src={logo} alt="Rei dos Cachos" className="h-10 sm:h-12 w-auto" />
-                    <div className="w-20" />
-                </div>
-            </header>
+    // Mesmo campo do Login: 40px, ícone à esquerda, foco em anel.
+    const inputClass =
+        'w-full h-10 pl-10 pr-3 rounded-md border border-input bg-background shadow-xs text-base md:text-sm text-foreground tracking-snug placeholder:text-ink-400 transition-colors hover:border-ink-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:border-transparent';
 
-            {/* Main Content */}
-            <main className="flex-1 w-full max-w-lg mx-auto px-4 py-8 sm:py-12">
-                {/* Hero */}
-                <div className="text-center mb-8">
-                    <div className="w-10 h-10 rounded-lg mx-auto mb-4 border border-brand-border bg-brand-subtle flex items-center justify-center">
-                        <Crown className="w-4 h-4 text-brand-strong" />
-                    </div>
-                    <h1 className="text-2xl sm:text-3xl font-semibold text-foreground tracking-tight mb-2">
+    const businessOptions: { value: Exclude<BusinessType, ''>; label: string; icon: typeof Building2 }[] = [
+        { value: 'salao', label: 'Salão de beleza', icon: Building2 },
+        { value: 'loja', label: 'Loja / comércio', icon: Store },
+        { value: 'revenda', label: 'Autônomo(a)', icon: User },
+    ];
+
+    return (
+        // Mesmo shell do Login: centralizado, logo em cima, luz ambiente.
+        <div className="min-h-screen bg-background bg-ambient flex flex-col">
+            <main className="flex-1 w-full max-w-[420px] mx-auto px-4 py-8 sm:py-12">
+                <Link
+                    to="/login"
+                    className="inline-flex items-center gap-1.5 text-[13px] font-medium text-ink-500 hover:text-foreground transition-colors -ml-1 px-1 py-1 rounded-md"
+                >
+                    <ArrowLeft className="w-4 h-4" />
+                    Voltar ao login
+                </Link>
+
+                <img src={logo} alt="Rei dos Cachos" className="h-14 w-auto mx-auto mt-6 mb-8" />
+
+                <div className="text-center mb-6">
+                    <h1 className="text-[26px] leading-tight text-foreground">
                         Libere os preços de atacado
                     </h1>
-                    <p className="text-muted-foreground text-[14px]">
+                    <p className="text-[14px] text-muted-foreground mt-2">
                         Cadastre-se grátis e acesse o catálogo completo com preços de revenda.
                     </p>
 
                     {new URLSearchParams(window.location.search).get('teaser') === '1' && (
-                        <div className="bg-brand-subtle border border-brand-border rounded-lg p-3.5 mt-4">
+                        <div className="bg-brand-subtle border border-brand-border rounded-lg px-3.5 py-3 mt-4">
                             <p className="text-brand-strong text-[13px] font-medium">
                                 Você está a um passo de desbloquear os melhores preços de revenda.
                             </p>
@@ -178,7 +183,7 @@ export default function Cadastro() {
 
                 {/* Benefícios: ícone de sistema no lugar de emoji — emoji muda de
                     forma e de cor por plataforma e não acompanha o tema. */}
-                <div className="flex items-center justify-center gap-4 mb-6 text-[12px] text-muted-foreground">
+                <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 mb-6 text-[12px] text-muted-foreground">
                     {['Grátis', 'Sem compromisso', 'Acesso imediato'].map(label => (
                         <span key={label} className="flex items-center gap-1.5">
                             <Check className="w-3.5 h-3.5 text-success shrink-0" />
@@ -187,137 +192,148 @@ export default function Cadastro() {
                     ))}
                 </div>
 
-                <form onSubmit={handleSubmit} className="bg-card rounded-lg p-5 sm:p-8 shadow-sm border border-border space-y-4">
-
+                <form onSubmit={handleSubmit} className="flex flex-col gap-3.5">
                     {error && (
-                        <div ref={errorRef} className="px-4 py-3 rounded-lg bg-danger-subtle border border-danger-border text-danger text-sm">
+                        <div
+                            ref={errorRef}
+                            role="alert"
+                            className="px-3 py-2.5 rounded-md bg-danger-subtle border border-danger-border text-danger text-[13px]"
+                        >
                             {error}
                         </div>
                     )}
 
-                    {/* Name */}
                     <div>
-                        <label className="block text-sm font-semibold text-foreground mb-1.5">Nome completo</label>
+                        <label htmlFor="cad-name" className="field-label">Nome completo</label>
                         <div className="relative">
-                            <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                            <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-400 pointer-events-none" />
                             <input
+                                id="cad-name"
                                 type="text"
                                 name="name"
                                 required
+                                autoComplete="name"
                                 value={formData.name}
                                 onChange={handleChange}
-                                placeholder="Ex: Maria das Graças"
-                                className="w-full pl-10 pr-4 py-2.5 rounded-md border border-input bg-background text-base md:text-sm tracking-snug transition-colors hover:border-ink-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:border-transparent"
+                                placeholder="Ex.: Maria das Graças"
+                                className={inputClass}
                             />
                         </div>
                     </div>
 
-                    {/* WhatsApp */}
                     <div>
-                        <label className="block text-sm font-semibold text-foreground mb-1.5">WhatsApp</label>
+                        <label htmlFor="cad-phone" className="field-label">WhatsApp</label>
                         <div className="relative">
-                            <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                            <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-400 pointer-events-none" />
                             <input
+                                id="cad-phone"
                                 type="tel"
                                 name="phone"
                                 required
+                                autoComplete="tel"
                                 value={formData.phone}
                                 onChange={handleChange}
                                 maxLength={15}
                                 placeholder="(00) 00000-0000"
-                                className="w-full pl-10 pr-4 py-2.5 rounded-md border border-input bg-background text-base md:text-sm tracking-snug transition-colors hover:border-ink-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:border-transparent"
+                                className={inputClass}
                             />
                         </div>
                     </div>
 
-                    {/* Email */}
                     <div>
-                        <label className="block text-sm font-semibold text-foreground mb-1.5">E-mail</label>
+                        <label htmlFor="cad-email" className="field-label">E-mail</label>
                         <div className="relative">
-                            <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                            <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-400 pointer-events-none" />
                             <input
+                                id="cad-email"
                                 type="email"
                                 name="email"
                                 required
+                                autoComplete="email"
                                 value={formData.email}
                                 onChange={handleChange}
                                 placeholder="seu@email.com"
-                                className="w-full pl-10 pr-4 py-2.5 rounded-md border border-input bg-background text-base md:text-sm tracking-snug transition-colors hover:border-ink-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:border-transparent"
+                                className={inputClass}
                             />
                         </div>
                     </div>
 
-                    {/* Password */}
                     <div>
-                        <label className="block text-sm font-semibold text-foreground mb-1.5">Senha</label>
+                        <label htmlFor="cad-password" className="field-label">Senha</label>
                         <div className="relative">
-                            <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                            <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-400 pointer-events-none" />
                             <input
+                                id="cad-password"
                                 type="password"
                                 name="password"
                                 required
                                 minLength={6}
+                                autoComplete="new-password"
                                 value={formData.password}
                                 onChange={handleChange}
                                 placeholder="Mínimo 6 caracteres"
-                                className="w-full pl-10 pr-4 py-2.5 rounded-md border border-input bg-background text-base md:text-sm tracking-snug transition-colors hover:border-ink-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:border-transparent"
+                                className={inputClass}
                             />
                         </div>
                     </div>
 
-                    {/* Business Type */}
-                    <div>
-                        <label className="block text-sm font-semibold text-foreground mb-3">Como você atua?</label>
-                        <div className="grid grid-cols-3 gap-2">
-                            <button
-                                type="button"
-                                onClick={() => setFormData(prev => ({ ...prev, businessType: 'salao' }))}
-                                className={`flex flex-col items-center justify-center gap-1.5 p-3 rounded-xl border-2 transition-all ${formData.businessType === 'salao' ? 'border-foreground bg-muted text-foreground' : 'border-border bg-surface text-muted-foreground hover:border-gold-border'}`}
-                            >
-                                <Building2 className="w-5 h-5" />
-                                <span className="text-[10px] sm:text-xs font-bold leading-tight text-center">Salão de Beleza</span>
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => setFormData(prev => ({ ...prev, businessType: 'loja' }))}
-                                className={`flex flex-col items-center justify-center gap-1.5 p-3 rounded-xl border-2 transition-all ${formData.businessType === 'loja' ? 'border-foreground bg-muted text-foreground' : 'border-border bg-surface text-muted-foreground hover:border-gold-border'}`}
-                            >
-                                <Store className="w-5 h-5" />
-                                <span className="text-[10px] sm:text-xs font-bold leading-tight text-center">Loja / Comércio</span>
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => setFormData(prev => ({ ...prev, businessType: 'revenda' }))}
-                                className={`flex flex-col items-center justify-center gap-1.5 p-3 rounded-xl border-2 transition-all ${formData.businessType === 'revenda' ? 'border-foreground bg-muted text-foreground' : 'border-border bg-surface text-muted-foreground hover:border-gold-border'}`}
-                            >
-                                <User className="w-5 h-5" />
-                                <span className="text-[10px] sm:text-xs font-bold leading-tight text-center">Autônomo(a)</span>
-                            </button>
+                    <fieldset>
+                        <legend className="field-label">Como você atua?</legend>
+                        <div className="grid grid-cols-3 gap-2" role="radiogroup">
+                            {businessOptions.map(({ value, label, icon: Icon }) => {
+                                const active = formData.businessType === value;
+                                return (
+                                    <button
+                                        key={value}
+                                        type="button"
+                                        role="radio"
+                                        aria-checked={active}
+                                        onClick={() => setFormData(prev => ({ ...prev, businessType: value }))}
+                                        className={`flex flex-col items-center justify-center gap-1.5 px-2 py-3 rounded-lg border transition-colors ${
+                                            active
+                                                ? 'border-brand bg-brand-subtle text-foreground ring-1 ring-brand'
+                                                : 'border-border bg-card text-muted-foreground hover:border-ink-300 hover:text-foreground'
+                                        }`}
+                                    >
+                                        <Icon className={`w-5 h-5 ${active ? 'text-brand-strong' : ''}`} />
+                                        <span className="text-[12px] font-medium leading-tight text-center">{label}</span>
+                                    </button>
+                                );
+                            })}
                         </div>
-                    </div>
+                        {!formData.businessType && (
+                            <p className="text-[12px] text-muted-foreground mt-2">Escolha uma opção para continuar.</p>
+                        )}
+                    </fieldset>
 
-                    <button
+                    <Button
                         type="submit"
+                        size="lg"
                         disabled={loading || !formData.businessType}
-                        className="w-full flex items-center justify-center gap-2 py-3 rounded-lg font-bold text-base btn-gold disabled:opacity-70 disabled:cursor-not-allowed shadow-sm-md transition-all mt-2"
+                        className="w-full mt-2"
                     >
                         {loading ? (
-                            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                            <>
+                                <span className="w-3.5 h-3.5 rounded-full border-2 border-current/30 border-t-current animate-spin" />
+                                Criando conta…
+                            </>
                         ) : (
                             <>
-                                <CheckCircle2 className="w-4 h-4" />
+                                <CheckCircle2 />
                                 Acessar catálogo agora
                             </>
                         )}
-                    </button>
+                    </Button>
+                </form>
 
-                    <p className="text-center text-xs text-muted-foreground pt-1">
+                <div className="mt-5 pt-5 border-t border-border text-center">
+                    <p className="text-[13px] text-muted-foreground">
                         Já tem conta?{' '}
-                        <Link to="/login" className="text-gold-text font-semibold hover:underline">
+                        <Link to="/login" className="font-semibold text-brand-strong hover:underline underline-offset-4">
                             Faça login
                         </Link>
                     </p>
-                </form>
+                </div>
             </main>
         </div>
     );

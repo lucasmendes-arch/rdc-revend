@@ -5,24 +5,35 @@
 
 ---
 
-## 0. A direção (2026-10-08)
+## 0. A direção (2026-10-09, 3ª versão)
 
 SaaS moderno no padrão **Linear / Lightfield**: muito branco, neutro de
-verdade, tipografia limpa, componentes chapados. A única cor de marca é o
-**ouro da logo**, medido do PNG (`#FFA000`–`#FFB800`), usado chapado.
+saturação mínima, tipografia limpa, componentes chapados. A única cor de marca
+é o **ouro da logo**, medido do PNG (`#FFA000`–`#FFB800`), usado chapado.
+
+O que mudou em 2026-10-09 (rodada de coesão):
+- O neutro saiu do cinza frio (hue 240, zinc) para um **neutro levemente
+  quente** (stone, hue 20–40, saturação ≤ 14%). Ao lado do ouro, o zinc
+  deixava tudo "seco"; o stone casa com o ouro sem virar creme.
+- **Bricolage Grotesque** entrou como voz de título (h1 de página e número de
+  KPI). É o único ponto de personalidade tipográfica; o resto é Geist.
+- Admin em **canvas embutido**: moldura (sidebar + fundo) em `ink-50` e o
+  conteúdo num painel branco com hairline e raio 12 a partir de `lg`.
+- **`AdminPage`** virou o shell único de toda tela do admin (ver §4).
 
 Histórico: a versão "ink" (Stripe/Vercel, dourado-marrom `#BC8329`) foi
 rejeitada por ser "seca, morta", e o dourado dela não batia com a logo. A
-versão "Coroa" (roxo real + botão em degradê com glow), feita na mesma data,
-foi rejeitada como feia: o roxo brigava com o dourado e o botão parecia 3D.
+versão "Coroa" (roxo real + botão em degradê com glow) foi rejeitada como
+feia: o roxo brigava com o dourado e o botão parecia 3D.
 **Não voltar a nenhuma das duas.**
 
 Cinco regras:
 
-1. **Neutro de verdade** (`--ink-*`, hue 240, saturação mínima). Nada de
-   roxo, creme ou cinza azulado no fundo.
+1. **Neutro quente de saturação mínima** (`--ink-*`). Nada de roxo, creme
+   ou cinza azulado no fundo.
 2. **Ouro da logo chapado** (`--primary` = `--brand` = `#FFAA00`): ação
    primária, item ativo, seleção, aba ativa. Sem degradê, sem bisel, sem glow.
+   Texto sobre o ouro é sempre `text-primary-foreground` (nunca branco).
 3. **Set semântico fechado**: `success` / `warning` / `danger` / `info` /
    `neutral`.
 4. **Hairline faz o trabalho da sombra.** Sombra curta e neutra.
@@ -37,16 +48,16 @@ Cinco regras:
 
 | Token | Light | Papel |
 |---|---|---|
-| `--ink-0` | `#FFFFFF` | Fundo, card |
-| `--ink-50` | `#F9F9FA` | Sidebar, superfície |
-| `--ink-100` | `#F4F4F5` | Muted, hover |
-| `--ink-200` | `#E7E7EA` | **Hairline** e borda de input |
-| `--ink-300` | `#D4D4D8` | Borda forte / hover de borda |
-| `--ink-400` | `#A0A0A8` | Placeholder, ícone inativo |
-| `--ink-500` | `#71717A` | Texto secundário |
-| `--ink-900` | `#18181B` | **Texto principal** |
+| `--ink-0` | `#FFFFFF` | Painel, card |
+| `--ink-50` | `#F8F7F5` | Moldura do app, sidebar, superfície |
+| `--ink-100` | `#F2F1EE` | Muted, hover |
+| `--ink-200` | `#E6E3DF` | **Hairline** e borda de input |
+| `--ink-300` | `#D5D1CC` | Borda forte / hover de borda |
+| `--ink-400` | `#A39E98` | Placeholder, ícone inativo |
+| `--ink-500` | `#78726C` | Texto secundário |
+| `--ink-900` | `#1D1815` | **Texto principal** |
 
-Dark: mesma rampa invertida em neutro escuro (`#111113` de fundo).
+Dark: mesma rampa invertida em neutro escuro quente (`#131110` de fundo).
 
 ### Marca
 
@@ -78,19 +89,30 @@ A escala legada `gold-*` aponta para os mesmos tokens. `.gradient-gold` e
 
 ## 2. Tipografia
 
-**Geist** em toda a interface (títulos inclusive) + **Geist Mono** para ID e
-SKU. `h1` é semibold com tracking `-0.03em`. Playfair só no `/lookbook`.
+| Família | Onde |
+|---|---|
+| **Bricolage Grotesque** (500–700, eixo óptico) | `h1` (herda do CSS base) e valor de KPI (`font-title`) |
+| **Geist** | Todo o resto: corpo, rótulo, botão, tabela, h2/h3 |
+| **Geist Mono** | ID, SKU |
+| Playfair Display | Só `/lookbook` |
 
-`.eyebrow` é 12px, peso 500, sentence case — sem caixa-alta com tracking.
-`.numeric` / `tabular-nums` em todo valor monetário e métrica.
+Escala do admin: 26 (título de página) · 15 (seção) · 14 (título de card) ·
+13–13.5 (corpo de UI) · 12 (meta, legenda, cabeçalho de tabela). Nada abaixo de
+11.5px para texto que precisa ser lido.
+
+`font-bold` não faz parte do sistema: título e valor são `font-semibold`.
+Rótulo é sentence case 12px `font-medium text-muted-foreground` — **sem**
+caixa-alta com tracking (inclusive cabeçalho de tabela). `.eyebrow` segue
+existindo com essa forma. `tabular-nums` em todo valor monetário e métrica.
 
 ---
 
 ## 2.1 Navegação
 
-**Sidebar** (admin e portal): clara (`bg-sidebar` = `ink-50`), 224px, itens de
-32px em 13px. Item ativo = cartão branco com hairline + ícone em
-`text-brand-strong`. Logo no topo, sem caixa em volta.
+**Sidebar do admin** = parte da moldura (`bg-sidebar` = `ink-50`), 224px,
+itens de 32px em 13px. Item ativo = cartão branco com hairline + ícone em
+`text-brand-strong`. Logo no topo, sem caixa. Rodapé: Usuários, Ver loja,
+tema, e o **bloco do usuário** (e-mail, papel, botão sair).
 
 **Admin em áreas + abas** (`AdminLayout.tsx`):
 
@@ -102,10 +124,14 @@ SKU. `h1` é semibold com tracking `-0.03em`. Playfair só no `/lookbook`.
 | CRM | Clientes · Segmentos · Campanhas (clientes dos salões, dados do Trinks) |
 | Pessoas | Vagas · Candidatos · Contratação · Parceiros · Contratos · Cargos · Formulário |
 
-Usuários e "Ver loja" ficam no rodapé. `role='administrativo'` vê Estoque +
-Pessoas. As abas são renderizadas pelo `AdminLayout` acima do conteúdo, com a
-aba ativa sublinhada em ouro. Página nova = item novo no array da área (a área
-"possui" a rota pelo prefixo dos dois primeiros segmentos).
+`role='administrativo'` vê Estoque + Pessoas. As abas da área ficam **fixas
+no topo do painel** (sticky, com blur), aba ativa sublinhada em ouro. Página
+nova = item novo no array da área (a área "possui" a rota pelo prefixo dos
+dois primeiros segmentos).
+
+`<main>` usa `overflow-x-clip`, **não** `overflow-x-hidden`: `hidden`
+transforma o painel num scroll container e quebra silenciosamente todo
+`sticky` dentro das páginas.
 
 ---
 
@@ -186,6 +212,8 @@ Alturas de `StyledSelect` espelham Input/Button: `default` h-9, `inline` h-8,
 
 ### Table
 
+> 2026-10-09: cabeçalho passou a sentence case 12px sobre faixa `bg-surface` (sem caixa-alta).
+
 Cabeçalho em caixa-alta 11px, `h-9`, sem fundo cinza. Célula `px-3 py-2.5`,
 13px, `tabular-nums`. Linha separada por hairline; a tabela inteira vive sobre
 superfície branca.
@@ -195,7 +223,45 @@ superfície branca.
 Overlay `ink-950/45` + `blur-[2px]` — o contexto continua visível. Entrada em
 fade + escala 0.98 em 150ms, sem `slide-in` (modal não deve pular na tela).
 
-### Shell de página — `src/components/portal/PortalPage.tsx`
+### Shell de página do admin — `src/components/admin/ui/AdminPage.tsx`
+
+Único lugar que decide título, ações, respiro lateral e ritmo vertical de uma
+tela do admin. Antes, 18 das 25 telas montavam o próprio cabeçalho (títulos de
+18/20/24px, bold ou semibold, sticky ou não, botão primário verde numa e
+dourado noutra) — era o que fazia o admin parecer vários sistemas costurados.
+
+```tsx
+<AdminLayout>
+  <AdminPage
+    title="Vagas"
+    description="Cadastro de vagas por unidade"
+    actions={<Button><Plus />Nova vaga</Button>}
+    tabs={<PageTabs items={…} value={…} onChange={…} />}
+    toolbar={<Toolbar><SearchInput … /><AdminSelect … /></Toolbar>}
+  >
+    …
+  </AdminPage>
+</AdminLayout>
+```
+
+| Prop | Uso |
+|---|---|
+| `width` | `full` (padrão: tabela, kanban, dashboard) · `default` (1200px) · `narrow` (768px, formulário) |
+| `flush` | Conteúdo sem padding (kanban que rola de borda a borda; alinhar com `PAGE_X`) |
+| `back` | Link de volta em tela de detalhe/edição |
+| `tabs` / `toolbar` | Sub-abas da página e barra de busca/filtros |
+
+Primitivos no mesmo arquivo: `PageTabs` (sub-navegação, sublinhado ouro),
+`Segmented` (alternar visão do mesmo dado), `Toolbar`, `SearchInput`,
+`AdminSection`, `Panel` (a caixa padrão), `StatCard`/`StatGrid` (KPI),
+`EmptyState`, `PageLoading`. `AdminHeader` e `AdminSummaryCard` estão
+deprecados (mantidos com o mesmo visual). Regras completas da migração em
+`docs/design-migration-brief.md`.
+
+Tabela escrita à mão: `<table className="data-table">` dá o mesmo visual do
+componente `ui/table`. Rótulo de campo: `.field-label`.
+
+### Shell de página do portal — `src/components/portal/PortalPage.tsx`
 
 Único lugar que decide largura, respiro lateral e ritmo vertical do portal.
 

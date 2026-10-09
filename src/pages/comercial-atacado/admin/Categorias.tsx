@@ -1,7 +1,13 @@
 import { useState } from 'react'
-import { Edit2, Trash2, Plus, X, GripVertical, ArrowUp, ArrowDown } from 'lucide-react'
+import { Edit2, Trash2, Plus, ArrowUp, ArrowDown, FolderTree } from 'lucide-react'
+import { toast } from 'sonner'
 import { useCategories, useCreateCategory, useUpdateCategory, useDeleteCategory, Category } from '@/hooks/useCategories'
 import AdminLayout from '@/components/admin/AdminLayout'
+import { AdminPage, Panel, EmptyState, PageLoading } from '@/components/admin/ui/AdminPage'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table'
+import { Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 
 export default function AdminCategorias() {
   const { data: categories = [], isLoading, error } = useCategories()
@@ -30,7 +36,7 @@ export default function AdminCategorias() {
       setCreating(false)
       setCreateForm({ name: '', slug: '' })
     } catch (err) {
-      alert(`Erro ao criar: ${err instanceof Error ? err.message : 'Desconhecido'}`)
+      toast.error(`Erro ao criar: ${err instanceof Error ? err.message : 'Desconhecido'}`)
     }
   }
 
@@ -46,7 +52,7 @@ export default function AdminCategorias() {
       await updateMutation.mutateAsync({ id: editingId, name: editForm.name.trim(), slug })
       setEditingId(null)
     } catch (err) {
-      alert(`Erro ao atualizar: ${err instanceof Error ? err.message : 'Desconhecido'}`)
+      toast.error(`Erro ao atualizar: ${err instanceof Error ? err.message : 'Desconhecido'}`)
     }
   }
 
@@ -56,7 +62,7 @@ export default function AdminCategorias() {
       await deleteMutation.mutateAsync(deleteId)
       setDeleteId(null)
     } catch (err) {
-      alert(`Erro ao deletar: ${err instanceof Error ? err.message : 'Desconhecido'}`)
+      toast.error(`Erro ao deletar: ${err instanceof Error ? err.message : 'Desconhecido'}`)
     }
   }
 
@@ -72,224 +78,197 @@ export default function AdminCategorias() {
       await updateMutation.mutateAsync({ id: other.id, sort_order: cat.sort_order })
     } catch (err) {
       console.error('Reorder error:', err)
+      toast.error('Não foi possível reordenar. Tente de novo.')
     }
   }
 
+  const sorted = [...categories].sort((a, b) => a.sort_order - b.sort_order)
+
   return (
     <AdminLayout>
-      {/* Page Header */}
-      <div className="bg-card border-b border-border sticky top-0 lg:top-0 z-30">
-        <div className="px-4 sm:px-6 py-4 flex items-center justify-between gap-4">
-          <h1 className="text-xl sm:text-2xl font-bold text-foreground">Categorias</h1>
-          <button
-            onClick={() => setCreating(true)}
-            className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg bg-success-solid hover:bg-success-solid/90 text-white text-sm font-medium transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            <span className="hidden sm:inline">Nova Categoria</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Main */}
-      <div className="px-4 sm:px-6 py-8">
+      <AdminPage
+        title="Categorias"
+        description="Ordem e nomes das categorias do catálogo"
+        width="default"
+        actions={
+          <Button onClick={() => setCreating(true)} aria-label="Nova categoria">
+            <Plus />
+            <span className="hidden sm:inline">Nova categoria</span>
+          </Button>
+        }
+      >
         {error && (
-          <div className="mb-6 p-4 rounded-lg bg-danger-subtle border border-danger-border text-danger">
-            <p className="font-medium">Erro ao carregar categorias</p>
-            <p className="text-sm">{error instanceof Error ? error.message : 'Desconhecido'}</p>
+          <div className="mb-4 p-4 rounded-lg bg-danger-subtle border border-danger-border text-danger">
+            <p className="text-[13.5px] font-medium">Erro ao carregar categorias</p>
+            <p className="text-[13px]">{error instanceof Error ? error.message : 'Desconhecido'}</p>
           </div>
         )}
 
         {isLoading ? (
-          <div className="text-center py-12">
-            <div className="w-8 h-8 border-2 border-gold/30 border-t-gold rounded-full animate-spin mx-auto mb-4" />
-            <p className="text-muted-foreground">Carregando categorias...</p>
-          </div>
+          <PageLoading label="Carregando categorias…" />
         ) : categories.length === 0 ? (
-          <div className="text-center py-12">
-            <p className="text-muted-foreground">Nenhuma categoria cadastrada</p>
-          </div>
+          <Panel>
+            <EmptyState
+              icon={FolderTree}
+              title="Nenhuma categoria cadastrada"
+              description="Crie categorias para organizar os produtos do catálogo."
+              action={<Button onClick={() => setCreating(true)}><Plus />Nova categoria</Button>}
+            />
+          </Panel>
         ) : (
-          <div className="bg-card rounded-xl border border-border shadow-card overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-border bg-surface-alt">
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-foreground w-12">Ordem</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-foreground">Nome</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-foreground">Slug</th>
-                    <th className="px-4 py-3 text-right text-sm font-semibold text-foreground">Acoes</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {[...categories].sort((a, b) => a.sort_order - b.sort_order).map((cat, index) => (
-                    <tr key={cat.id} className={index % 2 === 0 ? '' : 'bg-surface-alt/50'}>
-                      <td className="px-4 py-3 text-sm">
-                        <div className="flex items-center gap-1">
-                          <GripVertical className="w-4 h-4 text-muted-foreground" />
-                          <span className="font-mono text-muted-foreground">{cat.sort_order}</span>
-                          <div className="flex flex-col ml-1">
-                            <button
-                              onClick={() => handleReorder(cat, 'up')}
-                              disabled={index === 0}
-                              className="text-muted-foreground hover:text-foreground disabled:opacity-30 transition-colors"
-                            >
-                              <ArrowUp className="w-3 h-3" />
-                            </button>
-                            <button
-                              onClick={() => handleReorder(cat, 'down')}
-                              disabled={index === categories.length - 1}
-                              className="text-muted-foreground hover:text-foreground disabled:opacity-30 transition-colors"
-                            >
-                              <ArrowDown className="w-3 h-3" />
-                            </button>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-sm font-medium text-foreground">{cat.name}</td>
-                      <td className="px-4 py-3 text-sm text-muted-foreground font-mono">{cat.slug}</td>
-                      <td className="px-4 py-3 text-sm text-right space-x-2">
-                        <button
-                          onClick={() => handleEdit(cat)}
-                          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-foreground hover:bg-surface-alt transition-all text-xs font-medium"
+          <Panel flush className="overflow-hidden">
+            <Table className="min-w-[480px]">
+              <TableHeader>
+                <TableRow className="hover:bg-transparent">
+                  <TableHead className="w-28">Ordem</TableHead>
+                  <TableHead>Nome</TableHead>
+                  <TableHead>Slug</TableHead>
+                  <TableHead className="text-right">Ações</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {sorted.map((cat, index) => (
+                  <TableRow key={cat.id}>
+                    <TableCell>
+                      <div className="flex items-center gap-1">
+                        <span className="w-6 font-mono text-[12px] text-muted-foreground tabular-nums">{cat.sort_order}</span>
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          className="h-7 w-7"
+                          onClick={() => handleReorder(cat, 'up')}
+                          disabled={index === 0}
+                          aria-label="Mover para cima"
                         >
-                          <Edit2 className="w-3.5 h-3.5" />
+                          <ArrowUp className="!size-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          className="h-7 w-7"
+                          onClick={() => handleReorder(cat, 'down')}
+                          disabled={index === sorted.length - 1}
+                          aria-label="Mover para baixo"
+                        >
+                          <ArrowDown className="!size-3.5" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                    <TableCell className="font-medium text-foreground">{cat.name}</TableCell>
+                    <TableCell className="font-mono text-[12px] text-muted-foreground">{cat.slug}</TableCell>
+                    <TableCell className="text-right whitespace-nowrap">
+                      <div className="inline-flex items-center gap-1">
+                        <Button variant="ghost" size="sm" onClick={() => handleEdit(cat)} aria-label="Editar categoria">
+                          <Edit2 />
                           <span className="hidden sm:inline">Editar</span>
-                        </button>
-                        <button
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
                           onClick={() => setDeleteId(cat.id)}
-                          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-danger hover:bg-danger-subtle transition-all text-xs font-medium"
+                          aria-label="Excluir categoria"
+                          className="text-danger hover:text-danger hover:bg-danger-subtle"
                         >
-                          <Trash2 className="w-3.5 h-3.5" />
-                          <span className="hidden sm:inline">Deletar</span>
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
+                          <Trash2 />
+                          <span className="hidden sm:inline">Excluir</span>
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </Panel>
         )}
-      </div>
+      </AdminPage>
 
       {/* Create Dialog */}
-      {creating && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-foreground/40 backdrop-blur-sm" onClick={() => setCreating(false)} />
-          <div className="relative bg-card rounded-2xl shadow-lg p-6 w-full max-w-md">
-            <h2 className="text-xl font-bold text-foreground mb-4">Nova Categoria</h2>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1">Nome *</label>
-                <input
-                  type="text"
-                  value={createForm.name}
-                  onChange={(e) => setCreateForm({ name: e.target.value, slug: generateSlug(e.target.value) })}
-                  className="w-full px-3 py-2 rounded-lg border border-border bg-card focus:outline-none focus:ring-2 focus:ring-ring"
-                  placeholder="Ex: Condicionador"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1">Slug</label>
-                <input
-                  type="text"
-                  value={createForm.slug}
-                  onChange={(e) => setCreateForm({ ...createForm, slug: e.target.value })}
-                  className="w-full px-3 py-2 rounded-lg border border-border bg-card focus:outline-none focus:ring-2 focus:ring-ring font-mono text-sm"
-                  placeholder="gerado-automaticamente"
-                />
-              </div>
+      <Dialog open={creating} onOpenChange={setCreating}>
+        <DialogContent className="max-w-md">
+          <DialogHeader className="text-left">
+            <DialogTitle className="text-[16px]">Nova categoria</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="field-label">Nome *</label>
+              <Input
+                type="text"
+                value={createForm.name}
+                onChange={(e) => setCreateForm({ name: e.target.value, slug: generateSlug(e.target.value) })}
+                placeholder="Ex.: Condicionador"
+              />
             </div>
-            <div className="flex gap-3 mt-6">
-              <button
-                onClick={handleCreate}
-                disabled={createMutation.isPending}
-                className="flex-1 px-4 py-2.5 rounded-lg bg-success-solid hover:bg-success-solid/90 text-white font-medium disabled:opacity-70 transition-colors"
-              >
-                {createMutation.isPending ? 'Criando...' : 'Criar Categoria'}
-              </button>
-              <button
-                onClick={() => setCreating(false)}
-                className="flex-1 px-4 py-2.5 rounded-lg border border-border bg-card text-foreground font-medium hover:bg-surface-alt"
-              >
-                Cancelar
-              </button>
+            <div>
+              <label className="field-label">Slug</label>
+              <Input
+                type="text"
+                value={createForm.slug}
+                onChange={(e) => setCreateForm({ ...createForm, slug: e.target.value })}
+                className="font-mono md:text-[13px]"
+                placeholder="gerado-automaticamente"
+              />
             </div>
           </div>
-        </div>
-      )}
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="secondary" onClick={() => setCreating(false)}>Cancelar</Button>
+            <Button onClick={handleCreate} disabled={createMutation.isPending}>
+              {createMutation.isPending ? 'Criando…' : 'Criar categoria'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Edit Dialog */}
-      {editingId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-foreground/40 backdrop-blur-sm" onClick={() => setEditingId(null)} />
-          <div className="relative bg-card rounded-2xl shadow-lg p-6 w-full max-w-md">
-            <h2 className="text-xl font-bold text-foreground mb-4">Editar Categoria</h2>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1">Nome</label>
-                <input
-                  type="text"
-                  value={editForm.name}
-                  onChange={(e) => setEditForm({ name: e.target.value, slug: generateSlug(e.target.value) })}
-                  className="w-full px-3 py-2 rounded-lg border border-border bg-card focus:outline-none focus:ring-2 focus:ring-ring"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1">Slug</label>
-                <input
-                  type="text"
-                  value={editForm.slug}
-                  onChange={(e) => setEditForm({ ...editForm, slug: e.target.value })}
-                  className="w-full px-3 py-2 rounded-lg border border-border bg-card focus:outline-none focus:ring-2 focus:ring-ring font-mono text-sm"
-                />
-              </div>
+      <Dialog open={!!editingId} onOpenChange={(o) => { if (!o) setEditingId(null) }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader className="text-left">
+            <DialogTitle className="text-[16px]">Editar categoria</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="field-label">Nome</label>
+              <Input
+                type="text"
+                value={editForm.name}
+                onChange={(e) => setEditForm({ name: e.target.value, slug: generateSlug(e.target.value) })}
+              />
             </div>
-            <div className="flex gap-3 mt-6">
-              <button
-                onClick={handleSaveEdit}
-                disabled={updateMutation.isPending}
-                className="flex-1 px-4 py-2.5 rounded-lg btn-gold font-medium disabled:opacity-70"
-              >
-                {updateMutation.isPending ? 'Salvando...' : 'Salvar'}
-              </button>
-              <button
-                onClick={() => setEditingId(null)}
-                className="flex-1 px-4 py-2.5 rounded-lg border border-border bg-card text-foreground font-medium hover:bg-surface-alt"
-              >
-                Cancelar
-              </button>
+            <div>
+              <label className="field-label">Slug</label>
+              <Input
+                type="text"
+                value={editForm.slug}
+                onChange={(e) => setEditForm({ ...editForm, slug: e.target.value })}
+                className="font-mono md:text-[13px]"
+              />
             </div>
           </div>
-        </div>
-      )}
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="secondary" onClick={() => setEditingId(null)}>Cancelar</Button>
+            <Button onClick={handleSaveEdit} disabled={updateMutation.isPending}>
+              {updateMutation.isPending ? 'Salvando…' : 'Salvar alterações'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Delete Confirmation */}
-      {deleteId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-foreground/40 backdrop-blur-sm" onClick={() => setDeleteId(null)} />
-          <div className="relative bg-card rounded-2xl shadow-lg p-6 w-full max-w-sm">
-            <h2 className="text-lg font-bold text-foreground mb-2">Deletar Categoria?</h2>
-            <p className="text-sm text-muted-foreground mb-6">Produtos desta categoria ficarao sem categoria. Esta acao nao pode ser desfeita.</p>
-            <div className="flex gap-3">
-              <button
-                onClick={handleDelete}
-                disabled={deleteMutation.isPending}
-                className="flex-1 px-4 py-2.5 rounded-lg bg-danger-solid text-white font-medium hover:bg-danger-solid/90 disabled:opacity-70"
-              >
-                {deleteMutation.isPending ? 'Deletando...' : 'Deletar'}
-              </button>
-              <button
-                onClick={() => setDeleteId(null)}
-                className="flex-1 px-4 py-2.5 rounded-lg border border-border bg-card text-foreground font-medium hover:bg-surface-alt"
-              >
-                Cancelar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <Dialog open={!!deleteId} onOpenChange={(o) => { if (!o) setDeleteId(null) }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader className="text-left">
+            <DialogTitle className="text-[16px]">Excluir categoria?</DialogTitle>
+            <DialogDescription>
+              Os produtos desta categoria ficarão sem categoria. Esta ação não pode ser desfeita.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="secondary" onClick={() => setDeleteId(null)}>Cancelar</Button>
+            <Button variant="destructive" onClick={handleDelete} disabled={deleteMutation.isPending}>
+              {deleteMutation.isPending ? 'Excluindo…' : 'Excluir'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AdminLayout>
   )
 }

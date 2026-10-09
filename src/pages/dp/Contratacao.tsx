@@ -1,10 +1,9 @@
-import { useMemo, useState, type SyntheticEvent } from 'react'
+import { useMemo, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { Link } from 'react-router-dom'
 import {
-  Loader, Store as StoreIcon, Eye, EyeOff, AlertTriangle, Paperclip, Tag, SlidersHorizontal, Calendar, Zap,
-  Filter, Variable,
+  Eye, EyeOff, AlertTriangle, Paperclip, Tag, SlidersHorizontal, Zap, Filter, Variable,
 } from 'lucide-react'
 import {
   DndContext, DragOverlay, PointerSensor, KeyboardSensor, useSensor, useSensors,
@@ -17,7 +16,9 @@ import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover
 import { QuickDatePopover } from '@/components/ui/quick-date-popover'
 import { Switch } from '@/components/ui/switch'
 import { useAdminTheme } from '@/contexts/AdminThemeContext'
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Button } from '@/components/ui/button'
+import { AdminPage, PageTabs, Segmented, Toolbar, PageLoading, PAGE_X } from '@/components/admin/ui/AdminPage'
+import { cn } from '@/lib/utils'
 import ProcessoDetailModal from '@/components/dp/ProcessoDetailModal'
 import ContratarParceiroModal from '@/components/dp/ContratarParceiroModal'
 import ColorSelect from '@/components/rh/ColorSelect'
@@ -108,7 +109,7 @@ function ProcessoPhoto({ name, photoUrl }: { name: string; photoUrl: string | nu
         />
       ) : (
         <div className="w-full h-full flex items-center justify-center">
-          <span className="text-lg font-bold text-ink-400">{initials(name)}</span>
+          <span className="text-lg font-semibold text-ink-400">{initials(name)}</span>
         </div>
       )}
     </div>
@@ -146,13 +147,14 @@ function ProcessoCard({
       {...listeners}
       {...attributes}
       onClick={() => !isDragging && onOpen(processo)}
-      className={`relative bg-card rounded-lg border border-border/60 border-l-4 shadow-[0_1px_2px_rgba(0,0,0,0.06)] overflow-hidden cursor-grab active:cursor-grabbing touch-none select-none ${
-        isDragging ? 'opacity-50' : ''
-      }`}
+      className={cn(
+        'relative bg-card rounded-lg border border-border border-l-[3px] shadow-xs overflow-hidden cursor-grab active:cursor-grabbing touch-none select-none transition-colors hover:border-ink-300',
+        isDragging && 'opacity-50',
+      )}
     >
       {dueOverdue && (
-        <div className="absolute top-1.5 right-1.5 z-10 flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-danger-solid text-white text-[10px] font-bold shadow" title="Data fim já passou">
-          <AlertTriangle className="w-2.5 h-2.5" /> Atrasado
+        <div className="absolute top-1.5 right-1.5 z-10 flex items-center gap-1 px-1.5 h-5 rounded-full bg-danger-solid text-white text-[11px] font-medium" title="Data fim já passou">
+          <AlertTriangle className="w-3 h-3" /> Atrasado
         </div>
       )}
       <ProcessoPhoto name={name} photoUrl={processo.candidates?.photo_url} />
@@ -163,16 +165,17 @@ function ProcessoCard({
               compact/pill: job_roles.color) — aqui é estático (não editável no
               card do DP), casado por título já que employee_processes guarda
               só o snapshot do nome do cargo, sem FK pra job_roles. */}
-          <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-md truncate max-w-full" style={{ backgroundColor: roleColor, color: '#fff' }}>
+          <span className="text-[11px] font-medium leading-4 px-1.5 py-0.5 rounded-sm truncate max-w-full" style={{ backgroundColor: roleColor, color: '#fff' }}>
             {processo.role_title}
           </span>
-          <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-md bg-surface-alt text-muted-foreground truncate max-w-full">
+          <span className="text-[11px] font-medium leading-4 px-1.5 py-0.5 rounded-sm bg-muted text-ink-600 truncate max-w-full">
             {processo.stores?.name || '—'}
           </span>
           {candidate && (
-            <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-md ${
-              candidate.source === 'manual' ? 'bg-ink-100 text-ink-600' : 'bg-violet-100 text-violet-700 dark:bg-violet-500/20 dark:text-violet-300'
-            }`}>
+            <span className={cn(
+              'text-[11px] font-medium leading-4 px-1.5 py-0.5 rounded-sm',
+              candidate.source === 'manual' ? 'bg-muted text-ink-600' : 'bg-violet-100 text-violet-700 dark:bg-violet-500/20 dark:text-violet-300',
+            )}>
               {candidate.source === 'manual' ? 'Manual' : 'Formulário'}
             </span>
           )}
@@ -180,7 +183,7 @@ function ProcessoCard({
         {answersOnCard.length > 0 && (
           <div className="flex items-center gap-1 flex-wrap">
             {answersOnCard.map((a) => (
-              <span key={a.form_fields!.field_key} className="text-[10px] font-medium px-1.5 py-0.5 rounded-md bg-surface-alt text-muted-foreground truncate max-w-full">
+              <span key={a.form_fields!.field_key} className="text-[11px] font-medium leading-4 px-1.5 py-0.5 rounded-sm bg-muted text-ink-600 truncate max-w-full">
                 {a.form_fields!.label}: {formatAnswerValue(a)}
               </span>
             ))}
@@ -188,11 +191,11 @@ function ProcessoCard({
         )}
         {cardPrefs.tags && tagsOnCard.length > 0 && (
           <div className="flex items-center gap-1 flex-wrap">
-            <Tag className="w-2.5 h-2.5 text-muted-foreground shrink-0" />
+            <Tag className="w-3 h-3 text-ink-400 shrink-0" />
             {tagsOnCard.map((ct) => (
               <span
                 key={ct.tags!.id}
-                className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full truncate max-w-full"
+                className="text-[11px] font-medium leading-4 px-1.5 py-0.5 rounded-full truncate max-w-full"
                 style={{ backgroundColor: `${ct.tags!.color}22`, color: ct.tags!.color }}
               >
                 {ct.tags!.name}
@@ -222,8 +225,8 @@ function ProcessoCard({
               )}
             </div>
             {showAttach && candidate && (
-              <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-surface-alt text-muted-foreground flex items-center gap-0.5 shrink-0">
-                <Paperclip className="w-2.5 h-2.5" /> {attachmentCount(candidate)}
+              <span className="text-[11px] font-medium leading-4 px-1.5 py-0.5 rounded-sm bg-muted text-ink-600 flex items-center gap-0.5 shrink-0 tabular-nums">
+                <Paperclip className="w-3 h-3" /> {attachmentCount(candidate)}
               </span>
             )}
           </div>
@@ -252,17 +255,20 @@ function StageColumnView({
   const columnBg = isDark ? `${column.accent}1A` : column.bg
   return (
     <section className="w-56 shrink-0 space-y-2">
-      <div className="flex items-center gap-1.5 px-1">
+      <div className="flex items-center gap-2 h-6 px-1">
         <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: column.accent }} />
-        <h2 className="text-[11px] font-bold uppercase tracking-wide truncate text-muted-foreground">{column.label}</h2>
-        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-surface-alt text-muted-foreground shrink-0">
+        <h2 className="text-[13px] font-semibold text-foreground truncate">{column.label}</h2>
+        <span className="text-[12px] font-medium text-muted-foreground tabular-nums shrink-0">
           {processos.length}
         </span>
       </div>
       <div
         ref={setNodeRef}
         style={{ backgroundColor: columnBg, borderColor: isOver ? column.accent : undefined }}
-        className={`space-y-2 min-h-[80px] max-h-[calc(100vh-280px)] overflow-y-auto scrollbar-thin rounded-2xl border p-1.5 transition-colors ${isOver ? '' : 'border-dashed border-border/70'}`}
+        className={cn(
+          'space-y-2 min-h-[96px] max-h-[calc(100vh-300px)] overflow-y-auto scrollbar-thin rounded-lg border p-1.5 transition-colors',
+          !isOver && 'border-border/60',
+        )}
       >
         {processos.map((p) => (
           <ProcessoCard

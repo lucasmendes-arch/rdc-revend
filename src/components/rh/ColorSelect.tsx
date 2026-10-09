@@ -53,12 +53,12 @@ export default function ColorSelect({ value, onChange, options, variant, placeho
             className="inline-flex items-center gap-0.5 max-w-full"
           >
             <span
-              className="text-[10px] font-medium px-1.5 py-0.5 rounded-md truncate max-w-full"
+              className="text-[11.5px] font-medium px-1.5 py-0.5 rounded-sm truncate max-w-full"
               style={variant === 'pill' && selected
                 ? { backgroundColor: selected.color, color: '#fff' }
                 : selected
                   ? { backgroundColor: `${selected.color}22`, color: selected.color }
-                  : { backgroundColor: 'var(--surface-alt)', color: 'var(--muted-foreground)' }}
+                  : { backgroundColor: 'hsl(var(--surface-alt))', color: 'hsl(var(--muted-foreground))' }}
             >
               {selected?.label || placeholder}
             </span>
@@ -69,13 +69,13 @@ export default function ColorSelect({ value, onChange, options, variant, placeho
             type="button"
             onPointerDown={stopPropagation}
             onClick={stopPropagation}
-            className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-sm font-semibold transition-colors max-w-full ${className || ''}`}
+            className={`inline-flex items-center gap-1.5 h-8 px-2.5 rounded-md border text-[13px] font-medium transition-colors max-w-full ${className || ''}`}
             style={selected
               ? { backgroundColor: `${selected.color}1a`, color: selected.color, borderColor: `${selected.color}55` }
-              : { borderColor: 'var(--border)', color: 'var(--muted-foreground)' }}
+              : { borderColor: 'hsl(var(--border))', color: 'hsl(var(--muted-foreground))' }}
           >
             {variant === 'pill' && selected ? (
-              <span className="px-2 py-0.5 rounded-md text-white text-xs font-semibold truncate" style={{ backgroundColor: selected.color }}>
+              <span className="px-1.5 py-0.5 rounded-sm text-white text-[12px] font-medium truncate" style={{ backgroundColor: selected.color }}>
                 {selected.label}
               </span>
             ) : (
@@ -87,7 +87,7 @@ export default function ColorSelect({ value, onChange, options, variant, placeho
       </PopoverTrigger>
       <PopoverContent className="w-72 p-0" align="start" onClick={stopPropagation} onPointerDown={stopPropagation}>
         <Command>
-          <CommandInput placeholder="Buscar..." />
+          <CommandInput placeholder="Buscar…" />
           <CommandList className="max-h-72">
             <CommandEmpty>Nada encontrado.</CommandEmpty>
             {emptyLabel && (
@@ -113,7 +113,7 @@ export default function ColorSelect({ value, onChange, options, variant, placeho
                         <span style={{ color: o.color }} className="font-medium truncate">{o.label}</span>
                       </>
                     ) : (
-                      <span className="px-2 py-0.5 rounded-md text-white text-xs font-semibold truncate" style={{ backgroundColor: o.color }}>
+                      <span className="px-1.5 py-0.5 rounded-sm text-white text-[12px] font-medium truncate" style={{ backgroundColor: o.color }}>
                         {o.label}
                       </span>
                     )}

@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react'
-import { Edit2, Trash2, RefreshCw, ChevronLeft, ChevronRight, X, Plus, Filter, Upload, ImageIcon, GripVertical, ListOrdered } from 'lucide-react'
+import { Edit2, Trash2, RefreshCw, ChevronLeft, ChevronRight, X, Plus, Upload, ImageIcon, GripVertical, ListOrdered } from 'lucide-react'
+import { toast } from 'sonner'
 import { useAdminProducts, useUpdateProduct, useDeleteProduct, useCreateProduct, useBulkUpdateSortOrder, CatalogProduct } from '@/hooks/useAdminProducts'
 import { useCategories } from '@/hooks/useCategories'
 import { useImageUpload } from '@/hooks/useImageUpload'
@@ -22,8 +23,14 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import StyledSelect from '@/components/ui/styled-select'
-
-
+import { AdminPage, Toolbar, SearchInput, Panel, EmptyState, PageLoading } from '@/components/admin/ui/AdminPage'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table'
+import { Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogDescription } from '@/components/ui/dialog'
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel } from '@/components/ui/dropdown-menu'
+import { cn } from '@/lib/utils'
 
 function SortableProductRow({ product }: { product: CatalogProduct }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: product.id })
@@ -36,7 +43,7 @@ function SortableProductRow({ product }: { product: CatalogProduct }) {
     <div
       ref={setNodeRef}
       style={style}
-      className="flex items-center gap-3 bg-card border border-border rounded-lg px-3 py-2.5 shadow-sm"
+      className="flex items-center gap-3 bg-card border border-border rounded-lg px-3 py-2.5 shadow-xs"
     >
       <button
         {...attributes}
@@ -51,16 +58,16 @@ function SortableProductRow({ product }: { product: CatalogProduct }) {
       ) : (
         <div className="w-8 h-8 rounded bg-surface-alt border border-border flex-shrink-0" />
       )}
-      <span className="text-sm font-medium text-foreground truncate flex-1">{product.name}</span>
-      <span className="text-xs text-muted-foreground flex-shrink-0">R$ {product.price.toFixed(2)}</span>
+      <span className="text-[13.5px] font-medium text-foreground truncate flex-1">{product.name}</span>
+      <span className="text-[12px] text-muted-foreground tabular-nums flex-shrink-0">R$ {product.price.toFixed(2)}</span>
     </div>
   )
 }
 
 const CATEGORY_TYPE_OPTIONS = [
-  { value: 'alto_giro', label: 'Alto Giro' },
-  { value: 'maior_margem', label: 'Maior Margem' },
-  { value: 'recompra_alta', label: 'Recompra Alta' },
+  { value: 'alto_giro', label: 'Alto giro' },
+  { value: 'maior_margem', label: 'Maior margem' },
+  { value: 'recompra_alta', label: 'Recompra alta' },
 ]
 
 export default function AdminCatalogo() {
@@ -136,7 +143,7 @@ export default function AdminCatalogo() {
       await bulkUpdateSortOrder.mutateAsync(updates)
       setReorderSaved(true)
     } catch (err) {
-      alert(`Erro ao salvar ordem: ${err instanceof Error ? err.message : 'Desconhecido'}`)
+      toast.error(`Erro ao salvar ordem: ${err instanceof Error ? err.message : 'Desconhecido'}`)
     }
   }
 
@@ -188,7 +195,7 @@ export default function AdminCatalogo() {
       setEditingId(null)
       setEditForm({})
     } catch (err) {
-      alert(`Erro ao atualizar: ${err instanceof Error ? err.message : 'Desconhecido'}`)
+      toast.error(`Erro ao atualizar: ${err instanceof Error ? err.message : 'Desconhecido'}`)
     }
   }
 
@@ -199,7 +206,7 @@ export default function AdminCatalogo() {
         is_active: !product.is_active,
       })
     } catch (err) {
-      alert(`Erro ao atualizar: ${err instanceof Error ? err.message : 'Desconhecido'}`)
+      toast.error(`Erro ao atualizar: ${err instanceof Error ? err.message : 'Desconhecido'}`)
     }
   }
 
@@ -210,7 +217,7 @@ export default function AdminCatalogo() {
         category_id: newCategoryId || null,
       })
     } catch (err) {
-      alert(`Erro ao atualizar categoria: ${err instanceof Error ? err.message : 'Desconhecido'}`)
+      toast.error(`Erro ao atualizar categoria: ${err instanceof Error ? err.message : 'Desconhecido'}`)
     }
   }
 
@@ -220,13 +227,13 @@ export default function AdminCatalogo() {
       await deleteMutation.mutateAsync(deleteId)
       setDeleteId(null)
     } catch (err) {
-      alert(`Erro ao deletar: ${err instanceof Error ? err.message : 'Desconhecido'}`)
+      toast.error(`Erro ao deletar: ${err instanceof Error ? err.message : 'Desconhecido'}`)
     }
   }
 
   const handleCreate = async () => {
     if (!createForm.name || createForm.price <= 0) {
-      alert('Nome e preço são obrigatórios')
+      toast.error('Nome e preço são obrigatórios')
       return
     }
     try {
@@ -246,746 +253,598 @@ export default function AdminCatalogo() {
       setCreating(false)
       setCreateForm({ name: '', price: 0, partner_price: 0, compare_at_price: null, main_image: '', is_active: true, category_type: null, is_professional: false, is_highlight: false, is_new_arrival: false, category_id: null })
     } catch (err) {
-      alert(`Erro ao criar: ${err instanceof Error ? err.message : 'Desconhecido'}`)
+      toast.error(`Erro ao criar: ${err instanceof Error ? err.message : 'Desconhecido'}`)
     }
   }
 
+  const statusPills: { key: 'all' | 'active' | 'paused'; label: string; count: number }[] = [
+    { key: 'all', label: 'Todos', count: products.length },
+    { key: 'active', label: 'Ativos', count: activeCount },
+    { key: 'paused', label: 'Pausados', count: pausedCount },
+  ]
+  const hasFilters = !!(filterCategory || filterStatus !== 'all' || searchTerm)
+
+  const closeEdit = () => { setEditingId(null); setEditForm({}) }
+
   return (
     <AdminLayout>
-      {/* Page Header */}
-      <div className="bg-card border-b border-border sticky top-0 lg:top-0 z-30">
-        <div className="px-4 sm:px-6 py-4 flex items-center justify-between gap-4">
-          <h1 className="text-xl sm:text-2xl font-bold text-foreground">Catálogo</h1>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setCreating(true)}
-              className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg bg-success-solid hover:bg-success-solid/90 text-white text-sm font-medium transition-colors"
-            >
-              <Plus className="w-4 h-4" />
-              <span className="hidden sm:inline">Novo Produto</span>
-            </button>
-            {/* Reorder trigger — opens category picker */}
-            <div className="relative">
-              <button
-                onClick={() => setShowReorderPicker(v => !v)}
-                className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg border border-border bg-card hover:bg-surface-alt text-sm font-medium text-foreground transition-colors"
-              >
-                <ListOrdered className="w-4 h-4" />
-                <span className="hidden sm:inline">Reordenar</span>
-              </button>
-              {showReorderPicker && (
-                <>
-                  <div className="fixed inset-0 z-30" onClick={() => setShowReorderPicker(false)} />
-                  <div className="absolute right-0 top-full mt-1 bg-card border border-border rounded-xl shadow-lg py-1 min-w-[200px] z-40">
-                    <p className="px-3 py-1.5 text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Escolha a categoria</p>
-                    {categories.map(c => (
-                      <button
-                        key={c.id}
-                        onClick={() => { openReorder(c.id); setShowReorderPicker(false) }}
-                        className="w-full text-left px-3 py-2 text-sm text-foreground hover:bg-surface-alt transition-colors"
-                      >
-                        {c.name}
-                      </button>
-                    ))}
-                  </div>
-                </>
-              )}
+      <AdminPage
+        title="Produtos"
+        description="Catálogo de produtos do atacado"
+        actions={
+          <>
+            <DropdownMenu open={showReorderPicker} onOpenChange={setShowReorderPicker}>
+              <DropdownMenuTrigger asChild>
+                <Button variant="secondary" aria-label="Reordenar produtos">
+                  <ListOrdered />
+                  <span className="hidden sm:inline">Reordenar</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="min-w-[200px] max-h-80 overflow-y-auto">
+                <DropdownMenuLabel className="text-[12px] font-medium text-muted-foreground">Escolha a categoria</DropdownMenuLabel>
+                {categories.map(c => (
+                  <DropdownMenuItem key={c.id} onSelect={() => openReorder(c.id)}>
+                    {c.name}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <Button onClick={() => setCreating(true)} aria-label="Novo produto">
+              <Plus />
+              <span className="hidden sm:inline">Novo produto</span>
+            </Button>
+          </>
+        }
+        toolbar={
+          <Toolbar>
+            <SearchInput
+              value={searchTerm}
+              onChange={(v) => { setSearchTerm(v); setCurrentPage(1) }}
+              placeholder="Buscar produtos…"
+            />
+            <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none">
+              {statusPills.map(p => (
+                <button
+                  key={p.key}
+                  type="button"
+                  aria-pressed={filterStatus === p.key}
+                  onClick={() => { setFilterStatus(p.key); setCurrentPage(1) }}
+                  className={cn(
+                    'h-8 px-3 rounded-md border text-[13px] font-medium whitespace-nowrap transition-colors shrink-0',
+                    filterStatus === p.key
+                      ? 'bg-brand-subtle border-brand-border text-brand-strong'
+                      : 'bg-card border-border text-ink-600 hover:border-ink-300 hover:text-foreground',
+                  )}
+                >
+                  {p.label} <span className="tabular-nums opacity-70">{p.count}</span>
+                </button>
+              ))}
             </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Main */}
-      <div className="px-4 sm:px-6 py-4">
-        {/* Search & Filters */}
-        <div className="mb-6 space-y-3">
-          <input
-            type="text"
-            placeholder="Buscar produtos..."
-            value={searchTerm}
-            onChange={(e) => {
-              setSearchTerm(e.target.value)
-              setCurrentPage(1)
-            }}
-            className="w-full px-4 py-2.5 rounded-lg border border-border bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-          />
-
-          <div className="flex flex-wrap items-center gap-2">
-            {/* Status filter */}
-            <div className="flex rounded-lg border border-border overflow-hidden text-xs font-medium">
-              <button
-                onClick={() => { setFilterStatus('all'); setCurrentPage(1) }}
-                className={`px-3 py-1.5 transition-colors ${filterStatus === 'all' ? 'bg-foreground text-white' : 'bg-card text-foreground hover:bg-surface-alt'}`}
-              >
-                Todos ({products.length})
-              </button>
-              <button
-                onClick={() => { setFilterStatus('active'); setCurrentPage(1) }}
-                className={`px-3 py-1.5 border-l border-border transition-colors ${filterStatus === 'active' ? 'bg-success-solid text-white' : 'bg-card text-foreground hover:bg-surface-alt'}`}
-              >
-                Ativos ({activeCount})
-              </button>
-              <button
-                onClick={() => { setFilterStatus('paused'); setCurrentPage(1) }}
-                className={`px-3 py-1.5 border-l border-border transition-colors ${filterStatus === 'paused' ? 'bg-ink-600 text-white' : 'bg-card text-foreground hover:bg-surface-alt'}`}
-              >
-                Pausados ({pausedCount})
-              </button>
-            </div>
-
-            {/* Category filter */}
             <StyledSelect
               variant="inline"
               value={filterCategory}
               onChange={(v) => { setFilterCategory(v); setCurrentPage(1) }}
               options={categories.map(c => ({ value: c.id, label: c.name }))}
-              emptyLabel="Todas categorias"
-              placeholder="Todas categorias"
-              className="bg-card text-xs font-medium"
+              emptyLabel="Todas as categorias"
+              placeholder="Todas as categorias"
+              className="bg-card text-[13px]"
             />
-
-            {/* Clear filters */}
-            {(filterCategory || filterStatus !== 'all' || searchTerm) && (
-              <button
+            {hasFilters && (
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={() => { setSearchTerm(''); setFilterCategory(''); setFilterStatus('all'); setCurrentPage(1) }}
-                className="text-xs text-muted-foreground hover:text-danger underline transition-colors"
               >
                 Limpar filtros
-              </button>
+              </Button>
             )}
-
-            <span className="text-xs text-muted-foreground ml-auto">
+            <span className="text-[12px] text-muted-foreground tabular-nums sm:ml-auto">
               {filteredProducts.length} produto{filteredProducts.length !== 1 ? 's' : ''}
             </span>
-          </div>
-        </div>
-
-        {/* Error */}
+          </Toolbar>
+        }
+      >
         {error && (
-          <div className="mb-6 p-4 rounded-lg bg-danger-subtle border border-danger-border text-danger">
-            <p className="font-medium">Erro ao carregar produtos</p>
-            <p className="text-sm">{error instanceof Error ? error.message : 'Desconhecido'}</p>
+          <div className="mb-4 p-4 rounded-lg bg-danger-subtle border border-danger-border text-danger">
+            <p className="text-[13.5px] font-medium">Erro ao carregar produtos</p>
+            <p className="text-[13px]">{error instanceof Error ? error.message : 'Desconhecido'}</p>
           </div>
         )}
 
-        {/* Loading */}
         {isLoading ? (
-          <div className="text-center py-12">
-            <div className="w-8 h-8 border-2 border-gold/30 border-t-gold rounded-full animate-spin mx-auto mb-4" />
-            <p className="text-muted-foreground">Carregando produtos...</p>
-          </div>
+          <PageLoading label="Carregando produtos…" />
         ) : filteredProducts.length === 0 ? (
-          <div className="text-center py-12">
-            <p className="text-muted-foreground">Nenhum produto encontrado</p>
-          </div>
+          <Panel>
+            <EmptyState
+              icon={ImageIcon}
+              title="Nenhum produto encontrado"
+              description={hasFilters ? 'Ajuste a busca ou limpe os filtros.' : 'Cadastre o primeiro produto do catálogo.'}
+              action={!hasFilters ? (
+                <Button onClick={() => setCreating(true)}><Plus />Novo produto</Button>
+              ) : undefined}
+            />
+          </Panel>
         ) : (
           <>
-            {/* Table */}
-            <div className="bg-card rounded-xl border border-border shadow-card overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[800px]">
-                  <thead>
-                    <tr className="border-b border-border bg-surface-alt">
-                      <th className="px-4 py-4 text-left text-sm font-semibold text-foreground">Produto</th>
-                      <th className="px-4 py-4 text-left text-sm font-semibold text-foreground">Preço</th>
-                      <th className="px-4 py-4 text-left text-sm font-semibold text-foreground">Categoria</th>
-                      <th className="px-4 py-4 text-center text-sm font-semibold text-foreground">Status</th>
-                      <th className="px-4 py-4 text-right text-sm font-semibold text-foreground">Ações</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {paginatedProducts.map((product, index) => (
-                      <tr key={product.id} className={`hover:bg-surface-alt/80 transition-colors border-b border-border/50 ${index % 2 === 0 ? '' : 'bg-surface-alt/30'}`}>
-                        <td className="px-4 py-4">
-                          <div className="flex items-center gap-4">
-                            {product.main_image ? (
-                              <img
-                                src={product.main_image}
-                                alt={product.name}
-                                className="w-14 h-14 sm:w-16 sm:h-16 rounded-lg object-cover border border-border shadow-sm flex-shrink-0"
-                              />
-                            ) : (
-                              <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-lg bg-surface-alt border border-border flex items-center justify-center flex-shrink-0">
-                                <span className="text-xs text-muted-foreground">S/ Img</span>
-                              </div>
-                            )}
-                            <div className="min-w-0 pr-2">
-                              <p className="font-bold text-foreground text-sm sm:text-base leading-snug mb-1">{product.name}</p>
-                              <p className="text-xs text-muted-foreground">
-                                {product.source === 'manual' ? 'Manual' : product.nuvemshop_product_id ? `NS: ${product.nuvemshop_product_id}` : ''}
-                              </p>
+            <Panel flush className="overflow-hidden">
+              <Table className="min-w-[760px]">
+                <TableHeader>
+                  <TableRow className="hover:bg-transparent">
+                    <TableHead>Produto</TableHead>
+                    <TableHead className="text-right">Preço</TableHead>
+                    <TableHead>Categoria</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {paginatedProducts.map((product) => (
+                    <TableRow key={product.id}>
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          {product.main_image ? (
+                            <img
+                              src={product.main_image}
+                              alt={product.name}
+                              className="w-12 h-12 rounded-md object-cover border border-border flex-shrink-0"
+                            />
+                          ) : (
+                            <div className="w-12 h-12 rounded-md bg-surface border border-border flex items-center justify-center flex-shrink-0">
+                              <ImageIcon className="w-4 h-4 text-ink-400" />
                             </div>
-                          </div>
-                        </td>
-                        <td className="px-4 py-4 whitespace-nowrap">
-                          <div className="flex flex-col gap-1">
-                            <span className="text-sm font-black text-foreground">R$ {product.price.toFixed(2)}</span>
-                            {product.partner_price != null && product.partner_price > 0 && (
-                              <div className="text-xs font-bold text-brand-strong bg-brand-subtle px-1 inline-block rounded self-start">
-                                Parc: R$ {product.partner_price.toFixed(2)}
-                              </div>
-                            )}
-                            {product.compare_at_price && (
-                              <div className="text-xs text-muted-foreground font-medium line-through">
-                                De: R$ {product.compare_at_price.toFixed(2)}
-                              </div>
+                          )}
+                          <div className="min-w-0">
+                            <p className="font-medium text-foreground text-[13.5px] leading-snug">{product.name}</p>
+                            {(product.source === 'manual' || product.nuvemshop_product_id) && (
+                              <p className="text-[12px] text-muted-foreground">
+                                {product.source === 'manual' ? 'Manual' : `NS: ${product.nuvemshop_product_id}`}
+                              </p>
                             )}
                           </div>
-                        </td>
-                        <td className="px-4 py-4">
-                          <StyledSelect
-                            variant="xs"
-                            value={product.category_id || ''}
-                            onChange={(v) => handleUpdateCategory(product.id, v)}
-                            options={categories.map(c => ({ value: c.id, label: c.name }))}
-                            emptyLabel="Sem categoria"
-                            placeholder="Sem categoria"
-                            className="h-8 rounded-lg bg-surface font-semibold text-xs sm:text-sm max-w-[140px] sm:max-w-full"
-                          />
-                        </td>
-                        <td className="px-4 py-3 text-sm text-center">
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right whitespace-nowrap">
+                        <div className="flex flex-col items-end gap-0.5">
+                          <span className="font-semibold text-foreground">R$ {product.price.toFixed(2)}</span>
+                          {product.partner_price != null && product.partner_price > 0 && (
+                            <span className="text-[12px] font-medium text-brand-strong">
+                              Parceiro R$ {product.partner_price.toFixed(2)}
+                            </span>
+                          )}
+                          {product.compare_at_price && (
+                            <span className="text-[12px] text-muted-foreground line-through">
+                              De R$ {product.compare_at_price.toFixed(2)}
+                            </span>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <StyledSelect
+                          variant="xs"
+                          value={product.category_id || ''}
+                          onChange={(v) => handleUpdateCategory(product.id, v)}
+                          options={categories.map(c => ({ value: c.id, label: c.name }))}
+                          emptyLabel="Sem categoria"
+                          placeholder="Sem categoria"
+                          className="h-8 rounded-md text-[12.5px] max-w-[180px]"
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-wrap items-center gap-1">
                           <button
+                            type="button"
                             onClick={() => handleToggleActive(product)}
-                            className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold transition-all ${product.is_active
-                              ? 'bg-success-subtle text-success hover:bg-success-subtle'
-                              : 'bg-ink-100 text-ink-700 hover:bg-ink-200'
-                              }`}
+                            title={product.is_active ? 'Clique para pausar' : 'Clique para ativar'}
+                            className="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                           >
-                            {product.is_active ? 'Ativo' : 'Pausado'}
+                            <Badge variant={product.is_active ? 'success' : 'neutral'} dot className="cursor-pointer">
+                              {product.is_active ? 'Ativo' : 'Pausado'}
+                            </Badge>
                           </button>
-                          {product.is_highlight && (
-                            <span className="inline-block mt-1 px-2 py-0.5 rounded-full bg-brand-subtle text-brand-strong text-[10px] font-bold">
-                              Destaque
-                            </span>
-                          )}
-                          {product.is_new_arrival && (
-                            <span className="inline-block mt-1 px-2 py-0.5 rounded-full bg-success-subtle text-success text-[10px] font-bold">
-                              Lançamento
-                            </span>
-                          )}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-right space-x-2">
-                          <button
-                            onClick={() => handleEdit(product)}
-                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-foreground hover:bg-surface-alt transition-all text-xs font-medium"
-                          >
-                            <Edit2 className="w-3.5 h-3.5" />
+                          {product.is_highlight && <Badge variant="brand">Destaque</Badge>}
+                          {product.is_new_arrival && <Badge variant="info">Lançamento</Badge>}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right whitespace-nowrap">
+                        <div className="inline-flex items-center gap-1">
+                          <Button variant="ghost" size="sm" onClick={() => handleEdit(product)} aria-label="Editar produto">
+                            <Edit2 />
                             <span className="hidden sm:inline">Editar</span>
-                          </button>
-                          <button
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
                             onClick={() => setDeleteId(product.id)}
-                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-danger hover:bg-danger-subtle transition-all text-xs font-medium"
+                            aria-label="Excluir produto"
+                            className="text-danger hover:text-danger hover:bg-danger-subtle"
                           >
-                            <Trash2 className="w-3.5 h-3.5" />
-                            <span className="hidden sm:inline">Deletar</span>
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+                            <Trash2 />
+                            <span className="hidden sm:inline">Excluir</span>
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </Panel>
 
-            {/* Pagination */}
             {totalPages > 1 && (
-              <div className="flex items-center justify-center gap-2 mt-6">
-                <button
+              <div className="flex items-center justify-center gap-2 mt-4">
+                <Button
+                  variant="secondary"
+                  size="icon-sm"
                   onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                   disabled={currentPage === 1}
-                  className="p-2 rounded-lg border border-border hover:bg-card disabled:opacity-50 transition-all"
+                  aria-label="Página anterior"
                 >
-                  <ChevronLeft className="w-4 h-4" />
-                </button>
-                <div className="text-sm text-muted-foreground">
+                  <ChevronLeft />
+                </Button>
+                <span className="text-[13px] text-muted-foreground tabular-nums">
                   Página {currentPage} de {totalPages}
-                </div>
-                <button
+                </span>
+                <Button
+                  variant="secondary"
+                  size="icon-sm"
                   onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                   disabled={currentPage === totalPages}
-                  className="p-2 rounded-lg border border-border hover:bg-card disabled:opacity-50 transition-all"
+                  aria-label="Próxima página"
                 >
-                  <ChevronRight className="w-4 h-4" />
-                </button>
+                  <ChevronRight />
+                </Button>
               </div>
             )}
           </>
         )}
-      </div>
+      </AdminPage>
 
       {/* Reorder Modal */}
-      {showReorder && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-foreground/40 backdrop-blur-sm" onClick={() => setShowReorder(false)} />
-          <div className="relative bg-card rounded-2xl shadow-lg w-full max-w-md max-h-[85vh] flex flex-col">
-            {/* Header */}
-            <div className="flex items-center justify-between px-5 py-4 border-b border-border flex-shrink-0">
-              <div>
-                <h2 className="text-base font-bold text-foreground">Reordenar Produtos</h2>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  {categories.find(c => c.id === reorderCategoryId)?.name} · Arraste para reorganizar
-                </p>
-              </div>
-              <button onClick={() => setShowReorder(false)} className="text-muted-foreground hover:text-foreground transition-colors">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
+      <Dialog open={showReorder} onOpenChange={setShowReorder}>
+        <DialogContent className="max-w-md max-h-[85vh] flex flex-col gap-0 p-0">
+          <DialogHeader className="px-5 py-4 border-b border-border text-left">
+            <DialogTitle className="text-[16px]">Reordenar produtos</DialogTitle>
+            <DialogDescription>
+              {categories.find(c => c.id === reorderCategoryId)?.name} · Arraste para reorganizar
+            </DialogDescription>
+          </DialogHeader>
 
-            {/* Sortable list */}
-            <div className="flex-1 overflow-y-auto px-4 py-3">
-              {reorderItems.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-8">Nenhum produto ativo nesta categoria.</p>
-              ) : (
-                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-                  <SortableContext items={reorderItems.map(p => p.id)} strategy={verticalListSortingStrategy}>
-                    <div className="flex flex-col gap-2">
-                      {reorderItems.map(product => (
-                        <SortableProductRow key={product.id} product={product} />
-                      ))}
-                    </div>
-                  </SortableContext>
-                </DndContext>
-              )}
-            </div>
+          <div className="flex-1 overflow-y-auto px-4 py-3">
+            {reorderItems.length === 0 ? (
+              <p className="text-[13px] text-muted-foreground text-center py-8">Nenhum produto ativo nesta categoria.</p>
+            ) : (
+              <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                <SortableContext items={reorderItems.map(p => p.id)} strategy={verticalListSortingStrategy}>
+                  <div className="flex flex-col gap-2">
+                    {reorderItems.map(product => (
+                      <SortableProductRow key={product.id} product={product} />
+                    ))}
+                  </div>
+                </SortableContext>
+              </DndContext>
+            )}
+          </div>
 
-            {/* Footer */}
-            <div className="px-4 py-3 border-t border-border flex items-center justify-between gap-3 flex-shrink-0">
-              {reorderSaved && (
-                <span className="text-xs text-success font-medium">Ordem salva!</span>
-              )}
-              <div className="flex gap-2 ml-auto">
-                <button
-                  onClick={() => setShowReorder(false)}
-                  className="px-4 py-2 rounded-lg border border-border text-sm hover:bg-surface transition-colors"
-                >
-                  Fechar
-                </button>
-                <button
-                  onClick={handleSaveOrder}
-                  disabled={bulkUpdateSortOrder.isPending || reorderItems.length === 0}
-                  className="px-4 py-2 rounded-lg btn-gold text-sm font-medium disabled:opacity-50 transition-colors"
-                >
-                  {bulkUpdateSortOrder.isPending ? 'Salvando...' : 'Salvar ordem'}
-                </button>
-              </div>
+          <div className="px-4 py-3 border-t border-border flex items-center justify-between gap-3">
+            {reorderSaved && (
+              <span className="text-[12px] text-success font-medium">Ordem salva</span>
+            )}
+            <div className="flex gap-2 ml-auto">
+              <Button variant="secondary" onClick={() => setShowReorder(false)}>Fechar</Button>
+              <Button
+                onClick={handleSaveOrder}
+                disabled={bulkUpdateSortOrder.isPending || reorderItems.length === 0}
+              >
+                {bulkUpdateSortOrder.isPending ? 'Salvando…' : 'Salvar ordem'}
+              </Button>
             </div>
           </div>
-        </div>
-      )}
+        </DialogContent>
+      </Dialog>
 
       {/* Create Product Dialog */}
-      {creating && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div
-            className="absolute inset-0 bg-foreground/40 backdrop-blur-sm"
-            onClick={() => setCreating(false)}
-          />
-          <div className="relative bg-card rounded-2xl shadow-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
-            <h2 className="text-xl font-bold text-foreground mb-4">Novo Produto</h2>
+      <Dialog open={creating} onOpenChange={setCreating}>
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+          <DialogHeader className="text-left">
+            <DialogTitle className="text-[16px]">Novo produto</DialogTitle>
+          </DialogHeader>
 
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1">Nome *</label>
-                <input
-                  type="text"
-                  value={createForm.name}
-                  onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })}
-                  className="w-full px-3 py-2 rounded-lg border border-border bg-card focus:outline-none focus:ring-2 focus:ring-ring"
-                  placeholder="Nome do produto"
-                />
-              </div>
+          <div className="space-y-4">
+            <div>
+              <label className="field-label">Nome *</label>
+              <Input
+                type="text"
+                value={createForm.name}
+                onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })}
+                placeholder="Nome do produto"
+              />
+            </div>
 
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1">Preço de Atacado *</label>
-                <div className="flex gap-3">
-                  <input
-                    placeholder="Catálogo Varejo/Atacado"
+            <div>
+              <span className="field-label">Preços *</span>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[12px] text-muted-foreground mb-1">Catálogo (atacado)</label>
+                  <Input
                     type="number"
                     step="0.01"
                     value={createForm.price || ''}
                     onChange={(e) => setCreateForm({ ...createForm, price: parseFloat(e.target.value) || 0 })}
-                    className="w-full px-3 py-2 rounded-lg border border-border bg-card focus:outline-none focus:ring-2 focus:ring-ring"
+                    className="tabular-nums"
                   />
-                  <input
-                    placeholder="Preço Parceiro"
+                </div>
+                <div>
+                  <label className="block text-[12px] text-brand-strong mb-1">Parceiro</label>
+                  <Input
                     type="number"
                     step="0.01"
                     value={createForm.partner_price || ''}
                     onChange={(e) => setCreateForm({ ...createForm, partner_price: parseFloat(e.target.value) || 0 })}
-                    className="w-full px-3 py-2 rounded-lg border border-brand-border bg-brand-subtle focus:outline-none focus:ring-2 focus:ring-ring placeholder:text-brand-strong placeholder:opacity-70 text-foreground"
+                    className="tabular-nums border-brand-border bg-brand-subtle"
                   />
                 </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1">Preço de Comparação (opcional)</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={createForm.compare_at_price || ''}
-                  onChange={(e) => setCreateForm({ ...createForm, compare_at_price: e.target.value ? parseFloat(e.target.value) : null })}
-                  className="w-full px-3 py-2 rounded-lg border border-border bg-card focus:outline-none focus:ring-2 focus:ring-ring"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1">Imagem Principal</label>
-                <div className="space-y-2">
-                  {createForm.main_image && (
-                    <div className="relative w-24 h-24">
-                      <img src={createForm.main_image} alt="Preview" className="w-24 h-24 rounded-lg object-cover border border-border" />
-                      <button
-                        type="button"
-                        onClick={() => setCreateForm({ ...createForm, main_image: '' })}
-                        className="absolute -top-2 -right-2 w-5 h-5 bg-danger-solid text-white rounded-full flex items-center justify-center text-xs"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
-                    </div>
-                  )}
-                  <input
-                    ref={createFileRef}
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp,image/gif"
-                    className="hidden"
-                    onChange={async (e) => {
-                      const file = e.target.files?.[0]
-                      if (!file) return
-                      try {
-                        const url = await upload(file)
-                        setCreateForm({ ...createForm, main_image: url })
-                      } catch (err) {
-                        alert(`Erro no upload: ${err instanceof Error ? err.message : 'Desconhecido'}`)
-                      }
-                      e.target.value = ''
-                    }}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => createFileRef.current?.click()}
-                    disabled={uploading}
-                    className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border bg-card hover:bg-surface-alt text-sm font-medium text-foreground transition-colors disabled:opacity-60"
-                  >
-                    {uploading ? (
-                      <><RefreshCw className="w-4 h-4 animate-spin" /> Enviando...</>
-                    ) : (
-                      <><Upload className="w-4 h-4" /> Enviar imagem</>
-                    )}
-                  </button>
-                </div>
-              </div>
-
-              <div>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={createForm.is_active}
-                    onChange={(e) => setCreateForm({ ...createForm, is_active: e.target.checked })}
-                    className="w-4 h-4 rounded border-border"
-                  />
-                  <span className="text-sm font-medium text-foreground">Ativo</span>
-                </label>
-              </div>
-
-              <div>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={createForm.is_professional}
-                    onChange={(e) => setCreateForm({ ...createForm, is_professional: e.target.checked })}
-                    className="w-4 h-4 rounded border-border"
-                  />
-                  <span className="text-sm font-medium text-foreground">Uso Profissional (Lavatório)</span>
-                </label>
-              </div>
-
-              <div>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={createForm.is_highlight}
-                    onChange={(e) => setCreateForm({ ...createForm, is_highlight: e.target.checked })}
-                    className="w-4 h-4 rounded border-border"
-                  />
-                  <span className="text-sm font-medium text-foreground">Destaque (Você precisa conhecer)</span>
-                </label>
-              </div>
-
-              <div>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={createForm.is_new_arrival}
-                    onChange={(e) => setCreateForm({ ...createForm, is_new_arrival: e.target.checked })}
-                    className="w-4 h-4 rounded border-border"
-                  />
-                  <span className="text-sm font-medium text-foreground">Lançamento</span>
-                </label>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1">Categoria</label>
-                <StyledSelect
-                  value={createForm.category_id || ''}
-                  onChange={(v) => setCreateForm({ ...createForm, category_id: v || null })}
-                  options={categories.map(c => ({ value: c.id, label: c.name }))}
-                  emptyLabel="Sem categoria"
-                  placeholder="Sem categoria"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1">Classificacao de Destaque</label>
-                <StyledSelect
-                  value={createForm.category_type || ''}
-                  onChange={(v) => setCreateForm({ ...createForm, category_type: v || null })}
-                  options={CATEGORY_TYPE_OPTIONS}
-                  emptyLabel="Sem classificacao"
-                  placeholder="Sem classificacao"
-                />
               </div>
             </div>
 
-            <div className="flex gap-3 mt-6">
-              <button
-                onClick={handleCreate}
-                disabled={createMutation.isPending}
-                className="flex-1 px-4 py-2.5 rounded-lg bg-success-solid hover:bg-success-solid/90 text-white font-medium disabled:opacity-70 transition-colors"
-              >
-                {createMutation.isPending ? 'Criando...' : 'Criar Produto'}
-              </button>
-              <button
-                onClick={() => setCreating(false)}
-                className="flex-1 px-4 py-2.5 rounded-lg border border-border bg-card text-foreground font-medium hover:bg-surface-alt"
-              >
-                Cancelar
-              </button>
+            <div>
+              <label className="field-label">Preço de comparação (opcional)</label>
+              <Input
+                type="number"
+                step="0.01"
+                value={createForm.compare_at_price || ''}
+                onChange={(e) => setCreateForm({ ...createForm, compare_at_price: e.target.value ? parseFloat(e.target.value) : null })}
+                className="tabular-nums"
+              />
+            </div>
+
+            <div>
+              <span className="field-label">Imagem principal</span>
+              <div className="space-y-2">
+                {createForm.main_image && (
+                  <div className="relative w-24 h-24">
+                    <img src={createForm.main_image} alt="Preview" className="w-24 h-24 rounded-xl object-cover border border-border" />
+                    <button
+                      type="button"
+                      onClick={() => setCreateForm({ ...createForm, main_image: '' })}
+                      aria-label="Remover imagem"
+                      className="absolute -top-2 -right-2 w-5 h-5 bg-danger-solid text-white rounded-full flex items-center justify-center"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                )}
+                <input
+                  ref={createFileRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/gif"
+                  className="hidden"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0]
+                    if (!file) return
+                    try {
+                      const url = await upload(file)
+                      setCreateForm({ ...createForm, main_image: url })
+                    } catch (err) {
+                      toast.error(`Erro no upload: ${err instanceof Error ? err.message : 'Desconhecido'}`)
+                    }
+                    e.target.value = ''
+                  }}
+                />
+                <Button type="button" variant="secondary" size="sm" onClick={() => createFileRef.current?.click()} disabled={uploading}>
+                  {uploading ? <><RefreshCw className="animate-spin" /> Enviando…</> : <><Upload /> Enviar imagem</>}
+                </Button>
+              </div>
+            </div>
+
+            <div className="space-y-2.5">
+              {([
+                ['is_active', 'Ativo'],
+                ['is_professional', 'Uso profissional (lavatório)'],
+                ['is_highlight', 'Destaque (Você precisa conhecer)'],
+                ['is_new_arrival', 'Lançamento'],
+              ] as const).map(([key, label]) => (
+                <label key={key} className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={createForm[key]}
+                    onChange={(e) => setCreateForm({ ...createForm, [key]: e.target.checked })}
+                    className="w-4 h-4 rounded border-border accent-primary"
+                  />
+                  <span className="text-[13.5px] text-foreground">{label}</span>
+                </label>
+              ))}
+            </div>
+
+            <div>
+              <span className="field-label">Categoria</span>
+              <StyledSelect
+                value={createForm.category_id || ''}
+                onChange={(v) => setCreateForm({ ...createForm, category_id: v || null })}
+                options={categories.map(c => ({ value: c.id, label: c.name }))}
+                emptyLabel="Sem categoria"
+                placeholder="Sem categoria"
+              />
+            </div>
+
+            <div>
+              <span className="field-label">Classificação de destaque</span>
+              <StyledSelect
+                value={createForm.category_type || ''}
+                onChange={(v) => setCreateForm({ ...createForm, category_type: v || null })}
+                options={CATEGORY_TYPE_OPTIONS}
+                emptyLabel="Sem classificação"
+                placeholder="Sem classificação"
+              />
             </div>
           </div>
-        </div>
-      )}
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="secondary" onClick={() => setCreating(false)}>Cancelar</Button>
+            <Button onClick={handleCreate} disabled={createMutation.isPending}>
+              {createMutation.isPending ? 'Criando…' : 'Criar produto'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Edit Dialog */}
-      {editingId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div
-            className="absolute inset-0 bg-foreground/40 backdrop-blur-sm"
-            onClick={() => { setEditingId(null); setEditForm({}) }}
-          />
-          <div className="relative bg-card rounded-2xl shadow-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
-            <h2 className="text-xl font-bold text-foreground mb-4">Editar Produto</h2>
+      <Dialog open={!!editingId} onOpenChange={(o) => { if (!o) closeEdit() }}>
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+          <DialogHeader className="text-left">
+            <DialogTitle className="text-[16px]">Editar produto</DialogTitle>
+          </DialogHeader>
 
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1">Nome</label>
-                <input
-                  type="text"
-                  value={editForm.name || ''}
-                  onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-                  className="w-full px-3 py-2 rounded-lg border border-border bg-card focus:outline-none focus:ring-2 focus:ring-ring"
-                />
-              </div>
+          <div className="space-y-4">
+            <div>
+              <label className="field-label">Nome</label>
+              <Input
+                type="text"
+                value={editForm.name || ''}
+                onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+              />
+            </div>
 
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1">Preços</label>
-                <div className="flex gap-3">
-                  <div className="flex-1">
-                    <label className="block text-[10px] text-muted-foreground uppercase font-bold mb-1">Catálogo</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={editForm.price ?? 0}
-                      onChange={(e) => setEditForm({ ...editForm, price: parseFloat(e.target.value) })}
-                      className="w-full px-3 py-2 rounded-lg border border-border bg-card focus:outline-none focus:ring-2 focus:ring-ring"
-                    />
-                  </div>
-                  <div className="flex-1">
-                    <label className="block text-[10px] text-brand-strong uppercase font-bold mb-1">Parceiro</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={editForm.partner_price ?? 0}
-                      onChange={(e) => setEditForm({ ...editForm, partner_price: parseFloat(e.target.value) })}
-                      className="w-full px-3 py-2 rounded-lg border border-brand-border bg-brand-subtle focus:outline-none focus:ring-2 focus:ring-ring text-foreground"
-                    />
-                  </div>
+            <div>
+              <span className="field-label">Preços</span>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[12px] text-muted-foreground mb-1">Catálogo (atacado)</label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={editForm.price ?? 0}
+                    onChange={(e) => setEditForm({ ...editForm, price: parseFloat(e.target.value) })}
+                    className="tabular-nums"
+                  />
                 </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1">Preço de Comparação (opcional)</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={editForm.compare_at_price || ''}
-                  onChange={(e) => setEditForm({ ...editForm, compare_at_price: e.target.value ? parseFloat(e.target.value) : null })}
-                  className="w-full px-3 py-2 rounded-lg border border-border bg-card focus:outline-none focus:ring-2 focus:ring-ring"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1">Imagem Principal</label>
-                <div className="space-y-2">
-                  {editForm.main_image && (
-                    <div className="relative w-24 h-24">
-                      <img src={editForm.main_image} alt="Preview" className="w-24 h-24 rounded-lg object-cover border border-border" />
-                      <button
-                        type="button"
-                        onClick={() => setEditForm({ ...editForm, main_image: '' })}
-                        className="absolute -top-2 -right-2 w-5 h-5 bg-danger-solid text-white rounded-full flex items-center justify-center text-xs"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
-                    </div>
-                  )}
-                  <input
-                    ref={editFileRef}
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp,image/gif"
-                    className="hidden"
-                    onChange={async (e) => {
-                      const file = e.target.files?.[0]
-                      if (!file) return
-                      try {
-                        const url = await upload(file)
-                        setEditForm({ ...editForm, main_image: url })
-                      } catch (err) {
-                        alert(`Erro no upload: ${err instanceof Error ? err.message : 'Desconhecido'}`)
-                      }
-                      e.target.value = ''
-                    }}
+                <div>
+                  <label className="block text-[12px] text-brand-strong mb-1">Parceiro</label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={editForm.partner_price ?? 0}
+                    onChange={(e) => setEditForm({ ...editForm, partner_price: parseFloat(e.target.value) })}
+                    className="tabular-nums border-brand-border bg-brand-subtle"
                   />
-                  <button
-                    type="button"
-                    onClick={() => editFileRef.current?.click()}
-                    disabled={uploading}
-                    className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border bg-card hover:bg-surface-alt text-sm font-medium text-foreground transition-colors disabled:opacity-60"
-                  >
-                    {uploading ? (
-                      <><RefreshCw className="w-4 h-4 animate-spin" /> Enviando...</>
-                    ) : (
-                      <><Upload className="w-4 h-4" /> Enviar imagem</>
-                    )}
-                  </button>
                 </div>
-              </div>
-
-              <div>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={editForm.is_active || false}
-                    onChange={(e) => setEditForm({ ...editForm, is_active: e.target.checked })}
-                    className="w-4 h-4 rounded border-border"
-                  />
-                  <span className="text-sm font-medium text-foreground">Ativo</span>
-                </label>
-              </div>
-
-              <div>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={editForm.is_professional || false}
-                    onChange={(e) => setEditForm({ ...editForm, is_professional: e.target.checked })}
-                    className="w-4 h-4 rounded border-border"
-                  />
-                  <span className="text-sm font-medium text-foreground">Uso Profissional (Lavatório)</span>
-                </label>
-              </div>
-
-              <div>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={editForm.is_highlight || false}
-                    onChange={(e) => setEditForm({ ...editForm, is_highlight: e.target.checked })}
-                    className="w-4 h-4 rounded border-border"
-                  />
-                  <span className="text-sm font-medium text-foreground">Destaque (Você precisa conhecer)</span>
-                </label>
-              </div>
-
-              <div>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={editForm.is_new_arrival || false}
-                    onChange={(e) => setEditForm({ ...editForm, is_new_arrival: e.target.checked })}
-                    className="w-4 h-4 rounded border-border"
-                  />
-                  <span className="text-sm font-medium text-foreground">Lançamento</span>
-                </label>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1">Categoria</label>
-                <StyledSelect
-                  value={editForm.category_id || ''}
-                  onChange={(v) => setEditForm({ ...editForm, category_id: v || null })}
-                  options={categories.map(c => ({ value: c.id, label: c.name }))}
-                  emptyLabel="Sem categoria"
-                  placeholder="Sem categoria"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1">Classificacao de Destaque</label>
-                <StyledSelect
-                  value={editForm.category_type || ''}
-                  onChange={(v) => setEditForm({ ...editForm, category_type: (v || null) as CatalogProduct['category_type'] })}
-                  options={CATEGORY_TYPE_OPTIONS}
-                  emptyLabel="Sem classificacao"
-                  placeholder="Sem classificacao"
-                />
               </div>
             </div>
 
-            <div className="flex gap-3 mt-6">
-              <button
-                onClick={handleSaveEdit}
-                disabled={updateMutation.isPending}
-                className="flex-1 px-4 py-2.5 rounded-lg btn-gold font-medium disabled:opacity-70"
-              >
-                {updateMutation.isPending ? 'Salvando...' : 'Salvar'}
-              </button>
-              <button
-                onClick={() => { setEditingId(null); setEditForm({}) }}
-                className="flex-1 px-4 py-2.5 rounded-lg border border-border bg-card text-foreground font-medium hover:bg-surface-alt"
-              >
-                Cancelar
-              </button>
+            <div>
+              <label className="field-label">Preço de comparação (opcional)</label>
+              <Input
+                type="number"
+                step="0.01"
+                value={editForm.compare_at_price || ''}
+                onChange={(e) => setEditForm({ ...editForm, compare_at_price: e.target.value ? parseFloat(e.target.value) : null })}
+                className="tabular-nums"
+              />
+            </div>
+
+            <div>
+              <span className="field-label">Imagem principal</span>
+              <div className="space-y-2">
+                {editForm.main_image && (
+                  <div className="relative w-24 h-24">
+                    <img src={editForm.main_image} alt="Preview" className="w-24 h-24 rounded-xl object-cover border border-border" />
+                    <button
+                      type="button"
+                      onClick={() => setEditForm({ ...editForm, main_image: '' })}
+                      aria-label="Remover imagem"
+                      className="absolute -top-2 -right-2 w-5 h-5 bg-danger-solid text-white rounded-full flex items-center justify-center"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                )}
+                <input
+                  ref={editFileRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/gif"
+                  className="hidden"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0]
+                    if (!file) return
+                    try {
+                      const url = await upload(file)
+                      setEditForm({ ...editForm, main_image: url })
+                    } catch (err) {
+                      toast.error(`Erro no upload: ${err instanceof Error ? err.message : 'Desconhecido'}`)
+                    }
+                    e.target.value = ''
+                  }}
+                />
+                <Button type="button" variant="secondary" size="sm" onClick={() => editFileRef.current?.click()} disabled={uploading}>
+                  {uploading ? <><RefreshCw className="animate-spin" /> Enviando…</> : <><Upload /> Enviar imagem</>}
+                </Button>
+              </div>
+            </div>
+
+            <div className="space-y-2.5">
+              {([
+                ['is_active', 'Ativo'],
+                ['is_professional', 'Uso profissional (lavatório)'],
+                ['is_highlight', 'Destaque (Você precisa conhecer)'],
+                ['is_new_arrival', 'Lançamento'],
+              ] as const).map(([key, label]) => (
+                <label key={key} className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={editForm[key] || false}
+                    onChange={(e) => setEditForm({ ...editForm, [key]: e.target.checked })}
+                    className="w-4 h-4 rounded border-border accent-primary"
+                  />
+                  <span className="text-[13.5px] text-foreground">{label}</span>
+                </label>
+              ))}
+            </div>
+
+            <div>
+              <span className="field-label">Categoria</span>
+              <StyledSelect
+                value={editForm.category_id || ''}
+                onChange={(v) => setEditForm({ ...editForm, category_id: v || null })}
+                options={categories.map(c => ({ value: c.id, label: c.name }))}
+                emptyLabel="Sem categoria"
+                placeholder="Sem categoria"
+              />
+            </div>
+
+            <div>
+              <span className="field-label">Classificação de destaque</span>
+              <StyledSelect
+                value={editForm.category_type || ''}
+                onChange={(v) => setEditForm({ ...editForm, category_type: (v || null) as CatalogProduct['category_type'] })}
+                options={CATEGORY_TYPE_OPTIONS}
+                emptyLabel="Sem classificação"
+                placeholder="Sem classificação"
+              />
             </div>
           </div>
-        </div>
-      )}
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="secondary" onClick={closeEdit}>Cancelar</Button>
+            <Button onClick={handleSaveEdit} disabled={updateMutation.isPending}>
+              {updateMutation.isPending ? 'Salvando…' : 'Salvar alterações'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Delete Confirmation Dialog */}
-      {deleteId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-foreground/40 backdrop-blur-sm" onClick={() => setDeleteId(null)} />
-          <div className="relative bg-card rounded-2xl shadow-lg p-6 w-full max-w-sm">
-            <h2 className="text-lg font-bold text-foreground mb-2">Deletar Produto?</h2>
-            <p className="text-sm text-muted-foreground mb-6">Esta ação não pode ser desfeita.</p>
-
-            <div className="flex gap-3">
-              <button
-                onClick={handleDelete}
-                disabled={deleteMutation.isPending}
-                className="flex-1 px-4 py-2.5 rounded-lg bg-danger-solid text-white font-medium hover:bg-danger-solid/90 disabled:opacity-70"
-              >
-                {deleteMutation.isPending ? 'Deletando...' : 'Deletar'}
-              </button>
-              <button
-                onClick={() => setDeleteId(null)}
-                className="flex-1 px-4 py-2.5 rounded-lg border border-border bg-card text-foreground font-medium hover:bg-surface-alt"
-              >
-                Cancelar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <Dialog open={!!deleteId} onOpenChange={(o) => { if (!o) setDeleteId(null) }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader className="text-left">
+            <DialogTitle className="text-[16px]">Excluir produto?</DialogTitle>
+            <DialogDescription>Esta ação não pode ser desfeita.</DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="secondary" onClick={() => setDeleteId(null)}>Cancelar</Button>
+            <Button variant="destructive" onClick={handleDelete} disabled={deleteMutation.isPending}>
+              {deleteMutation.isPending ? 'Excluindo…' : 'Excluir'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AdminLayout>
   )
 }

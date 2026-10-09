@@ -1,6 +1,9 @@
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import StyledSelect from '@/components/ui/styled-select'
+import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
+import { Checkbox } from '@/components/ui/checkbox'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CRM dos salões — peças compartilhadas pelas telas Clientes, Segmentos e
@@ -70,17 +73,18 @@ export interface CrmFilters {
 type Tone = 'success' | 'info' | 'warning' | 'danger' | 'neutral'
 
 /**
- * Situação → rótulo, explicação e cor. A cor é fixa por situação e vale em
- * toda tela (cards, badge, select): "sumida" é sempre vermelha.
+ * Situação → rótulo (plural para filtros/cards, singular para o badge da
+ * cliente), explicação e cor. A cor é fixa por situação e vale em toda tela
+ * (cards, badge, filtro): "sumida" é sempre vermelha.
  */
-export const STATUS_META: Record<ClientStatus, { label: string; hint: string; tone: Tone }> = {
-  ativa:      { label: 'Ativas',          hint: 'dentro do próprio ritmo de visitas',     tone: 'success' },
-  nova:       { label: 'Novas',           hint: 'primeira visita nos últimos 30 dias',    tone: 'info' },
-  em_risco:   { label: 'Em risco',        hint: 'passaram 1,5× do ritmo habitual',        tone: 'warning' },
-  sumida:     { label: 'Sumidas',         hint: 'passaram 2,5× do ritmo, até 1 ano',      tone: 'danger' },
-  uma_visita: { label: 'Vieram uma vez',  hint: 'uma visita, entre 1 mês e 1 ano atrás',  tone: 'neutral' },
-  perdida:    { label: 'Perdidas',        hint: 'mais de 1 ano sem vir',                  tone: 'neutral' },
-  sem_compra: { label: 'Nunca compraram', hint: 'cadastro ou agendamento, sem comanda',   tone: 'neutral' },
+export const STATUS_META: Record<ClientStatus, { label: string; one: string; hint: string; tone: Tone }> = {
+  ativa:      { label: 'Ativas',          one: 'Ativa',         hint: 'Dentro do próprio ritmo de visitas',    tone: 'success' },
+  nova:       { label: 'Novas',           one: 'Nova',          hint: 'Primeira visita nos últimos 30 dias',   tone: 'info' },
+  em_risco:   { label: 'Em risco',        one: 'Em risco',      hint: 'Passaram 1,5× do ritmo habitual',       tone: 'warning' },
+  sumida:     { label: 'Sumidas',         one: 'Sumida',        hint: 'Passaram 2,5× do ritmo, até 1 ano',     tone: 'danger' },
+  uma_visita: { label: 'Vieram uma vez',  one: 'Veio uma vez',  hint: 'Uma visita, entre 1 mês e 1 ano atrás', tone: 'neutral' },
+  perdida:    { label: 'Perdidas',        one: 'Perdida',       hint: 'Mais de 1 ano sem vir',                 tone: 'neutral' },
+  sem_compra: { label: 'Nunca compraram', one: 'Nunca comprou', hint: 'Cadastro ou agendamento, sem comanda',  tone: 'neutral' },
 }
 
 export const STATUS_ORDER: ClientStatus[] = ['ativa', 'nova', 'em_risco', 'sumida', 'uma_visita', 'perdida', 'sem_compra']
@@ -93,21 +97,12 @@ export const TONE_DOT: Record<Tone, string> = {
   neutral: 'bg-ink-400',
 }
 
-const TONE_BADGE: Record<Tone, string> = {
-  success: 'bg-success-subtle text-success border-success-border',
-  info: 'bg-info-subtle text-info border-info-border',
-  warning: 'bg-warning-subtle text-warning border-warning-border',
-  danger: 'bg-danger-subtle text-danger border-danger-border',
-  neutral: 'bg-muted text-ink-600 border-border',
-}
-
 export function StatusBadge({ status }: { status: ClientStatus }) {
   const m = STATUS_META[status]
   return (
-    <span className={`inline-flex items-center gap-1.5 h-5 px-2 rounded-full border text-[11px] font-medium whitespace-nowrap ${TONE_BADGE[m.tone]}`}>
-      <span className={`w-1.5 h-1.5 rounded-full ${TONE_DOT[m.tone]}`} aria-hidden />
-      {m.label.replace(/s$/, '').replace('Vieram uma vez', 'Veio uma vez').replace('Nunca compraram', 'Nunca comprou')}
-    </span>
+    <Badge variant={m.tone} dot className="whitespace-nowrap shrink-0">
+      {m.one}
+    </Badge>
   )
 }
 
@@ -190,18 +185,20 @@ function NumField({ label, value, onChange, suffix }: {
   label: string; value: number | null | undefined; onChange: (v: number | null) => void; suffix?: string
 }) {
   return (
-    <label className="block">
-      <span className="block text-[12px] font-medium text-ink-600 mb-1">{label}</span>
+    <label className="block min-w-0">
+      <span className="field-label">{label}</span>
       <span className="relative block">
-        <input
+        <Input
           type="number"
           inputMode="numeric"
           min={0}
           value={value ?? ''}
           onChange={e => onChange(numberOrNull(e.target.value))}
-          className="w-full h-9 px-3 pr-12 rounded-md border border-input bg-background text-base md:text-sm text-foreground hover:border-ink-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 numeric"
+          className={`tabular-nums ${suffix ? 'pr-12' : ''}`}
         />
-        {suffix && <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[12px] text-ink-400">{suffix}</span>}
+        {suffix && (
+          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[12px] text-ink-400 pointer-events-none">{suffix}</span>
+        )}
       </span>
     </label>
   )
@@ -212,15 +209,10 @@ function Toggle({ label, hint, checked, onChange }: {
 }) {
   return (
     <label className="flex items-start gap-2.5 cursor-pointer select-none">
-      <input
-        type="checkbox"
-        checked={checked}
-        onChange={e => onChange(e.target.checked)}
-        className="mt-0.5 h-4 w-4 rounded border-input accent-[hsl(var(--primary))]"
-      />
-      <span>
-        <span className="block text-[13px] text-foreground">{label}</span>
-        {hint && <span className="block text-[11px] text-muted-foreground">{hint}</span>}
+      <Checkbox checked={checked} onCheckedChange={v => onChange(v === true)} className="mt-px" />
+      <span className="min-w-0">
+        <span className="block text-[13px] font-medium leading-[18px] text-foreground">{label}</span>
+        {hint && <span className="block text-[12px] text-muted-foreground">{hint}</span>}
       </span>
     </label>
   )
@@ -241,10 +233,10 @@ export function FilterForm({ value, onChange, units, showStatus = false, showUni
   const statuses = value.statuses ?? []
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       {showUnit && (
         <label className="block">
-          <span className="block text-[12px] font-medium text-ink-600 mb-1">Unidade</span>
+          <span className="field-label">Unidade</span>
           <StyledSelect
             value={value.store_id ?? 'all'}
             onChange={v => set('store_id', v === 'all' ? null : v)}
@@ -255,7 +247,7 @@ export function FilterForm({ value, onChange, units, showStatus = false, showUni
 
       {showStatus && (
         <div>
-          <span className="block text-[12px] font-medium text-ink-600 mb-1.5">Situação</span>
+          <span className="field-label">Situação</span>
           <div className="flex flex-wrap gap-1.5">
             {STATUS_ORDER.map(s => {
               const on = statuses.includes(s)
@@ -266,8 +258,8 @@ export function FilterForm({ value, onChange, units, showStatus = false, showUni
                   type="button"
                   aria-pressed={on}
                   onClick={() => set('statuses', on ? statuses.filter(x => x !== s) : [...statuses, s])}
-                  className={`inline-flex items-center gap-1.5 h-8 px-3 rounded-full text-[12px] font-medium transition-colors ${
-                    on ? 'bg-brand-subtle text-brand-strong ring-1 ring-inset ring-brand-border' : 'border border-border text-ink-600 hover:bg-muted'
+                  className={`inline-flex items-center gap-1.5 h-8 px-3 rounded-md border text-[13px] font-medium transition-colors ${
+                    on ? 'bg-brand-subtle border-brand-border text-brand-strong' : 'border-border bg-card text-ink-600 hover:bg-muted'
                   }`}
                 >
                   <span className={`w-1.5 h-1.5 rounded-full ${TONE_DOT[m.tone]}`} aria-hidden />
@@ -276,11 +268,11 @@ export function FilterForm({ value, onChange, units, showStatus = false, showUni
               )
             })}
           </div>
-          <p className="text-[11px] text-muted-foreground mt-1.5">Nenhuma marcada = todas as situações.</p>
+          <p className="text-[12px] text-muted-foreground mt-1.5">Nenhuma marcada = todas as situações.</p>
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 min-[420px]:grid-cols-2 gap-x-3 gap-y-4">
         <NumField label="Sem vir há pelo menos" suffix="dias" value={value.days_since_min} onChange={v => set('days_since_min', v)} />
         <NumField label="Sem vir há no máximo" suffix="dias" value={value.days_since_max} onChange={v => set('days_since_max', v)} />
         <NumField label="Visitas, no mínimo" value={value.visits_min} onChange={v => set('visits_min', v)} />
@@ -290,7 +282,7 @@ export function FilterForm({ value, onChange, units, showStatus = false, showUni
       </div>
 
       <label className="block">
-        <span className="block text-[12px] font-medium text-ink-600 mb-1">Aniversário</span>
+        <span className="field-label">Aniversário</span>
         <StyledSelect
           value={value.birthday ?? 'none'}
           onChange={v => set('birthday', v === 'none' ? null : (v as CrmFilters['birthday']))}
@@ -303,12 +295,12 @@ export function FilterForm({ value, onChange, units, showStatus = false, showUni
         />
       </label>
 
-      <div className="space-y-2.5 pt-1">
-        <Toggle label="Só compram produto" hint="nunca fizeram serviço na unidade"
+      <div className="space-y-3">
+        <Toggle label="Só compram produto" hint="Nunca fizeram serviço na unidade"
           checked={!!value.only_products} onChange={v => set('only_products', v)} />
-        <Toggle label="Com WhatsApp válido" hint="necessário para entrar em campanha"
+        <Toggle label="Com WhatsApp válido" hint="Necessário para entrar em campanha"
           checked={!!value.has_whatsapp} onChange={v => set('has_whatsapp', v)} />
-        <Toggle label="Sem horário marcado" hint="tira quem já tem agendamento futuro"
+        <Toggle label="Sem horário marcado" hint="Tira quem já tem agendamento futuro"
           checked={!!value.exclude_future_appointment} onChange={v => set('exclude_future_appointment', v)} />
       </div>
     </div>

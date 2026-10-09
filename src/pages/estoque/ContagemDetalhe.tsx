@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Loader, Search, AlertTriangle, ArrowLeft, ChevronDown, ChevronUp, Minus, Plus, PackageCheck, CheckCircle2, CircleSlash } from 'lucide-react'
+import { Loader, Search, AlertTriangle, ChevronDown, ChevronUp, Minus, Plus, PackageCheck, CheckCircle2, CircleSlash, ClipboardList } from 'lucide-react'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 import EstoqueLayout from '@/components/estoque/EstoqueLayout'
@@ -42,6 +42,7 @@ interface StockCategoryOption {
 }
 
 // ─── Stepper — linha compacta: label à esquerda, botões grandes à direita ───
+// Usado no celular pela equipe da loja: alvos de toque de 44px e número grande.
 
 function Stepper({
   label,
@@ -56,13 +57,14 @@ function Stepper({
 }) {
   return (
     <div className="flex items-center justify-between gap-2">
-      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wide min-w-0 truncate">{label}</p>
+      <p className="text-[12.5px] font-medium text-muted-foreground min-w-0 truncate">{label}</p>
       <div className="flex items-center gap-1.5 shrink-0">
         <button
           type="button"
+          aria-label={`Diminuir ${label.toLowerCase()}`}
           onClick={() => onChange(Math.max(0, value - 1))}
           disabled={disabled || value === 0}
-          className="w-10 h-9 rounded-xl border border-border bg-surface-alt flex items-center justify-center active:scale-95 transition-transform disabled:opacity-30 shrink-0"
+          className="w-11 h-11 rounded-md border border-border bg-card text-foreground flex items-center justify-center hover:bg-muted active:bg-muted transition-colors disabled:opacity-30 shrink-0"
         >
           <Minus className="w-4 h-4" />
         </button>
@@ -70,16 +72,18 @@ function Stepper({
           type="number"
           inputMode="numeric"
           min={0}
+          aria-label={label}
           disabled={disabled}
           value={value}
           onChange={(e) => onChange(Math.max(0, parseInt(e.target.value) || 0))}
-          className="w-12 h-9 rounded-xl border border-input text-center text-base font-bold bg-card disabled:bg-surface-alt disabled:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+          className="w-14 h-11 rounded-md border border-input text-center text-lg font-semibold tabular-nums bg-card text-foreground disabled:bg-muted disabled:text-muted-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         />
         <button
           type="button"
+          aria-label={`Aumentar ${label.toLowerCase()}`}
           onClick={() => onChange(value + 1)}
           disabled={disabled}
-          className="w-10 h-9 rounded-xl border border-border bg-surface-alt flex items-center justify-center active:scale-95 transition-transform disabled:opacity-30 shrink-0"
+          className="w-11 h-11 rounded-md border border-border bg-card text-foreground flex items-center justify-center hover:bg-muted active:bg-muted transition-colors disabled:opacity-30 shrink-0"
         >
           <Plus className="w-4 h-4" />
         </button>
@@ -142,12 +146,12 @@ function ProductCard({
   }
 
   return (
-    <div className={`rounded-2xl border p-3 flex gap-3 transition-colors ${
+    <div className={`rounded-lg border p-3 flex gap-3 transition-colors ${
       unclassified
         ? 'border-warning-border bg-warning-subtle'
         : isZeroed
           // Zerado = em falta: o card inteiro fica permanentemente vermelho claro
-          ? 'border-danger-border bg-danger-subtle hover:bg-danger-subtle'
+          ? 'border-danger-border bg-danger-subtle'
           : counted
             ? 'border-success-border bg-success-subtle'
             // Pendente = ainda não contado: destaque laranja pra chamar atenção
@@ -156,33 +160,33 @@ function ProductCard({
       {/* Imagem grande à esquerda — identificação visual rápida do produto */}
       {/* Escalona pela largura real do aparelho — em telas ≤ 400px a imagem
           encolhe pra sobrar largura mínima pros steppers sem estourar a página */}
-      <div className="w-24 h-24 min-[420px]:w-28 min-[420px]:h-28 sm:w-32 sm:h-32 rounded-xl overflow-hidden shrink-0 bg-card border border-border self-center">
+      <div className="w-20 h-20 min-[420px]:w-28 min-[420px]:h-28 sm:w-32 sm:h-32 rounded-md overflow-hidden shrink-0 bg-card border border-border self-center">
         {product.main_image ? (
           <img src={product.main_image} alt="" className="w-full h-full object-contain" />
         ) : (
-          <div className="w-full h-full flex items-center justify-center bg-surface-alt text-muted-foreground text-2xl font-bold">
+          <div className="w-full h-full flex items-center justify-center bg-muted text-ink-400 text-2xl font-semibold">
             {product.name.charAt(0).toUpperCase()}
           </div>
         )}
       </div>
 
       {/* Nome + controles orientados à direita */}
-      <div className="flex-1 min-w-0 space-y-1.5">
+      <div className="flex-1 min-w-0 space-y-2">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
-            <p className="text-sm font-semibold text-foreground leading-snug">{product.name}</p>
+            <p className="text-[14px] font-semibold text-foreground leading-snug">{product.name}</p>
             {unclassified ? (
-              <p className="flex items-center gap-1 text-[11px] text-warning font-medium mt-0.5">
-                <AlertTriangle className="w-3 h-3 shrink-0" /> não classificado
+              <p className="flex items-center gap-1 text-[12px] text-warning font-medium mt-0.5">
+                <AlertTriangle className="w-3.5 h-3.5 shrink-0" /> Não classificado
               </p>
             ) : (
-              <p className="text-[11px] text-muted-foreground mt-0.5">
-                {product.package_type === 'CX' ? `${product.units_per_box} un./caixa` : 'conta por unidade avulsa'}
+              <p className="text-[12px] text-muted-foreground mt-0.5">
+                {product.package_type === 'CX' ? `${product.units_per_box} un./caixa` : 'Conta por unidade avulsa'}
               </p>
             )}
             {!unclassified && !counted && (
-              <p className="flex items-center gap-1 text-[11px] text-warning font-semibold mt-0.5">
-                <AlertTriangle className="w-3 h-3 shrink-0" /> ainda não contado
+              <p className="flex items-center gap-1 text-[12px] text-warning font-medium mt-0.5">
+                <AlertTriangle className="w-3.5 h-3.5 shrink-0" /> Ainda não contado
               </p>
             )}
           </div>
@@ -190,14 +194,14 @@ function ProductCard({
             {dirty && <Loader className="w-3.5 h-3.5 animate-spin text-muted-foreground" />}
             {previewTotal != null && (
               <div className="text-right">
-                <p className="text-xl font-black text-foreground leading-none">{previewTotal}</p>
-                <p className="text-[9px] uppercase text-muted-foreground tracking-wide mt-0.5">total</p>
+                <p className="font-title text-[26px] font-semibold text-foreground leading-none tabular-nums">{previewTotal}</p>
+                <p className="text-[11.5px] text-muted-foreground mt-1">total</p>
               </div>
             )}
           </div>
         </div>
 
-        <div className="space-y-1">
+        <div className="space-y-1.5">
           {showBoxes && (
             <Stepper
               label="Caixas"
@@ -216,16 +220,16 @@ function ProductCard({
 
         {!disabled && (
           isZeroed ? (
-            <p className="flex items-center justify-center gap-1 py-0.5 rounded-lg border border-danger-border bg-card text-[11px] font-semibold text-danger">
-              <CircleSlash className="w-3 h-3" /> Zerado — sem estoque
+            <p className="flex items-center justify-center gap-1.5 h-10 rounded-md border border-danger-border bg-card text-[13px] font-medium text-danger">
+              <CircleSlash className="w-4 h-4" /> Zerado — sem estoque
             </p>
           ) : (
             <button
               type="button"
               onClick={markZero}
-              className="w-full flex items-center justify-center gap-1 py-0.5 rounded-lg border border-danger-border bg-card text-[11px] font-medium text-danger hover:text-danger hover:border-danger-border active:scale-[0.99] transition-all"
+              className="w-full flex items-center justify-center gap-1.5 h-10 rounded-md border border-danger-border bg-card text-[13px] font-medium text-danger hover:bg-danger-subtle transition-colors"
             >
-              <CircleSlash className="w-3 h-3" /> Zerado — sem estoque
+              <CircleSlash className="w-4 h-4" /> Zerado — sem estoque
             </button>
           )
         )}
@@ -246,6 +250,7 @@ function CategorySection({
   collapsed,
   onToggle,
   onSave,
+  scrollMarginClass,
 }: {
   sectionRef?: (el: HTMLElement | null) => void
   category: string
@@ -256,34 +261,36 @@ function CategorySection({
   collapsed: boolean
   onToggle: () => void
   onSave: (productId: string, closedBoxes: number, looseUnits: number) => Promise<void>
+  scrollMarginClass: string
 }) {
   // Item com registro (mesmo 0/0 = zerado) conta como preenchido.
   const filledCount = products.filter((p) => itemsByProduct.has(p.id)).length
 
-  // "Sem categoria" fica neutro (cinza) — não é uma categoria real com cor própria.
-  const color = category === 'Sem categoria' ? { bg: '#F3F4F6', text: '#6B7280' } : getCategoryColor(colorIndex)
+  // "Sem categoria" fica neutro — não é uma categoria real com cor própria.
+  const isUncategorized = category === 'Sem categoria'
+  const color = isUncategorized ? null : getCategoryColor(colorIndex)
 
   return (
-    <section ref={sectionRef} className="space-y-2 scroll-mt-32">
+    <section ref={sectionRef} className={`space-y-2 ${scrollMarginClass}`}>
       <button
         type="button"
         onClick={onToggle}
-        className="w-full flex items-center justify-between px-1 py-1.5"
+        aria-expanded={!collapsed}
+        className="w-full min-h-[44px] flex items-center justify-between gap-2 px-1 rounded-md hover:bg-muted/60 transition-colors"
       >
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          {/* Cor da categoria é escolhida pelo usuário (exceção categórica) */}
           <span
-            className="px-2.5 py-1 rounded-lg text-sm font-semibold uppercase tracking-wide"
-            style={{ backgroundColor: color.bg, color: color.text }}
+            className={`inline-flex items-center h-7 px-2.5 rounded-md text-[13px] font-medium truncate ${isUncategorized ? 'bg-muted text-ink-600' : ''}`}
+            style={color ? { backgroundColor: color.bg, color: color.text } : undefined}
           >
             {category}
           </span>
-          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
-            filledCount === products.length ? 'bg-success-subtle text-success' : 'bg-surface-alt text-muted-foreground'
-          }`}>
+          <Badge variant={filledCount === products.length ? 'success' : 'neutral'} className="tabular-nums">
             {filledCount}/{products.length}
-          </span>
+          </Badge>
         </div>
-        {collapsed ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronUp className="w-4 h-4 text-muted-foreground" />}
+        {collapsed ? <ChevronDown className="w-4 h-4 text-ink-400 shrink-0" /> : <ChevronUp className="w-4 h-4 text-ink-400 shrink-0" />}
       </button>
       {!collapsed && (
         <div className="space-y-2">
@@ -498,10 +505,9 @@ export default function EstoqueContagemDetalhe() {
   if (countLoading || productsLoading || storeLoading || (isSatellite && targetsLoading)) {
     return (
       <EstoqueLayout>
-        <div className="text-center py-16">
-          <Loader className="w-8 h-8 animate-spin text-gold-text mx-auto mb-4" />
-          <p className="text-muted-foreground">Carregando contagem…</p>
-        </div>
+        <AdminPage title="Contagem" back={{ to: '/estoque/contagem', label: 'Histórico' }}>
+          <PageLoading label="Carregando contagem…" />
+        </AdminPage>
       </EstoqueLayout>
     )
   }
@@ -509,118 +515,128 @@ export default function EstoqueContagemDetalhe() {
   if (!stockCount) {
     return (
       <EstoqueLayout>
-        <div className="text-center py-16">
-          <p className="text-muted-foreground mb-4">Contagem não encontrada.</p>
-          <Link to="/estoque/contagem" className="text-sm text-foreground font-semibold hover:underline">
-            Voltar ao histórico
-          </Link>
-        </div>
+        <AdminPage title="Contagem" back={{ to: '/estoque/contagem', label: 'Histórico' }}>
+          <Panel flush>
+            <EmptyState
+              icon={ClipboardList}
+              title="Contagem não encontrada"
+              description="Ela pode ter sido apagada ou o link está errado."
+              action={<Button variant="secondary" asChild><Link to="/estoque/contagem">Voltar ao histórico</Link></Button>}
+            />
+          </Panel>
+        </AdminPage>
       </EstoqueLayout>
     )
   }
 
+  const createdLabel = new Date(stockCount.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })
+
   return (
     <EstoqueLayout>
-      <div className="pb-24 space-y-6">
-        {/* Cabeçalho sticky com busca */}
-        <div className="sticky top-14 z-20 -mx-4 sm:-mx-6 px-4 sm:px-6 py-3 bg-surface-alt/95 backdrop-blur-sm space-y-2.5">
-          <div className="flex items-center justify-between gap-2">
-            <Link to="/estoque/contagem" className="flex items-center gap-1 text-xs font-semibold text-muted-foreground hover:text-foreground">
-              <ArrowLeft className="w-3.5 h-3.5" /> Histórico
-            </Link>
-            <p className="text-xs text-muted-foreground">
-              {new Date(stockCount.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })} · {countedProducts}/{totalProducts} contado{countedProducts !== 1 ? 's' : ''}
-            </p>
-          </div>
+      <AdminPage
+        title={`Contagem de ${createdLabel}`}
+        description={`${countedProducts}/${totalProducts} contado${countedProducts !== 1 ? 's' : ''}`}
+        badge={readOnly ? <Badge variant="success">Confirmada</Badge> : <Badge variant="neutral">Rascunho</Badge>}
+        back={{ to: '/estoque/contagem', label: 'Histórico' }}
+      >
+        <div className="space-y-6">
+          {/* Barra sticky: progresso + busca + atalho de categoria */}
+          <div className={`sticky ${stickyTop} z-20 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-3 bg-background/95 backdrop-blur-sm border-b border-border space-y-2.5`}>
+            {totalProducts > 0 && (
+              <div className="flex items-center gap-2">
+                <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all duration-300 ${progressPct === 100 ? 'bg-success-solid' : 'bg-primary'}`}
+                    style={{ width: `${progressPct}%` }}
+                  />
+                </div>
+                <span className={`text-[12px] font-semibold tabular-nums shrink-0 ${progressPct === 100 ? 'text-success' : 'text-muted-foreground'}`}>
+                  {progressPct}%
+                </span>
+              </div>
+            )}
 
-          {totalProducts > 0 && (
+            {readOnly && (
+              <div className="flex items-center gap-2 bg-success-subtle border border-success-border rounded-md px-3 py-2">
+                <CheckCircle2 className="w-4 h-4 text-success shrink-0" />
+                <p className="text-[12.5px] text-success font-medium">
+                  Contagem confirmada em {stockCount.confirmed_at ? new Date(stockCount.confirmed_at).toLocaleString('pt-BR') : '—'} — somente leitura.
+                </p>
+              </div>
+            )}
+
             <div className="flex items-center gap-2">
-              <div className="flex-1 h-2 rounded-full bg-border/70 overflow-hidden">
-                <div
-                  className={`h-full rounded-full transition-all duration-300 ${progressPct === 100 ? 'bg-success-solid' : 'bg-primary'}`}
-                  style={{ width: `${progressPct}%` }}
+              <div className="relative flex-1 min-w-0">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-400 pointer-events-none" />
+                <Input
+                  type="search"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Buscar produto…"
+                  aria-label="Buscar produto"
+                  className="h-11 pl-9"
                 />
               </div>
-              <span className={`text-[11px] font-bold tabular-nums shrink-0 ${progressPct === 100 ? 'text-success' : 'text-muted-foreground'}`}>
-                {progressPct}%
-              </span>
+              {groups.length > 1 && (
+                <StyledSelect
+                  value=""
+                  onChange={(v) => { if (v) jumpToCategory(v) }}
+                  options={groups.map(([category]) => ({ value: category, label: category }))}
+                  placeholder="Categoria…"
+                  className="w-auto h-11 shrink-0 max-w-[45%]"
+                />
+              )}
             </div>
+          </div>
+
+          {groups.map(([category, categoryProducts]) => (
+            <CategorySection
+              key={category}
+              sectionRef={(el) => { sectionRefs.current[category] = el }}
+              category={category}
+              colorIndex={categoryColorByName.get(category)}
+              collapsed={!!collapsedMap[category]}
+              onToggle={() => setCollapsedMap((prev) => ({ ...prev, [category]: !prev[category] }))}
+              products={categoryProducts}
+              itemsByProduct={itemsByProduct}
+              readOnly={readOnly}
+              onSave={handleSaveItem}
+              scrollMarginClass="scroll-mt-[220px] lg:scroll-mt-40"
+            />
+          ))}
+
+          {groups.length === 0 && (
+            <Panel flush>
+              <EmptyState
+                icon={Search}
+                title={isSatellite && assortmentProducts.length === 0 ? 'Nenhum produto para esta loja' : 'Nenhum produto encontrado'}
+                description={isSatellite && assortmentProducts.length === 0
+                  ? 'O sortimento da loja é definido pelas metas de estoque (meta > 0) em Config.'
+                  : 'Tente outro termo de busca.'}
+              />
+            </Panel>
           )}
 
-          {readOnly && (
-            <div className="flex items-center gap-2 bg-success-subtle border border-success-border rounded-xl px-3 py-2">
-              <CheckCircle2 className="w-4 h-4 text-success shrink-0" />
-              <p className="text-xs text-success font-medium">
-                Contagem confirmada em {stockCount.confirmed_at ? new Date(stockCount.confirmed_at).toLocaleString('pt-BR') : '—'} — somente leitura.
-              </p>
+          {/* Barra de confirmação sticky no rodapé — só libera quando todo o
+              sortimento foi contado, pra não deixar item esquecido passar
+              batido pra reposição. */}
+          {!readOnly && (
+            <div className="sticky bottom-0 z-20 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] bg-background/95 backdrop-blur-sm border-t border-border">
+              <Button
+                size="lg"
+                onClick={() => navigate(`/estoque/contagem/${id}/confirmar`)}
+                disabled={!allCounted}
+                className="w-full h-12"
+              >
+                <PackageCheck />
+                {allCounted
+                  ? `Revisar e confirmar (${countedProducts}/${totalProducts})`
+                  : `Faltam ${totalProducts - countedProducts} de ${totalProducts} itens`}
+              </Button>
             </div>
           )}
-
-          <div className="flex items-center gap-2">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <input
-                type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Buscar produto…"
-                className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-input text-sm bg-card text-foreground focus:ring-2 focus:ring-ring focus:outline-none"
-              />
-            </div>
-            {groups.length > 1 && (
-              <StyledSelect
-                value=""
-                onChange={(v) => { if (v) jumpToCategory(v) }}
-                options={groups.map(([category]) => ({ value: category, label: category }))}
-                placeholder="Ir pra categoria…"
-                className="w-auto h-[42px] rounded-xl bg-card shrink-0 max-w-[45%]"
-              />
-            )}
-          </div>
         </div>
-
-        {groups.map(([category, categoryProducts]) => (
-          <CategorySection
-            key={category}
-            sectionRef={(el) => { sectionRefs.current[category] = el }}
-            category={category}
-            colorIndex={categoryColorByName.get(category)}
-            collapsed={!!collapsedMap[category]}
-            onToggle={() => setCollapsedMap((prev) => ({ ...prev, [category]: !prev[category] }))}
-            products={categoryProducts}
-            itemsByProduct={itemsByProduct}
-            readOnly={readOnly}
-            onSave={handleSaveItem}
-          />
-        ))}
-
-        {groups.length === 0 && (
-          <div className="text-center py-16">
-            <p className="text-muted-foreground">
-              {isSatellite && assortmentProducts.length === 0
-                ? 'Nenhum produto cadastrado pra esta loja ainda — o sortimento é definido pelas metas de estoque (meta > 0) em Configurações.'
-                : 'Nenhum produto encontrado.'}
-            </p>
-          </div>
-        )}
-      </div>
-
-      {/* Barra fixa de confirmação — só libera quando todo o sortimento foi contado,
-          pra não deixar item esquecido passar batido pra reposição. */}
-      {!readOnly && (
-        <div className="fixed bottom-0 left-0 right-0 z-30 bg-card border-t border-border px-4 sm:px-6 py-3 shadow-[0_-2px_10px_rgba(0,0,0,0.06)]">
-          <button
-            onClick={() => navigate(`/estoque/contagem/${id}/confirmar`)}
-            disabled={!allCounted}
-            className="w-full max-w-6xl mx-auto flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl btn-gold text-sm font-bold disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <PackageCheck className="w-4 h-4" />
-            {allCounted
-              ? `Revisar e Confirmar (${countedProducts}/${totalProducts})`
-              : `Faltam ${totalProducts - countedProducts} de ${totalProducts} itens`}
-          </button>
-        </div>
-      )}
+      </AdminPage>
     </EstoqueLayout>
   )
 }

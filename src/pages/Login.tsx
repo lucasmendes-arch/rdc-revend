@@ -4,6 +4,7 @@ import { Link, useNavigate, useLocation } from "react-router-dom";
 import logo from "@/assets/logo-rei-dos-cachos.png";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
+import { Button } from "@/components/ui/button";
 
 // ── Phone detection helpers ──────────────────────────────────────────────────
 
@@ -232,22 +233,20 @@ const Login = () => {
             {/* Recuperação só faz sentido no caminho de e-mail. */}
             {!identifierIsPhone && (
               <div className="flex justify-end -mt-1">
-                <button
+                <Button
                   type="button"
+                  variant="ghost"
+                  size="xs"
                   onClick={handleResetPassword}
                   disabled={resetLoading}
-                  className="text-[12px] font-medium text-ink-500 hover:text-foreground transition-colors disabled:opacity-50"
+                  className="text-[12px] text-ink-500"
                 >
                   {resetLoading ? "Enviando…" : "Esqueci minha senha"}
-                </button>
+                </Button>
               </div>
             )}
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full h-10 flex items-center justify-center gap-2 rounded-md btn-primary text-[14px] mt-2"
-            >
+            <Button type="submit" size="lg" disabled={loading} className="w-full mt-2">
               {loading ? (
                 <>
                   <div className="w-3.5 h-3.5 rounded-full border-2 border-current/30 border-t-current animate-spin" />
@@ -259,7 +258,7 @@ const Login = () => {
                   <ArrowRight className="w-4 h-4" />
                 </>
               )}
-            </button>
+            </Button>
           </form>
 
           <div className="mt-5 pt-5 border-t border-border text-center">

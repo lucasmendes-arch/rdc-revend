@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
-import { ArrowRight, Crown, Lock, CheckCircle } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { ArrowRight, Lock, CheckCircle } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
 import logo from "@/assets/logo-rei-dos-cachos.png";
 import { supabase } from "@/lib/supabase";
 
@@ -58,128 +59,115 @@ const RedefinirSenha = () => {
     setTimeout(() => navigate("/login"), 2000);
   };
 
+  // Mesmo campo do Login: 40px, ícone à esquerda, foco em anel.
+  const inputClass =
+    "w-full h-10 pl-10 pr-3 rounded-md border border-input bg-background shadow-xs text-base md:text-sm text-foreground tracking-snug placeholder:text-ink-400 transition-colors hover:border-ink-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:border-transparent";
+
   return (
-    <div className="min-h-screen bg-surface-alt flex flex-col">
-      {/* Header */}
-      <header className="bg-card border-b border-border px-4 sm:px-6 h-16 flex items-center">
-        <div className="container mx-auto flex items-center justify-between">
-          <div className="select-none pointer-events-none">
-            <img src={logo} alt="Rei dos Cachos" className="h-12 w-auto" />
-          </div>
-        </div>
-      </header>
+    // Mesmo shell do Login: centralizado, logo em cima, luz ambiente.
+    <div className="min-h-screen bg-background bg-ambient flex flex-col">
+      <main className="flex-1 flex items-center justify-center px-4 py-12">
+        <div className="w-full max-w-[380px]">
+          <img src={logo} alt="Rei dos Cachos" className="h-14 w-auto mx-auto mb-10" />
 
-      {/* Main */}
-      <main className="flex-1 flex items-center justify-center px-4 py-16">
-        <div className="w-full max-w-md">
-          <div className="surface-card p-6 sm:p-7">
-            {/* Sucesso e neutro carregam significados diferentes — o ícone
-                deixa de ser o mesmo blob dourado nos dois estados. */}
-            <div
-              className={`w-10 h-10 rounded-lg border flex items-center justify-center mx-auto mb-5 ${
-                success
-                  ? 'border-success-border bg-success-subtle'
-                  : 'border-brand-border bg-brand-subtle'
-              }`}
-            >
-              {success ? (
-                <CheckCircle className="w-4 h-4 text-success" />
-              ) : (
-                <Crown className="w-4 h-4 text-brand-strong" />
-              )}
+          {success ? (
+            <div className="text-center">
+              <div className="w-10 h-10 rounded-full border border-success-border bg-success-subtle flex items-center justify-center mx-auto mb-5">
+                <CheckCircle className="w-5 h-5 text-success" />
+              </div>
+              <h1 className="text-[26px] leading-tight text-foreground">Senha redefinida</h1>
+              <p className="text-[14px] text-muted-foreground mt-2">
+                Sua senha foi atualizada. Levando você para o login…
+              </p>
             </div>
+          ) : (
+            <>
+              <h1 className="text-[26px] leading-tight text-foreground text-center">Redefinir senha</h1>
+              <p className="text-[14px] text-muted-foreground mt-2 mb-8 text-center">
+                Escolha uma nova senha para a sua conta.
+              </p>
 
-            {success ? (
-              <>
-                <h1 className="text-2xl font-bold text-foreground text-center mb-2">
-                  Senha redefinida!
-                </h1>
-                <p className="text-muted-foreground text-center text-sm">
-                  Sua senha foi atualizada com sucesso. Redirecionando para o login...
+              {error && (
+                <div
+                  role="alert"
+                  className="mb-4 px-3 py-2.5 rounded-md bg-danger-subtle border border-danger-border text-danger text-[13px]"
+                >
+                  {error}
+                </div>
+              )}
+
+              {/* Estado transitório, não alerta: nada deu errado ainda. */}
+              {!tokenReady && (
+                <div role="status" className="mb-4 px-3 py-2.5 rounded-md bg-muted border border-border text-muted-foreground text-[13px] flex items-center gap-2">
+                  <span className="w-3.5 h-3.5 rounded-full border-2 border-ink-300 border-t-foreground animate-spin shrink-0" />
+                  Validando o link de recuperação…
+                </div>
+              )}
+
+              <form onSubmit={handleSubmit} className="flex flex-col gap-3.5">
+                <div>
+                  <label htmlFor="new-password" className="field-label">Nova senha</label>
+                  <div className="relative">
+                    <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-400 pointer-events-none" />
+                    <input
+                      id="new-password"
+                      type="password"
+                      required
+                      autoComplete="new-password"
+                      value={password}
+                      onChange={(e) => { setPassword(e.target.value); setError(""); }}
+                      placeholder="Mínimo 6 caracteres"
+                      className={inputClass}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label htmlFor="confirm-password" className="field-label">Confirmar nova senha</label>
+                  <div className="relative">
+                    <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-400 pointer-events-none" />
+                    <input
+                      id="confirm-password"
+                      type="password"
+                      required
+                      autoComplete="new-password"
+                      value={confirmPassword}
+                      onChange={(e) => { setConfirmPassword(e.target.value); setError(""); }}
+                      placeholder="Repita a nova senha"
+                      className={inputClass}
+                    />
+                  </div>
+                </div>
+
+                <Button type="submit" size="lg" disabled={loading || !tokenReady} className="w-full mt-2">
+                  {loading ? (
+                    <>
+                      <span className="w-3.5 h-3.5 rounded-full border-2 border-current/30 border-t-current animate-spin" />
+                      Salvando…
+                    </>
+                  ) : (
+                    <>
+                      Salvar nova senha
+                      <ArrowRight />
+                    </>
+                  )}
+                </Button>
+              </form>
+
+              <div className="mt-5 pt-5 border-t border-border text-center">
+                <p className="text-[13px] text-muted-foreground">
+                  O link expirou?{" "}
+                  <Link to="/login" className="font-semibold text-brand-strong hover:underline underline-offset-4">
+                    Peça um novo no login
+                  </Link>
                 </p>
-              </>
-            ) : (
-              <>
-                <h1 className="text-2xl font-bold text-foreground text-center mb-1">
-                  Redefinir Senha
-                </h1>
-                <p className="text-muted-foreground text-center text-sm mb-8">
-                  Digite sua nova senha abaixo
-                </p>
+              </div>
+            </>
+          )}
 
-                {error && (
-                  <div className="mb-4 px-4 py-3 rounded-lg bg-danger-subtle border border-danger-border text-danger text-sm">
-                    {error}
-                  </div>
-                )}
-
-                {/* Estado transitório, não alerta: nada deu errado ainda. */}
-                {!tokenReady && (
-                  <div className="mb-4 px-3 py-2.5 rounded-md bg-muted border border-border text-muted-foreground text-[13px] flex items-center gap-2">
-                    <span className="w-3.5 h-3.5 rounded-full border-2 border-ink-300 border-t-foreground animate-spin shrink-0" />
-                    Validando o link de recuperação…
-                  </div>
-                )}
-
-                <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-foreground mb-1.5">
-                      Nova senha
-                    </label>
-                    <div className="relative">
-                      <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                      <input
-                        type="password"
-                        required
-                        value={password}
-                        onChange={(e) => { setPassword(e.target.value); setError(""); }}
-                        placeholder="Mínimo 6 caracteres"
-                        className="w-full pl-10 pr-4 py-3 rounded-lg border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-ink-300 transition-all"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-foreground mb-1.5">
-                      Confirmar nova senha
-                    </label>
-                    <div className="relative">
-                      <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                      <input
-                        type="password"
-                        required
-                        value={confirmPassword}
-                        onChange={(e) => { setConfirmPassword(e.target.value); setError(""); }}
-                        placeholder="Repita a nova senha"
-                        className="w-full pl-10 pr-4 py-3 rounded-lg border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-ink-300 transition-all"
-                      />
-                    </div>
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={loading || !tokenReady}
-                    className="w-full flex items-center justify-center gap-2.5 py-3.5 rounded-xl font-semibold text-base btn-gold disabled:opacity-70 disabled:cursor-not-allowed mt-2"
-                  >
-                    {loading ? (
-                      <>
-                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                        Salvando...
-                      </>
-                    ) : (
-                      <>
-                        Salvar nova senha
-                        <ArrowRight className="w-4 h-4" />
-                      </>
-                    )}
-                  </button>
-                </form>
-              </>
-            )}
-          </div>
-
-          <p className="text-center text-xs text-muted-foreground mt-6">
-            🔒 Acesso seguro e exclusivo para revendedores cadastrados
+          <p className="flex items-center justify-center gap-1.5 text-center text-[12px] text-ink-400 mt-5">
+            <Lock className="w-3 h-3" />
+            Acesso restrito a parceiros cadastrados
           </p>
         </div>
       </main>

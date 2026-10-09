@@ -1,11 +1,12 @@
 import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Loader, TrendingUp } from 'lucide-react'
+import { Boxes, TrendingUp } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useMyStore } from '@/hooks/useMyStore'
 import { naturalCompare } from '@/lib/naturalSort'
 import { getCategoryColor } from '@/lib/stockCategoryColors'
 import { sortByStoreOrder } from '@/lib/storeOrder'
+import { Panel, EmptyState, PageLoading } from '@/components/admin/ui/AdminPage'
 
 interface StockRow {
   store_id: string
@@ -152,47 +153,49 @@ export default function StockPivotTable({ storeId }: StockPivotTableProps) {
   const storeColPct = (STORE_COL_WIDTH / tableWidthPx) * 100
   const totalColPct = (TOTAL_COL_WIDTH / tableWidthPx) * 100
 
-  if (isLoading) {
-    return (
-      <div className="text-center py-16">
-        <Loader className="w-8 h-8 animate-spin text-gold-text mx-auto mb-4" />
-        <p className="text-muted-foreground">Carregando…</p>
-      </div>
-    )
-  }
+  if (isLoading) return <PageLoading />
 
   if (error) {
     return (
-      <div className="bg-card rounded-2xl border border-border shadow-card p-6 text-center text-sm text-danger">
+      <Panel className="text-center text-[13px] text-danger">
         Erro ao carregar estoque: {error instanceof Error ? error.message : 'desconhecido'}
-      </div>
+      </Panel>
     )
   }
 
   if (groupedByCategory.length === 0) {
     return (
-      <div className="bg-card rounded-2xl border border-border shadow-card p-8 text-center">
-        <p className="text-muted-foreground">Nenhuma contagem confirmada ainda.</p>
-      </div>
+      <Panel flush>
+        <EmptyState
+          icon={Boxes}
+          title="Nenhuma contagem confirmada ainda"
+          description="O estoque aparece aqui assim que uma loja confirmar a primeira contagem."
+        />
+      </Panel>
     )
   }
 
+  // Chip violeta de "acima do dobro da meta" — exceção categórica de unidade/loja (design-tokens §8).
+  const overstockChip = 'inline-flex items-center gap-0.5 rounded-full bg-violet-50 px-1.5 py-0.5 text-xs font-semibold text-violet-700 ring-1 ring-inset ring-violet-200 dark:bg-violet-500/15 dark:text-violet-300 dark:ring-violet-500/30'
+
   return (
-    <div className="space-y-4 pb-8">
+    <div className="space-y-6">
       {groupedByCategory.map(([category, categoryRows]) => {
-        const color = category === 'Sem categoria' ? { bg: '#F3F4F6', text: '#6B7280' } : getCategoryColor(categoryColorByName.get(category))
+        const isUncategorized = category === 'Sem categoria'
+        const color = isUncategorized ? null : getCategoryColor(categoryColorByName.get(category))
         return (
           <section key={category} className="space-y-2">
+            {/* Cor da categoria é escolhida pelo usuário (exceção categórica) */}
             <span
-              className="inline-block px-2.5 py-1 rounded-lg text-sm font-semibold uppercase tracking-wide"
-              style={{ backgroundColor: color.bg, color: color.text }}
+              className={`inline-flex items-center h-6 px-2 rounded-md text-[12.5px] font-medium ${isUncategorized ? 'bg-muted text-ink-600' : ''}`}
+              style={color ? { backgroundColor: color.bg, color: color.text } : undefined}
             >
               {category}
             </span>
-            <div className="bg-card rounded-2xl border border-border shadow-card overflow-hidden">
+            <div className="rounded-lg border border-border bg-card shadow-xs overflow-hidden">
               <div className="overflow-x-auto">
                 <table
-                  className="table-fixed w-full"
+                  className="data-table table-fixed"
                   style={{ minWidth: tableWidthPx }}
                 >
                   <colgroup>
@@ -201,24 +204,24 @@ export default function StockPivotTable({ storeId }: StockPivotTableProps) {
                     <col style={{ width: `${totalColPct}%` }} />
                   </colgroup>
                   <thead>
-                    <tr className="border-b border-border bg-surface-alt">
-                      <th className="px-4 py-2.5 text-left text-xs font-semibold text-foreground">Produto</th>
+                    <tr>
+                      <th>Produto</th>
                       {storeColumns.map((s) => (
-                        <th key={s.id} className="px-2 py-2.5 text-center text-xs font-semibold text-foreground truncate" title={s.name}>
+                        <th key={s.id} className="!text-center truncate" title={s.name}>
                           {s.name}
                         </th>
                       ))}
-                      <th className="px-2 py-2.5 text-center text-xs font-bold text-foreground bg-surface">{storeId ? 'Quantidade' : 'Total'}</th>
+                      <th className="!text-center !text-foreground">{storeId ? 'Quantidade' : 'Total'}</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {categoryRows.map((entry, index) => {
+                    {categoryRows.map((entry) => {
                       const lastValue = storeId ? entry.totalsByStore.get(storeId) : entry.total
                       const lastTarget = storeId ? entry.targetsByStore.get(storeId) : undefined
                       const lastOverstocked = typeof lastValue === 'number' && typeof lastTarget === 'number' && lastTarget > 0 && lastValue > lastTarget * 2
                       return (
-                        <tr key={entry.product_id} className={index % 2 === 0 ? '' : 'bg-surface-alt/50'}>
-                          <td className="px-4 py-2.5 text-sm font-medium text-foreground truncate" title={entry.product_name}>
+                        <tr key={entry.product_id}>
+                          <td className="font-medium text-foreground truncate" title={entry.product_name}>
                             {entry.product_name}
                           </td>
                           {storeColumns.map((s) => {
@@ -228,15 +231,15 @@ export default function StockPivotTable({ storeId }: StockPivotTableProps) {
                             return (
                               <td
                                 key={s.id}
-                                className="px-2 py-2.5 text-sm text-center"
+                                className="text-center"
                                 title={isOverstocked ? `Meta em ${s.name}: ${target}` : undefined}
                               >
                                 {value === undefined ? (
                                   <span className="text-muted-foreground">—</span>
                                 ) : value === null ? (
-                                  <span className="text-[10px] font-semibold text-warning">não classif.</span>
+                                  <span className="text-[11.5px] font-medium text-warning">não classif.</span>
                                 ) : isOverstocked ? (
-                                  <span className="inline-flex items-center gap-0.5 rounded-full bg-violet-50 px-1.5 py-0.5 text-xs font-semibold text-violet-700 ring-1 ring-inset ring-violet-200 dark:bg-violet-500/15 dark:text-violet-300 dark:ring-violet-500/30">
+                                  <span className={overstockChip}>
                                     {value}
                                     <TrendingUp className="w-3 h-3 shrink-0" />
                                   </span>
@@ -246,14 +249,14 @@ export default function StockPivotTable({ storeId }: StockPivotTableProps) {
                               </td>
                             )
                           })}
-                          <td className="px-2 py-2.5 text-sm text-center font-bold bg-surface">
+                          <td className="text-center font-semibold bg-surface">
                             {storeId ? (
                               lastValue === undefined ? (
                                 <span className="text-muted-foreground">—</span>
                               ) : lastValue === null ? (
-                                <span className="text-[10px] font-semibold text-warning">não classif.</span>
+                                <span className="text-[11.5px] font-medium text-warning">não classif.</span>
                               ) : lastOverstocked ? (
-                                <span className="inline-flex items-center gap-0.5 rounded-full bg-violet-50 px-1.5 py-0.5 text-xs font-semibold text-violet-700 ring-1 ring-inset ring-violet-200 dark:bg-violet-500/15 dark:text-violet-300 dark:ring-violet-500/30">
+                                <span className={overstockChip}>
                                   {lastValue}
                                   <TrendingUp className="w-3 h-3 shrink-0" />
                                 </span>
