@@ -182,13 +182,17 @@ export async function searchClients(filters: CrmFilters, sort: string, limit: nu
   return data as { total: number; with_whatsapp: number; rows: SalonClient[] }
 }
 
-/** Contagens/somas da seleção; ver supabase/migrations/20261009000023_salon_crm_overview_more_kpis.sql. */
+/** Contagens/somas da seleção; ver supabase/migrations/20261009000024_salon_crm_return_90d.sql. */
 export interface CrmKpis {
   total: number
   /** Com pelo menos 1 visita. */
   with_purchase: number
   /** Com 2+ visitas. */
   returned: number
+  /** 1ª visita entre 15 e 3 meses antes da data de referência (teve 90 dias para voltar). */
+  cohort_90: number
+  /** Do grupo acima, voltaram em até 90 dias. */
+  returned_90: number
   /** Com compra e não "perdida" (comprou no último ano). */
   recent: number
   /** Situação "ativa". */

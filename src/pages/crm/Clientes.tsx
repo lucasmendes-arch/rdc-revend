@@ -72,9 +72,9 @@ const num = (n: number) => Number(n).toLocaleString('pt-BR')
 function KpiCards({ kpis }: { kpis: CrmKpis | null }) {
   const cards: { icon: LucideIcon; label: string; value: (k: CrmKpis) => string; hint: (k: CrmKpis) => string }[] = [
     {
-      icon: Repeat, label: 'Taxa de retorno',
-      value: k => pct(k.returned, k.with_purchase),
-      hint: k => `${num(k.returned)} de ${num(k.with_purchase)} voltaram (2+ visitas)`,
+      icon: Repeat, label: 'Retorno em 90 dias',
+      value: k => pct(k.returned_90, k.cohort_90),
+      hint: k => `${num(k.returned_90)} de ${num(k.cohort_90)} novas voltaram em até 90 dias`,
     },
     {
       icon: HeartHandshake, label: 'Taxa de fidelização',
@@ -125,6 +125,10 @@ function MoreKpisSheet({ kpis, open, onClose }: { kpis: CrmKpis | null; open: bo
     {
       title: 'Retenção e ciclo',
       rows: [
+        {
+          label: 'Retorno geral', value: pct(k.returned, k.with_purchase),
+          hint: `${num(k.returned)} de ${num(k.with_purchase)} com compra voltaram alguma vez (2+ visitas), em todo o histórico`,
+        },
         {
           label: 'Em risco', value: pct(k.at_risk, k.active + k.at_risk),
           hint: `${num(k.at_risk)} em risco de ${num(k.active + k.at_risk)} ativas ou em risco — a fila de reativação`,
