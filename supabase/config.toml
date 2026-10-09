@@ -407,3 +407,8 @@ verify_jwt = false
 # parâmetro "secret" na query), verificado em tempo constante e fail-closed.
 [functions.webhook-uazapi]
 verify_jwt = false
+
+# Webhooks do Trinks (SNS), repassados pelo n8n. Sem JWT: a autenticidade vem
+# da assinatura da AWS, verificada na função.
+[functions.trinks-webhook]
+verify_jwt = false

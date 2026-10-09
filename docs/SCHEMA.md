@@ -1399,6 +1399,26 @@ Dados de faturamento dos salões coletados do Trinks pela edge function `sync-tr
 > mesmo padrão de `contract_automation_secret`.
 > Agendamento em `20260728000002`: `trigger_trinks_sync(idx)` + 5 jobs pg_cron
 > escalonados de 3 em 3 min — **criados inativos** de propósito (ver migration).
+> **Desde 30/09/2026 o `sync-trinks` não funciona:** o login automatizado é barrado
+> pelo AWS WAF do Trinks. A fonte passou a ser o webhook (abaixo).
+
+#### `trinks_webhook_events` (`20261008000001`) — caixa de entrada dos webhooks
+Camada bruta e imutável: 1 linha por mensagem SNS, chave natural `message_id`
+(UNIQUE — o SNS reentrega e o upsert com `ignoreDuplicates` descarta a repetição).
+Gravada pela edge function `trinks-webhook` depois de validar a assinatura da AWS.
+
+| Coluna | Uso |
+|---|---|
+| `sns_type` | `Notification` / `SubscriptionConfirmation` / `UnsubscribeConfirmation` |
+| `event_type` | `TipoDeEvento` do Trinks (1 fechamento, 2 estorno, 3/4 cliente, 5–7 profissional, 8–10 estabelecimento, 11–13 agendamento) |
+| `action` | 1 inclusão, 2 alteração, 3 exclusão, 9 estorno |
+| `establishment_id` / `store_id` | estabelecimento do Trinks; `store_id` via `trinks_units` (null se a unidade não está mapeada) |
+| `payload` | `Message` parseada; `envelope` = mensagem SNS inteira |
+| `processed_at` / `process_error` | reservados para a camada de processamento |
+
+> **Contém dados pessoais de clientes** (CPF, e-mail, telefone, endereço), guardados
+> de propósito: consentimento LGPD colhido pela rede. RLS: leitura `is_admin()`,
+> escrita só `service_role`.
 
 ---
 
