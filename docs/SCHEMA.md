@@ -1388,6 +1388,9 @@ Dados de faturamento dos salões coletados do Trinks pela edge function `sync-tr
 | `trinks_product_sales` | `(store_id, business_date, item_key)` |
 | `trinks_professional_sales` | `(store_id, business_date, professional_key)` |
 | `trinks_sync_runs` | 1 linha por execução |
+| `trinks_professionals` | `(store_id, trinks_professional_id)` — nome/apelido dos IDs, vindo dos webhooks 5/6 |
+
+> **Nome do profissional chega depois** (`20261009000009`): fechamento e agendamento do webhook só trazem o ID; até o evento 5/6 chegar, o rótulo é "Profissional #<id>". O trigger `trg_trinks_professional_relabel` em `trinks_professionals` troca esse rótulo em `trinks_sale_items`/`trinks_appointments` (por `trinks_professional_id`) e recalcula só os dias afetados. Rótulo = apelido, senão nome — igual ao CSV, para a mesma pessoa não virar duas linhas. Para puxar o nome de um profissional: salvar o cadastro dele no Trinks.
 
 > `business_date` é **regime de caixa** (data de pagamento, não de atendimento) —
 > é o que o filtro do relatório do Trinks usa; ver `docs/trinks-endpoints.md`.
