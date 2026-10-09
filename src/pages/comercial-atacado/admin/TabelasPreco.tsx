@@ -461,8 +461,10 @@ export default function AdminTabelasPreco() {
       id: currentList.id,
       name: infoForm.name.trim(),
       description: infoForm.description.trim() || null,
+    }, {
+      // Só depois do retorno: antes o toast saía mesmo quando a gravação falhava.
+      onSuccess: () => toast.success('Tabela atualizada'),
     })
-    toast.success('Tabela atualizada')
   }
 
   function handleToggleActive(list: PriceList) {
