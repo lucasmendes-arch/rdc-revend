@@ -14,6 +14,10 @@
  * numa transação (trinks_import_financeiro). Arquivos são processados do
  * gerado mais antigo para o mais novo, então a exportação mais recente vence.
  *
+ * Agendamentos de hoje em diante viram a carga da agenda espelhada (ver
+ * rpcCalls e 20261009000020): exportar a Agenda até +60 dias e rodar de novo
+ * sempre que quiser reconciliar com o Trinks.
+ *
  * Credenciais: VITE_SUPABASE_URL e SUPABASE_SERVICE_ROLE do .env.local.
  * Ver docs/trinks-endpoints.md.
  */
@@ -49,6 +53,54 @@ function loadEnv(): Record<string, string> {
 }
 
 const brl = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+
+type Report = FinanceiroReport | ClientesReport | AgendamentosReport | ComissoesReport
+
+/** Hoje em Brasília, como YYYY-MM-DD. */
+function todaySaoPaulo(): string {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date())
+}
+
+function addDays(iso: string, days: number): string {
+  const d = new Date(`${iso}T12:00:00Z`)
+  d.setUTCDate(d.getUTCDate() + days)
+  return d.toISOString().slice(0, 10)
+}
+
+/**
+ * Agendamentos com período chegando a hoje ou depois são divididos: o passado
+ * entra como histórico (trinks_import_agendamentos, que define a cobertura de
+ * CSV); de hoje em diante entra como carga da agenda (trinks_import_agenda_seed),
+ * que o webhook vai substituindo e que não desliga o webhook nos resumos.
+ */
+function rpcCalls(report: Report) {
+  const whole = {
+    rpc: RPC_BY_TYPE[report.type] as string,
+    shaSuffix: '',
+    period: 'period_start' in report ? { period_start: report.period_start, period_end: report.period_end } : {},
+    rows: report.rows as unknown[],
+  }
+  if (report.type !== 'agendamentos') return [whole]
+
+  const today = todaySaoPaulo()
+  if (report.period_end < today) return [whole]
+
+  const calls = []
+  if (report.period_start < today) {
+    calls.push({
+      ...whole,
+      period: { period_start: report.period_start, period_end: addDays(today, -1) },
+      rows: report.rows.filter(r => r.appointment_date < today),
+    })
+  }
+  calls.push({
+    rpc: 'trinks_import_agenda_seed',
+    shaSuffix: ':agenda',
+    period: { period_start: report.period_start < today ? today : report.period_start, period_end: report.period_end },
+    rows: report.rows.filter(r => r.appointment_date >= today),
+  })
+  return calls
+}
 
 async function main() {
   const dir = process.argv[2]
@@ -120,17 +172,18 @@ async function main() {
   console.log(`\nunidade: ${store.name} (${slug})`)
 
   for (const p of parsed) {
-    const importMeta = { file_name: p.file, file_sha256: p.sha, generated_at: p.report.generated_at }
-    const period = 'period_start' in p.report
-      ? { period_start: p.report.period_start, period_end: p.report.period_end }
-      : {}
-    const { data, error } = await db.rpc(RPC_BY_TYPE[p.report.type], {
-      p_store_id: store.id,
-      p_import: { ...importMeta, ...period },
-      p_rows: p.report.rows,
-    })
-    if (error) throw new Error(`${p.file}: ${error.message}`)
-    console.log(`  ${p.file}: ${JSON.stringify(data)}`)
+    for (const call of rpcCalls(p.report)) {
+      const { data, error } = await db.rpc(call.rpc, {
+        p_store_id: store.id,
+        p_import: {
+          file_name: p.file, file_sha256: p.sha + call.shaSuffix,
+          generated_at: p.report.generated_at, ...call.period,
+        },
+        p_rows: call.rows,
+      })
+      if (error) throw new Error(`${p.file}: ${error.message}`)
+      console.log(`  ${p.file}${call.shaSuffix}: ${JSON.stringify(data)}`)
+    }
   }
 
   // CRM dos salões: recalcula o resumo por cliente com o que acabou de entrar

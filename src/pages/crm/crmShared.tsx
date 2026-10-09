@@ -47,6 +47,13 @@ export interface SalonClient {
   opted_out: boolean
   last_campaign_at: string | null
   ref_date: string
+  /** Falta/cancelamento mais recente (20261009000020). */
+  last_missed_on: string | null
+  last_missed_status: string | null
+  last_missed_service: string | null
+  last_missed_reason: string | null
+  /** Faltou/cancelou e ainda não tem outro agendamento daquele dia em diante. */
+  missed_unresolved: boolean
 }
 
 /** Filtros aceitos por salon_crm_filter (mesmas chaves do SQL). */
@@ -68,6 +75,10 @@ export interface CrmFilters {
   no_shows_min?: number | null
   has_whatsapp?: boolean
   exclude_future_appointment?: boolean
+  /** Faltou ou cancelou nos últimos N dias. */
+  missed_within_days?: number | null
+  /** ...e ainda não remarcou nem voltou. */
+  missed_unresolved?: boolean
 }
 
 type Tone = 'success' | 'info' | 'warning' | 'danger' | 'neutral'
@@ -279,6 +290,7 @@ export function FilterForm({ value, onChange, units, showStatus = false, showUni
         <NumField label="Visitas, no máximo" value={value.visits_max} onChange={v => set('visits_max', v)} />
         <NumField label="Gasto total a partir de" suffix="R$" value={value.spent_min} onChange={v => set('spent_min', v)} />
         <NumField label="Faltas, no mínimo" value={value.no_shows_min} onChange={v => set('no_shows_min', v)} />
+        <NumField label="Faltou ou cancelou nos últimos" suffix="dias" value={value.missed_within_days} onChange={v => set('missed_within_days', v)} />
       </div>
 
       <label className="block">
@@ -302,6 +314,8 @@ export function FilterForm({ value, onChange, units, showStatus = false, showUni
           checked={!!value.has_whatsapp} onChange={v => set('has_whatsapp', v)} />
         <Toggle label="Sem horário marcado" hint="Tira quem já tem agendamento futuro"
           checked={!!value.exclude_future_appointment} onChange={v => set('exclude_future_appointment', v)} />
+        <Toggle label="Não remarcou depois da falta" hint="Faltou ou cancelou e não tem outro horário daquele dia em diante"
+          checked={!!value.missed_unresolved} onChange={v => set('missed_unresolved', v)} />
       </div>
     </div>
   )
@@ -318,6 +332,8 @@ export function describeFilters(f: CrmFilters, units: CrmUnit[] = []): string {
   if (f.visits_max != null) parts.push(`até ${f.visits_max} visitas`)
   if (f.spent_min != null) parts.push(`gasto ≥ ${brl(f.spent_min)}`)
   if (f.no_shows_min != null) parts.push(`${f.no_shows_min}+ faltas`)
+  if (f.missed_within_days != null) parts.push(`faltou/cancelou em ${f.missed_within_days} dias`)
+  if (f.missed_unresolved) parts.push('não remarcou')
   if (f.only_products) parts.push('só produto')
   if (f.birthday) parts.push({ this_month: 'aniversário no mês', next_month: 'aniversário mês que vem', next_7_days: 'aniversário em 7 dias' }[f.birthday])
   if (f.has_whatsapp) parts.push('com WhatsApp')

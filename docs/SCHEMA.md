@@ -1388,12 +1388,13 @@ Dados de faturamento dos salões coletados do Trinks pela edge function `sync-tr
 | `trinks_product_sales` | `(store_id, business_date, item_key)` |
 | `trinks_professional_sales` | `(store_id, business_date, professional_key)` |
 | `trinks_sync_runs` | 1 linha por execução |
-| `trinks_professionals` | `(store_id, trinks_professional_id)` — nome/apelido dos IDs, vindo dos webhooks 5/6 |
+| `trinks_professionals` | `(store_id, trinks_professional_id)` — nome/apelido dos IDs, vindo dos webhooks 5/6; `role` (Funcao) e `contract_end` desde `20261009000020` |
 
 > **Comissão estimada** (`20261009000010`): o fechamento do webhook não traz comissão. O trigger `trg_trinks_sale_item_estimate_commission` (itens `source=webhook`) calcula `(value − client_discount) × pct` — fórmula do Trinks, erro zero contra o CSV — com `pct` de `trinks_commission_pct_guess`: mesmo profissional+item no CSV (mais recente) → mais frequente do profissional para o tipo (180 dias) → mais frequente da unidade → 0. Marca `commission_estimated = true`. Recalcula quando o profissional muda (nome chegando depois). Nos dias cobertos pelo CSV de Comissões o CSV manda; a tela de Unidades marca a coluna com * e mostra a faixa estimada.
 > **`trinks_commission_rates`** (`20261009000011`): PK `(store_id, professional, item_key)` — percentual REAL de comissão por profissional × item, aprendido só do CSV de Comissões (estimativas nunca entram). Alimentada por `trg_trinks_commission_rates_learn` (AFTER INSERT por comando em `trinks_sale_items`); o mais recente vence, reimportação antiga não sobrescreve. **Ainda não é lida pela estimativa** — `trinks_commission_pct_guess` segue no histórico bruto; trocar o passo 1 para esta tabela depois de conferida (em 2026-10-09 batia 100% com a regra: 2.357 combinações).
 > Fallback da rede (`20261009000012`): só Linhares tem CSV de Comissões; sem histórico da unidade, a estimativa usa o mesmo item na rede e depois o mais frequente da rede para o tipo (serviço 25%, produto 5%) em vez de 0.
 > **"Cadastros novos"** em Unidades = `trinks_clients.registered_on` no dia (cadastro, não compra). "Novos" do card Clientes atendidos = primeiro pagamento no período. São números diferentes de propósito.
+> **Agenda espelhada** (`20261009000020`, tela `/admin/agenda`): `trinks_appointments.source` ganhou `'seed'` = carga do CSV de Agendamentos exportado com datas de hoje em diante (`scripts/trinks-import.ts` divide o arquivo: passado → `trinks_import_agendamentos`, de hoje em diante → `trinks_import_agenda_seed`, `report_type='agenda_seed'`, que **não** conta em `trinks_csv_covered_through`). O CSV não tem ID do agendamento: a linha da carga é apagada por `trinks_seed_consume` quando o webhook mostra o mesmo agendamento pela primeira vez (mesma cliente por `salon_norm_name`, mesmo serviço ou mesmo horário, o mais próximo; agendamento marcado depois da geração do relatório nunca consome). **Exclusão (webhook 13) não apaga mais:** vira `status='Cancelado'` com `cancelled_at`. Novas colunas: `ends_at`, `cancelled_at`; o webhook passou a gravar `booked_at` (no evento 11) e `client_registered_at`. `trinks_agenda_day(store, date)` (SECURITY INVOKER) devolve colunas de profissionais (função de atendimento + quem tem horário no dia, ordem pelo número do apelido) e agendamentos. **Ausência/bloqueio/expediente não vêm no webhook** (testado em 09/10/2026).
 > **Nome do profissional chega depois** (`20261009000009`): fechamento e agendamento do webhook só trazem o ID; até o evento 5/6 chegar, o rótulo é "Profissional #<id>". O trigger `trg_trinks_professional_relabel` em `trinks_professionals` troca esse rótulo em `trinks_sale_items`/`trinks_appointments` (por `trinks_professional_id`) e recalcula só os dias afetados. Rótulo = apelido, senão nome — igual ao CSV, para a mesma pessoa não virar duas linhas. Para puxar o nome de um profissional: salvar o cadastro dele no Trinks.
 
 > `business_date` é **regime de caixa** (data de pagamento, não de atendimento) —
@@ -2181,7 +2182,7 @@ escrita direta pelo front, sem SECURITY DEFINER).
 | Objeto | Grão / papel |
 |---|---|
 | `salon_clients` | `(store_id, client_key)` — resumo recalculado por `salon_crm_refresh(store)` (cron `salon-crm-refresh` de hora em hora + fim do `scripts/trinks-import.ts`) |
-| `salon_clients_v` | + `status`, `days_since_last_visit`, `opted_out`, `last_campaign_at` (security_invoker) |
+| `salon_clients_v` | + `status`, `days_since_last_visit`, `opted_out`, `last_campaign_at`, `last_missed_on/status/service/reason`, `missed_unresolved` (security_invoker) |
 | `salon_segments` | público salvo (`filters` jsonb = chaves de `salon_crm_filter`); `is_system` = semeado |
 | `salon_campaigns` / `salon_campaign_recipients` | campanha + lista congelada por `salon_campaign_build_list(id)` |
 | `salon_contacts` | registro de contato (canal, resultado, nota) |
@@ -2196,3 +2197,4 @@ escrita direta pelo front, sem SECURITY DEFINER).
 > `sumida` (2,5×), `perdida` (>365 dias), `sem_compra`.
 > RPCs para o front: `salon_crm_search(filters, sort, limit, offset)`,
 > `salon_crm_status_counts(filters)`, `salon_crm_client_timeline(store, key)`.
+> **Resgate de faltas** (`20261009000020`): `last_missed_on` = dia da falta, ou dia em que cancelou (`cancelled_at`, só webhook; CSV cai no dia do agendamento). `missed_unresolved` = sem outro agendamento válido daquele dia em diante. Filtros `missed_within_days` (int) e `missed_unresolved` (bool); segmento semeado "Faltaram ou cancelaram (7 dias)".

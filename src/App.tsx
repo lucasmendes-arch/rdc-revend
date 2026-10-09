@@ -53,6 +53,7 @@ const AdminFinanceiro = lazy(() => import("./pages/financeiro/Financeiro"));
 
 // dashboard das unidades / dados do Trinks (lazy — inclui recharts)
 const AdminUnidades = lazy(() => import("./pages/unidades/Unidades"));
+const AdminAgenda = lazy(() => import("./pages/agenda/Agenda"));
 const CrmClientes = lazy(() => import("./pages/crm/Clientes"));
 const CrmSegmentos = lazy(() => import("./pages/crm/Segmentos"));
 const CrmCampanhas = lazy(() => import("./pages/crm/Campanhas"));
@@ -145,6 +146,7 @@ const App = () => (
                     <Route path="/admin/categorias" element={<AdminCategorias />} />
                     <Route path="/admin/financeiro" element={<AdminFinanceiro />} />
                     <Route path="/admin/unidades" element={<AdminUnidades />} />
+                    <Route path="/admin/agenda" element={<AdminAgenda />} />
                     <Route path="/admin/crm" element={<Navigate to="/admin/crm/clientes" replace />} />
                     <Route path="/admin/crm/clientes" element={<CrmClientes />} />
                     <Route path="/admin/crm/segmentos" element={<CrmSegmentos />} />

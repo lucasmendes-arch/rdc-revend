@@ -71,6 +71,7 @@ const crmHub: Hub = {
   label: 'CRM',
   icon: HeartHandshake,
   items: [
+    { label: 'Agenda', path: '/admin/agenda' },
     { label: 'Clientes', path: '/admin/crm/clientes' },
     { label: 'Segmentos', path: '/admin/crm/segmentos' },
     { label: 'Campanhas', path: '/admin/crm/campanhas' },

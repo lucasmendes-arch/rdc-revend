@@ -293,6 +293,8 @@ arquivo substitui o seu período numa transação e recalcula o dashboard.
 | Comissões | Data de Pagamento/Estorno | `trinks_sale_items` | rankings de serviço/produto, produção e comissão por profissional |
 | Ranking de Profissionais | — | ignorado | resumo sem data por linha |
 
+**Agenda (datas futuras):** exportar Agendamentos de hoje até +60 dias e importar normalmente. O script separa sozinho: o que é de hoje em diante vira a carga da agenda espelhada (`/admin/agenda`), que o webhook vai substituindo; reimportar sempre que quiser reconciliar com o Trinks. Ausências e bloqueios não existem nem no webhook nem no CSV.
+
 Armadilhas encontradas nos arquivos reais (Linhares, 08/10/2026):
 - **Aspas não escapadas** em nomes de cliente: um parser estrito perdia 3,5 mil de
   6,3 mil clientes. O tokenizador só fecha aspa antes de `;`/quebra/fim, e recusa
