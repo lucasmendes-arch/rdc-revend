@@ -3,7 +3,7 @@ import { useQuery, keepPreviousData } from '@tanstack/react-query'
 import { useLocation } from 'react-router-dom'
 import {
   SlidersHorizontal, Download, Loader, Users, ChevronRight, ChevronLeft, X, Repeat, HeartHandshake,
-  CalendarCheck, UserMinus, Wallet, MessageCircle, BarChart3, type LucideIcon,
+  UserMinus, Wallet, MessageCircle, BarChart3, type LucideIcon,
 } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -82,11 +82,6 @@ function KpiCards({ kpis }: { kpis: CrmKpis | null }) {
       hint: k => `${num(k.active)} ativas de ${num(k.recent)} que compraram no último ano`,
     },
     {
-      icon: CalendarCheck, label: 'Ativas com horário',
-      value: k => pct(k.active_scheduled, k.active),
-      hint: k => `${num(k.active_scheduled)} de ${num(k.active)} ativas já têm próximo horário`,
-    },
-    {
       icon: UserMinus, label: 'Taxa de churn',
       value: k => pct(k.churned, k.with_purchase),
       hint: k => `${num(k.churned)} sumidas ou perdidas de ${num(k.with_purchase)} com compra`,
@@ -103,7 +98,7 @@ function KpiCards({ kpis }: { kpis: CrmKpis | null }) {
     },
   ]
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3">
+    <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-3">
       {cards.map(c => (
         <StatCard
           key={c.label}
@@ -148,6 +143,11 @@ function MoreKpisSheet({ kpis, open, onClose }: { kpis: CrmKpis | null; open: bo
     {
       title: 'Agenda',
       rows: [
+        {
+          // Fica aqui até o espelho da agenda (desde 2026-10-09) acumular os horários futuros.
+          label: 'Ativas com horário', value: pct(k.active_scheduled, k.active),
+          hint: `${num(k.active_scheduled)} de ${num(k.active)} ativas já têm próximo horário — a agenda futura ainda está sendo espelhada do Trinks`,
+        },
         {
           label: 'Clientes com falta', value: pct(k.with_no_show, k.total),
           hint: `${num(k.with_no_show)} faltaram ao menos 1 vez · ${num(k.repeat_no_show)} reincidentes (2+)`,
