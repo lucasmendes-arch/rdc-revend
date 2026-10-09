@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import {
-  ShoppingBag, Package, LineChart, Users, Boxes,
+  ShoppingBag, Package, LineChart, Users, Boxes, HeartHandshake,
   Menu, X, ExternalLink, UserCog, type LucideIcon,
 } from 'lucide-react'
 import logo from '@/assets/logo-rei-dos-cachos.png'
@@ -60,6 +60,19 @@ const resultadosHub: Hub = {
   ],
 }
 
+// CRM das clientes dos salões (dados do Trinks). Separado de Vendas, que é
+// a carteira B2B de revendedores.
+const crmHub: Hub = {
+  key: 'crm',
+  label: 'CRM',
+  icon: HeartHandshake,
+  items: [
+    { label: 'Clientes', path: '/admin/crm/clientes' },
+    { label: 'Segmentos', path: '/admin/crm/segmentos' },
+    { label: 'Campanhas', path: '/admin/crm/campanhas' },
+  ],
+}
+
 // Ordem segue o funil: Vagas → Candidatos → Contratação → Parceiros, depois
 // o que é configuração. Automações abre pela tela de Candidatos.
 const pessoasHub: Hub = {
@@ -101,7 +114,7 @@ function useHubs() {
   const { role, hasPermission } = useAuth()
   const canManageRh = role === 'admin' || role === 'administrativo' || hasPermission('can_manage_rh')
   const hubs: Hub[] = role === 'admin'
-    ? [vendasHub, catalogoHub, resultadosHub, pessoasHub]
+    ? [vendasHub, catalogoHub, resultadosHub, crmHub, pessoasHub]
     : [
         ...(role === 'administrativo' ? [estoqueHub] : []),
         ...(canManageRh ? [pessoasHub] : []),

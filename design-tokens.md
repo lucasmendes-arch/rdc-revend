@@ -99,6 +99,7 @@ SKU. `h1` é semibold com tracking `-0.03em`. Playfair só no `/lookbook`.
 | Vendas | Pedidos · Clientes · Vendedores · Tabelas de preço |
 | Catálogo | Produtos · Categorias · Disponibilidade · Contagem de estoque |
 | Resultados | Financeiro · Unidades · Marketing |
+| CRM | Clientes · Segmentos · Campanhas (clientes dos salões, dados do Trinks) |
 | Pessoas | Vagas · Candidatos · Contratação · Parceiros · Contratos · Cargos · Formulário |
 
 Usuários e "Ver loja" ficam no rodapé. `role='administrativo'` vê Estoque +

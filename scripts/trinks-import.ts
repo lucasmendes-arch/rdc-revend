@@ -132,6 +132,12 @@ async function main() {
     if (error) throw new Error(`${p.file}: ${error.message}`)
     console.log(`  ${p.file}: ${JSON.stringify(data)}`)
   }
+
+  // CRM dos salões: recalcula o resumo por cliente com o que acabou de entrar
+  // (o cron horário faria o mesmo, mas assim a tela já reflete na hora).
+  const { data: crm, error: crmErr } = await db.rpc('salon_crm_refresh', { p_store_id: store.id })
+  if (crmErr) throw new Error(`salon_crm_refresh: ${crmErr.message}`)
+  console.log(`  CRM: ${crm} clientes recalculadas`)
 }
 
 main().catch(err => {

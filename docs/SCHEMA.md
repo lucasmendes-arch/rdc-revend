@@ -2162,3 +2162,28 @@ Acessível por: `authenticated`.
 | `vagas`/`candidatos`/`formulario_campos`/`candidato_respostas` (nomes em português do briefing original) | `job_openings`/`candidates`/`form_fields`/`candidate_answers` — módulo de RH segue a mesma convenção: tabelas/colunas em inglês, só os *valores* de status/tipo (`etapa`, `field_type`) ficam em português |
 | `unidade_id` (RH) | Não existe — vaga usa `store_id`, RH reaproveita a tabela `stores` já existente (não criou tabela `unidades` própria) |
 | `stage = 'arquivado'` (candidates) | `stage = 'concluido_arquivado'` — a UI e as automações chamam de "Arquivado", mas o valor no CHECK é `concluido_arquivado`. Filtro com `'arquivado'` não dá erro: casa com zero linha e falha em silêncio |
+
+### CRM dos salões (`salon_*`, `20261009000006`–`000007`)
+Clientes das unidades (dados do Trinks), separado do CRM B2B removido em 2026-07-13
+(as tabelas `crm_*` dele continuam dormentes — **não reutilizar**). Telas em
+`/admin/crm/{clientes,segmentos,campanhas}`. Só admin (RLS `is_admin()` em tudo,
+escrita direta pelo front, sem SECURITY DEFINER).
+
+| Objeto | Grão / papel |
+|---|---|
+| `salon_clients` | `(store_id, client_key)` — resumo recalculado por `salon_crm_refresh(store)` (cron `salon-crm-refresh` de hora em hora + fim do `scripts/trinks-import.ts`) |
+| `salon_clients_v` | + `status`, `days_since_last_visit`, `opted_out`, `last_campaign_at` (security_invoker) |
+| `salon_segments` | público salvo (`filters` jsonb = chaves de `salon_crm_filter`); `is_system` = semeado |
+| `salon_campaigns` / `salon_campaign_recipients` | campanha + lista congelada por `salon_campaign_build_list(id)` |
+| `salon_contacts` | registro de contato (canal, resultado, nota) |
+| `salon_opt_outs` | `whatsapp` UNIQUE — fora de toda campanha |
+| `salon_crm_settings` | linha única (id=1): regras de envio; `dispatch_enabled=false` (não há disparo) |
+
+> **Ponte fechamento → cliente:** o fechamento tem ID do Trinks + nome; o cadastro tem
+> telefone. Liga por agendamento do mesmo dia com o mesmo nome, depois por nome único;
+> sobra `client_key='tid:<id>'` (Linhares: 57 clientes, 0,5% do faturamento).
+> **"Dias sem vir"** contam até o último dia com faturamento da unidade, não até hoje.
+> **Situação** (`status`): `nova`, `uma_visita`, `ativa`, `em_risco` (1,5× o ritmo),
+> `sumida` (2,5×), `perdida` (>365 dias), `sem_compra`.
+> RPCs para o front: `salon_crm_search(filters, sort, limit, offset)`,
+> `salon_crm_status_counts(filters)`, `salon_crm_client_timeline(store, key)`.
