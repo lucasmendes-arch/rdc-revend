@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { formatBRL } from '@/lib/format'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase, callEdgeFunction } from '@/lib/supabase'
 import { Loader, Plus, UserCheck, Pencil, Trash2, Star, Link2, FileText, Send, CheckCircle2, AlertCircle } from 'lucide-react'
@@ -634,13 +635,13 @@ export default function AdminVendedores() {
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Valor total</span>
                       <span className="font-medium text-foreground">
-                        {reportResult.summary.total_value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                        {formatBRL(reportResult.summary.total_value)}
                       </span>
                     </div>
                     <div className="flex justify-between border-t border-border pt-2 mt-2">
                       <span className="font-medium text-foreground">Comissão ({reportResult.summary.commission_pct}%)</span>
                       <span className="font-semibold text-success">
-                        {reportResult.summary.commission_amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                        {formatBRL(reportResult.summary.commission_amount)}
                       </span>
                     </div>
                   </div>

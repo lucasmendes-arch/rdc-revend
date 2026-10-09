@@ -31,6 +31,7 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@
 import { Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
+import { formatBRL } from '@/lib/format'
 
 function SortableProductRow({ product }: { product: CatalogProduct }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: product.id })
@@ -59,7 +60,7 @@ function SortableProductRow({ product }: { product: CatalogProduct }) {
         <div className="w-8 h-8 rounded bg-surface-alt border border-border flex-shrink-0" />
       )}
       <span className="text-[13.5px] font-medium text-foreground truncate flex-1">{product.name}</span>
-      <span className="text-[12px] text-muted-foreground tabular-nums flex-shrink-0">R$ {product.price.toFixed(2)}</span>
+      <span className="text-[12px] text-muted-foreground tabular-nums flex-shrink-0">{formatBRL(product.price)}</span>
     </div>
   )
 }
@@ -405,15 +406,15 @@ export default function AdminCatalogo() {
                       </TableCell>
                       <TableCell className="text-right whitespace-nowrap">
                         <div className="flex flex-col items-end gap-0.5">
-                          <span className="font-semibold text-foreground">R$ {product.price.toFixed(2)}</span>
+                          <span className="font-semibold text-foreground">{formatBRL(product.price)}</span>
                           {product.partner_price != null && product.partner_price > 0 && (
                             <span className="text-[12px] font-medium text-brand-strong">
-                              Parceiro R$ {product.partner_price.toFixed(2)}
+                              Parceiro {formatBRL(product.partner_price)}
                             </span>
                           )}
                           {product.compare_at_price && (
                             <span className="text-[12px] text-muted-foreground line-through">
-                              De R$ {product.compare_at_price.toFixed(2)}
+                              De {formatBRL(product.compare_at_price)}
                             </span>
                           )}
                         </div>

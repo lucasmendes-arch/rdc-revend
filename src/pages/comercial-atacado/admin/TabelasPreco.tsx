@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react'
+import { formatBRL } from '@/lib/format'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { toast } from 'sonner'
@@ -61,9 +62,6 @@ function getItemProduct(item: PriceListItemDB) {
   if (Array.isArray(item.catalog_products)) return item.catalog_products[0] ?? null
   return item.catalog_products
 }
-
-const fmt = (v: number) =>
-  v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
 // ── PriceListCard ─────────────────────────────────────────────────────────────
 
@@ -735,7 +733,7 @@ export default function AdminTabelasPreco() {
                                 {product?.name ?? '—'}
                               </p>
                               <p className="text-[12px] text-muted-foreground tabular-nums">
-                                Padrão: R$ {fmt(product?.price ?? 0)}
+                                Padrão: {formatBRL(product?.price ?? 0)}
                               </p>
                             </div>
 
@@ -775,7 +773,7 @@ export default function AdminTabelasPreco() {
                             ) : (
                               <div className="flex items-center gap-0.5 shrink-0">
                                 <span className="text-[13.5px] font-semibold text-foreground tabular-nums mr-1">
-                                  R$ {fmt(item.price)}
+                                  {formatBRL(item.price)}
                                 </span>
                                 <Button
                                   variant="ghost"
@@ -829,7 +827,7 @@ export default function AdminTabelasPreco() {
                         if (prod) setAddPrice(String(prod.price).replace('.', ','))
                         else setAddPrice('')
                       }}
-                      options={filteredAvailableProducts.map(p => ({ value: p.id, label: `${p.name} — R$ ${fmt(p.price)}` }))}
+                      options={filteredAvailableProducts.map(p => ({ value: p.id, label: `${p.name} — ${formatBRL(p.price)}` }))}
                       emptyLabel="Selecionar produto…"
                       placeholder="Selecionar produto…"
                     />

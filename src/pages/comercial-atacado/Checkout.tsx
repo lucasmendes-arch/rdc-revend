@@ -12,6 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { PortalPage, PortalSection, PortalTopBar } from '@/components/portal/PortalPage';
+import { formatBRL } from '@/lib/format'
 
 type Step = 1 | 2 | 3;
 
@@ -32,7 +33,7 @@ function ActionBar({ total, totalLabel, children }: { total?: number; totalLabel
       {total !== undefined && (
         <div className="flex items-baseline justify-between mb-2.5 sm:hidden">
           <span className="text-[13px] text-muted-foreground">{totalLabel}</span>
-          <span className="text-[17px] font-semibold text-foreground numeric">R$ {total.toFixed(2)}</span>
+          <span className="text-[17px] font-semibold text-foreground numeric">{formatBRL(total)}</span>
         </div>
       )}
       {children}
@@ -186,7 +187,7 @@ const Checkout = () => {
     setError('');
     if (step === 1) {
       if (cartTotal < minOrderValue) {
-        setError(`Pedido minimo: R$ ${minOrderValue}. Seu total: R$ ${cartTotal.toFixed(2)}`);
+        setError(`Pedido mínimo: ${formatBRL(minOrderValue)}. Seu total: ${formatBRL(cartTotal)}`);
         return;
       }
       setStep(2);
@@ -489,10 +490,10 @@ const Checkout = () => {
                       )}
                       <div className="flex-1 min-w-0">
                         <p className="text-[13px] font-medium text-foreground line-clamp-2 leading-snug">{item.name}</p>
-                        <p className="text-[12px] text-muted-foreground numeric mt-0.5">{item.quantity}x R$ {item.price.toFixed(2)}</p>
+                        <p className="text-[12px] text-muted-foreground numeric mt-0.5">{item.quantity}x {formatBRL(item.price)}</p>
                       </div>
                       <p className="text-[13px] font-semibold text-foreground whitespace-nowrap numeric">
-                        R$ {(item.price * item.quantity).toFixed(2)}
+                        {formatBRL((item.price * item.quantity))}
                       </p>
                     </div>
                   ))}
@@ -501,7 +502,7 @@ const Checkout = () => {
                 <dl className="border-t border-border pt-3 mt-1 space-y-2 text-[13px]">
                   <div className="flex items-center justify-between">
                     <dt className="text-muted-foreground">Subtotal dos itens</dt>
-                    <dd className="text-foreground numeric">R$ {cartTotal.toFixed(2)}</dd>
+                    <dd className="text-foreground numeric">{formatBRL(cartTotal)}</dd>
                   </div>
                   <div className="flex items-center justify-between">
                     <dt className="text-muted-foreground">Frete</dt>
@@ -510,26 +511,26 @@ const Checkout = () => {
                   {couponDiscount > 0 && couponType !== 'shipping_percent' && (
                     <div className="flex items-center justify-between text-success font-medium">
                       <dt>Desconto (cupom)</dt>
-                      <dd className="numeric">− R$ {couponDiscount.toFixed(2)}</dd>
+                      <dd className="numeric">− {formatBRL(couponDiscount)}</dd>
                     </div>
                   )}
                   {shippingDiscountAmount > 0 && (
                     <div className="flex items-center justify-between text-success font-medium">
                       <dt>Desconto no frete ({couponDiscount}%)</dt>
-                      <dd className="numeric">− R$ {shippingDiscountAmount.toFixed(2)}</dd>
+                      <dd className="numeric">− {formatBRL(shippingDiscountAmount)}</dd>
                     </div>
                   )}
                   <div className="flex items-baseline justify-between pt-3 border-t border-border">
                     <dt className="text-[14px] font-semibold text-foreground">Subtotal</dt>
                     <dd className="font-title text-[24px] font-semibold text-foreground numeric leading-none">
-                      R$ {(cartTotal - effectiveDiscount).toFixed(2)}
+                      {formatBRL((cartTotal - effectiveDiscount))}
                     </dd>
                   </div>
                 </dl>
 
                 {cartTotal < minOrderValue && (
                   <p className="mt-4 text-[12px] text-warning bg-warning-subtle border border-warning-border rounded-md py-2 px-3 numeric">
-                    Pedido mínimo de R$ {minOrderValue}. Faltam <strong className="font-semibold">R$ {(minOrderValue - cartTotal).toFixed(2)}</strong> — volte ao catálogo para completar.
+                    Pedido mínimo de {formatBRL(minOrderValue)}. Faltam <strong className="font-semibold">{formatBRL((minOrderValue - cartTotal))}</strong> — volte ao catálogo para completar.
                   </p>
                 )}
               </div>
@@ -839,7 +840,7 @@ const Checkout = () => {
                   </div>
                   {couponDiscount > 0 && (
                     <p className="mt-2 text-[12px] text-success font-medium flex items-center gap-1">
-                      <Check className="w-3.5 h-3.5" /> {couponType === 'free_shipping' ? 'Frete grátis aplicado.' : couponType === 'shipping_percent' ? `${couponDiscount}% de desconto no frete aplicado.` : `Desconto de R$ ${couponDiscount.toFixed(2)} aplicado.`}
+                      <Check className="w-3.5 h-3.5" /> {couponType === 'free_shipping' ? 'Frete grátis aplicado.' : couponType === 'shipping_percent' ? `${couponDiscount}% de desconto no frete aplicado.` : `Desconto de ${formatBRL(couponDiscount)} aplicado.`}
                     </p>
                   )}
                 </div>
@@ -851,7 +852,7 @@ const Checkout = () => {
                 <dl className="space-y-2 text-[13px]">
                   <div className="flex items-center justify-between">
                     <dt className="text-muted-foreground">Subtotal ({cartCount} {cartCount === 1 ? 'item' : 'itens'})</dt>
-                    <dd className="text-foreground numeric">R$ {cartTotal.toFixed(2)}</dd>
+                    <dd className="text-foreground numeric">{formatBRL(cartTotal)}</dd>
                   </div>
 
                   <div className="flex items-start justify-between gap-3">
@@ -865,16 +866,16 @@ const Checkout = () => {
                         <span className="text-muted-foreground text-[12px]">Preencha o endereço</span>
                       ) : couponType === 'free_shipping' ? (
                         <span className="flex flex-col items-end">
-                          <span className="text-muted-foreground line-through text-[12px]">R$ {shippingEstimate.toFixed(2)}</span>
+                          <span className="text-muted-foreground line-through text-[12px]">{formatBRL(shippingEstimate)}</span>
                           <span className="text-success font-medium">Grátis</span>
                         </span>
                       ) : couponType === 'shipping_percent' ? (
                         <span className="flex flex-col items-end">
-                          <span className="text-muted-foreground line-through text-[12px]">R$ {shippingEstimate.toFixed(2)}</span>
-                          <span className="text-success font-medium">R$ {(shippingEstimate - shippingDiscountAmount).toFixed(2)}</span>
+                          <span className="text-muted-foreground line-through text-[12px]">{formatBRL(shippingEstimate)}</span>
+                          <span className="text-success font-medium">{formatBRL((shippingEstimate - shippingDiscountAmount))}</span>
                         </span>
                       ) : (
-                        <span className="text-foreground">R$ {shippingEstimate.toFixed(2)}</span>
+                        <span className="text-foreground">{formatBRL(shippingEstimate)}</span>
                       )}
                     </dd>
                   </div>
@@ -887,20 +888,20 @@ const Checkout = () => {
                   {couponDiscount > 0 && couponType !== 'free_shipping' && couponType !== 'shipping_percent' && (
                     <div className="flex items-center justify-between text-success font-medium">
                       <dt>Desconto (cupom)</dt>
-                      <dd className="numeric">− R$ {couponDiscount.toFixed(2)}</dd>
+                      <dd className="numeric">− {formatBRL(couponDiscount)}</dd>
                     </div>
                   )}
                   {shippingDiscountAmount > 0 && (
                     <div className="flex items-center justify-between text-success font-medium">
                       <dt>Desconto no frete ({couponDiscount}%)</dt>
-                      <dd className="numeric">− R$ {shippingDiscountAmount.toFixed(2)}</dd>
+                      <dd className="numeric">− {formatBRL(shippingDiscountAmount)}</dd>
                     </div>
                   )}
 
                   <div className="flex items-baseline justify-between pt-3 border-t border-border">
                     <dt className="text-[14px] font-semibold text-foreground">Total do pedido</dt>
                     <dd className="font-title text-[24px] font-semibold text-foreground numeric leading-none">
-                      R$ {orderTotal.toFixed(2)}
+                      {formatBRL(orderTotal)}
                     </dd>
                   </div>
                 </dl>
@@ -974,7 +975,7 @@ const Checkout = () => {
                 <div className="flex items-baseline justify-between">
                   <span className="text-[14px] font-semibold text-foreground">Total do pedido</span>
                   <span className="font-title text-[24px] font-semibold text-foreground numeric leading-none">
-                    R$ {orderTotal.toFixed(2)}
+                    {formatBRL(orderTotal)}
                   </span>
                 </div>
               </div>

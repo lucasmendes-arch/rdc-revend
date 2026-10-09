@@ -23,7 +23,9 @@ import { supabase } from '@/lib/supabase'
  * Pessoas mesmo sem aba própria.
  */
 
-type NavItem = { label: string; path: string }
+// `match`: prefixo que a aba possui além do próprio path (ex.: o módulo de
+// estoque inteiro, que tem sub-navegação própria no EstoqueLayout).
+type NavItem = { label: string; path: string; match?: string }
 type Hub = { key: string; label: string; icon: LucideIcon; items: NavItem[] }
 
 const vendasHub: Hub = {
@@ -46,7 +48,7 @@ const catalogoHub: Hub = {
     { label: 'Produtos', path: '/admin/catalogo' },
     { label: 'Categorias', path: '/admin/categorias' },
     { label: 'Disponibilidade', path: '/admin/estoque' },
-    { label: 'Contagem de estoque', path: '/estoque/relatorio' },
+    { label: 'Estoque', path: '/estoque/contagem', match: '/estoque' },
   ],
 }
 
@@ -96,16 +98,21 @@ const estoqueHub: Hub = {
   key: 'estoque',
   label: 'Estoque',
   icon: Boxes,
-  items: [{ label: 'Contagem de estoque', path: '/estoque/contagem' }],
+  items: [{ label: 'Estoque', path: '/estoque/contagem', match: '/estoque' }],
 }
 
 function sectionPrefix(path: string) {
   return path.split('/').slice(0, 3).join('/')
 }
 
+function itemMatches(item: NavItem, pathname: string) {
+  const base = item.match ?? item.path
+  return pathname === base || pathname.startsWith(`${base}/`)
+}
+
 function hubOwnsPath(hub: Hub, pathname: string) {
   return hub.items.some((item) => {
-    if (pathname === item.path || pathname.startsWith(`${item.path}/`)) return true
+    if (itemMatches(item, pathname)) return true
     const prefix = sectionPrefix(item.path)
     return pathname === prefix || pathname.startsWith(`${prefix}/`)
   })
@@ -255,7 +262,7 @@ function HubTabs() {
         <span className="hidden md:block w-px h-4 bg-border shrink-0" aria-hidden />
         <nav className="flex items-center gap-0.5 min-w-0" aria-label={`Páginas de ${hub.label}`}>
           {hub.items.map((item) => {
-            const active = location.pathname === item.path || location.pathname.startsWith(`${item.path}/`)
+            const active = itemMatches(item, location.pathname)
             return (
               <Link
                 key={item.path}

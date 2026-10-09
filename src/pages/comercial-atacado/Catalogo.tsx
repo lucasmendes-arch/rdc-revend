@@ -26,6 +26,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { EmptyState, PageLoading } from '@/components/admin/ui/AdminPage';
 import ProductCard from '@/components/catalog/ProductCard';
+import { formatBRL } from '@/lib/format'
 
 // ============================================================================
 // TYPES & CONSTANTS
@@ -730,6 +731,8 @@ const Catalogo = () => {
         <B2BHero
           onScrollToKits={scrollToKits}
           onScrollToProducts={scrollToProducts}
+          minOrderValue={minOrderValue}
+          showKits={!isPartner}
         />
       )}
 
@@ -998,14 +1001,14 @@ const Catalogo = () => {
                         <div>
                           <dt className="text-[12px] font-medium text-muted-foreground">Seu custo</dt>
                           <dd className="font-title text-[24px] font-semibold text-foreground numeric leading-tight mt-0.5">
-                            R$ {(isPartner && selectedProduct.partner_price ? selectedProduct.partner_price : selectedProduct.price).toFixed(2)}
+                            {formatBRL((isPartner && selectedProduct.partner_price ? selectedProduct.partner_price : selectedProduct.price))}
                           </dd>
                         </div>
                         {!selectedProduct.is_professional && (
                           <div className="border-l border-border pl-4">
                             <dt className="text-[12px] font-medium text-muted-foreground">Revenda sugerida</dt>
                             <dd className="text-[18px] font-semibold text-success numeric leading-tight mt-1">
-                              R$ {getSuggestedPrice(isPartner && selectedProduct.partner_price ? selectedProduct.partner_price : selectedProduct.price, selectedProduct.compare_at_price).toFixed(2)}
+                              {formatBRL(getSuggestedPrice(isPartner && selectedProduct.partner_price ? selectedProduct.partner_price : selectedProduct.price, selectedProduct.compare_at_price))}
                             </dd>
                           </div>
                         )}
@@ -1133,9 +1136,9 @@ const Catalogo = () => {
             <div className="min-w-0 flex-1">
               <p className="text-[12px] text-muted-foreground numeric">
                 {cartCount} {cartCount === 1 ? 'item' : 'itens'}
-                {cartTotal < minOrderValue && ` · faltam R$ ${(minOrderValue - cartTotal).toFixed(2)}`}
+                {cartTotal < minOrderValue && ` · faltam ${formatBRL((minOrderValue - cartTotal))}`}
               </p>
-              <p className="text-[17px] font-semibold text-foreground numeric leading-tight">R$ {cartTotal.toFixed(2)}</p>
+              <p className="text-[17px] font-semibold text-foreground numeric leading-tight">{formatBRL(cartTotal)}</p>
             </div>
             <Button size="lg" onClick={() => setCartOpen(true)} className="shrink-0">
               Ver pedido

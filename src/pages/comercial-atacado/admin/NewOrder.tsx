@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { formatBRL } from '@/lib/format';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Loader, Search, Plus, Minus, Trash2, FileText } from 'lucide-react';
@@ -568,7 +569,7 @@ const NewOrder = () => {
 
   // ─── Render ──────────────────────────────────────────────────────────────────
 
-  const brl = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  const brl = formatBRL;
   const createdDate = createdAt ? createdAt.slice(0, 10) : '';
   const createdTime = createdAt ? createdAt.slice(11, 16) : '';
   const optionCard = (active: boolean) =>

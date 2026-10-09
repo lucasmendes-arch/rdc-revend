@@ -4,6 +4,10 @@ import { Button } from "@/components/ui/button";
 interface B2BHeroProps {
   onScrollToKits: () => void;
   onScrollToProducts: () => void;
+  /** Valor mínimo do pedido (vem do CartContext). */
+  minOrderValue?: number;
+  /** Kits ficam escondidos para parceiro da rede — sem eles, o botão não leva a lugar nenhum. */
+  showKits?: boolean;
 }
 
 /**
@@ -19,13 +23,16 @@ interface B2BHeroProps {
  * como linha de fatos, não como cartão decorado.
  */
 
-const FACTS = [
-  { icon: ShoppingBag,    label: "Pedido mínimo", value: "A partir de R$ 500,00" },
+const brl = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+
+const baseFacts = (minOrder: number) => [
+  { icon: ShoppingBag,    label: "Pedido mínimo", value: `A partir de ${brl(minOrder)}` },
   { icon: CreditCard,     label: "Pagamento",     value: "Pix ou cartão" },
   { icon: MessageCircle,  label: "Suporte",       value: "Via WhatsApp" },
 ];
 
-export default function B2BHero({ onScrollToKits, onScrollToProducts }: B2BHeroProps) {
+export default function B2BHero({ onScrollToKits, onScrollToProducts, minOrderValue = 500, showKits = true }: B2BHeroProps) {
+  const FACTS = baseFacts(minOrderValue);
   return (
     <div className="w-full bg-background bg-ambient border-b border-border">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 py-10 sm:py-14">
@@ -41,11 +48,13 @@ export default function B2BHero({ onScrollToKits, onScrollToProducts }: B2BHeroP
             </p>
 
             <div className="flex flex-col sm:flex-row gap-2.5 mt-7">
-              <Button size="lg" onClick={onScrollToKits}>
-                <ShoppingBag />
-                Ver kits mais vendidos
-              </Button>
-              <Button size="lg" variant="secondary" onClick={onScrollToProducts}>
+              {showKits && (
+                <Button size="lg" onClick={onScrollToKits}>
+                  <ShoppingBag />
+                  Ver kits mais vendidos
+                </Button>
+              )}
+              <Button size="lg" variant={showKits ? "secondary" : "default"} onClick={onScrollToProducts}>
                 Explorar catálogo
                 <ArrowDown />
               </Button>

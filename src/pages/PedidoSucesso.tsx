@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { EmptyState, PageLoading } from '@/components/admin/ui/AdminPage';
 import { PortalPage, PortalSection, PortalTopBar } from '@/components/portal/PortalPage';
+import { formatBRL } from '@/lib/format'
 
 interface Order {
   id: string;
@@ -215,11 +216,11 @@ const PedidoSucesso = () => {
                   <div className="flex-1 min-w-0">
                     <p className="text-[13px] font-medium text-foreground truncate">{item.product_name_snapshot}</p>
                     <p className="text-[12px] text-muted-foreground numeric">
-                      {item.qty}x · R$ {item.unit_price_snapshot.toFixed(2)}
+                      {item.qty}x · {formatBRL(item.unit_price_snapshot)}
                     </p>
                   </div>
                   <p className="text-[13px] font-medium text-foreground whitespace-nowrap numeric">
-                    R$ {item.line_total.toFixed(2)}
+                    {formatBRL(item.line_total)}
                   </p>
                 </div>
               ))}
@@ -228,24 +229,24 @@ const PedidoSucesso = () => {
             <dl className="pt-4 space-y-2 text-[13px]">
               <div className="flex items-center justify-between">
                 <dt className="text-muted-foreground">Subtotal</dt>
-                <dd className="text-foreground numeric">R$ {subtotal.toFixed(2)}</dd>
+                <dd className="text-foreground numeric">{formatBRL(subtotal)}</dd>
               </div>
               <div className="flex items-center justify-between">
                 <dt className="text-muted-foreground">{isPickup ? 'Retirada' : 'Frete'}</dt>
                 <dd className="text-foreground numeric">
-                  {shipping > 0 ? `R$ ${shipping.toFixed(2)}` : <span className="text-success">Grátis</span>}
+                  {shipping > 0 ? `${formatBRL(shipping)}` : <span className="text-success">Grátis</span>}
                 </dd>
               </div>
               {discount > 0 && (
                 <div className="flex items-center justify-between text-success">
                   <dt>Desconto</dt>
-                  <dd className="numeric">− R$ {discount.toFixed(2)}</dd>
+                  <dd className="numeric">− {formatBRL(discount)}</dd>
                 </div>
               )}
               <div className="flex items-baseline justify-between pt-3 border-t border-border">
                 <dt className="text-[14px] font-semibold text-foreground">Total</dt>
                 <dd className="font-title text-[24px] font-semibold text-foreground numeric leading-none">
-                  R$ {order.total.toFixed(2)}
+                  {formatBRL(order.total)}
                 </dd>
               </div>
             </dl>

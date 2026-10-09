@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react';
+import { formatBRL } from '@/lib/format';
 import { Download, MessageCircle, Loader, Package } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -169,11 +170,11 @@ const SalesOrderModal = ({ data, onClose }: Props) => {
                         {item.product_name}
                       </p>
                       <p className="text-[10px] text-ink-400 mt-0.5">
-                        {item.quantity}x · R$ {item.unit_price.toFixed(2)}
+                        {item.quantity}x · {formatBRL(item.unit_price)}
                       </p>
                     </div>
                     <p className="text-[13px] font-semibold text-foreground whitespace-nowrap shrink-0 tabular-nums">
-                      R$ {item.line_total.toFixed(2)}
+                      {formatBRL(item.line_total)}
                     </p>
                   </div>
                 ))}
@@ -184,17 +185,17 @@ const SalesOrderModal = ({ data, onClose }: Props) => {
             <div className="px-5 py-4 space-y-1.5">
               <div className="flex items-center justify-between text-[12px]">
                 <span className="text-muted-foreground">Subtotal</span>
-                <span className="font-medium text-ink-700">R$ {data.subtotal.toFixed(2)}</span>
+                <span className="font-medium text-ink-700">{formatBRL(data.subtotal)}</span>
               </div>
               {discount > 0 && (
                 <div className="flex items-center justify-between text-[12px]">
                   <span className="text-muted-foreground">Desconto</span>
-                  <span className="font-medium text-success">− R$ {discount.toFixed(2)}</span>
+                  <span className="font-medium text-success">− {formatBRL(discount)}</span>
                 </div>
               )}
               <div className="flex items-center justify-between text-[15px] font-semibold pt-2 border-t border-border tabular-nums">
                 <span className="text-foreground">Total</span>
-                <span className="text-brand-strong">R$ {data.total.toFixed(2)}</span>
+                <span className="text-brand-strong">{formatBRL(data.total)}</span>
               </div>
             </div>
 

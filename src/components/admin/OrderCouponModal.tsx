@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react';
+import { formatBRL } from '@/lib/format';
 import { Download, MessageCircle, Loader } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -38,7 +39,7 @@ interface Order {
 function paymentLabel(order: Order): string {
   if (order.payment_method === 'pay_on_delivery') return 'Pagar na entrega';
   if (order.payment_method === 'MISTO' && order.payment_splits?.length) {
-    return order.payment_splits.map(s => `${s.method} R$ ${s.amount.toFixed(2)}`).join(' + ');
+    return order.payment_splits.map(s => `${s.method} ${formatBRL(s.amount)}`).join(' + ');
   }
   return order.payment_method || '—';
 }
@@ -192,11 +193,11 @@ const OrderCouponModal = ({ order, onClose }: Props) => {
                           {item.product_name_snapshot}
                         </p>
                         <p className="text-[10px] text-ink-400">
-                          {item.qty}x · R$ {unitPrice.toFixed(2)}
+                          {item.qty}x · {formatBRL(unitPrice)}
                         </p>
                       </div>
                       <p className="text-[12px] font-semibold text-foreground whitespace-nowrap tabular-nums">
-                        R$ {item.line_total.toFixed(2)}
+                        {formatBRL(item.line_total)}
                       </p>
                     </div>
                   );
@@ -208,12 +209,12 @@ const OrderCouponModal = ({ order, onClose }: Props) => {
             <div className="px-5 py-4 border-b border-dashed border-border space-y-1.5">
               <div className="flex items-center justify-between text-[12px]">
                 <span className="text-muted-foreground">Subtotal</span>
-                <span className="font-medium text-ink-700">R$ {subtotal.toFixed(2)}</span>
+                <span className="font-medium text-ink-700">{formatBRL(subtotal)}</span>
               </div>
               {shipping > 0 && (
                 <div className="flex items-center justify-between text-[12px]">
                   <span className="text-muted-foreground">Frete</span>
-                  <span className="font-medium text-ink-700">R$ {shipping.toFixed(2)}</span>
+                  <span className="font-medium text-ink-700">{formatBRL(shipping)}</span>
                 </div>
               )}
               {shipping === 0 && (
@@ -225,12 +226,12 @@ const OrderCouponModal = ({ order, onClose }: Props) => {
               {discount > 0 && (
                 <div className="flex items-center justify-between text-[12px]">
                   <span className="text-muted-foreground">Desconto</span>
-                  <span className="font-medium text-success">- R$ {discount.toFixed(2)}</span>
+                  <span className="font-medium text-success">- {formatBRL(discount)}</span>
                 </div>
               )}
               <div className="flex items-center justify-between text-[15px] font-semibold pt-2 border-t border-border tabular-nums">
                 <span className="text-foreground">Total</span>
-                <span className="text-brand-strong">R$ {order.total.toFixed(2)}</span>
+                <span className="text-brand-strong">{formatBRL(order.total)}</span>
               </div>
             </div>
 

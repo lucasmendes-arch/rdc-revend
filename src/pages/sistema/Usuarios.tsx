@@ -18,6 +18,7 @@ import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table'
 import { Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle } from '@/components/ui/dialog'
+import { formatBRL } from '@/lib/format'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -861,7 +862,7 @@ function ClientSidePanel({
                           <span className={`text-[11.5px] font-medium px-2 py-0.5 rounded-full ${si.color}`}>{si.label}</span>
                         </div>
                         <div className="text-right">
-                          <p className="text-[13px] font-semibold text-foreground tabular-nums">R$ {Number(order.total).toFixed(2)}</p>
+                          <p className="text-[13px] font-semibold text-foreground tabular-nums">{formatBRL(Number(order.total))}</p>
                           <p className="text-[12px] text-muted-foreground">{new Date(order.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}</p>
                         </div>
                       </div>
@@ -877,9 +878,9 @@ function ClientSidePanel({
                                 : <div className="w-9 h-9 rounded-md bg-muted flex items-center justify-center flex-shrink-0"><Package className="w-4 h-4 text-ink-400" /></div>}
                               <div className="flex-1 min-w-0">
                                 <p className="text-[13px] font-medium text-foreground truncate">{item.product_name_snapshot}</p>
-                                <p className="text-[12px] text-muted-foreground tabular-nums">{item.qty}× R$ {Number(item.unit_price_snapshot).toFixed(2)}</p>
+                                <p className="text-[12px] text-muted-foreground tabular-nums">{item.qty}× {formatBRL(Number(item.unit_price_snapshot))}</p>
                               </div>
-                              <span className="text-[13px] font-semibold text-foreground tabular-nums">R$ {Number(item.line_total).toFixed(2)}</span>
+                              <span className="text-[13px] font-semibold text-foreground tabular-nums">{formatBRL(Number(item.line_total))}</span>
                             </div>
                           )
                         })}

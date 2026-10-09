@@ -4,6 +4,7 @@ import { toast } from 'sonner'
 import { useCart } from '@/contexts/CartContext'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/admin/ui/AdminPage'
+import { formatBRL } from '@/lib/format'
 
 export default function CartDrawer() {
   const { items, removeItem, clearCart, total, count, minOrderValue, cartOpen, setCartOpen } = useCart()
@@ -75,7 +76,7 @@ export default function CartDrawer() {
                     <div className="flex items-baseline gap-2 mt-1">
                       <span className="text-[12px] text-muted-foreground numeric">{item.quantity}x</span>
                       <span className="text-[13px] font-semibold text-foreground numeric">
-                        R$ {(item.price * item.quantity).toFixed(2)}
+                        {formatBRL((item.price * item.quantity))}
                       </span>
                     </div>
                   </div>
@@ -99,14 +100,14 @@ export default function CartDrawer() {
             <div className="flex items-baseline justify-between">
               <span className="text-[13px] text-muted-foreground">Total</span>
               <span className="font-title text-[22px] font-semibold text-foreground numeric leading-none">
-                R$ {total.toFixed(2)}
+                {formatBRL(total)}
               </span>
             </div>
 
             {/* Estado de bloqueio: diz o que falta, não só que está errado. */}
             {belowMinimum && (
               <p className="text-[12px] text-warning bg-warning-subtle border border-warning-border rounded-md py-1.5 px-2.5 numeric">
-                Faltam R$ {missing.toFixed(2)} para o pedido mínimo de R$ {minOrderValue.toFixed(2)}.
+                Faltam {formatBRL(missing)} para o pedido mínimo de {formatBRL(minOrderValue)}.
               </p>
             )}
 

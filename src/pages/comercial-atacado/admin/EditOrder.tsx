@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { formatBRL } from '@/lib/format'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
@@ -245,7 +246,7 @@ export default function EditOrder() {
   }
 
   const orderNumber = order.id.slice(0, 8).toUpperCase()
-  const brl = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+  const brl = formatBRL
 
   return (
     <AdminLayout>

@@ -4,6 +4,7 @@ import type { PublicProduct } from '@/hooks/useCatalogProducts'
 import { extractVolume } from '@/utils/product'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { formatBRL } from '@/lib/format'
 
 /**
  * Card de produto da loja B2B — o mesmo na grade ("Ver todos"/busca) e nos
@@ -103,11 +104,11 @@ export default function ProductCard({
           ) : (
             <div className="mb-2.5">
               <p className="text-[16px] font-semibold text-foreground numeric leading-tight">
-                R$ {cost.toFixed(2)}
+                {formatBRL(cost)}
               </p>
               {showSuggested ? (
                 <p className="text-[12px] text-success numeric mt-0.5 truncate">
-                  Revenda R$ {suggested.toFixed(2)}
+                  Revenda {formatBRL(suggested)}
                 </p>
               ) : reserveSuggested ? (
                 <p className="text-[12px] mt-0.5 invisible" aria-hidden>—</p>

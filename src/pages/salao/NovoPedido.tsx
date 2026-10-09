@@ -15,6 +15,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { DateField } from '@/components/ui/date-field';
+import { formatBRL } from '@/lib/format'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -262,7 +263,7 @@ function SalaoNovoPedidoInner() {
         main_image:   product.main_image,
       }];
     });
-    if (!isBulk) toast.success(`${product.name} adicionado por R$ ${finalPrice.toFixed(2)}`);
+    if (!isBulk) toast.success(`${product.name} adicionado por ${formatBRL(finalPrice)}`);
   }
 
 
@@ -318,7 +319,7 @@ function SalaoNovoPedidoInner() {
         return;
       }
       if (Math.abs(splitsDiff) > 0.01) {
-        toast.error(`A soma dos pagamentos (R$ ${splitsTotal.toFixed(2)}) não bate com o total (R$ ${total.toFixed(2)})`);
+        toast.error(`A soma dos pagamentos (${formatBRL(splitsTotal)}) não bate com o total (${formatBRL(total)})`);
         return;
       }
     }
@@ -691,11 +692,11 @@ function SalaoNovoPedidoInner() {
                       <p className="text-[13px] font-medium text-foreground truncate">{product.name}</p>
                       {hasPriceOverride ? (
                         <div className="flex items-center gap-1.5 mt-0.5 tabular-nums">
-                          <span className="text-[12px] line-through text-ink-400">R$ {product.price.toFixed(2)}</span>
-                          <span className="text-[12px] font-semibold text-foreground">R$ {displayPrice.toFixed(2)}</span>
+                          <span className="text-[12px] line-through text-ink-400">{formatBRL(product.price)}</span>
+                          <span className="text-[12px] font-semibold text-foreground">{formatBRL(displayPrice)}</span>
                         </div>
                       ) : (
-                        <p className="text-[12px] text-muted-foreground tabular-nums">R$ {displayPrice.toFixed(2)}</p>
+                        <p className="text-[12px] text-muted-foreground tabular-nums">{formatBRL(displayPrice)}</p>
                       )}
                     </div>
                     {inCart && (
@@ -761,7 +762,7 @@ function SalaoNovoPedidoInner() {
 
                   {/* Subtotal do item */}
                   <p className="w-24 ml-auto text-right text-[13.5px] font-semibold text-foreground tabular-nums shrink-0">
-                    R$ {(item.quantity * item.price).toFixed(2)}
+                    {formatBRL((item.quantity * item.price))}
                   </p>
 
                   {/* Remover */}
@@ -782,11 +783,11 @@ function SalaoNovoPedidoInner() {
             <div className="pt-3 border-t border-border space-y-1.5 tabular-nums">
               <div className="flex justify-between items-center text-[13px] text-muted-foreground">
                 <span>Subtotal ({cartItems.reduce((sum, i) => sum + i.quantity, 0)} itens)</span>
-                <span>R$ {subtotal.toFixed(2)}</span>
+                <span>{formatBRL(subtotal)}</span>
               </div>
               <div className="flex justify-between items-center pt-1.5 border-t border-border">
                 <span className="text-[14px] font-semibold text-foreground">Total</span>
-                <span className="font-title text-[22px] font-semibold text-foreground">R$ {total.toFixed(2)}</span>
+                <span className="font-title text-[22px] font-semibold text-foreground">{formatBRL(total)}</span>
               </div>
             </div>
             </div>
@@ -963,13 +964,13 @@ function SalaoNovoPedidoInner() {
                       ? 'border-success-border bg-success-subtle text-success'
                       : 'border-warning-border bg-warning-subtle text-warning'
                   }`}>
-                    <span>Total a distribuir: R$ {total.toFixed(2)}</span>
+                    <span>Total a distribuir: {formatBRL(total)}</span>
                     <span>
                       {Math.abs(splitsDiff) < 0.01
                         ? '✓ Conferido'
                         : splitsDiff > 0
-                          ? `Faltam R$ ${splitsDiff.toFixed(2)}`
-                          : `Excesso R$ ${Math.abs(splitsDiff).toFixed(2)}`}
+                          ? `Faltam ${formatBRL(splitsDiff)}`
+                          : `Excesso ${formatBRL(Math.abs(splitsDiff))}`}
                     </span>
                   </div>
                 </div>
@@ -1003,7 +1004,7 @@ function SalaoNovoPedidoInner() {
             {isSaving ? (
               <><Loader className="animate-spin" /> Criando pedido…</>
             ) : (
-              <span className="tabular-nums">Criar pedido · R$ {total.toFixed(2)}</span>
+              <span className="tabular-nums">Criar pedido · {formatBRL(total)}</span>
             )}
           </Button>
         </div>

@@ -7,6 +7,7 @@ import { useCart } from '@/contexts/CartContext'
 import type { PublicProduct } from '@/hooks/useCatalogProducts'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { formatBRL } from '@/lib/format'
 
 interface PackageCardsProps {
   products: PublicProduct[]
@@ -273,12 +274,12 @@ export default function PackageCards({ products, isGuest = false, isPartner = fa
                             <td className="text-right text-muted-foreground whitespace-nowrap">{item.qty}x</td>
                             {!isGuest && (
                               <td className="text-right text-muted-foreground whitespace-nowrap hidden sm:table-cell">
-                                R$ {(isPartner && item.product.partner_price ? item.product.partner_price : item.product.price).toFixed(2)}
+                                {formatBRL((isPartner && item.product.partner_price ? item.product.partner_price : item.product.price))}
                               </td>
                             )}
                             {!isGuest && (
                               <td className="text-right font-medium text-foreground whitespace-nowrap">
-                                {item.product.id === 'not_found' ? '—' : `R$ ${((isPartner && item.product.partner_price ? item.product.partner_price : item.product.price) * item.qty).toFixed(2)}`}
+                                {item.product.id === 'not_found' ? '—' : `${formatBRL(((isPartner && item.product.partner_price ? item.product.partner_price : item.product.price) * item.qty))}`}
                               </td>
                             )}
                           </tr>

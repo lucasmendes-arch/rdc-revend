@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
+import { formatBRL } from '@/lib/format'
 
 const Marketing = () => {
   const [loading, setLoading] = useState(true);
@@ -326,7 +327,7 @@ const Marketing = () => {
                           </span>
                         </TableCell>
                         <TableCell className="font-medium text-foreground whitespace-nowrap">
-                          {coupon.discount_type === 'fixed' ? `R$ ${coupon.discount_value.toFixed(2)}` :
+                          {coupon.discount_type === 'fixed' ? `${formatBRL(coupon.discount_value)}` :
                            coupon.discount_type === 'percent' ? `${coupon.discount_value}%` :
                            coupon.discount_type === 'shipping_percent' ? `${coupon.discount_value}% no frete` : 'Frete grátis'}
                         </TableCell>

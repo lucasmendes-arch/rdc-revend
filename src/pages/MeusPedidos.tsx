@@ -9,6 +9,7 @@ import { getOrderStatus } from '@/lib/design/orderStatus';
 import { Button } from '@/components/ui/button';
 import { EmptyState, PageLoading } from '@/components/admin/ui/AdminPage';
 import { PortalPage, PortalSection, PortalTopBar } from '@/components/portal/PortalPage';
+import { formatBRL } from '@/lib/format'
 
 interface OrderItem {
   id: string;
@@ -141,7 +142,7 @@ const MeusPedidos = () => {
                         </p>
                       </div>
                       <span className="text-[15px] font-semibold text-foreground numeric whitespace-nowrap">
-                        R$ {order.total.toFixed(2)}
+                        {formatBRL(order.total)}
                       </span>
                       {isExpanded ? (
                         <ChevronUp className="w-4 h-4 text-ink-400 shrink-0" />
@@ -159,11 +160,11 @@ const MeusPedidos = () => {
                               <div className="flex-1 min-w-0">
                                 <p className="text-foreground truncate">{item.product_name_snapshot}</p>
                                 <p className="text-[12px] text-muted-foreground numeric">
-                                  {item.qty}x · R$ {item.unit_price_snapshot.toFixed(2)}
+                                  {item.qty}x · {formatBRL(item.unit_price_snapshot)}
                                 </p>
                               </div>
                               <p className="text-foreground whitespace-nowrap numeric">
-                                R$ {item.line_total.toFixed(2)}
+                                {formatBRL(item.line_total)}
                               </p>
                             </div>
                           ))}
@@ -171,7 +172,7 @@ const MeusPedidos = () => {
 
                         <div className="border-t border-border pt-3 flex justify-between text-[14px] font-semibold text-foreground">
                           <span>Total</span>
-                          <span className="numeric">R$ {order.total.toFixed(2)}</span>
+                          <span className="numeric">{formatBRL(order.total)}</span>
                         </div>
 
                         <Button

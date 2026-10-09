@@ -19,6 +19,7 @@ import { AdminSummaryCard } from '@/components/admin/ui/AdminSummaryCard';
 import { AdminSelect } from '@/components/admin/ui/AdminSelect';
 import { startOfMonth, endOfMonth, startOfDay, endOfDay, subDays, subMonths, format, parseISO } from 'date-fns';
 import StyledSelect from '@/components/ui/styled-select';
+import { formatBRL } from '@/lib/format';
 
 interface Order {
   id: string;
@@ -72,7 +73,7 @@ const statusConfig: Record<string, { label: string; bg: string; text: string; ri
   );
 
 const brl = (v: number, digits = 2) =>
-  (v ?? 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: digits, maximumFractionDigits: digits });
+  digits === 2 ? formatBRL(v) : (v ?? 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: digits, maximumFractionDigits: digits });
 
 const statusOptions = ['recebido', 'aguardando_pagamento', 'pago', 'separacao', 'enviado', 'entregue', 'concluido', 'cancelado', 'expirado'] as const;
 
