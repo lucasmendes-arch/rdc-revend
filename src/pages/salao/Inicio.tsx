@@ -29,10 +29,10 @@ export default function SalaoInicio() {
 
   return (
     <div className="min-h-screen bg-surface-alt">
-      <header className="bg-background border-b border-border px-4 sm:px-6 h-14 flex items-center sticky top-0 z-40">
+      <header className="bg-background/90 backdrop-blur border-b border-border px-4 sm:px-6 h-14 flex items-center sticky top-0 z-40">
         <div className="w-full max-w-3xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-md border border-border flex items-center justify-center shrink-0"><img src={logo} alt="Rei dos Cachos" className="h-4 w-auto" /></div>
+            <img src={logo} alt="Rei dos Cachos" className="h-8 w-auto shrink-0" />
             <span className="text-foreground font-semibold text-[13px] tracking-tight leading-tight">Área do Salão</span>
           </div>
           <div className="flex items-center gap-1">

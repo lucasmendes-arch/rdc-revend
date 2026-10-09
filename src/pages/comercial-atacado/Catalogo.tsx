@@ -465,11 +465,10 @@ const Catalogo = () => {
 
           <div className="flex items-center justify-between w-full sm:w-auto">
             <div className="flex items-center gap-2 sm:gap-3 select-none pointer-events-none">
-              <img src={logo} alt="Rei dos Cachos" className="h-7 sm:h-8 w-auto flex-shrink-0" />
-              <div className="flex flex-col leading-none">
-                <span className="text-foreground font-semibold text-[13px] tracking-tight">Rei dos Cachos</span>
-                <span className="eyebrow mt-0.5">atacado</span>
-              </div>
+              <img src={logo} alt="Rei dos Cachos" className="h-9 sm:h-11 w-auto flex-shrink-0" />
+              <span className="hidden sm:inline-flex h-6 px-2.5 items-center rounded-full bg-brand-subtle border border-brand-border text-brand-strong text-[11px] font-semibold">
+                Atacado
+              </span>
             </div>
 
             {/* Mobile Actions in Header Row */}

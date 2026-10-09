@@ -5,16 +5,15 @@ import { toast } from 'sonner'
 import {
   Loader, Eye, MousePointerClick, ShoppingCart, CreditCard,
   CheckCircle, XCircle, X, User, Phone, Mail, Edit2, Check,
-  Building2, FileText, Package, Clock, Calendar, Users, DollarSign, Sparkles, AlertTriangle, Trash2, TrendingUp,
-  KeyRound, Copy, Lock, Unlock, MessageCircle, RefreshCw, LayoutList, Columns3, ChevronRight,
+  Building2, FileText, Package, Clock, Calendar, Users, DollarSign, Sparkles, AlertTriangle, Trash2,
+  KeyRound, Copy, Lock, Unlock, MessageCircle, RefreshCw, LayoutList, Columns3, ChevronRight, ChevronDown, Search,
 } from 'lucide-react'
 import { NextActionEditor } from '@/components/admin/NextActionEditor'
 import { CustomerNotes } from '@/components/admin/CustomerNotes'
 import AdminLayout from '@/components/admin/AdminLayout'
 import { AdminHeader } from '@/components/admin/ui/AdminHeader'
-import { AdminSummaryCard } from '@/components/admin/ui/AdminSummaryCard'
 import { AdminSelect } from '@/components/admin/ui/AdminSelect'
-import { OPERATIONAL_FILTERS, QUEUE_VIEWS, applyQueueView, applySegmentFilter, getQueuePriority, getViewsForSegment, sortWorkQueue } from '@/lib/crmFilters'
+import { QUEUE_VIEWS, applyQueueView, applySegmentFilter, getQueuePriority, getViewsForSegment, isNovoSemPrimeiroPedido, isSemPedido30d, sortWorkQueue } from '@/lib/crmFilters'
 import type { CrmFilterSession, QueuePriority, SegmentTab } from '@/lib/crmFilters'
 import { ORDER_STATUS, ORDER_STATUS_SEQUENCE, toneClasses } from '@/lib/design/orderStatus'
 import StyledSelect from '@/components/ui/styled-select'
@@ -1336,17 +1335,287 @@ function PartnerAccessSection({ session }: { session: ClientSession }) {
   )
 }
 
+// --------------------------------------------------------------------------
+// Lista de clientes — visão padrão
+// --------------------------------------------------------------------------
+//
+// A tela abria num kanban do funil de NAVEGAÇÃO do site (visitou → viu
+// produto → carrinho…), que é analytics, não gestão de cliente. Quem vende
+// precisa responder "quem eu chamo agora e quanto essa pessoa vale": por isso
+// a visão padrão virou uma lista com último pedido, total comprado, vendedor
+// e próxima ação. Fila e Funil continuam disponíveis como visões secundárias.
+
+type ClientView = 'list' | 'queue' | 'funnel'
+type QuickFilter = 'all' | 'contatar' | 'ativos' | 'parados' | 'novos' | 'minhas'
+type SortKey = 'priority' | 'last_order' | 'spent' | 'name'
+
+const SEGMENT_TABS: { key: SegmentTab; label: string }[] = [
+  { key: 'wholesale_buyer', label: 'Atacado' },
+  { key: 'network_partner', label: 'Parceiros da rede' },
+  { key: 'all', label: 'Todos' },
+]
+
+const brl = (v: number) =>
+  v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 })
+
+function daysAgo(iso: string | null | undefined): number | null {
+  if (!iso) return null
+  return Math.floor((Date.now() - new Date(iso).getTime()) / (1000 * 60 * 60 * 24))
+}
+
+function relativeDays(iso: string | null | undefined): string {
+  const d = daysAgo(iso)
+  if (d === null) return '—'
+  if (d <= 0) return 'hoje'
+  if (d === 1) return 'ontem'
+  if (d < 30) return `há ${d} dias`
+  const m = Math.floor(d / 30)
+  return m === 1 ? 'há 1 mês' : `há ${m} meses`
+}
+
+function matchesQuickFilter(s: ClientSession, f: QuickFilter, mySellerId: string | null): boolean {
+  const cs = s as unknown as CrmFilterSession
+  switch (f) {
+    case 'contatar': {
+      const p = getQueuePriority(cs)
+      return p === 'vencido' || p === 'hoje'
+    }
+    case 'ativos': {
+      const d = daysAgo(s.profile?.last_order_at)
+      return d !== null && d <= 30
+    }
+    case 'parados':
+      return isSemPedido30d(cs)
+    case 'novos':
+      return isNovoSemPrimeiroPedido(cs)
+    case 'minhas':
+      return !!mySellerId && s.profile?.seller_id === mySellerId
+    default:
+      return true
+  }
+}
+
+function matchesSearch(s: ClientSession, q: string): boolean {
+  if (!q) return true
+  const needle = q.toLowerCase()
+  const digits = q.replace(/\D/g, '')
+  const p = s.profile
+  const hay = [p?.full_name, s.email, p?.seller_name].filter(Boolean).join(' ').toLowerCase()
+  if (hay.includes(needle)) return true
+  if (digits.length >= 3) {
+    const nums = [p?.phone, p?.auth_phone, p?.document].filter(Boolean).join(' ').replace(/\D/g, '')
+    if (nums.includes(digits)) return true
+  }
+  return false
+}
+
+/** Cartão-resumo que também é filtro: o número explica a lista que aparece embaixo. */
+function StatFilter({ label, hint, count, active, tone, onClick, disabled }: {
+  label: string
+  hint: string
+  count: number
+  active: boolean
+  tone: 'neutral' | 'danger' | 'success' | 'warning' | 'info'
+  onClick: () => void
+  disabled?: boolean
+}) {
+  const dot = {
+    neutral: 'bg-ink-400',
+    danger: 'bg-danger-solid',
+    success: 'bg-success-solid',
+    warning: 'bg-warning-solid',
+    info: 'bg-info-solid',
+  }[tone]
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      aria-pressed={active}
+      className={`text-left min-w-[150px] flex-1 rounded-xl border px-4 py-3 transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
+        active
+          ? 'border-brand-border bg-brand-subtle ring-1 ring-inset ring-brand-border'
+          : 'border-border bg-card hover:border-ink-300'
+      }`}
+    >
+      <span className="flex items-center gap-1.5 text-[12px] font-medium text-ink-600">
+        <span className={`w-1.5 h-1.5 rounded-full ${dot}`} aria-hidden />
+        {label}
+      </span>
+      <span className="block text-[24px] font-semibold tracking-tight leading-none text-foreground mt-2 numeric">{count}</span>
+      <span className="block text-[11px] text-muted-foreground mt-1.5 truncate">{hint}</span>
+    </button>
+  )
+}
+
+function NextActionCell({ session }: { session: ClientSession }) {
+  const p = session.profile
+  const priority = getQueuePriority(session as unknown as CrmFilterSession)
+  if (!p?.next_action) {
+    return <span className="text-[12px] text-ink-400">Sem próxima ação</span>
+  }
+  const when = p.next_action_at
+    ? new Date(p.next_action_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })
+    : null
+  const tone =
+    priority === 'vencido' ? 'text-danger' : priority === 'hoje' ? 'text-warning' : 'text-ink-500'
+  return (
+    <div className="min-w-0">
+      <p className="text-[13px] text-foreground truncate" title={p.next_action}>{p.next_action}</p>
+      {when && (
+        <p className={`text-[11px] font-medium mt-0.5 ${tone}`}>
+          {priority === 'vencido' ? `Venceu ${when}` : priority === 'hoje' ? 'Hoje' : when}
+        </p>
+      )}
+    </div>
+  )
+}
+
+function SortHeader({ label, k, sort, setSort, className = '' }: {
+  label: string; k: SortKey; sort: SortKey; setSort: (k: SortKey) => void; className?: string
+}) {
+  const active = sort === k
+  return (
+    <th className={`px-3 h-10 text-left font-medium ${className}`}>
+      <button
+        onClick={() => setSort(k)}
+        className={`inline-flex items-center gap-1 text-[12px] transition-colors ${active ? 'text-foreground font-semibold' : 'text-muted-foreground hover:text-foreground'}`}
+      >
+        {label}
+        {active && <ChevronDown className="w-3.5 h-3.5 text-brand-strong" />}
+      </button>
+    </th>
+  )
+}
+
+function ClientList({ rows, sort, setSort, onOpen }: {
+  rows: ClientSession[]
+  sort: SortKey
+  setSort: (k: SortKey) => void
+  onOpen: (id: string) => void
+}) {
+  return (
+    <>
+      {/* Desktop: tabela */}
+      <div className="hidden md:block surface-card overflow-hidden">
+        <table className="w-full table-fixed">
+          <thead className="border-b border-border bg-surface">
+            <tr>
+              <SortHeader label="Cliente" k="name" sort={sort} setSort={setSort} className="w-[30%] pl-5" />
+              <SortHeader label="Último pedido" k="last_order" sort={sort} setSort={setSort} className="w-[15%]" />
+              <SortHeader label="Total comprado" k="spent" sort={sort} setSort={setSort} className="w-[15%]" />
+              <th className="px-3 h-10 text-left text-[12px] font-medium text-muted-foreground w-[13%]">Vendedor</th>
+              <SortHeader label="Próxima ação" k="priority" sort={sort} setSort={setSort} className="w-[22%]" />
+              <th className="w-[5%]" aria-hidden />
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {rows.map(s => {
+              const p = s.profile
+              const name = getClientName(s)
+              const lastDays = daysAgo(p?.last_order_at)
+              return (
+                <tr
+                  key={s.id}
+                  onClick={() => onOpen(s.id)}
+                  className="group cursor-pointer hover:bg-muted/60 transition-colors"
+                >
+                  <td className="pl-5 pr-3 py-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <span
+                        className={`w-9 h-9 rounded-full flex items-center justify-center text-[13px] font-bold shrink-0 ${
+                          p?.customer_segment === 'network_partner'
+                            ? 'bg-brand-subtle text-brand-strong ring-1 ring-inset ring-brand-border'
+                            : 'bg-muted text-ink-600'
+                        }`}
+                        aria-hidden
+                      >
+                        {name.charAt(0).toUpperCase()}
+                      </span>
+                      <div className="min-w-0">
+                        <p className="text-[14px] font-semibold text-foreground truncate">{name}</p>
+                        <p className="text-[12px] text-muted-foreground truncate">
+                          {[p?.business_type ? businessTypeLabels[p.business_type] ?? p.business_type : null, p?.phone]
+                            .filter(Boolean)
+                            .join(' • ') || s.email || 'Ficha incompleta'}
+                        </p>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-3 py-3">
+                    {p?.last_order_at ? (
+                      <>
+                        <p className="text-[13px] text-foreground">{relativeDays(p.last_order_at)}</p>
+                        <p className={`text-[11px] mt-0.5 ${lastDays !== null && lastDays > 30 ? 'text-danger font-medium' : 'text-muted-foreground'}`}>
+                          {new Date(p.last_order_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: '2-digit' })}
+                        </p>
+                      </>
+                    ) : (
+                      <span className="text-[12px] text-ink-400">Nunca comprou</span>
+                    )}
+                  </td>
+                  <td className="px-3 py-3">
+                    <p className="text-[14px] font-semibold text-foreground numeric">{brl(p?.total_spent ?? 0)}</p>
+                    <p className="text-[11px] text-muted-foreground mt-0.5 numeric">
+                      {p?.total_orders ?? 0} {(p?.total_orders ?? 0) === 1 ? 'pedido' : 'pedidos'}
+                    </p>
+                  </td>
+                  <td className="px-3 py-3">
+                    <span className="text-[13px] text-ink-600 truncate block">{p?.seller_name ?? '—'}</span>
+                  </td>
+                  <td className="px-3 py-3"><NextActionCell session={s} /></td>
+                  <td className="pr-4 py-3 text-right">
+                    <ChevronRight className="w-4 h-4 text-ink-300 group-hover:text-brand-strong inline-block transition-colors" />
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Mobile: cartões */}
+      <div className="md:hidden space-y-2">
+        {rows.map(s => {
+          const p = s.profile
+          const name = getClientName(s)
+          return (
+            <button
+              key={s.id}
+              onClick={() => onOpen(s.id)}
+              className="w-full text-left surface-card surface-card-interactive p-4"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-[15px] font-semibold text-foreground truncate">{name}</p>
+                  <p className="text-[12px] text-muted-foreground truncate">{p?.phone || s.email || 'Ficha incompleta'}</p>
+                </div>
+                <p className="text-[15px] font-bold text-foreground numeric shrink-0">{brl(p?.total_spent ?? 0)}</p>
+              </div>
+              <div className="flex items-end justify-between gap-3 mt-3 pt-3 border-t border-border">
+                <NextActionCell session={s} />
+                <span className="text-[11px] text-muted-foreground shrink-0">
+                  {p?.last_order_at ? `Comprou ${relativeDays(p.last_order_at)}` : 'Nunca comprou'}
+                </span>
+              </div>
+            </button>
+          )
+        })}
+      </div>
+    </>
+  )
+}
+
 export default function AdminClientes() {
   const queryClient = useQueryClient()
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null)
-  const [selectedSegmentFilter, setSelectedSegmentFilter] = useState<string>('wholesale_buyer')
-  const [selectedOperationalFilter, setSelectedOperationalFilter] = useState<string>('')
   const [clientToDelete, setClientToDelete] = useState<ClientSession | null>(null)
 
-  // ── Fila Comercial ─────────────────────────────────────────────────────────
-  const [viewMode, setViewMode] = useState<'funnel' | 'queue'>('funnel')
+  const [view, setView] = useState<ClientView>('list')
+  const [search, setSearch] = useState('')
+  const [quickFilter, setQuickFilter] = useState<QuickFilter>('all')
+  const [sort, setSort] = useState<SortKey>('priority')
   const [activeQueueView, setActiveQueueView] = useState<string>('all')
-  // Segmento ativo: foco principal é wholesale_buyer (atacado)
+  // Segmento ativo vale para as três visões. Foco principal é atacado.
   const [activeSegmentTab, setActiveSegmentTab] = useState<SegmentTab>('wholesale_buyer')
 
   // "Minhas contas" — resolvido automaticamente via RPC
@@ -1360,7 +1629,7 @@ export default function AdminClientes() {
     staleTime: 5 * 60 * 1000,
   })
 
-  // Ao trocar segmento: se a view ativa não existe no novo segmento, volta para 'all'
+  // Ao trocar segmento: se a view ativa da fila não existe no novo segmento, volta para 'all'
   function handleSegmentChange(seg: SegmentTab) {
     setActiveSegmentTab(seg)
     const availableViews = getViewsForSegment(seg)
@@ -1387,7 +1656,6 @@ export default function AdminClientes() {
     }
   })
 
-  // Sellers para o selector "Identificar como" na fila comercial
   const { data: sellers = [] } = useQuery({
     queryKey: ['active-sellers'],
     queryFn: async () => {
@@ -1479,406 +1747,293 @@ export default function AdminClientes() {
     staleTime: 30 * 1000,
   })
 
-  const filteredSessions = useMemo(() => {
-    let result = sessions
-    if (selectedSegmentFilter) {
-      result = result.filter(s => s.profile?.customer_segment === selectedSegmentFilter)
-    }
-    if (selectedOperationalFilter) {
-      const filter = OPERATIONAL_FILTERS.find(f => f.key === selectedOperationalFilter)
-      if (filter) {
-        result = result.filter(s => filter.predicate(s as unknown as CrmFilterSession))
-      }
-    }
-    return result
-  }, [sessions, selectedSegmentFilter, selectedOperationalFilter])
+  // ── Base comum: segmento + busca ──────────────────────────────────────────
+  const segmentedAll = useMemo(
+    () => (applySegmentFilter(sessions as unknown as CrmFilterSession[], activeSegmentTab) as unknown as ClientSession[])
+      .filter(s => matchesSearch(s, search.trim())),
+    [sessions, activeSegmentTab, search],
+  )
+  // Cliente = sessão com conta e ficha. Visitante anônimo só aparece no funil.
+  const clients = useMemo(() => segmentedAll.filter(s => s.user_id && s.profile), [segmentedAll])
 
-  // ── Fila comercial: base segmentada + view + ordenação por prioridade ──────
-  const queueSessions = useMemo(() => {
-    // 1. Apenas clientes com perfil (sem visitantes anônimos)
-    const withProfile = sessions.filter(s => s.user_id && s.profile)
-    // 2. Filtro de segmento (atacado / parceiros / todos)
-    const segmented = applySegmentFilter(withProfile as unknown as CrmFilterSession[], activeSegmentTab)
-    // 3. Filtro de view (minhas contas, vencidos, hoje, etc.)
-    const viewed = applyQueueView(segmented, activeQueueView, mySellerId ?? '')
-    // 4. Ordenação por prioridade
-    return sortWorkQueue(viewed) as unknown as ClientSession[]
-  }, [sessions, activeSegmentTab, activeQueueView, mySellerId])
-
-  // Contagem por view para os pills (respeitando o segmento ativo)
-  const queueCounts = useMemo(() => {
-    const withProfile = sessions.filter(s => s.user_id && s.profile)
-    const segmented = applySegmentFilter(withProfile as unknown as CrmFilterSession[], activeSegmentTab)
+  const segmentCounts = useMemo(() => {
+    const base = sessions.filter(s => s.user_id && s.profile)
     return Object.fromEntries(
-      QUEUE_VIEWS.map(v => [
-        v.key,
-        applyQueueView(segmented, v.key, mySellerId ?? '').length,
-      ]),
-    )
-  }, [sessions, activeSegmentTab, mySellerId])
+      SEGMENT_TABS.map(t => [t.key, applySegmentFilter(base as unknown as CrmFilterSession[], t.key).length]),
+    ) as Record<SegmentTab, number>
+  }, [sessions])
 
-  // Views disponíveis para o segmento ativo
-  const availableQueueViews = useMemo(
-    () => getViewsForSegment(activeSegmentTab),
-    [activeSegmentTab],
-  )
+  const quickCounts = useMemo(() => {
+    const keys: QuickFilter[] = ['all', 'contatar', 'ativos', 'parados', 'novos', 'minhas']
+    return Object.fromEntries(
+      keys.map(k => [k, clients.filter(s => matchesQuickFilter(s, k, mySellerId)).length]),
+    ) as Record<QuickFilter, number>
+  }, [clients, mySellerId])
 
+  // ── Lista ─────────────────────────────────────────────────────────────────
+  const listRows = useMemo(() => {
+    const rows = clients.filter(s => matchesQuickFilter(s, quickFilter, mySellerId))
+    switch (sort) {
+      case 'priority':
+        return sortWorkQueue(rows as unknown as CrmFilterSession[]) as unknown as ClientSession[]
+      case 'last_order':
+        return [...rows].sort((a, b) =>
+          new Date(b.profile?.last_order_at ?? 0).getTime() - new Date(a.profile?.last_order_at ?? 0).getTime())
+      case 'spent':
+        return [...rows].sort((a, b) => (b.profile?.total_spent ?? 0) - (a.profile?.total_spent ?? 0))
+      case 'name':
+        return [...rows].sort((a, b) => getClientName(a).localeCompare(getClientName(b), 'pt-BR'))
+    }
+  }, [clients, quickFilter, sort, mySellerId])
+
+  // ── Fila comercial ────────────────────────────────────────────────────────
+  const queueSessions = useMemo(() => {
+    const viewed = applyQueueView(clients as unknown as CrmFilterSession[], activeQueueView, mySellerId ?? '')
+    return sortWorkQueue(viewed) as unknown as ClientSession[]
+  }, [clients, activeQueueView, mySellerId])
+
+  const queueCounts = useMemo(() => Object.fromEntries(
+    QUEUE_VIEWS.map(v => [v.key, applyQueueView(clients as unknown as CrmFilterSession[], v.key, mySellerId ?? '').length]),
+  ), [clients, mySellerId])
+
+  const availableQueueViews = useMemo(() => getViewsForSegment(activeSegmentTab), [activeSegmentTab])
+
+  // ── Funil do site (inclui visitantes anônimos quando o segmento é Todos) ──
   const grouped = Object.fromEntries(
-    funnelStages.map(s => [s.key, filteredSessions.filter(sess => sess.status === s.key)])
+    funnelStages.map(s => [s.key, segmentedAll.filter(sess => sess.status === s.key)])
   )
 
-  // Derive selected session from live query data so mutations reflect immediately
   const selectedSession = selectedSessionId
     ? (sessions.find(s => s.id === selectedSessionId) ?? null)
     : null
 
-  const totalSessions = filteredSessions.length
+  const totalSessions = segmentedAll.length
   const conversionRate = totalSessions > 0
     ? ((grouped['comprou']?.length || 0) / totalSessions * 100).toFixed(1)
     : '0'
 
-  // Stage color config matching Pedidos' ring/bg/text pattern
-  const stageColorConfig: Record<string, { ring: string; bg: string; text: string }> = {
-    visitou:              { ring: 'ring-muted-foreground/15', bg: 'bg-muted',          text: 'text-muted-foreground' },
-    visualizou_produto:   { ring: 'ring-blue-600/20',         bg: 'bg-blue-500/10',    text: 'text-blue-600 dark:text-blue-400' },
-    adicionou_carrinho:   { ring: 'ring-warning-border',        bg: 'bg-warning-subtle',   text: 'text-warning' },
-    iniciou_checkout:     { ring: 'ring-purple-600/20',       bg: 'bg-purple-500/10',  text: 'text-purple-600 dark:text-purple-400' },
-    comprou:              { ring: 'ring-success-border',      bg: 'bg-success-subtle', text: 'text-success' },
-    abandonou:            { ring: 'ring-danger-border',          bg: 'bg-danger-subtle',     text: 'text-danger' },
-  }
+  const VIEW_OPTIONS: { key: ClientView; label: string; icon: typeof Users }[] = [
+    { key: 'list', label: 'Lista', icon: Users },
+    { key: 'queue', label: 'Fila de contato', icon: LayoutList },
+    { key: 'funnel', label: 'Funil do site', icon: Columns3 },
+  ]
+
+  const subtitle =
+    view === 'funnel'
+      ? `Etapa de navegação de cada visitante no site.${totalSessions > 0 ? ` ${conversionRate}% chegaram a comprar.` : ''}`
+      : view === 'queue'
+      ? 'Quem precisa de contato, do mais urgente para o menos urgente.'
+      : 'Sua carteira: quanto cada cliente comprou e qual é o próximo passo.'
 
   return (
     <AdminLayout>
       {/* ── HEADER ── */}
-      <div className="bg-card border-b border-border sticky top-0 z-30 shadow-sm flex flex-col w-full text-left">
+      <div className="bg-card border-b border-border sticky top-0 z-30 flex flex-col w-full text-left">
         <AdminHeader
           title="Clientes"
-          subtitle={
-            viewMode === 'queue'
-              ? `Fila comercial · ${queueSessions.length} cliente${queueSessions.length !== 1 ? 's' : ''}`
-              : `${selectedSegmentFilter ? `${segmentLabel(selectedSegmentFilter)} · ` : ''}Funil de vendas em tempo real.${totalSessions > 0 ? ` ${conversionRate}% de conversão.` : ''}`
-          }
-          badge={
-            !isLoading && totalSessions > 0 ? (
-              <span className="px-2.5 py-1 rounded-full bg-muted text-muted-foreground text-xs font-semibold border border-border shadow-sm">
-                {totalSessions} clientes
-              </span>
-            ) : undefined
-          }
+          subtitle={subtitle}
           actionNode={
-            <div className="flex flex-wrap items-center gap-2">
-              {/* Mode toggle */}
-              <div className="flex items-center gap-0.5 bg-muted rounded-lg p-0.5">
-                <button
-                  onClick={() => setViewMode('funnel')}
-                  className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-semibold transition-all ${
-                    viewMode === 'funnel'
-                      ? 'bg-card text-foreground shadow-sm'
-                      : 'text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  <Columns3 className="w-3.5 h-3.5" />
-                  Funil
-                </button>
-                <button
-                  onClick={() => setViewMode('queue')}
-                  className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-semibold transition-all ${
-                    viewMode === 'queue'
-                      ? 'bg-card text-foreground shadow-sm'
-                      : 'text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  <LayoutList className="w-3.5 h-3.5" />
-                  Fila
-                </button>
-              </div>
-
-              {/* Funnel filters */}
-              {viewMode === 'funnel' && (
-                <>
-                  <AdminSelect
-                    options={[
-                      { value: 'wholesale_buyer', label: 'Comprador Atacado' },
-                      { value: 'network_partner', label: 'Parceiro da Rede' },
-                    ]}
-                    value={selectedSegmentFilter}
-                    onChange={setSelectedSegmentFilter}
-                    placeholder="Tipo"
-                    icon={Users}
-                    allLabel="Todos os tipos"
-                  />
-                  <AdminSelect
-                    options={OPERATIONAL_FILTERS.map(f => ({ value: f.key, label: f.label }))}
-                    value={selectedOperationalFilter}
-                    onChange={setSelectedOperationalFilter}
-                    placeholder="Situação"
-                    icon={AlertTriangle}
-                    allLabel="Todas as situações"
-                  />
-                </>
-              )}
-
-              {/* Queue: indicador do seller vinculado (auto-resolvido) */}
-              {viewMode === 'queue' && mySellerId && (
-                <span className="text-[11px] text-muted-foreground font-medium whitespace-nowrap">
-                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-success-solid mr-1 align-middle" />
-                  {sellers.find(s => s.id === mySellerId)?.name ?? 'Vendedor vinculado'}
-                </span>
-              )}
+            <div role="tablist" aria-label="Visão" className="inline-flex items-center gap-0.5 rounded-lg border border-border bg-muted p-0.5">
+              {VIEW_OPTIONS.map(o => {
+                const active = view === o.key
+                return (
+                  <button
+                    key={o.key}
+                    role="tab"
+                    aria-selected={active}
+                    onClick={() => setView(o.key)}
+                    className={`flex items-center gap-1.5 h-8 px-3 rounded-md text-[13px] font-medium transition-colors ${
+                      active ? 'bg-card text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    <o.icon className={`w-3.5 h-3.5 ${active ? 'text-brand-strong' : ''}`} />
+                    {o.label}
+                  </button>
+                )
+              })}
             </div>
           }
         />
 
-        {/* ── QUEUE: tabs de segmento + views ── */}
-        {viewMode === 'queue' && !isLoading && (
-          <>
-            {/* Row 1: Segmento (foco principal do comercial) */}
-            <div className="w-full border-t border-border bg-card px-4 sm:px-6 lg:px-8 flex flex-nowrap gap-0 items-stretch">
-              {(
-                [
-                  { key: 'wholesale_buyer' as SegmentTab, label: 'Compradores Atacado', star: true },
-                  { key: 'network_partner' as SegmentTab, label: 'Parceiros da Rede', star: false },
-                  { key: 'all' as SegmentTab, label: 'Todos', star: false },
-                ] as const
-              ).map(seg => {
-                const isActive = activeSegmentTab === seg.key
-                const totalInSeg = (() => {
-                  const base = sessions.filter(s => s.user_id && s.profile)
-                  return applySegmentFilter(base as unknown as CrmFilterSession[], seg.key).length
-                })()
-                return (
-                  <button
-                    key={seg.key}
-                    onClick={() => handleSegmentChange(seg.key)}
-                    className={`flex items-center gap-1.5 px-4 py-2.5 text-xs font-semibold border-b-2 transition-all whitespace-nowrap ${
-                      isActive
-                        ? 'border-foreground text-foreground'
-                        : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
-                    }`}
-                  >
-                    {seg.label}
-                    {seg.star && (
-                      <span className="btn-action text-[9px] font-bold px-1 py-0.5 rounded leading-none">
-                        PRINCIPAL
-                      </span>
-                    )}
-                    <span className={`text-[10px] font-bold ${isActive ? 'text-muted-foreground' : 'text-muted-foreground/40'}`}>
-                      {totalInSeg}
-                    </span>
-                  </button>
-                )
-              })}
-            </div>
+        {/* Segmento + busca: valem para as três visões */}
+        <div className="px-4 sm:px-6 lg:px-8 pb-3 flex flex-col sm:flex-row sm:items-center gap-3">
+          <div className="inline-flex items-center gap-0.5 p-0.5 rounded-lg bg-muted overflow-x-auto scrollbar-none">
+            {SEGMENT_TABS.map(seg => {
+              const active = activeSegmentTab === seg.key
+              return (
+                <button
+                  key={seg.key}
+                  onClick={() => handleSegmentChange(seg.key)}
+                  className={`flex items-center gap-2 h-8 px-3 rounded-md text-[13px] font-medium whitespace-nowrap transition-colors ${
+                    active
+                      ? 'bg-card text-foreground shadow-xs ring-1 ring-border'
+                      : 'text-ink-500 hover:text-foreground'
+                  }`}
+                >
+                  {seg.label}
+                  <span className={`text-[11px] font-semibold numeric ${active ? 'opacity-70' : 'text-ink-400'}`}>
+                    {segmentCounts[seg.key] ?? 0}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+          <div className="relative sm:ml-auto sm:w-72">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-400 pointer-events-none" />
+            <input
+              type="search"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Buscar nome, telefone ou CNPJ"
+              className="w-full h-9 pl-9 pr-3 rounded-lg border border-input bg-background text-base md:text-sm text-foreground placeholder:text-ink-400 hover:border-ink-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+            />
+          </div>
+        </div>
 
-            {/* Row 2: Views prontas (filtradas por segmento) */}
-            <div className="w-full border-t border-border bg-muted/30 px-4 sm:px-6 lg:px-8 overflow-x-auto flex flex-nowrap gap-1.5 items-center py-2" style={{ scrollbarWidth: 'thin' }}>
-              {availableQueueViews.map(view => {
-                const count = queueCounts[view.key] ?? 0
-                const isActive = activeQueueView === view.key
-                const noSeller = view.key === 'my_accounts' && !mySellerId
-
-                return (
-                  <button
-                    key={view.key}
-                    onClick={() => !noSeller && setActiveQueueView(view.key)}
-                    disabled={noSeller}
-                    title={noSeller ? 'Nenhum vendedor vinculado ao seu usuário. Configure em Vendedores.' : undefined}
-                    className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap ${
-                      isActive
-                        ? 'bg-foreground text-background shadow-sm'
-                        : noSeller
-                        ? 'bg-muted text-muted-foreground/40 cursor-not-allowed'
-                        : 'bg-card text-muted-foreground border border-border hover:border-border/70 hover:bg-muted/50'
-                    }`}
-                  >
-                    {view.label}
-                    {count > 0 && (
-                      <span className={`inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold ${
-                        isActive ? 'bg-background/20 text-background' : 'bg-muted text-muted-foreground'
-                      }`}>
-                        {count}
-                      </span>
-                    )}
-                  </button>
-                )
-              })}
-            </div>
-          </>
-        )}
-
-        {/* ── SUMMARY CARDS ── */}
-        {!isLoading && sessions.length > 0 && viewMode === 'funnel' && (
-          <div className="w-full border-t border-border bg-muted/30 py-3 px-4 sm:px-6 lg:px-8 overflow-x-auto flex flex-nowrap gap-3 items-center" style={{ scrollbarWidth: 'thin' }}>
-            <AdminSummaryCard
-              icon={Users}
-              iconColor="text-muted-foreground"
-              label="Total clientes"
-              value={String(totalSessions)}
-              subtitle={
-                <span className="inline-block text-[11px] font-bold px-1.5 py-0.5 rounded-md bg-muted text-muted-foreground border border-border">
-                  {funnelStages.length} etapas
-                </span>
-              }
-              className="min-w-[120px] sm:min-w-[120px] sm:min-w-[150px] flex-1 shrink-0 ring-inset ring-1 ring-border"
-            />
-            <AdminSummaryCard
-              label="Compraram"
-              indicatorColor="bg-success-solid"
-              value={String(grouped['comprou']?.length || 0)}
-              subtitle={
-                <span className={`inline-block text-[11px] font-bold px-1.5 py-0.5 rounded-md ${(grouped['comprou']?.length || 0) > 0 ? 'bg-success-subtle text-success border border-success-border' : 'bg-muted text-muted-foreground'}`}>
-                  {totalSessions > 0 ? `${((grouped['comprou']?.length || 0) / totalSessions * 100).toFixed(0)}% do total` : '—'}
-                </span>
-              }
-              className={`min-w-[120px] sm:min-w-[150px] flex-1 shrink-0 ring-inset ring-1 ${(grouped['comprou']?.length || 0) > 0 ? 'ring-success-border' : 'ring-transparent opacity-80'}`}
-            />
-            <AdminSummaryCard
-              label="Abandonaram"
-              indicatorColor="bg-danger-solid"
-              value={String(grouped['abandonou']?.length || 0)}
-              subtitle={
-                <span className={`inline-block text-[11px] font-bold px-1.5 py-0.5 rounded-md ${(grouped['abandonou']?.length || 0) > 0 ? 'bg-danger-subtle text-danger border border-danger-border' : 'bg-muted text-muted-foreground'}`}>
-                  {totalSessions > 0 ? `${((grouped['abandonou']?.length || 0) / totalSessions * 100).toFixed(0)}% do total` : '—'}
-                </span>
-              }
-              className={`min-w-[120px] sm:min-w-[150px] flex-1 shrink-0 ring-inset ring-1 ${(grouped['abandonou']?.length || 0) > 0 ? 'ring-danger-border' : 'ring-transparent opacity-80'}`}
-            />
-            <AdminSummaryCard
-              icon={TrendingUp}
-              iconColor="text-gold-text"
-              label="Conversão"
-              value={`${conversionRate}%`}
-              subtitle={
-                <span className="inline-block text-[11px] font-bold px-1.5 py-0.5 rounded-md bg-muted text-muted-foreground border border-border">
-                  visitou → comprou
-                </span>
-              }
-              className="min-w-[120px] sm:min-w-[150px] flex-1 shrink-0"
-            />
+        {/* Fila: views prontas */}
+        {view === 'queue' && !isLoading && (
+          <div className="w-full border-t border-border px-4 sm:px-6 lg:px-8 overflow-x-auto flex flex-nowrap gap-1.5 items-center py-2.5 scrollbar-none">
+            {availableQueueViews.map(qv => {
+              const count = queueCounts[qv.key] ?? 0
+              const isActive = activeQueueView === qv.key
+              const noSeller = qv.key === 'my_accounts' && !mySellerId
+              return (
+                <button
+                  key={qv.key}
+                  onClick={() => !noSeller && setActiveQueueView(qv.key)}
+                  disabled={noSeller}
+                  title={noSeller ? 'Nenhum vendedor vinculado ao seu usuário. Configure em Vendedores.' : undefined}
+                  className={`flex-shrink-0 flex items-center gap-1.5 h-8 px-3 rounded-full text-[12px] font-medium transition-colors whitespace-nowrap ${
+                    isActive
+                      ? 'bg-brand-subtle text-brand-strong ring-1 ring-inset ring-brand-border'
+                      : noSeller
+                      ? 'text-muted-foreground/40 cursor-not-allowed'
+                      : 'text-ink-600 border border-border hover:bg-muted'
+                  }`}
+                >
+                  {qv.label}
+                  {count > 0 && <span className="text-[11px] font-semibold numeric opacity-70">{count}</span>}
+                </button>
+              )
+            })}
+            {mySellerId && (
+              <span className="ml-auto pl-3 text-[12px] text-muted-foreground whitespace-nowrap">
+                <span className="inline-block w-1.5 h-1.5 rounded-full bg-success-solid mr-1.5 align-middle" />
+                {sellers.find(s => s.id === mySellerId)?.name ?? 'Vendedor vinculado'}
+              </span>
+            )}
           </div>
         )}
       </div>
 
+      {/* ── LISTA ── */}
+      {view === 'list' && (
+        <div className="px-4 sm:px-6 lg:px-8 py-5 space-y-4">
+          <div className="flex gap-2.5 overflow-x-auto scrollbar-none pb-1">
+            <StatFilter label="Todos" hint="no segmento" count={quickCounts.all} tone="neutral"
+              active={quickFilter === 'all'} onClick={() => setQuickFilter('all')} />
+            <StatFilter label="Contatar hoje" hint="follow-up vencido ou de hoje" count={quickCounts.contatar} tone="danger"
+              active={quickFilter === 'contatar'} onClick={() => setQuickFilter('contatar')} />
+            <StatFilter label="Compraram no mês" hint="pedido nos últimos 30 dias" count={quickCounts.ativos} tone="success"
+              active={quickFilter === 'ativos'} onClick={() => setQuickFilter('ativos')} />
+            <StatFilter label="Parados" hint="sem pedido há mais de 30 dias" count={quickCounts.parados} tone="warning"
+              active={quickFilter === 'parados'} onClick={() => setQuickFilter('parados')} />
+            <StatFilter label="Novos sem pedido" hint="cadastro nos últimos 7 dias" count={quickCounts.novos} tone="info"
+              active={quickFilter === 'novos'} onClick={() => setQuickFilter('novos')} />
+            {mySellerId && (
+              <StatFilter label="Minhas contas" hint="vinculadas a você" count={quickCounts.minhas} tone="neutral"
+                active={quickFilter === 'minhas'} onClick={() => setQuickFilter('minhas')} />
+            )}
+          </div>
+
+          {isLoading ? (
+            <div className="flex flex-col items-center justify-center py-24">
+              <Loader className="w-7 h-7 animate-spin text-ink-300 mb-3" />
+              <p className="text-sm text-muted-foreground">Carregando clientes…</p>
+            </div>
+          ) : listRows.length === 0 ? (
+            <div className="surface-card flex flex-col items-center justify-center py-20 px-4 text-center">
+              <Users className="w-8 h-8 text-ink-300 mb-3" />
+              <p className="text-[16px] font-semibold text-foreground">Nenhum cliente aqui</p>
+              <p className="text-sm text-muted-foreground mt-1 max-w-sm">
+                {search
+                  ? 'Nenhum cliente bate com a busca. Confira a grafia ou troque o segmento.'
+                  : 'Troque o filtro acima ou o segmento para ver outros clientes.'}
+              </p>
+            </div>
+          ) : (
+            <ClientList rows={listRows} sort={sort} setSort={setSort} onOpen={setSelectedSessionId} />
+          )}
+        </div>
+      )}
+
       {/* ── FUNNEL BOARD ── */}
-      {viewMode === 'funnel' && (
-        <div className="w-full flex-1 min-w-0 relative border-t border-border shadow-inner bg-muted/20 min-h-[calc(100vh-210px)]">
-          <style dangerouslySetInnerHTML={{__html: `
-            .funnel-scroll::-webkit-scrollbar { height: 16px; }
-            .funnel-scroll::-webkit-scrollbar-track { background: transparent; }
-            .funnel-scroll::-webkit-scrollbar-thumb { background-color: hsl(var(--muted-foreground) / 0.3); border-radius: 8px; border: 3px solid hsl(var(--background)); }
-            .funnel-scroll::-webkit-scrollbar-thumb:hover { background-color: hsl(var(--muted-foreground) / 0.5); }
-          `}} />
-          <div className="absolute inset-0 overflow-x-auto overflow-y-hidden funnel-scroll px-3 sm:px-6 lg:px-8 pt-3 sm:pt-5 pb-4 sm:pb-6">
+      {view === 'funnel' && (
+        <div className="w-full flex-1 min-w-0 relative bg-surface min-h-[calc(100vh-210px)]">
+          <div className="absolute inset-0 overflow-x-auto overflow-y-hidden scrollbar-thin px-3 sm:px-6 lg:px-8 pt-3 sm:pt-5 pb-4 sm:pb-6">
             {isLoading ? (
               <div className="flex flex-col items-center justify-center py-24 w-full">
-                <Loader className="w-8 h-8 animate-spin text-muted-foreground/40 mb-4" />
-                <p className="text-sm font-medium text-muted-foreground">Sincronizando clientes...</p>
+                <Loader className="w-7 h-7 animate-spin text-ink-300 mb-3" />
+                <p className="text-sm text-muted-foreground">Carregando funil…</p>
               </div>
-            ) : sessions.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-32 bg-card rounded-2xl border border-border border-dashed max-w-4xl mx-auto shadow-sm w-full">
-                <Users className="w-12 h-12 text-muted-foreground/30 mb-4" />
-                <h3 className="text-lg font-bold text-foreground">Nenhum cliente ainda</h3>
-                <p className="text-muted-foreground text-sm mt-1 mb-6 text-center max-w-xs">Os clientes aparecerão aqui quando visitantes acessarem o catálogo.</p>
+            ) : segmentedAll.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-32 surface-card max-w-4xl mx-auto w-full">
+                <Users className="w-10 h-10 text-ink-300 mb-4" />
+                <h3 className="text-[16px] font-semibold text-foreground">Nenhum visitante neste segmento</h3>
+                <p className="text-muted-foreground text-sm mt-1 text-center max-w-xs">Os visitantes aparecem aqui quando acessam o catálogo.</p>
               </div>
             ) : (
               <div className="flex gap-4 min-w-max h-full items-start">
                 {funnelStages.map((stage) => {
-                  const StageIcon = stage.icon
                   const items = grouped[stage.key] || []
-                  const colors = stageColorConfig[stage.key]
-
                   return (
-                    <div key={stage.key} className="flex flex-col w-[260px] sm:w-[300px] lg:w-[320px] bg-muted/40 rounded-xl border border-border shrink-0 self-stretch max-h-[75vh] flex-nowrap shadow-sm">
-                      {/* Column Header */}
-                      <div className="p-3 border-b border-border/60 sticky top-0 bg-card/60 backdrop-blur-md rounded-t-xl z-20 flex items-center justify-between">
+                    <div key={stage.key} className="flex flex-col w-[260px] sm:w-[300px] bg-muted/60 rounded-xl border border-border shrink-0 self-stretch max-h-[75vh]">
+                      <div className="p-3 border-b border-border flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <div className={`w-2 h-2 rounded-full ${stage.indicatorColor}`} />
-                          <h3 className="font-bold text-[13px] text-foreground tracking-tight">{stage.label}</h3>
+                          <h3 className="font-semibold text-[13px] text-foreground">{stage.label}</h3>
                         </div>
-                        <span className="text-[10px] font-bold text-muted-foreground bg-card border border-border shadow-sm px-2 py-0.5 rounded-full">
+                        <span className="text-[11px] font-semibold text-muted-foreground bg-card border border-border px-2 py-0.5 rounded-full numeric">
                           {items.length}
                         </span>
                       </div>
-
-                      {/* Column Body */}
-                      <div className="flex-1 overflow-y-auto p-2.5 space-y-2.5 scrollbar-thin">
+                      <div className="flex-1 overflow-y-auto p-2.5 space-y-2 scrollbar-thin">
                         {items.length === 0 ? (
-                          <div className="h-16 flex items-center justify-center rounded-xl border border-border border-dashed bg-card/50">
-                            <span className="text-[11px] font-semibold text-muted-foreground">Nenhum cliente</span>
+                          <div className="h-16 flex items-center justify-center rounded-lg border border-border border-dashed">
+                            <span className="text-[12px] text-muted-foreground">Ninguém nesta etapa</span>
                           </div>
                         ) : (
                           items.slice(0, 30).map((session) => {
                             const clientName = getClientName(session)
                             const labels = getClientLabels(session)
-                            const followUpVencido = !!(
-                              session.profile?.next_action_at &&
-                              new Date(session.profile.next_action_at).getTime() < Date.now()
-                            )
-                            const temProximaAcao = !!(session.profile?.next_action)
-
                             return (
                               <button
                                 key={session.id}
                                 onClick={() => setSelectedSessionId(session.id)}
-                                className={`w-full text-left bg-card p-2.5 sm:p-3 md:p-3.5 rounded-xl shadow-[0_2px_8px_-4px_rgba(0,0,0,0.05)] hover:shadow-md border transition-all duration-200 cursor-pointer group flex flex-col gap-2 sm:gap-2.5 relative ${followUpVencido ? 'border-danger-border hover:border-danger-border' : 'border-border hover:border-border/70'}`}
+                                className="w-full text-left surface-card surface-card-interactive p-3 flex flex-col gap-1.5"
                               >
-                                {/* Identity */}
-                                <div className="flex items-start justify-between gap-3 w-full">
-                                  <div className="flex flex-col gap-0.5 min-w-0">
-                                    <h4 className="text-[13px] md:text-[14px] font-bold text-foreground group-hover:text-muted-foreground leading-snug line-clamp-2 transition-colors" title={clientName}>
-                                      {clientName}
-                                    </h4>
-                                    <span className="text-[11px] font-medium text-muted-foreground leading-none">
-                                      {new Date(session.updated_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
-                                    </span>
-                                  </div>
-                                  {followUpVencido && (
-                                    <span className="flex-shrink-0 flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-danger-subtle text-danger ring-1 ring-inset ring-danger-border" title="Follow-up vencido">
-                                      <Clock className="w-3 h-3" />
-                                      Vencido
-                                    </span>
-                                  )}
-                                  {!followUpVencido && temProximaAcao && (
-                                    <span className="flex-shrink-0 flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-success-subtle text-success ring-1 ring-inset ring-success-border" title={session.profile?.next_action ?? ''}>
-                                      <Clock className="w-3 h-3" />
-                                    </span>
-                                  )}
+                                <div className="flex items-start justify-between gap-2">
+                                  <p className="text-[13px] font-semibold text-foreground leading-snug line-clamp-2" title={clientName}>{clientName}</p>
+                                  <span className="text-[11px] text-muted-foreground shrink-0">
+                                    {new Date(session.updated_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
+                                  </span>
                                 </div>
-
-                                {/* Contact */}
-                                <div className="flex items-center gap-2 mt-0.5">
-                                  {session.profile?.phone ? (
-                                    <span className="text-[11px] md:text-[12px] text-muted-foreground font-medium truncate">{session.profile.phone}</span>
-                                  ) : session.user_id ? (
-                                    <span className="text-[11px] text-muted-foreground italic">Ficha incompleta</span>
-                                  ) : (
-                                    <span className="text-[11px] text-muted-foreground italic">Visitante anônimo</span>
-                                  )}
-                                </div>
-
-                                {/* Segment */}
-                                {session.profile?.customer_segment && (
-                                  <div className="flex flex-wrap items-center gap-1.5 mb-0.5">
-                                    <span className={`inline-flex items-center text-[10px] font-bold px-1.5 py-0.5 rounded-md ring-1 ring-inset ${segmentBadgeColor(session.profile.customer_segment).replace('border-', 'ring-')}`}>
-                                      {segmentLabel(session.profile.customer_segment)}
-                                    </span>
-                                  </div>
-                                )}
-
-                                {/* Cart + Labels footer */}
+                                <p className="text-[12px] text-muted-foreground truncate">
+                                  {session.profile?.phone || (session.user_id ? 'Ficha incompleta' : 'Visitante anônimo')}
+                                </p>
                                 {(labels.length > 0 || session.cart_items_count > 0) && (
-                                  <div className="pt-2.5 border-t border-border flex items-center justify-between gap-2 mt-auto">
-                                    <div className="flex items-center flex-wrap gap-2 text-muted-foreground truncate">
+                                  <div className="flex items-center justify-between gap-2 pt-2 mt-0.5 border-t border-border">
+                                    <div className="flex items-center gap-2 text-muted-foreground truncate">
                                       {labels.map(l => (
-                                        <span key={l.text} className="inline-flex items-center gap-1 text-[10px] font-medium">
-                                          <l.icon className="w-3 h-3 text-muted-foreground" />
-                                          <span className="truncate hidden sm:inline">{l.text}</span>
+                                        <span key={l.text} className="inline-flex items-center gap-1 text-[11px]">
+                                          <l.icon className="w-3 h-3" />
+                                          {l.text}
                                         </span>
                                       ))}
                                     </div>
                                     {session.cart_items_count > 0 && (
-                                      <span className="inline-flex items-center px-1.5 py-0.5 bg-muted text-muted-foreground border border-border rounded-md text-[10px] font-bold">
-                                        {session.cart_items_count} {session.cart_items_count === 1 ? 'item' : 'itens'}
+                                      <span className="text-[11px] font-medium text-brand-strong whitespace-nowrap">
+                                        {session.cart_items_count} no carrinho
                                       </span>
                                     )}
                                   </div>
@@ -1898,31 +2053,28 @@ export default function AdminClientes() {
       )}
 
       {/* ── FILA COMERCIAL ── */}
-      {viewMode === 'queue' && (
-        <div className="w-full flex-1 min-h-[calc(100vh-210px)] bg-muted/20 border-t border-border">
+      {view === 'queue' && (
+        <div className="w-full flex-1 min-h-[calc(100vh-210px)] bg-surface">
           {isLoading ? (
             <div className="flex flex-col items-center justify-center py-24">
-              <Loader className="w-8 h-8 animate-spin text-muted-foreground/40 mb-4" />
-              <p className="text-sm font-medium text-muted-foreground">Carregando fila...</p>
+              <Loader className="w-7 h-7 animate-spin text-ink-300 mb-3" />
+              <p className="text-sm text-muted-foreground">Carregando fila…</p>
             </div>
           ) : queueSessions.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-32 max-w-md mx-auto text-center px-4">
-              <div className="w-14 h-14 bg-muted rounded-2xl flex items-center justify-center mb-4">
-                <LayoutList className="w-6 h-6 text-muted-foreground" />
-              </div>
-              <h3 className="text-base font-bold text-foreground mb-1">Fila vazia</h3>
+              <LayoutList className="w-8 h-8 text-ink-300 mb-3" />
+              <h3 className="text-[16px] font-semibold text-foreground mb-1">Fila vazia</h3>
               <p className="text-sm text-muted-foreground max-w-xs">
                 {activeQueueView === 'my_accounts' && !mySellerId
                   ? 'Seu usuário não está vinculado a nenhum vendedor. Um admin pode configurar isso em Vendedores.'
-                  : 'Nenhum cliente nesta view no momento.'}
+                  : 'Ninguém para contatar neste filtro.'}
               </p>
             </div>
           ) : (
             <div className="max-w-3xl mx-auto px-4 sm:px-6 py-5 space-y-2.5">
-              {/* Contagem + legenda de ordenação */}
               <div className="flex items-center justify-between mb-1">
-                <p className="text-[11px] text-muted-foreground font-medium">
-                  {queueSessions.length} cliente{queueSessions.length !== 1 ? 's' : ''} · ordenado por prioridade
+                <p className="text-[12px] text-muted-foreground">
+                  {queueSessions.length} cliente{queueSessions.length !== 1 ? 's' : ''}, do mais urgente ao menos urgente
                 </p>
                 <div className="flex items-center gap-2">
                   {(['vencido', 'hoje', 'sem_acao'] as const).map(p => {
@@ -1932,7 +2084,7 @@ export default function AdminClientes() {
                     ).length
                     if (count === 0) return null
                     return (
-                      <span key={p} className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md ring-1 ring-inset ${conf.badgeClasses}`}>
+                      <span key={p} className={`text-[11px] font-semibold px-1.5 py-0.5 rounded-md ring-1 ring-inset ${conf.badgeClasses}`}>
                         {conf.label} {count}
                       </span>
                     )

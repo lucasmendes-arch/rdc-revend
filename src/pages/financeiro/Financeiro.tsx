@@ -223,13 +223,13 @@ export default function AdminFinanceiro() {
 
   // Chart colors adapt to theme
   const ch = {
-    grid:        isDark ? 'hsl(218,14%,18%)' : '#f3f4f6',
-    axis:        isDark ? 'hsl(218,14%,20%)' : '#e5e7eb',
-    tick:        isDark ? '#64748b' : '#9ca3af',
-    prevLine:    isDark ? 'hsl(218,14%,32%)' : '#d1d5db',
-    tooltipBg:   isDark ? 'hsl(218,17%,13%)' : '#ffffff',
-    tooltipBorder: isDark ? 'hsl(218,14%,22%)' : '#e5e7eb',
-    tooltipText: isDark ? 'hsl(214,18%,88%)' : '#111827',
+    grid:        isDark ? 'hsl(279,18%,19%)' : '#F1EDF5',
+    axis:        isDark ? 'hsl(279,18%,22%)' : '#E8E3ED',
+    tick:        isDark ? '#8C8296' : '#9C96A3',
+    prevLine:    isDark ? 'hsl(278,14%,34%)' : '#D2CCD8',
+    tooltipBg:   isDark ? 'hsl(280,21%,14%)' : '#ffffff',
+    tooltipBorder: isDark ? 'hsl(279,18%,22%)' : '#E8E3ED',
+    tooltipText: isDark ? 'hsl(270,35%,96%)' : '#211424',
   }
 
   const [editingGoal, setEditingGoal] = useState(false)
@@ -659,7 +659,7 @@ export default function AdminFinanceiro() {
                 </h3>
                 <div className="flex items-center gap-3 text-[10px]">
                   <span className="flex items-center gap-1">
-                    <span className="w-3 h-0.5 bg-[#d4a017] rounded-full inline-block" />
+                    <span className="w-3 h-0.5 bg-[#FF9A1A] rounded-full inline-block" />
                     <span className="text-muted-foreground capitalize">{stats.chartCurrentMonthName}</span>
                   </span>
                   <span className="flex items-center gap-1">
@@ -712,9 +712,9 @@ export default function AdminFinanceiro() {
                       />
                       <Line
                         type="monotone" dataKey="atual" name="atual"
-                        stroke="#d4a017" strokeWidth={2}
+                        stroke="#FF9A1A" strokeWidth={2}
                         dot={false}
-                        activeDot={{ r: 4, fill: '#d4a017' }}
+                        activeDot={{ r: 4, fill: '#FF9A1A' }}
                       />
                     </LineChart>
                   </ResponsiveContainer>

@@ -1,342 +1,260 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import {
-  Package, ShoppingCart, Users, Warehouse, UserCog,
-  Menu, X, ExternalLink, Tag, DollarSign,
-  Megaphone, UserCheck, BadgeDollarSign, ChevronRight,
-  ClipboardList, Briefcase, KanbanSquare, ListChecks, IdCard, Contact,
-  Boxes, FileSignature, Store,
+  ShoppingBag, Package, LineChart, Users, Boxes,
+  Menu, X, ExternalLink, UserCog, type LucideIcon,
 } from 'lucide-react'
 import logo from '@/assets/logo-rei-dos-cachos.png'
 import { ThemeToggle } from '@/components/ui/ThemeToggle'
 import { AdminThemeProvider } from '@/contexts/AdminThemeContext'
 import { useAuth } from '@/contexts/AuthContext'
 
-type NavItem = { label: string; path: string; icon: React.ElementType }
+/**
+ * Navegação do admin em DUAS camadas.
+ *
+ * Antes eram ~20 links soltos em 4 grupos sanfonados na sidebar. Agora:
+ *   1. Sidebar = poucas ÁREAS (Vendas, Catálogo, Resultados, Pessoas).
+ *   2. Dentro da área, as páginas viram ABAS no topo do conteúdo.
+ *
+ * Uma área "possui" uma rota quando a rota começa com o prefixo de seção
+ * (dois primeiros segmentos) de algum dos seus itens — é o que mantém
+ * `/admin/pedidos/novo` dentro de Vendas e `/admin/rh/automacoes` dentro de
+ * Pessoas mesmo sem aba própria.
+ */
 
-const navGroups: { label: string; items: NavItem[] }[] = [
-  {
-    label: 'Comercial',
-    items: [
-      { label: 'Pedidos', path: '/admin/pedidos', icon: ShoppingCart },
-      { label: 'Clientes', path: '/admin/clientes', icon: Users },
-      { label: 'Vendedores', path: '/admin/vendedores', icon: UserCheck },
-      { label: 'Financeiro', path: '/admin/financeiro', icon: DollarSign },
-      { label: 'Unidades', path: '/admin/unidades', icon: Store },
-      { label: 'Tabelas de Preço', path: '/admin/tabelas-preco', icon: BadgeDollarSign },
-      { label: 'Marketing', path: '/admin/marketing', icon: Megaphone },
-    ],
-  },
-  {
-    label: 'Catálogo & Estoque',
-    items: [
-      { label: 'Catálogo', path: '/admin/catalogo', icon: Package },
-      { label: 'Categorias', path: '/admin/categorias', icon: Tag },
-      { label: 'Estoque', path: '/admin/estoque', icon: Warehouse },
-      { label: 'Contagem de Estoque', path: '/estoque/relatorio', icon: ClipboardList },
-    ],
-  },
-  {
-    label: 'Sistema',
-    items: [
-      { label: 'Usuários', path: '/admin/usuarios', icon: UserCog },
-    ],
-  },
-]
+type NavItem = { label: string; path: string }
+type Hub = { key: string; label: string; icon: LucideIcon; items: NavItem[] }
 
-// RH+DP tem acesso restrito (admin ou permissão can_manage_rh) — grupo
-// separado, só aparece na sidebar pra quem tem acesso. Ordem segue o funil:
-// Vagas → Candidatos → Contratação (kanban de admissão) → Parceiros
-// (ativos) → itens de configuração (Cargos, Formulário). Automações é
-// acessado direto pela tela de Candidatos, não fica na sidebar.
-const rhNavGroup: { label: string; items: NavItem[] } = {
-  label: 'Recursos Humanos',
+const vendasHub: Hub = {
+  key: 'vendas',
+  label: 'Vendas',
+  icon: ShoppingBag,
   items: [
-    { label: 'Vagas', path: '/admin/rh/vagas', icon: Briefcase },
-    { label: 'Candidatos', path: '/admin/rh/candidatos', icon: KanbanSquare },
-    { label: 'Contratação', path: '/admin/dp/contratacao', icon: ClipboardList },
-    { label: 'Parceiros', path: '/admin/dp/colaboradores', icon: Contact },
-    { label: 'Gerar Contrato', path: '/admin/dp/contratos', icon: FileSignature },
-    { label: 'Cargos', path: '/admin/rh/cargos', icon: IdCard },
-    { label: 'Formulário', path: '/admin/rh/formulario', icon: ListChecks },
+    { label: 'Pedidos', path: '/admin/pedidos' },
+    { label: 'Clientes', path: '/admin/clientes' },
+    { label: 'Vendedores', path: '/admin/vendedores' },
+    { label: 'Tabelas de preço', path: '/admin/tabelas-preco' },
   ],
 }
 
-// Estoque completo (Contagem, Pedidos, Relatório, Estoque Atual, Histórico,
-// Config) pra quem tem has_full_stock_access() sem ser admin — hoje só
-// role='administrativo'. Admin já enxerga o módulo via navGroups acima.
-const estoqueNavGroup: { label: string; items: NavItem[] } = {
+const catalogoHub: Hub = {
+  key: 'catalogo',
+  label: 'Catálogo',
+  icon: Package,
+  items: [
+    { label: 'Produtos', path: '/admin/catalogo' },
+    { label: 'Categorias', path: '/admin/categorias' },
+    { label: 'Disponibilidade', path: '/admin/estoque' },
+    { label: 'Contagem de estoque', path: '/estoque/relatorio' },
+  ],
+}
+
+const resultadosHub: Hub = {
+  key: 'resultados',
+  label: 'Resultados',
+  icon: LineChart,
+  items: [
+    { label: 'Financeiro', path: '/admin/financeiro' },
+    { label: 'Unidades', path: '/admin/unidades' },
+    { label: 'Marketing', path: '/admin/marketing' },
+  ],
+}
+
+// Ordem segue o funil: Vagas → Candidatos → Contratação → Parceiros, depois
+// o que é configuração. Automações abre pela tela de Candidatos.
+const pessoasHub: Hub = {
+  key: 'pessoas',
+  label: 'Pessoas',
+  icon: Users,
+  items: [
+    { label: 'Vagas', path: '/admin/rh/vagas' },
+    { label: 'Candidatos', path: '/admin/rh/candidatos' },
+    { label: 'Contratação', path: '/admin/dp/contratacao' },
+    { label: 'Parceiros', path: '/admin/dp/colaboradores' },
+    { label: 'Contratos', path: '/admin/dp/contratos' },
+    { label: 'Cargos', path: '/admin/rh/cargos' },
+    { label: 'Formulário', path: '/admin/rh/formulario' },
+  ],
+}
+
+// Estoque completo para role='administrativo' (admin chega pelo Catálogo).
+const estoqueHub: Hub = {
+  key: 'estoque',
   label: 'Estoque',
-  items: [
-    { label: 'Contagem de Estoque', path: '/estoque/contagem', icon: Boxes },
-  ],
+  icon: Boxes,
+  items: [{ label: 'Contagem de estoque', path: '/estoque/contagem' }],
 }
 
-// Estado dos dropdowns em sessionStorage: `AdminLayout` é renderizado por
-// CADA página, então navegar desmonta e remonta a sidebar inteira — sem
-// persistir, o useState reinicializava a cada rota e fechava tudo que o
-// usuário tinha aberto. sessionStorage (não localStorage) porque a regra é
-// "fica aberto enquanto eu estiver nesta sessão do navegador".
-const SIDEBAR_EXPANDED_KEY = 'rdc-admin-sidebar-expanded'
-
-function loadExpanded(): Set<string> | null {
-  try {
-    const raw = sessionStorage.getItem(SIDEBAR_EXPANDED_KEY)
-    if (!raw) return null
-    const parsed = JSON.parse(raw)
-    return Array.isArray(parsed) ? new Set(parsed.filter((v) => typeof v === 'string')) : null
-  } catch {
-    return null
-  }
-}
-
-function saveExpanded(expanded: Set<string>) {
-  try {
-    sessionStorage.setItem(SIDEBAR_EXPANDED_KEY, JSON.stringify([...expanded]))
-  } catch {
-    // sessionStorage indisponível (modo privado antigo, quota) — a sidebar
-    // volta a se comportar como antes em vez de quebrar a navegação.
-  }
-}
-
-// Seção "dona" de uma rota = os dois primeiros segmentos (`/admin/rh`,
-// `/admin/pedidos`, `/estoque/relatorio`). É o que faz o grupo Recursos
-// Humanos continuar marcado em telas que não têm item próprio na sidebar,
-// como `/admin/rh/automacoes` — antes elas não casavam com nada e a sidebar
-// aparecia toda fechada.
 function sectionPrefix(path: string) {
   return path.split('/').slice(0, 3).join('/')
 }
 
-function groupOwnsPath(group: { items: NavItem[] }, pathname: string) {
-  return group.items.some((item) => {
-    if (item.path === pathname) return true
+function hubOwnsPath(hub: Hub, pathname: string) {
+  return hub.items.some((item) => {
+    if (pathname === item.path || pathname.startsWith(`${item.path}/`)) return true
     const prefix = sectionPrefix(item.path)
     return pathname === prefix || pathname.startsWith(`${prefix}/`)
   })
 }
 
-function SidebarNavItem({ item, isActive, onClick }: { item: NavItem; isActive: boolean; onClick?: () => void }) {
-  const Icon = item.icon
+function useHubs() {
+  const { role, hasPermission } = useAuth()
+  const canManageRh = role === 'admin' || role === 'administrativo' || hasPermission('can_manage_rh')
+  const hubs: Hub[] = role === 'admin'
+    ? [vendasHub, catalogoHub, resultadosHub, pessoasHub]
+    : [
+        ...(role === 'administrativo' ? [estoqueHub] : []),
+        ...(canManageRh ? [pessoasHub] : []),
+      ]
+  const homePath = role === 'admin' ? '/admin/pedidos' : '/admin/rh/candidatos'
+  return { hubs, homePath, isAdmin: role === 'admin' }
+}
+
+// ─── Sidebar ────────────────────────────────────────────────────────────────
+// Clara e densa, no padrão Linear/Lightfield. O ouro da logo aparece só no
+// item ativo (ícone + traço de 2px) — é o único ponto de cor da navegação.
+
+const NAV_ROW =
+  'relative flex items-center gap-2.5 h-8 px-2.5 rounded-md text-[13px] font-medium tracking-snug transition-colors'
+const NAV_IDLE = 'text-ink-600 hover:text-foreground hover:bg-ink-100'
+const NAV_ACTIVE = 'bg-card text-foreground shadow-xs ring-1 ring-border'
+
+function HubLink({ hub, active, onClick }: { hub: Hub; active: boolean; onClick?: () => void }) {
+  const Icon = hub.icon
   return (
     <Link
-      to={item.path}
+      to={hub.items[0].path}
       onClick={onClick}
-      aria-current={isActive ? 'page' : undefined}
-      // Mesma linha de navegação do PortalLayout: h-9, ícone 16, spine dourado.
-      // Admin e portal deixaram de ter duas sidebars com regras próprias.
-      className={`relative flex items-center gap-2.5 h-9 px-3 rounded-md text-[13px] tracking-snug transition-colors ${
-        isActive
-          ? 'bg-sidebar-accent text-sidebar-accent-foreground font-medium'
-          : 'text-sidebar-foreground hover:text-sidebar-accent-foreground hover:bg-sidebar-accent/60'
-      }`}
+      aria-current={active ? 'page' : undefined}
+      className={`${NAV_ROW} ${active ? NAV_ACTIVE : NAV_IDLE}`}
     >
-      {isActive && <span className="nav-spine" aria-hidden />}
-      <Icon
-        className={`w-4 h-4 shrink-0 transition-colors ${
-          isActive ? 'text-sidebar-accent-foreground' : 'text-ink-400'
-        }`}
-      />
-      <span className="truncate">{item.label}</span>
+      <Icon className={`w-4 h-4 shrink-0 ${active ? 'text-brand-strong' : 'text-ink-400'}`} />
+      <span className="truncate">{hub.label}</span>
     </Link>
   )
 }
 
 function SidebarContent({ onNavClick }: { onNavClick?: () => void }) {
   const location = useLocation()
-  const { role, hasPermission } = useAuth()
-  const canManageRh = role === 'admin' || role === 'administrativo' || hasPermission('can_manage_rh')
-  const hasFullStockAccess = role === 'admin' || role === 'administrativo'
-
-  // admin enxerga tudo (navGroups já inclui Estoque); administrativo (e um
-  // eventual can_manage_rh-only sem ser admin) só vê RH+DP e/ou Estoque —
-  // nada do Comercial/Catálogo/Sistema, que continuam admin-only.
-  const groups = role === 'admin'
-    ? [...navGroups, rhNavGroup]
-    : [
-        ...(hasFullStockAccess ? [estoqueNavGroup] : []),
-        ...(canManageRh ? [rhNavGroup] : []),
-      ]
-
-  const homePath = role === 'admin' ? '/admin/catalogo' : '/admin/rh/candidatos'
-
-  // Retoma o que estava aberto na sessão; na primeira visita, abre só o grupo
-  // da rota atual.
-  const [expanded, setExpanded] = useState<Set<string>>(() => {
-    const stored = loadExpanded()
-    if (stored) return stored
-    const initial = new Set<string>()
-    groups.forEach((group) => {
-      if (groupOwnsPath(group, location.pathname)) initial.add(group.label)
-    })
-    return initial
-  })
-
-  // Só ABRE o grupo da rota atual — nunca fecha os outros. É o que permite
-  // deep link / F5 numa tela funda sem perder os grupos que o usuário deixou
-  // abertos de propósito.
-  useEffect(() => {
-    const active = groups.find((group) => groupOwnsPath(group, location.pathname))
-    if (!active) return
-    setExpanded((prev) => (prev.has(active.label) ? prev : new Set(prev).add(active.label)))
-    // `groups` é recalculado a cada render (deriva de role/permissões), então
-    // entra aqui por label, não por referência.
-  }, [location.pathname, groups.map((g) => g.label).join('|')]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  useEffect(() => { saveExpanded(expanded) }, [expanded])
-
-  const toggle = (label: string) => {
-    setExpanded((prev) => {
-      const next = new Set(prev)
-      next.has(label) ? next.delete(label) : next.add(label)
-      return next
-    })
-  }
+  const { hubs, homePath, isAdmin } = useHubs()
+  const onUsers = location.pathname === '/admin/usuarios'
 
   return (
-    <>
-      {/* Brand header */}
-      <div className="px-3 h-14 flex items-center border-b border-sidebar-border">
-        <div className="flex items-center justify-between gap-2 w-full">
-          <Link
-            to={homePath}
-            onClick={onNavClick}
-            className="flex items-center gap-2.5 min-w-0 rounded-md"
-          >
-            <div className="w-7 h-7 rounded-md border border-sidebar-border bg-background flex items-center justify-center shrink-0">
-              <img src={logo} alt="" className="h-3.5 w-auto" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-[13px] font-semibold text-sidebar-accent-foreground leading-none tracking-tight truncate">
-                Rei dos Cachos
-              </p>
-              <p className="eyebrow mt-1">Admin</p>
-            </div>
-          </Link>
-          <ThemeToggle className="shrink-0 h-8 w-8 flex items-center justify-center rounded-md text-ink-400 hover:text-sidebar-accent-foreground hover:bg-sidebar-accent transition-colors" />
-        </div>
-      </div>
-
-      {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto py-3 px-2 scrollbar-none">
-        {groups.map((group) => {
-          const isOpen = expanded.has(group.label)
-          const hasActive = groupOwnsPath(group, location.pathname)
-
-          return (
-            <div key={group.label} className="mb-0.5">
-              <button
-                onClick={() => toggle(group.label)}
-                aria-expanded={isOpen}
-                className={`w-full flex items-center justify-between h-8 px-3 rounded-md transition-colors ${
-                  hasActive && !isOpen
-                    ? 'text-sidebar-accent-foreground bg-sidebar-accent'
-                    : 'text-ink-400 hover:text-sidebar-accent-foreground hover:bg-sidebar-accent/60'
-                }`}
-              >
-                <span className="text-[11px] font-semibold uppercase tracking-eyebrow">
-                  {group.label}
-                </span>
-                <ChevronRight
-                  className={`w-3 h-3 shrink-0 transition-transform duration-200 ${
-                    isOpen ? 'rotate-90' : ''
-                  }`}
-                />
-              </button>
-
-              {isOpen && (
-                <div className="mt-0.5 mb-1 space-y-0.5">
-                  {group.items.map((item) => (
-                    <SidebarNavItem
-                      key={item.path}
-                      item={item}
-                      isActive={location.pathname === item.path}
-                      onClick={onNavClick}
-                    />
-                  ))}
-                </div>
-              )}
-            </div>
-          )
-        })}
-      </nav>
-
-      {/* Footer */}
-      <div className="px-2 pb-3 pt-2 border-t border-sidebar-border">
-        <Link
-          to="/catalogo"
-          onClick={onNavClick}
-          className="flex items-center gap-2.5 h-9 px-3 rounded-md text-[13px] tracking-snug text-sidebar-foreground hover:text-sidebar-accent-foreground hover:bg-sidebar-accent/60 transition-colors"
-        >
-          <ExternalLink className="w-4 h-4 shrink-0 text-ink-400" />
-          <span>Ver site</span>
+    <div className="flex flex-col h-full">
+      <div className="px-4 h-16 flex items-center">
+        <Link to={homePath} onClick={onNavClick} className="block rounded-md" aria-label="Rei dos Cachos — início">
+          <img src={logo} alt="Rei dos Cachos" className="h-11 w-auto" />
         </Link>
       </div>
-    </>
+
+      <nav className="flex-1 overflow-y-auto px-2.5 pt-2 space-y-0.5 scrollbar-none" aria-label="Áreas">
+        {hubs.map((hub) => (
+          <HubLink key={hub.key} hub={hub} active={hubOwnsPath(hub, location.pathname)} onClick={onNavClick} />
+        ))}
+      </nav>
+
+      <div className="px-2.5 pb-3 pt-2 border-t border-border space-y-0.5">
+        {isAdmin && (
+          <Link
+            to="/admin/usuarios"
+            onClick={onNavClick}
+            aria-current={onUsers ? 'page' : undefined}
+            className={`${NAV_ROW} ${onUsers ? NAV_ACTIVE : NAV_IDLE}`}
+          >
+            <UserCog className={`w-4 h-4 shrink-0 ${onUsers ? 'text-brand-strong' : 'text-ink-400'}`} />
+            Usuários
+          </Link>
+        )}
+        <div className="flex items-center gap-0.5">
+          <Link to="/catalogo" onClick={onNavClick} className={`flex-1 ${NAV_ROW} ${NAV_IDLE}`}>
+            <ExternalLink className="w-4 h-4 shrink-0 text-ink-400" />
+            Ver loja
+          </Link>
+          <ThemeToggle className="shrink-0 h-8 w-8 rounded-md text-ink-400 hover:text-foreground hover:bg-ink-100" />
+        </div>
+      </div>
+    </div>
   )
 }
 
+// ─── Abas da área ──────────────────────────────────────────────────────────
+
+function HubTabs() {
+  const location = useLocation()
+  const { hubs } = useHubs()
+  const hub = hubs.find((h) => hubOwnsPath(h, location.pathname))
+  if (!hub || hub.items.length < 2) return null
+
+  return (
+    <div className="bg-background border-b border-border">
+      <div className="px-4 sm:px-6 lg:px-8 flex items-center gap-5 overflow-x-auto scrollbar-none">
+        <p className="hidden md:block text-[13px] font-semibold text-foreground shrink-0">{hub.label}</p>
+        <span className="hidden md:block w-px h-4 bg-border shrink-0" aria-hidden />
+        <nav className="flex items-center gap-1 min-w-0" aria-label={`Páginas de ${hub.label}`}>
+          {hub.items.map((item) => {
+            const active = location.pathname === item.path || location.pathname.startsWith(`${item.path}/`)
+            return (
+              <Link
+                key={item.path}
+                to={item.path}
+                aria-current={active ? 'page' : undefined}
+                className={`relative h-11 px-2.5 flex items-center text-[13px] font-medium whitespace-nowrap transition-colors ${
+                  active ? 'text-foreground' : 'text-ink-500 hover:text-foreground'
+                }`}
+              >
+                {item.label}
+                {active && <span aria-hidden className="absolute left-2.5 right-2.5 bottom-0 h-0.5 rounded-full bg-brand" />}
+              </Link>
+            )
+          })}
+        </nav>
+      </div>
+    </div>
+  )
+}
+
+// ─── Shell ─────────────────────────────────────────────────────────────────
+
 function AdminLayoutInner({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false)
-  const { role } = useAuth()
-  const homePath = role === 'admin' ? '/admin/catalogo' : '/admin/rh/candidatos'
-
-  const sidebarBg = 'bg-sidebar'
-  const borderColor = 'border-sidebar-border'
+  const { homePath } = useHubs()
 
   return (
     <div className="min-h-screen bg-background flex">
-      {/* Desktop Sidebar */}
-      <aside
-        className={`hidden lg:flex flex-col w-60 ${sidebarBg} fixed inset-y-0 left-0 z-40 border-r ${borderColor}`}
-      >
+      <aside className="hidden lg:flex flex-col w-56 bg-sidebar border-r border-sidebar-border fixed inset-y-0 left-0 z-40">
         <SidebarContent />
       </aside>
 
-      {/* Mobile Header */}
-      <header
-        className={`lg:hidden fixed top-0 inset-x-0 z-40 ${sidebarBg} text-sidebar-foreground h-14 flex items-center justify-between px-4 border-b ${borderColor}`}
-      >
-        <Link to={homePath} className="flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-md border border-sidebar-border flex items-center justify-center">
-            <img src={logo} alt="" className="h-3.5 w-auto" />
-          </div>
-          <span className="text-[13px] font-semibold text-sidebar-accent-foreground tracking-tight">Admin</span>
+      <header className="lg:hidden fixed top-0 inset-x-0 z-40 bg-background/90 backdrop-blur border-b border-border h-14 flex items-center justify-between px-4">
+        <Link to={homePath} className="flex items-center" aria-label="Rei dos Cachos — início">
+          <img src={logo} alt="Rei dos Cachos" className="h-8 w-auto" />
         </Link>
-        <div className="flex items-center gap-0.5">
-          <ThemeToggle className="h-9 w-9 flex items-center justify-center rounded-md text-ink-400 hover:text-sidebar-accent-foreground hover:bg-sidebar-accent transition-colors" />
-          <button
-            onClick={() => setMobileOpen(!mobileOpen)}
-            aria-label="Menu de navegação"
-            aria-expanded={mobileOpen}
-            className="h-9 w-9 flex items-center justify-center rounded-md text-ink-500 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
-          >
-            {mobileOpen ? <X className="w-[18px] h-[18px]" /> : <Menu className="w-[18px] h-[18px]" />}
-          </button>
-        </div>
+        <button
+          onClick={() => setMobileOpen(!mobileOpen)}
+          aria-label="Menu de navegação"
+          aria-expanded={mobileOpen}
+          className="h-9 w-9 flex items-center justify-center rounded-md text-ink-600 hover:bg-muted hover:text-foreground transition-colors"
+        >
+          {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+        </button>
       </header>
 
-      {/* Mobile Menu Overlay */}
       {mobileOpen && (
         <>
           <div
-            className="lg:hidden fixed inset-0 z-40 bg-ink-950/45 backdrop-blur-[2px]"
+            className="lg:hidden fixed inset-0 z-40 bg-ink-950/40 backdrop-blur-[2px]"
             onClick={() => setMobileOpen(false)}
           />
-          <div
-            className={`lg:hidden fixed top-14 left-0 bottom-0 z-50 ${sidebarBg} text-sidebar-foreground w-60 flex flex-col border-r ${borderColor} shadow-xl`}
-          >
+          <div className="lg:hidden fixed top-14 left-0 bottom-0 z-50 w-64 bg-sidebar border-r border-sidebar-border shadow-xl">
             <SidebarContent onNavClick={() => setMobileOpen(false)} />
           </div>
         </>
       )}
 
-      {/* Main Content */}
-      {/* min-w-0 + overflow-x-hidden: sem isso, um item flex sem largura mínima
-          definida cresce pra caber o conteúdo mais largo (ex: kanban de RH com
-          13 colunas) e alarga a página inteira em vez de rolar só por dentro —
-          mesma proteção que EstoqueLayout já tem. */}
-      <main className="flex-1 min-w-0 overflow-x-hidden lg:ml-60 pt-14 lg:pt-0">
+      {/* min-w-0 + overflow-x-hidden: sem isso o kanban de RH (13 colunas)
+          alarga a página inteira em vez de rolar por dentro. */}
+      <main className="flex-1 min-w-0 overflow-x-hidden lg:ml-56 pt-14 lg:pt-0">
+        <HubTabs />
         {children}
       </main>
     </div>
