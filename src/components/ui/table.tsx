@@ -53,9 +53,9 @@ const TableHead = React.forwardRef<HTMLTableCellElement, React.ThHTMLAttributes<
     <th
       ref={ref}
       className={cn(
-        // Cabeçalho em caixa-alta pequena: separa header de dado sem precisar
-        // de fundo cinza, e mantém a tabela toda sobre superfície branca.
-        "h-9 px-3 text-left align-middle text-[11px] font-semibold uppercase tracking-eyebrow text-muted-foreground [&:has([role=checkbox])]:pr-0",
+        // Cabeçalho em sentence case 12px sobre faixa neutra mínima: separa
+        // header de dado sem gritar (caixa-alta com tracking era ruído).
+        "h-9 px-3 text-left align-middle text-[12px] font-medium text-muted-foreground bg-surface [&:has([role=checkbox])]:pr-0",
         className,
       )}
       {...props}

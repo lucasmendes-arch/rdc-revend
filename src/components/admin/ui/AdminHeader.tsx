@@ -1,5 +1,10 @@
 import React from 'react';
 
+/**
+ * @deprecated Use `AdminPage` (src/components/admin/ui/AdminPage.tsx), que
+ * cuida do cabeçalho E do padding do conteúdo. Mantido com o mesmo visual do
+ * cabeçalho do AdminPage para não destoar onde ainda for usado.
+ */
 interface AdminHeaderProps {
   title: string;
   subtitle?: string | React.ReactNode;
@@ -9,32 +14,15 @@ interface AdminHeaderProps {
 
 export function AdminHeader({ title, subtitle, badge, actionNode }: AdminHeaderProps) {
   return (
-    <div className="w-full">
-      <div className="px-4 sm:px-6 lg:px-8 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        {/* Bloco Esquerdo (Título e Subtítulo) */}
-        <div className="flex flex-col gap-1 items-start w-full sm:w-auto shrink-0 justify-center">
-          <div className="flex items-center gap-3">
-            <h1 className="text-xl sm:text-2xl font-bold text-foreground tracking-tight">{title}</h1>
-            {badge && (
-               <div className="flex items-center">
-                 {badge}
-               </div>
-            )}
-          </div>
-          {subtitle && (
-            <div className="text-xs text-muted-foreground mt-0.5 font-medium">
-              {subtitle}
-            </div>
-          )}
+    <div className="w-full px-4 sm:px-6 lg:px-8 pt-6 sm:pt-7 pb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+      <div className="min-w-0">
+        <div className="flex items-center gap-2.5 flex-wrap">
+          <h1 className="text-[22px] sm:text-[26px] leading-[1.15] text-foreground">{title}</h1>
+          {badge}
         </div>
-
-        {/* Bloco Direito (Ações, Botões Secundários) */}
-        {actionNode && (
-          <div className="flex flex-wrap items-center gap-3 justify-start sm:justify-end sm:ml-auto w-full sm:w-auto shrink-0">
-            {actionNode}
-          </div>
-        )}
+        {subtitle && <div className="mt-1 text-[13.5px] text-muted-foreground">{subtitle}</div>}
       </div>
+      {actionNode && <div className="flex flex-wrap items-center gap-2 shrink-0">{actionNode}</div>}
     </div>
   );
 }

@@ -1,12 +1,16 @@
 /* ═══════════════════════════════════════════════════════════════════════════
    Rei dos Cachos — Design System
    ───────────────────────────────────────────────────────────────────────────
-   Direção (2026-10-08, 2ª versão): SaaS moderno no padrão Linear /
-   Lightfield, com o OURO DA LOGO como única cor de marca.
+   Direção (2026-10-09, 3ª versão): SaaS moderno no padrão Linear /
+   Lightfield, com o OURO DA LOGO como única cor de marca, sobre um neutro
+   levemente QUENTE (stone). O cinza frio (hue 240) ao lado do ouro era o
+   que deixava a interface "seca". Admin em canvas embutido: moldura neutra
+   + painel branco.
 
    Princípios que regem TODO token abaixo:
-   1. Neutro de verdade (`--ink-*`). Nenhuma cor de fundo competindo com
-      o ouro — nada de roxo, creme ou cinza azulado.
+   1. Neutro quente de saturação mínima (`--ink-*`, hue 20–40). Nenhuma
+      cor de fundo competindo com o ouro — nada de roxo, creme ou cinza
+      azulado.
    2. Ouro da logo (#FFAA00, medido do PNG) CHAPADO: ação primária, item
       ativo, seleção, foco. Sem degradê, sem bisel, sem glow em componente.
    3. Set semântico fechado: success / warning / danger / info.
@@ -20,9 +24,10 @@
    Fonte de verdade documentada: design-tokens.md
    ═══════════════════════════════════════════════════════════════════════════ */
 
-/* Geist / Geist Mono → toda a interface (títulos inclusive).
+/* Bricolage Grotesque → título de página e número de destaque (KPI).
+   Geist / Geist Mono → todo o resto da interface.
    Playfair Display → EXCLUSIVA do /lookbook (peça editorial de impressão). */
-@import url('https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500;600&family=Playfair+Display:wght@500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700&family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500;600&family=Playfair+Display:wght@500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -31,21 +36,21 @@
 @layer base {
   :root {
     /* ─── Rampa de neutro (light) ─────────────────────────────────────────
-       Neutra de verdade (hue 240, saturação mínima), no padrão Linear /
-       Lightfield. Nenhum tom de cor competindo com o ouro da logo. */
-    --ink-0:   0 0% 100%;      /* #FFFFFF  fundo, card                      */
-    --ink-25:  0 0% 99%;       /* #FCFCFC                                   */
-    --ink-50:  240 5% 98%;     /* #F9F9FA  sidebar, superfície              */
-    --ink-100: 240 5% 96%;     /* #F4F4F5  muted, hover                     */
-    --ink-200: 240 6% 91%;     /* #E7E7EA  HAIRLINE                         */
-    --ink-300: 240 5% 84%;     /* #D4D4D8  borda de input, borda forte      */
-    --ink-400: 240 4% 64%;     /* #A0A0A8  placeholder, ícone inativo       */
-    --ink-500: 240 4% 46%;     /* #71717A  texto secundário                 */
-    --ink-600: 240 5% 34%;     /* #52525B                                   */
-    --ink-700: 240 5% 26%;     /* #3F3F46                                   */
-    --ink-800: 240 4% 16%;     /* #27272A                                   */
-    --ink-900: 240 6% 10%;     /* #18181B  TEXTO PRINCIPAL                  */
-    --ink-950: 240 7% 5%;      /* #0C0C0E  overlay                          */
+       Neutro quente (stone), saturação ≤ 14%. Casa com o ouro da logo sem
+       virar creme. */
+    --ink-0:   0 0% 100%;      /* #FFFFFF  painel, card                     */
+    --ink-25:  40 14% 99%;     /* #FDFCFB                                   */
+    --ink-50:  40 11% 97%;     /* #F8F7F5  moldura do app, sidebar          */
+    --ink-100: 36 10% 94.5%;   /* #F2F1EE  muted, hover                     */
+    --ink-200: 33 9% 89%;      /* #E6E3DF  HAIRLINE                         */
+    --ink-300: 30 7% 82%;      /* #D5D1CC  borda forte                      */
+    --ink-400: 28 5% 62%;      /* #A39E98  placeholder, ícone inativo       */
+    --ink-500: 25 5% 45%;      /* #78726C  texto secundário                 */
+    --ink-600: 24 6% 33%;      /* #58524D                                   */
+    --ink-700: 24 8% 25%;      /* #453F3B                                   */
+    --ink-800: 22 10% 15%;     /* #2A2522                                   */
+    --ink-900: 20 14% 10%;     /* #1D1815  TEXTO PRINCIPAL                  */
+    --ink-950: 20 16% 5%;      /* #0F0C0A  overlay                          */
 
     /* ─── Semântico base ─────────────────────────────────────────────────── */
     --background: var(--ink-0);
@@ -117,10 +122,10 @@
     --radius: 0.5rem;
 
     /* ─── Elevação: curta e neutra ──────────────────────────────────────── */
-    --shadow-xs: 0 1px 2px 0 hsl(240 6% 10% / 0.04);
-    --shadow-sm: 0 1px 2px 0 hsl(240 6% 10% / 0.05), 0 1px 3px 0 hsl(240 6% 10% / 0.05);
-    --shadow-md: 0 4px 12px -2px hsl(240 6% 10% / 0.08), 0 2px 4px -2px hsl(240 6% 10% / 0.05);
-    --shadow-lg: 0 12px 32px -8px hsl(240 6% 10% / 0.14), 0 4px 8px -4px hsl(240 6% 10% / 0.06);
+    --shadow-xs: 0 1px 2px 0 hsl(20 14% 10% / 0.04);
+    --shadow-sm: 0 1px 2px 0 hsl(20 14% 10% / 0.05), 0 1px 3px 0 hsl(20 14% 10% / 0.05);
+    --shadow-md: 0 4px 12px -2px hsl(20 14% 10% / 0.08), 0 2px 4px -2px hsl(20 14% 10% / 0.05);
+    --shadow-lg: 0 12px 32px -8px hsl(20 14% 10% / 0.14), 0 4px 8px -4px hsl(20 14% 10% / 0.06);
 
     /* ─── Sidebar: superfície clara, mesma rampa ───────────────────────── */
     --sidebar-background: var(--ink-50);
@@ -135,18 +140,18 @@
 
   /* ─── Dark: neutro escuro ───────────────────────────────────────────── */
   .dark {
-    --ink-0:   240 6% 7%;      /* #111113  fundo                            */
-    --ink-25:  240 5% 8.5%;
-    --ink-50:  240 5% 9.5%;    /* #171719  sidebar, card                    */
-    --ink-100: 240 4% 13%;     /* #202023                                   */
-    --ink-200: 240 4% 18%;     /* #2B2B2F  HAIRLINE                         */
-    --ink-300: 240 4% 25%;
-    --ink-400: 240 4% 44%;
-    --ink-500: 240 5% 60%;
-    --ink-600: 240 5% 72%;
-    --ink-700: 240 6% 82%;
-    --ink-800: 240 8% 90%;
-    --ink-900: 240 10% 96%;
+    --ink-0:   24 8% 7%;       /* #131110  painel                           */
+    --ink-25:  24 7% 8.5%;
+    --ink-50:  24 6% 9.5%;     /* #191716  moldura, card                    */
+    --ink-100: 24 5% 13%;      /* #232120                                   */
+    --ink-200: 24 5% 18%;      /* #302D2B  HAIRLINE                         */
+    --ink-300: 24 4% 25%;
+    --ink-400: 26 4% 45%;
+    --ink-500: 28 5% 61%;
+    --ink-600: 30 6% 73%;
+    --ink-700: 32 8% 83%;
+    --ink-800: 34 10% 91%;
+    --ink-900: 36 14% 96%;
     --ink-950: 0 0% 100%;
 
     --card: var(--ink-50);
@@ -228,9 +233,13 @@
     font-weight: 600;
     letter-spacing: -0.02em;
   }
+  /* h1 = título de página: Bricolage Grotesque, a única voz com
+     personalidade do sistema. Todo o resto da UI fica em Geist. */
   h1 {
+    font-family: 'Bricolage Grotesque', 'Geist', system-ui, sans-serif;
+    font-optical-sizing: auto;
     font-weight: 600;
-    letter-spacing: -0.03em;
+    letter-spacing: -0.025em;
   }
   h4 { letter-spacing: -0.01em; }
 
@@ -275,10 +284,14 @@
     font-family: 'Playfair Display', serif;
   }
 
-  /* Título de página / número em destaque: Geist semibold apertado. */
-  .font-heading {
-    font-family: 'Geist', system-ui, sans-serif;
-    letter-spacing: -0.03em;
+  /* Título de página / número em destaque (KPI): Bricolage Grotesque.
+     Usar SÓ em título de página e valor grande — nunca em texto corrido,
+     label ou botão. */
+  .font-heading,
+  .font-title {
+    font-family: 'Bricolage Grotesque', 'Geist', system-ui, sans-serif;
+    font-optical-sizing: auto;
+    letter-spacing: -0.025em;
   }
 
   /* Rótulo de seção: 12px, sentence case. */
@@ -408,6 +421,45 @@
     height: 16px;
     border-radius: 0 2px 2px 0;
     background: hsl(var(--brand));
+  }
+
+  /* ─── Tabela crua ───────────────────────────────────────────────────────
+     Para `<table>` escrito à mão: mesmo visual do componente ui/table.
+     Cabeçalho em sentence case 12px sobre faixa neutra, célula 13px,
+     linha separada por hairline, hover mínimo. */
+  .data-table {
+    width: 100%;
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+    border-collapse: collapse;
+  }
+  .data-table thead th {
+    height: 2.25rem;
+    padding: 0 0.75rem;
+    text-align: left;
+    font-size: 12px;
+    font-weight: 500;
+    color: hsl(var(--muted-foreground));
+    background: hsl(var(--surface));
+    border-bottom: 1px solid hsl(var(--border));
+    white-space: nowrap;
+  }
+  .data-table tbody td {
+    padding: 0.625rem 0.75rem;
+    border-bottom: 1px solid hsl(var(--border));
+    vertical-align: middle;
+  }
+  .data-table tbody tr:last-child td { border-bottom: 0; }
+  .data-table tbody tr { transition: background-color 0.12s ease; }
+  .data-table tbody tr:hover { background: hsl(var(--muted) / 0.6); }
+
+  /* Rótulo de campo de formulário: 13px medium, sentence case. */
+  .field-label {
+    display: block;
+    font-size: 13px;
+    font-weight: 500;
+    color: hsl(var(--foreground));
+    margin-bottom: 0.375rem;
   }
 
   /* ─── Scrollbars ────────────────────────────────────────────────────── */

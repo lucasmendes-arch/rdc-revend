@@ -2,12 +2,13 @@ import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import {
   ShoppingBag, Package, LineChart, Users, Boxes, HeartHandshake,
-  Menu, X, ExternalLink, UserCog, type LucideIcon,
+  Menu, X, ExternalLink, UserCog, LogOut, type LucideIcon,
 } from 'lucide-react'
 import logo from '@/assets/logo-rei-dos-cachos.png'
 import { ThemeToggle } from '@/components/ui/ThemeToggle'
 import { AdminThemeProvider } from '@/contexts/AdminThemeContext'
 import { useAuth } from '@/contexts/AuthContext'
+import { supabase } from '@/lib/supabase'
 
 /**
  * Navegação do admin em DUAS camadas.
@@ -124,13 +125,19 @@ function useHubs() {
 }
 
 // ─── Sidebar ────────────────────────────────────────────────────────────────
-// Clara e densa, no padrão Linear/Lightfield. O ouro da logo aparece só no
-// item ativo (ícone + traço de 2px) — é o único ponto de cor da navegação.
+// A sidebar é parte da MOLDURA do app (mesmo tom do fundo), não um painel.
+// O conteúdo vive num painel branco embutido à direita. O ouro da logo
+// aparece só no ícone do item ativo — é o único ponto de cor da navegação.
 
 const NAV_ROW =
   'relative flex items-center gap-2.5 h-8 px-2.5 rounded-md text-[13px] font-medium tracking-snug transition-colors'
 const NAV_IDLE = 'text-ink-600 hover:text-foreground hover:bg-ink-100'
 const NAV_ACTIVE = 'bg-card text-foreground shadow-xs ring-1 ring-border'
+
+const ROLE_LABEL: Record<string, string> = {
+  admin: 'Administrador',
+  administrativo: 'Administrativo',
+}
 
 function HubLink({ hub, active, onClick }: { hub: Hub; active: boolean; onClick?: () => void }) {
   const Icon = hub.icon
@@ -147,6 +154,40 @@ function HubLink({ hub, active, onClick }: { hub: Hub; active: boolean; onClick?
   )
 }
 
+function UserBlock() {
+  const { user, role } = useAuth()
+  const email = user?.email ?? ''
+  const initial = (email[0] ?? '?').toUpperCase()
+
+  async function handleLogout() {
+    await supabase.auth.signOut()
+    window.location.href = '/login'
+  }
+
+  return (
+    <div className="flex items-center gap-2.5 px-1.5 py-1.5">
+      <span
+        aria-hidden
+        className="w-7 h-7 shrink-0 rounded-full bg-brand-subtle border border-brand-border text-brand-strong text-[12px] font-semibold flex items-center justify-center"
+      >
+        {initial}
+      </span>
+      <div className="min-w-0 flex-1 leading-tight">
+        <p className="text-[12.5px] font-medium text-foreground truncate" title={email}>{email || 'Usuário'}</p>
+        <p className="text-[11.5px] text-muted-foreground truncate">{ROLE_LABEL[role ?? ''] ?? 'Equipe'}</p>
+      </div>
+      <button
+        onClick={handleLogout}
+        aria-label="Sair"
+        title="Sair"
+        className="h-7 w-7 shrink-0 flex items-center justify-center rounded-md text-ink-400 hover:text-foreground hover:bg-ink-100 transition-colors"
+      >
+        <LogOut className="w-[15px] h-[15px]" />
+      </button>
+    </div>
+  )
+}
+
 function SidebarContent({ onNavClick }: { onNavClick?: () => void }) {
   const location = useLocation()
   const { hubs, homePath, isAdmin } = useHubs()
@@ -156,17 +197,17 @@ function SidebarContent({ onNavClick }: { onNavClick?: () => void }) {
     <div className="flex flex-col h-full">
       <div className="px-4 h-16 flex items-center">
         <Link to={homePath} onClick={onNavClick} className="block rounded-md" aria-label="Rei dos Cachos — início">
-          <img src={logo} alt="Rei dos Cachos" className="h-11 w-auto" />
+          <img src={logo} alt="Rei dos Cachos" className="h-10 w-auto" />
         </Link>
       </div>
 
-      <nav className="flex-1 overflow-y-auto px-2.5 pt-2 space-y-0.5 scrollbar-none" aria-label="Áreas">
+      <nav className="flex-1 overflow-y-auto px-2.5 pt-1 space-y-0.5 scrollbar-none" aria-label="Áreas">
         {hubs.map((hub) => (
           <HubLink key={hub.key} hub={hub} active={hubOwnsPath(hub, location.pathname)} onClick={onNavClick} />
         ))}
       </nav>
 
-      <div className="px-2.5 pb-3 pt-2 border-t border-border space-y-0.5">
+      <div className="px-2.5 pb-2.5 pt-2 space-y-0.5">
         {isAdmin && (
           <Link
             to="/admin/usuarios"
@@ -185,25 +226,34 @@ function SidebarContent({ onNavClick }: { onNavClick?: () => void }) {
           </Link>
           <ThemeToggle className="shrink-0 h-8 w-8 rounded-md text-ink-400 hover:text-foreground hover:bg-ink-100" />
         </div>
+        <div className="pt-2 mt-1.5 border-t border-border">
+          <UserBlock />
+        </div>
       </div>
     </div>
   )
 }
 
 // ─── Abas da área ──────────────────────────────────────────────────────────
+// Fixas no topo do painel: a área e as abas ficam sempre à mão, e o
+// cabeçalho da página (AdminPage) rola junto com o conteúdo.
 
 function HubTabs() {
   const location = useLocation()
   const { hubs } = useHubs()
   const hub = hubs.find((h) => hubOwnsPath(h, location.pathname))
   if (!hub || hub.items.length < 2) return null
+  const HubIcon = hub.icon
 
   return (
-    <div className="bg-background border-b border-border">
-      <div className="px-4 sm:px-6 lg:px-8 flex items-center gap-5 overflow-x-auto scrollbar-none">
-        <p className="hidden md:block text-[13px] font-semibold text-foreground shrink-0">{hub.label}</p>
+    <div className="sticky top-14 lg:top-0 z-30 bg-background/90 backdrop-blur-md border-b border-border lg:rounded-t-xl">
+      <div className="px-4 sm:px-6 lg:px-8 flex items-center gap-4 overflow-x-auto scrollbar-none">
+        <p className="hidden md:flex items-center gap-2 text-[13px] font-semibold text-foreground shrink-0">
+          <HubIcon className="w-4 h-4 text-ink-400" aria-hidden />
+          {hub.label}
+        </p>
         <span className="hidden md:block w-px h-4 bg-border shrink-0" aria-hidden />
-        <nav className="flex items-center gap-1 min-w-0" aria-label={`Páginas de ${hub.label}`}>
+        <nav className="flex items-center gap-0.5 min-w-0" aria-label={`Páginas de ${hub.label}`}>
           {hub.items.map((item) => {
             const active = location.pathname === item.path || location.pathname.startsWith(`${item.path}/`)
             return (
@@ -211,12 +261,12 @@ function HubTabs() {
                 key={item.path}
                 to={item.path}
                 aria-current={active ? 'page' : undefined}
-                className={`relative h-11 px-2.5 flex items-center text-[13px] font-medium whitespace-nowrap transition-colors ${
+                className={`relative h-12 px-2.5 flex items-center text-[13px] font-medium whitespace-nowrap transition-colors ${
                   active ? 'text-foreground' : 'text-ink-500 hover:text-foreground'
                 }`}
               >
                 {item.label}
-                {active && <span aria-hidden className="absolute left-2.5 right-2.5 bottom-0 h-0.5 rounded-full bg-brand" />}
+                {active && <span aria-hidden className="absolute left-2.5 right-2.5 -bottom-px h-0.5 rounded-full bg-brand" />}
               </Link>
             )
           })}
@@ -227,18 +277,21 @@ function HubTabs() {
 }
 
 // ─── Shell ─────────────────────────────────────────────────────────────────
+// Canvas embutido: a moldura (sidebar + fundo) é `bg-sidebar`; o conteúdo
+// fica num painel `bg-background` com hairline e raio 12 a partir de `lg`.
+// No mobile o painel ocupa a tela toda, sem moldura.
 
 function AdminLayoutInner({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false)
   const { homePath } = useHubs()
 
   return (
-    <div className="min-h-screen bg-background flex">
-      <aside className="hidden lg:flex flex-col w-56 bg-sidebar border-r border-sidebar-border fixed inset-y-0 left-0 z-40">
+    <div className="min-h-screen bg-background lg:bg-sidebar">
+      <aside className="hidden lg:flex flex-col w-56 fixed inset-y-0 left-0 z-40">
         <SidebarContent />
       </aside>
 
-      <header className="lg:hidden fixed top-0 inset-x-0 z-40 bg-background/90 backdrop-blur border-b border-border h-14 flex items-center justify-between px-4">
+      <header className="lg:hidden fixed top-0 inset-x-0 z-40 bg-background/90 backdrop-blur-md border-b border-border h-14 flex items-center justify-between px-4">
         <Link to={homePath} className="flex items-center" aria-label="Rei dos Cachos — início">
           <img src={logo} alt="Rei dos Cachos" className="h-8 w-auto" />
         </Link>
@@ -264,12 +317,15 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
         </>
       )}
 
-      {/* min-w-0 + overflow-x-hidden: sem isso o kanban de RH (13 colunas)
-          alarga a página inteira em vez de rolar por dentro. */}
-      <main className="flex-1 min-w-0 overflow-x-hidden lg:ml-56 pt-14 lg:pt-0">
-        <HubTabs />
-        {children}
-      </main>
+      {/* overflow-x-clip (não hidden): `hidden` transforma o painel num
+          scroll container e quebra todo `sticky` das páginas. O clip ainda
+          impede o kanban de RH (13 colunas) de alargar a página. */}
+      <div className="pt-14 lg:pt-2 lg:pb-2 lg:pr-2 lg:pl-56">
+        <main className="min-w-0 overflow-x-clip bg-background lg:rounded-xl lg:border lg:border-border lg:shadow-xs min-h-[calc(100vh-3.5rem)] lg:min-h-[calc(100vh-1rem)]">
+          <HubTabs />
+          {children}
+        </main>
+      </div>
     </div>
   )
 }

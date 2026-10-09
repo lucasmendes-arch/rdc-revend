@@ -30,17 +30,18 @@ export function AdminPeriodFilter({
 }: AdminPeriodFilterProps) {
   return (
     <div
-      className={`px-4 sm:px-6 lg:px-8 pb-3 pt-0.5 flex items-center gap-1.5 flex-nowrap overflow-x-auto sm:flex-wrap ${className}`}
+      className={`flex items-center gap-1.5 flex-nowrap overflow-x-auto sm:flex-wrap ${className}`}
       style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' } as React.CSSProperties}
     >
       {presets.map(p => (
         <button
           key={p.key}
           onClick={() => onPresetChange(p.key)}
-          className={`px-3 py-1.5 text-xs font-medium rounded-full border transition-colors shrink-0 ${
+          aria-pressed={activePreset === p.key}
+          className={`h-8 px-3 text-[13px] font-medium rounded-md border transition-colors shrink-0 ${
             activePreset === p.key
-              ? 'bg-gold text-white border-gold shadow-sm'
-              : 'bg-card text-muted-foreground border-border hover:border-gold-border hover:text-foreground'
+              ? 'bg-brand-subtle text-brand-strong border-brand-border'
+              : 'bg-card text-ink-600 border-border hover:border-ink-300 hover:text-foreground'
           }`}
         >
           {p.label}
@@ -49,9 +50,9 @@ export function AdminPeriodFilter({
 
       {activePreset === customPresetKey && (
         <div className="flex flex-wrap items-center gap-2 mt-1 sm:mt-0 sm:ml-2 shrink-0">
-          <div className="flex items-center gap-1.5 bg-card rounded-lg p-0.5 border border-border shadow-sm">
+          <div className="flex items-center gap-1.5 h-8 bg-card rounded-md border border-border">
             <div className="flex items-center gap-1.5 pl-2">
-              <span className="text-[10px] text-muted-foreground font-bold uppercase">De:</span>
+              <span className="text-[12px] text-muted-foreground font-medium">De</span>
               <DateField
                 value={customDateFrom || null}
                 onChange={v => onCustomDateFromChange?.(v ?? '')}
@@ -59,13 +60,13 @@ export function AdminPeriodFilter({
                 placeholder="—"
                 hideIcon
                 clearable={false}
-                className="px-1.5 py-1 text-xs rounded-md bg-transparent text-foreground font-semibold hover:bg-surface-alt transition-colors outline-none focus:ring-2 focus:ring-ring"
+                className="px-1.5 py-0.5 text-[13px] rounded-sm bg-transparent text-foreground font-medium hover:bg-muted transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring"
               />
             </div>
           </div>
-          <div className="flex items-center gap-1.5 bg-card rounded-lg p-0.5 border border-border shadow-sm">
+          <div className="flex items-center gap-1.5 h-8 bg-card rounded-md border border-border">
             <div className="flex items-center gap-1.5 pl-2 pr-2">
-              <span className="text-[10px] text-muted-foreground font-bold uppercase">Até:</span>
+              <span className="text-[12px] text-muted-foreground font-medium">Até</span>
               <DateField
                 value={customDateTo || null}
                 onChange={v => onCustomDateToChange?.(v ?? '')}
@@ -73,7 +74,7 @@ export function AdminPeriodFilter({
                 placeholder="—"
                 hideIcon
                 clearable={false}
-                className="px-1.5 py-1 text-xs rounded-md bg-transparent text-foreground font-semibold hover:bg-surface-alt transition-colors outline-none focus:ring-2 focus:ring-ring"
+                className="px-1.5 py-0.5 text-[13px] rounded-sm bg-transparent text-foreground font-medium hover:bg-muted transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring"
               />
             </div>
           </div>

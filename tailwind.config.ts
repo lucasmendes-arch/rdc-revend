@@ -27,7 +27,8 @@ export default {
       fontFamily: {
         sans: ["Geist", "system-ui", "-apple-system", "sans-serif"],
         mono: ["Geist Mono", "ui-monospace", "SFMono-Regular", "monospace"],
-        heading: ["Geist", "system-ui", "-apple-system", "sans-serif"],
+        heading: ["Bricolage Grotesque", "Geist", "system-ui", "sans-serif"],
+        title: ["Bricolage Grotesque", "Geist", "system-ui", "sans-serif"],
         // Playfair sobrevive apenas para o /lookbook (peça editorial impressa).
         display: ["Playfair Display", "serif"],
       },

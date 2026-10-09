@@ -37,17 +37,17 @@ export function AdminSelect({
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <button
-          className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border border-border bg-card text-foreground font-medium hover:border-gold-border focus:outline-none focus:ring-2 focus:ring-ring shadow-sm shrink-0 cursor-pointer transition-colors ${className}`}
+          className={`flex items-center gap-1.5 h-9 px-3 text-[13px] rounded-md border bg-card font-medium hover:border-ink-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background shrink-0 cursor-pointer transition-colors ${value ? 'border-brand-border text-foreground' : 'border-border text-ink-600'} ${className}`}
         >
-          {Icon && <Icon className="w-3 h-3 text-muted-foreground" />}
+          {Icon && <Icon className="w-3.5 h-3.5 text-ink-400" />}
           <span>{selectedLabel || placeholder}</span>
-          <ChevronDown className="w-3 h-3 text-muted-foreground" />
+          <ChevronDown className="w-3.5 h-3.5 text-ink-400" />
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="min-w-[140px]">
         <DropdownMenuItem
           onClick={() => onChange('')}
-          className={`text-xs font-medium cursor-pointer ${!value ? 'text-gold-text font-bold' : ''}`}
+          className={`text-[13px] cursor-pointer ${!value ? 'text-foreground font-semibold' : ''}`}
         >
           {allLabel}
         </DropdownMenuItem>
@@ -55,7 +55,7 @@ export function AdminSelect({
           <DropdownMenuItem
             key={opt.value}
             onClick={() => onChange(opt.value)}
-            className={`text-xs font-medium cursor-pointer ${value === opt.value ? 'text-gold-text font-bold' : ''}`}
+            className={`text-[13px] cursor-pointer ${value === opt.value ? 'text-foreground font-semibold' : ''}`}
           >
             {opt.label}
           </DropdownMenuItem>
