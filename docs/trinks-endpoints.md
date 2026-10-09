@@ -268,7 +268,8 @@ Trinks ──SNS──► n8n "WebHook Trinks" (/webhook/1232b74f-…)
   Vindas" manda WhatsApp para cliente.
 - `TRINKS_SNS_TOPIC_ARNS` (secret da função, opcional) restringe os tópicos aceitos.
   Preencher com o `topic_arn` dos primeiros eventos reais.
-- `SubscriptionConfirmation` é gravada mas **não confirmada automaticamente**.
+- **URL única para todas as unidades:** `https://n8n.srv1476439.hstgr.cloud/webhook/1232b74f-ffd9-4fe2-abf9-eef0524fcaab`. A unidade sai do `IdDoEstabelecimento` de cada evento (`trinks_units.trinks_establishment_id`). Tópico atual: `arn:aws:sns:us-east-1:441135549897:prd_integracao_rei_dos_cachos`.
+- `SubscriptionConfirmation` (2026-10-09): gravada e **confirmada automaticamente** só se o tópico for da conta AWS do Trinks (`441135549897`) e o `SubscribeURL` for da própria AWS para o mesmo tópico (`isTrustedSubscription`). Qualquer outra é gravada e ignorada.
 - O webhook só cobre o que acontece a partir da ativação. O período de 28/07 até
   08/10 precisa vir de importação de CSV exportado pela tela.
 

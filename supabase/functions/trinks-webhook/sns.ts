@@ -65,6 +65,27 @@ export function isAllowedCertUrl(url: string | undefined): boolean {
     && u.pathname.endsWith('.pem')
 }
 
+/** Conta AWS do Trinks (dona do tópico prd_integracao_rei_dos_cachos). */
+export const TRINKS_AWS_ACCOUNT = '441135549897'
+
+/**
+ * Confirmar inscrição sozinho só quando é do Trinks. Sem a trava de conta,
+ * qualquer um com conta AWS inscreveria este endpoint num tópico próprio e
+ * mandaria eventos assinados (válidos!) direto para o dashboard.
+ * O SubscribeURL também precisa ser da própria AWS, por HTTPS.
+ */
+export function isTrustedSubscription(env: SnsEnvelope): boolean {
+  if (env.Type !== 'SubscriptionConfirmation' || !env.SubscribeURL) return false
+  const account = (env.TopicArn ?? '').split(':')[4]
+  if (account !== TRINKS_AWS_ACCOUNT) return false
+  let u: URL
+  try { u = new URL(env.SubscribeURL) } catch { return false }
+  return u.protocol === 'https:'
+    && /^sns\.[a-z0-9-]+\.amazonaws\.com(\.cn)?$/.test(u.hostname)
+    && u.searchParams.get('Action') === 'ConfirmSubscription'
+    && u.searchParams.get('TopicArn') === env.TopicArn
+}
+
 /** Texto canônico assinado pela AWS: "Chave\nValor\n" na ordem documentada. */
 export function stringToSign(env: SnsEnvelope): string {
   const fields = env.Type === 'Notification' ? NOTIFICATION_FIELDS : SUBSCRIPTION_FIELDS

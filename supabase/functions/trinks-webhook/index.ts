@@ -4,8 +4,8 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 import {
-  certUrlOf, extractTrinksFields, isAllowedCertUrl, parseEnvelope, parseMessage,
-  verifySignature,
+  certUrlOf, extractTrinksFields, isAllowedCertUrl, isTrustedSubscription, parseEnvelope,
+  parseMessage, verifySignature,
 } from './sns.ts'
 
 declare const Deno: { env: { get(k: string): string | undefined } }
@@ -149,8 +149,26 @@ serve(async (req: Request) => {
     processed,
   })
 
-  // Confirmação de inscrição: gravada para auditoria, mas NÃO confirmada
-  // automaticamente — a inscrição atual já está ativa (os eventos chegam).
-  // Se o Trinks recriar a inscrição, confirmar à mão com o SubscribeURL salvo.
+  // Confirmação de inscrição (o Trinks inscrevendo uma unidade nova ou
+  // recriando a inscrição): já está gravada para auditoria. Confirma sozinho
+  // só se for do tópico da conta AWS do Trinks — ver isTrustedSubscription.
+  // Sem confirmar, a AWS não entrega nenhum evento dessa inscrição.
+  if (env.Type === 'SubscriptionConfirmation') {
+    if (!isTrustedSubscription(env)) {
+      log('subscription_ignored', { message_id: env.MessageId, topic: env.TopicArn })
+      return json(200, { ok: true, confirmed: false })
+    }
+    try {
+      const res = await fetch(env.SubscribeURL!, { signal: AbortSignal.timeout(10000) })
+      log('subscription_confirmed', { message_id: env.MessageId, topic: env.TopicArn, status: res.status })
+      // Falhou? 500 faz o SNS reentregar a confirmação.
+      if (!res.ok) return json(500, { error: 'falha ao confirmar inscricao' })
+      return json(200, { ok: true, confirmed: true })
+    } catch (err) {
+      log('subscription_error', { message_id: env.MessageId, error: String(err) })
+      return json(500, { error: 'falha ao confirmar inscricao' })
+    }
+  }
+
   return json(200, { ok: true, duplicate })
 })

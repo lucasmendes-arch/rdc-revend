@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { createSign, generateKeyPairSync } from 'node:crypto'
 
 import {
-  extractTrinksFields, isAllowedCertUrl, parseEnvelope, parseMessage, stringToSign,
+  extractTrinksFields, isAllowedCertUrl, isTrustedSubscription, parseEnvelope, parseMessage, stringToSign,
   verifySignature, type SnsEnvelope,
 } from './sns'
 
@@ -126,5 +126,34 @@ describe('extractTrinksFields / parseMessage', () => {
   it('parseMessage devolve null para texto que não é JSON', () => {
     expect(parseMessage('texto livre')).toBeNull()
     expect(parseMessage('{quebrado')).toBeNull()
+  })
+})
+
+describe('isTrustedSubscription', () => {
+  const topic = 'arn:aws:sns:us-east-1:441135549897:prd_integracao_rei_dos_cachos'
+  const url = (t: string, host = 'sns.us-east-1.amazonaws.com') =>
+    `https://${host}/?Action=ConfirmSubscription&TopicArn=${encodeURIComponent(t)}&Token=abc`
+  const sub =(over: Partial<SnsEnvelope> = {}): SnsEnvelope => ({
+    Type: 'SubscriptionConfirmation', MessageId: 'm', TopicArn: topic, Message: 'x',
+    Timestamp: '2026-10-09T00:00:00Z', SignatureVersion: '1', Signature: 's',
+    SubscribeURL: url(topic), ...over,
+  } as SnsEnvelope)
+
+  it('confirma inscrição do tópico do Trinks', () => {
+    expect(isTrustedSubscription(sub())).toBe(true)
+  })
+  it('recusa tópico de outra conta AWS', () => {
+    const other = 'arn:aws:sns:us-east-1:111111111111:qualquer'
+    expect(isTrustedSubscription(sub({ TopicArn: other, SubscribeURL: url(other) }))).toBe(false)
+  })
+  it('recusa SubscribeURL fora da AWS', () => {
+    expect(isTrustedSubscription(sub({ SubscribeURL: url(topic, 'sns.evil.com') }))).toBe(false)
+    expect(isTrustedSubscription(sub({ SubscribeURL: url(topic, 'snsXus-east-1.amazonaws.com') }))).toBe(false)
+  })
+  it('recusa SubscribeURL de outro tópico', () => {
+    expect(isTrustedSubscription(sub({ SubscribeURL: url('arn:aws:sns:us-east-1:441135549897:outro') }))).toBe(false)
+  })
+  it('ignora notificação comum', () => {
+    expect(isTrustedSubscription(sub({ Type: 'Notification' }))).toBe(false)
   })
 })
