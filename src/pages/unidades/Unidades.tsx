@@ -6,7 +6,7 @@ import {
 import {
   DollarSign, Receipt, TrendingUp, Users, Scissors, Package, CalendarDays,
   UserX, ArrowUpRight, ArrowDownRight, Minus, AlertTriangle, CreditCard,
-  BadgePercent, Repeat,
+  BadgePercent, Repeat, CalendarX,
 } from 'lucide-react'
 
 import { supabase } from '@/lib/supabase'
@@ -574,81 +574,70 @@ export default function Unidades() {
               )}
             </Panel>
 
-            {/* Serviços x Produtos */}
+            {/* Clientes atendidos + rankings */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-              <div className={CARD}>
-                <h2 className={`${CARD_TITLE} mb-3`}>Serviços × Produtos</h2>
-                {splitTotal === 0 ? (
-                  <p className="text-[13px] text-muted-foreground">Sem receita no período.</p>
-                ) : (
-                  <>
-                    <div className="flex h-2 gap-0.5 rounded-full overflow-hidden mb-3">
-                      <div className="bg-brand" style={{ width: `${(servicesTotal / splitTotal) * 100}%` }} />
-                      <div className="bg-ink-400" style={{ width: `${(productsTotal / splitTotal) * 100}%` }} />
-                    </div>
-                    <div className="space-y-1.5 text-[13px]">
-                      <div className="flex items-center justify-between">
-                        <span className="inline-flex items-center gap-1.5 text-muted-foreground">
-                          <Scissors className="w-3.5 h-3.5" /> Serviços
-                        </span>
-                        <span className="font-semibold text-foreground">
-                          {fmtBRLCents(servicesTotal)} ({((servicesTotal / splitTotal) * 100).toFixed(0)}%)
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="inline-flex items-center gap-1.5 text-muted-foreground">
-                          <Package className="w-3.5 h-3.5" /> Produtos
-                        </span>
-                        <span className="font-semibold text-foreground">
-                          {fmtBRLCents(productsTotal)} ({((productsTotal / splitTotal) * 100).toFixed(0)}%)
-                        </span>
-                      </div>
-                    </div>
-                  </>
-                )}
-
-                <div className="mt-4 pt-3 border-t border-border grid grid-cols-2 gap-3 text-[13px]">
-                  <div>
-                    <div className="text-muted-foreground inline-flex items-center gap-1.5">
-                      <CalendarDays className="w-3.5 h-3.5" /> Agendamentos
-                    </div>
-                    <div className="font-semibold text-foreground mt-0.5">
-                      {sum(current, 'appointments_total').toLocaleString('pt-BR')}
-                      <span className="text-muted-foreground font-normal">
-                        {' '}· {sum(current, 'appointments_done').toLocaleString('pt-BR')} realizados
-                      </span>
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-muted-foreground inline-flex items-center gap-1.5">
-                      <UserX className="w-3.5 h-3.5" /> Faltas / cancelamentos
-                    </div>
-                    <div className="font-semibold text-foreground mt-0.5">
-                      {sum(current, 'no_shows').toLocaleString('pt-BR')} · {sum(current, 'cancellations').toLocaleString('pt-BR')}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
+              <ClientsCard
+                clients={breakdown?.coverage && breakdown.coverage.transactions > 0 ? breakdown.clients : null}
+                appointments={{
+                  total: sum(current, 'appointments_total'),
+                  done: sum(current, 'appointments_done'),
+                  noShows: sum(current, 'no_shows'),
+                  cancellations: sum(current, 'cancellations'),
+                }}
+              />
               <RankCard title="Top serviços" icon={Scissors} rows={topServices} />
               <RankCard title="Top produtos" icon={Package} rows={topProducts} />
             </div>
 
-            {/* Fechamentos: pagamento, descontos, recorrência */}
-            {breakdown?.coverage && breakdown.coverage.transactions > 0 && (
-              <div className="space-y-1.5">
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-                  <PaymentsCard payments={breakdown.payments} />
-                  <DiscountsCard discounts={breakdown.discounts} />
-                  <ClientsCard clients={breakdown.clients} />
+            {/* Fechamentos: pagamento, descontos + Serviços x Produtos */}
+            <div className="space-y-1.5">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+                {breakdown?.coverage && breakdown.coverage.transactions > 0 && (
+                  <>
+                    <PaymentsCard payments={breakdown.payments} />
+                    <DiscountsCard discounts={breakdown.discounts} />
+                  </>
+                )}
+                <div className={CARD}>
+                  <h2 className={`${CARD_TITLE} mb-3`}>Serviços × Produtos</h2>
+                  {splitTotal === 0 ? (
+                    <p className="text-[13px] text-muted-foreground">Sem receita no período.</p>
+                  ) : (
+                    <>
+                      <div className="flex h-2 gap-0.5 rounded-full overflow-hidden mb-3">
+                        <div className="bg-brand" style={{ width: `${(servicesTotal / splitTotal) * 100}%` }} />
+                        <div className="bg-ink-400" style={{ width: `${(productsTotal / splitTotal) * 100}%` }} />
+                      </div>
+                      <div className="space-y-1.5 text-[13px]">
+                        <div className="flex items-center justify-between">
+                          <span className="inline-flex items-center gap-1.5 text-muted-foreground">
+                            <Scissors className="w-3.5 h-3.5" /> Serviços
+                          </span>
+                          <span className="font-semibold text-foreground">
+                            {fmtBRLCents(servicesTotal)} ({((servicesTotal / splitTotal) * 100).toFixed(0)}%)
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="inline-flex items-center gap-1.5 text-muted-foreground">
+                            <Package className="w-3.5 h-3.5" /> Produtos
+                          </span>
+                          <span className="font-semibold text-foreground">
+                            {fmtBRLCents(productsTotal)} ({((productsTotal / splitTotal) * 100).toFixed(0)}%)
+                          </span>
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </div>
-                <p className="text-[12px] text-muted-foreground">
-                  Base: {breakdown.coverage.transactions.toLocaleString('pt-BR')} fechamentos importados
-                  ({fmtDay(breakdown.coverage.first_day)} a {fmtDay(breakdown.coverage.last_day)}).
-                  {' '}Unidades sem relatório importado não entram nestes três quadros.
-                </p>
               </div>
-            )}
+              {breakdown?.coverage && breakdown.coverage.transactions > 0 && (
+                <p className="text-[12px] text-muted-foreground">
+                  Pagamentos, descontos e clientes atendidos: base de {breakdown.coverage.transactions.toLocaleString('pt-BR')} fechamentos importados
+                  ({fmtDay(breakdown.coverage.first_day)} a {fmtDay(breakdown.coverage.last_day)}).
+                  {' '}Unidades sem relatório importado não entram nesses quadros.
+                </p>
+              )}
+            </div>
 
             {/* Profissionais */}
             <div className="rounded-lg border border-border bg-card shadow-xs overflow-hidden">
@@ -858,17 +847,31 @@ function DiscountsCard({ discounts }: { discounts: Breakdown['discounts'] }) {
   )
 }
 
-function ClientsCard({ clients }: { clients: Breakdown['clients'] }) {
-  const unique = Number(clients.unique)
-  const returning = Number(clients.returning)
-  const firstTime = Number(clients.first_time)
+/** Taxa sobre o total de agendamentos (que já inclui faltas e cancelamentos). */
+const pctOf = (n: number, total: number) =>
+  total ? `${((n / total) * 100).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%` : '—'
+
+function ClientsCard({ clients, appointments }: {
+  /** null quando nenhuma unidade da seleção tem fechamentos importados. */
+  clients: Breakdown['clients'] | null
+  appointments: { total: number; done: number; noShows: number; cancellations: number }
+}) {
+  const unique = Number(clients?.unique ?? 0)
+  const returning = Number(clients?.returning ?? 0)
+  const firstTime = Number(clients?.first_time ?? 0)
   return (
     <div className={CARD}>
       <h2 className={`${CARD_TITLE} mb-3`}>
         <Repeat className="w-4 h-4 text-muted-foreground" /> Clientes atendidos
       </h2>
-      <div className="font-title text-[24px] font-semibold text-foreground leading-none tabular-nums">{unique.toLocaleString('pt-BR')}</div>
-      <p className="text-[12px] text-muted-foreground mt-1">Clientes diferentes com comanda paga</p>
+      {clients ? (
+        <>
+          <div className="font-title text-[24px] font-semibold text-foreground leading-none tabular-nums">{unique.toLocaleString('pt-BR')}</div>
+          <p className="text-[12px] text-muted-foreground mt-1">Clientes diferentes com comanda paga</p>
+        </>
+      ) : (
+        <p className="text-[13px] text-muted-foreground">Sem fechamentos importados no período.</p>
+      )}
       {unique > 0 && (
         <>
           <div className="flex h-2 gap-0.5 rounded-full overflow-hidden mt-3 mb-2">
@@ -887,6 +890,36 @@ function ClientsCard({ clients }: { clients: Breakdown['clients'] }) {
           </div>
         </>
       )}
+
+      <div className="mt-4 pt-3 border-t border-border space-y-1.5 text-[13px]">
+        <div className="flex items-baseline justify-between gap-2">
+          <span className="inline-flex items-center gap-1.5 text-muted-foreground">
+            <CalendarDays className="w-3.5 h-3.5" /> Agendamentos
+          </span>
+          <span className="font-semibold text-foreground tabular-nums">
+            {appointments.total.toLocaleString('pt-BR')}
+            <span className="text-muted-foreground font-normal"> · {appointments.done.toLocaleString('pt-BR')} realizados</span>
+          </span>
+        </div>
+        <div className="flex items-baseline justify-between gap-2">
+          <span className="inline-flex items-center gap-1.5 text-muted-foreground">
+            <UserX className="w-3.5 h-3.5" /> Faltas (no-show)
+          </span>
+          <span className="font-semibold text-foreground tabular-nums">
+            {appointments.noShows.toLocaleString('pt-BR')}
+            <span className="text-muted-foreground font-normal"> · {pctOf(appointments.noShows, appointments.total)}</span>
+          </span>
+        </div>
+        <div className="flex items-baseline justify-between gap-2">
+          <span className="inline-flex items-center gap-1.5 text-muted-foreground">
+            <CalendarX className="w-3.5 h-3.5" /> Cancelamentos
+          </span>
+          <span className="font-semibold text-foreground tabular-nums">
+            {appointments.cancellations.toLocaleString('pt-BR')}
+            <span className="text-muted-foreground font-normal"> · {pctOf(appointments.cancellations, appointments.total)}</span>
+          </span>
+        </div>
+      </div>
     </div>
   )
 }
