@@ -433,10 +433,12 @@
     font-variant-numeric: tabular-nums;
     border-collapse: collapse;
   }
+  /* Alinhamento padrão com especificidade ZERO (:where): assim `text-right`/
+     `text-center` no <th> vencem e o título fica alinhado com a coluna. */
+  :where(.data-table thead th) { text-align: left; }
   .data-table thead th {
     height: 2.25rem;
     padding: 0 0.75rem;
-    text-align: left;
     font-size: 12px;
     font-weight: 500;
     color: hsl(var(--muted-foreground));
