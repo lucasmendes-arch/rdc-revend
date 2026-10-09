@@ -275,3 +275,31 @@ Trinks ──SNS──► n8n "WebHook Trinks" (/webhook/1232b74f-…)
 Payloads documentados em https://trinks.readme.io/reference/webhook. Os campos
 reais devem ser conferidos em `trinks_webhook_events.payload` antes de construir a
 camada de processamento.
+
+---
+
+## Importação de relatórios exportados (histórico)
+
+`npx tsx scripts/trinks-import.ts relatorios-trinks/<slug>` — pasta por unidade
+(`stores.slug`), fora do git (dados pessoais). Idempotente por sha256; cada
+arquivo substitui o seu período numa transação e recalcula o dashboard.
+
+| Relatório (tela do Trinks) | Filtro obrigatório | Tabela | Alimenta |
+|---|---|---|---|
+| Financeiro | Data de Pagamento/Estorno | `trinks_transactions` | faturamento, comandas, pagamentos, descontos, recorrência |
+| Clientes (ativos) | — | `trinks_clients` | clientes novos, cadastro |
+| Agendamentos | — (data do agendamento) | `trinks_appointments` | agenda, faltas, cancelamentos |
+| Comissões | Data de Pagamento/Estorno | `trinks_sale_items` | rankings de serviço/produto, produção e comissão por profissional |
+| Ranking de Profissionais | — | ignorado | resumo sem data por linha |
+
+Armadilhas encontradas nos arquivos reais (Linhares, 08/10/2026):
+- **Aspas não escapadas** em nomes de cliente: um parser estrito perdia 3,5 mil de
+  6,3 mil clientes. O tokenizador só fecha aspa antes de `;`/quebra/fim, e recusa
+  campo > 5000 caracteres.
+- **Cabeçalho de Agendamentos muda** com a época (2026 ganhou "Etiqueta do
+  agendamento" no meio): colunas localizadas pelo nome.
+- **"% Comissão" = "comissão informada"** quando a comissão é valor fixo.
+- **Serviço × produto** nas comissões: é serviço o item cujo nome aparece nos
+  agendamentos. Serviços batem 100% com o financeiro; produtos 99,7%.
+- Financeiro e Comissões trazem linha de **Total**; a soma tem de bater ou o
+  arquivo é recusado.

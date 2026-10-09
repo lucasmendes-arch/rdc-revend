@@ -567,7 +567,8 @@ export default function Unidades() {
                     <tbody>
                       {profRanking.map(p => (
                         <tr key={p.name} className="border-b border-border last:border-0">
-                          <td className="px-4 py-2 text-foreground font-medium">{p.name}</td>
+                          {/* O Trinks prefixa a ordem da agenda no nome ("2 Yasmin"). */}
+                          <td className="px-4 py-2 text-foreground font-medium">{p.name.replace(/^\d+\s+/, '')}</td>
                           <td className="px-4 py-2 text-right text-muted-foreground">{p.count}</td>
                           <td className="px-4 py-2 text-right text-foreground font-semibold">{fmtBRLCents(p.revenue)}</td>
                           <td className="px-4 py-2 text-right text-muted-foreground">

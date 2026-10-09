@@ -170,10 +170,17 @@ export interface ClientesReport {
 
 export class ReportError extends Error {}
 
-export function detectReport(text: string): 'financeiro' | 'clientes' | null {
+export type ReportType = 'financeiro' | 'clientes' | 'agendamentos' | 'comissoes' | 'ranking'
+
+export function detectReport(text: string): ReportType | null {
   const rows = tokenize(text)
   if (rows.some(r => r[0] === 'Data de Atendimento/Venda' && r[1] === 'Data de Pagamento/Estorno')) return 'financeiro'
   if (rows.some(r => r[0] === 'CPF' && r.includes('Data de Cadastro'))) return 'clientes'
+  if (rows.some(r => r[0] === 'Data' && r[1] === 'Hora' && r.includes('Serviço'))) return 'agendamentos'
+  if (rows.some(r => r[0] === 'Atendimento/Venda' && r.includes('Valor Comissão'))) return 'comissoes'
+  // Ranking de Profissionais: resumo fechado do período, sem data por linha —
+  // não serve para filtro por dia/mês no dashboard. Reconhecido só para avisar.
+  if (rows.some(r => r[0] === 'Posição' && r[1] === 'Profissional')) return 'ranking'
   return null
 }
 
@@ -402,5 +409,284 @@ export function parseClientes(text: string): ClientesReport {
     generated_at: generatedAt(pre),
     only_active: pre.some(l => l.includes('Listar clientes ativos')),
     rows: [...byKey.values()],
+  }
+}
+
+// ── Agendamentos ─────────────────────────────────────────────────────────────
+
+// Colunas obrigatórias, localizadas pelo NOME: o Trinks acrescentou
+// "Etiqueta do agendamento" no meio do cabeçalho em 2026, então a posição
+// muda conforme a época da exportação.
+export const AGENDAMENTOS_HEADER = [
+  'Data', 'Hora', 'Profissional', 'Profissional da vez', 'Assistente', 'Categoria Serviço', 'Serviço',
+  'Duração', 'Cliente', 'Sexo', 'Telefones', 'Email', 'Valor', 'Fechamento Conta', 'Status',
+  'Cadastramento', 'Data de Cadastro do Cliente', 'Quem Realizou o Agendamento', 'Origem',
+  'Observações', 'Etiqueta do cliente',
+] as const
+
+export interface AgendamentoRow {
+  source_key: string
+  appointment_date: string
+  starts_at: string | null
+  professional: string | null
+  professional_on_duty: boolean | null
+  assistant: string | null
+  service_category: string | null
+  service: string | null
+  duration_min: number | null
+  value: number
+  status: string
+  ticket_closed: boolean | null
+  booked_at: string | null
+  booked_by: string | null
+  origin: string | null
+  client_key: string | null
+  client_name: string | null
+  client_gender: string | null
+  client_phones: string | null
+  client_email: string | null
+  client_registered_at: string | null
+  client_tags: string | null
+  appointment_tags: string | null
+  notes: string | null
+}
+
+export interface AgendamentosReport {
+  type: 'agendamentos'
+  period_start: string
+  period_end: string
+  generated_at: string | null
+  rows: AgendamentoRow[]
+}
+
+/** "60 min" → 60 ; "1h e 20 min" → 80 ; "2h" → 120 */
+export function durationMinutes(v: string | undefined): number | null {
+  const s = (v ?? '').trim()
+  if (!s) return null
+  const h = s.match(/(\d+)\s*h/)
+  const m = s.match(/(\d+)\s*min/)
+  if (!h && !m) return null
+  return (h ? Number(h[1]) * 60 : 0) + (m ? Number(m[1]) : 0)
+}
+
+function checkHeader(header: string[], expected: readonly string[], label: string) {
+  expected.forEach((h, i) => {
+    if ((header[i] ?? '').trim() !== h) {
+      throw new ReportError(`${label}: coluna ${i + 1} esperada "${h}", veio "${header[i] ?? ''}"`)
+    }
+  })
+}
+
+export function parseAgendamentos(text: string): AgendamentosReport {
+  const rows = tokenize(text)
+  assertNoRunawayField(rows)
+  const hi = rows.findIndex(r => r[0] === 'Data' && r[1] === 'Hora')
+  if (hi === -1) throw new ReportError('cabecalho do relatorio de agendamentos nao encontrado')
+  const header = rows[hi].map(h => h.trim())
+  const ix = Object.fromEntries(AGENDAMENTOS_HEADER.map(name => {
+    const i = header.indexOf(name)
+    if (i === -1) throw new ReportError(`agendamentos: coluna "${name}" ausente`)
+    return [name, i]
+  })) as Record<(typeof AGENDAMENTOS_HEADER)[number], number>
+  const ixApptTag = header.indexOf('Etiqueta do agendamento')
+  const minCols = Math.max(...Object.values(ix)) + 1
+
+  const pre = preamble(rows, hi)
+  // Uma linha só: "Data Inicio: 01/09/2024 - Data Fim: 31/12/2024"
+  const per = pre.join(' ').match(/Data In[ií]cio:\s*(\d{2}\/\d{2}\/\d{4}).*Data Fim:\s*(\d{2}\/\d{2}\/\d{4})/)
+  const start = brDate(per?.[1])
+  const end = brDate(per?.[2])
+  if (!start || !end) throw new ReportError('periodo (Data Inicio/Data Fim) nao encontrado no arquivo de agendamentos')
+
+  const out: AgendamentoRow[] = []
+  const occurrences = new Map<string, number>()
+  for (const r of rows.slice(hi + 1)) {
+    if (r.length < minCols) {
+      if (r.every(c => !c.trim())) continue
+      throw new ReportError(`linha de agendamento com ${r.length} colunas (esperado ${minCols})`)
+    }
+    const c = (name: (typeof AGENDAMENTOS_HEADER)[number]) => (r[ix[name]] ?? '').trim()
+    const date = brDate(c('Data'))
+    if (!date) throw new ReportError(`agendamento sem data: "${r.slice(0, 3).join(';')}"`)
+    if (date < start || date > end) throw new ReportError(`agendamento em ${date} fora do periodo ${start}..${end}`)
+
+    const name = c('Cliente')
+    const phones = c('Telefones')
+    // Pode vir "(27) 99999-0001 / (27) 3333-0001": o primeiro é o Telefone 1
+    // do cadastro, que compõe a chave do cliente.
+    const firstPhone = phones.split(/\s*[/,]\s*/)[0] ?? ''
+
+    // Status, comanda, valor e observação mudam depois de marcado: fora do hash.
+    const identity = [c('Data'), c('Hora'), c('Profissional'), c('Serviço'), name, phones, c('Cadastramento')].join('|')
+    const n = (occurrences.get(identity) ?? 0) + 1
+    occurrences.set(identity, n)
+
+    const time = c('Hora').match(/^(\d{2}):(\d{2})/)
+    const ticket = c('Fechamento Conta')
+    out.push({
+      source_key: `${stableHash(identity)}#${n}`,
+      appointment_date: date,
+      starts_at: time ? `${date}T${time[1]}:${time[2]}:00` : null,
+      professional: c('Profissional') || null,
+      professional_on_duty: yesNo(c('Profissional da vez')),
+      assistant: c('Assistente') || null,
+      service_category: c('Categoria Serviço') || null,
+      service: c('Serviço') || null,
+      duration_min: durationMinutes(c('Duração')),
+      value: brNumber(c('Valor')),
+      status: c('Status'),
+      ticket_closed: ticket ? ticket.toLowerCase() === 'fechada' : null,
+      booked_at: brDateTime(c('Cadastramento')),
+      booked_by: c('Quem Realizou o Agendamento') || null,
+      origin: c('Origem') || null,
+      client_key: name ? clientKey(name, '', firstPhone) : null,
+      client_name: name || null,
+      client_gender: c('Sexo') || null,
+      client_phones: phones || null,
+      client_email: c('Email') || null,
+      client_registered_at: brDateTime(c('Data de Cadastro do Cliente')),
+      client_tags: c('Etiqueta do cliente') || null,
+      appointment_tags: ixApptTag >= 0 ? (r[ixApptTag] ?? '').trim() || null : null,
+      notes: c('Observações') || null,
+    })
+  }
+  return { type: 'agendamentos', period_start: start, period_end: end, generated_at: generatedAt(pre), rows: out }
+}
+
+// ── Comissões ────────────────────────────────────────────────────────────────
+
+export const COMISSOES_HEADER = [
+  'Atendimento/Venda', 'Pagamento / Estorno', 'Data de Liberação da Comissão', 'Profissional',
+  'Assistente', 'Serviço/Produto/Pacote', 'Categoria', 'Consumo de Pacote', 'Cliente', 'CPF', 'Valor',
+  'Desconto Cliente', 'Desconto administrativo', 'Pago em', 'Motivo de Desconto', 'Custo operacional',
+  'Valor Base Comissão', '% Comissão', 'Desconto Operadora', 'Valor Comissão', 'Taxa de Comanda',
+  'Quem registrou a transação', 'Comissão para',
+] as const
+
+export interface ComissaoRow {
+  source_key: string
+  business_date: string
+  paid_at: string | null
+  service_date: string | null
+  commission_release_on: string | null
+  professional: string | null
+  assistant: string | null
+  item_name: string
+  category: string | null
+  package_consumption: boolean
+  client_name: string | null
+  client_cpf: string | null
+  value: number
+  client_discount: number
+  admin_discount: number
+  discount_reason: string | null
+  paid_with: string | null
+  operational_cost: number
+  commission_base: number
+  commission_pct: number | null
+  acquirer_discount: number
+  commission_value: number
+  ticket_fee: number
+  registered_by: string | null
+  commission_to: string | null
+}
+
+export interface ComissoesReport {
+  type: 'comissoes'
+  period_start: string
+  period_end: string
+  generated_at: string | null
+  rows: ComissaoRow[]
+  file_total: number | null
+  file_commission_total: number | null
+}
+
+export function parseComissoes(text: string): ComissoesReport {
+  const rows = tokenize(text)
+  assertNoRunawayField(rows)
+  const hi = rows.findIndex(r => r[0] === COMISSOES_HEADER[0])
+  if (hi === -1) throw new ReportError('cabecalho do relatorio de comissoes nao encontrado')
+  checkHeader(rows[hi], COMISSOES_HEADER, 'comissoes')
+
+  const pre = preamble(rows, hi)
+  // Regime de caixa, como o financeiro: o dia é o do pagamento.
+  if (pre[0] !== 'Data de Pagamento/Estorno') {
+    throw new ReportError(`exporte as comissoes filtrando por "Data de Pagamento/Estorno" (veio "${pre[0] ?? ''}")`)
+  }
+  const start = brDate(pre.find(l => l.startsWith('Data Início:'))?.split(':')[1])
+  const end = brDate(pre.find(l => l.startsWith('Data Fim:'))?.split(':')[1])
+  if (!start || !end) throw new ReportError('periodo (Data Início/Data Fim) nao encontrado no arquivo de comissoes')
+
+  const out: ComissaoRow[] = []
+  const occurrences = new Map<string, number>()
+  let fileTotal: number | null = null
+  let fileCommission: number | null = null
+
+  for (const r of rows.slice(hi + 1)) {
+    // Linha de total: 9 vazias + rótulo; Valor em [10], Valor Comissão em [19].
+    if (r[9] === 'Total (R$):') { fileTotal = brNumber(r[10]); fileCommission = brNumber(r[19]); break }
+    if (r.length < COMISSOES_HEADER.length) {
+      if (r.every(c => !c.trim())) continue
+      throw new ReportError(`linha de comissao com ${r.length} colunas (esperado ${COMISSOES_HEADER.length})`)
+    }
+    const businessDate = brDate(r[1])
+    if (!businessDate) throw new ReportError(`item sem data de pagamento: "${r.slice(0, 6).join(';')}"`)
+    if (businessDate < start || businessDate > end) {
+      throw new ReportError(`item em ${businessDate} fora do periodo ${start}..${end}`)
+    }
+    const item = r[5].trim()
+    if (!item) throw new ReportError(`item sem nome em ${businessDate}`)
+
+    // Comissão, liberação e forma de pagamento podem ser ajustadas depois: fora do hash.
+    const identity = [r[0], r[1], r[3], r[4], item, r[8], r[9], r[10], r[11]].map(x => x.trim()).join('|')
+    const n = (occurrences.get(identity) ?? 0) + 1
+    occurrences.set(identity, n)
+
+    const pct = r[17].trim()
+    out.push({
+      source_key: `${stableHash(identity)}#${n}`,
+      business_date: businessDate,
+      paid_at: brDateTime(r[1]),
+      service_date: brDate(r[0]),
+      commission_release_on: brDate(r[2]),
+      professional: r[3].trim() || null,
+      assistant: r[4].trim() || null,
+      item_name: item,
+      category: r[6].trim() || null,
+      package_consumption: r[7].trim().toUpperCase() === 'SIM',
+      client_name: r[8].trim() || null,
+      client_cpf: r[9].replace(/\D/g, '') || null,
+      value: brNumber(r[10]),
+      client_discount: Math.abs(brNumber(r[11])),
+      admin_discount: Math.abs(brNumber(r[12])),
+      discount_reason: r[14].trim() || null,
+      paid_with: r[13].trim() || null,
+      operational_cost: brNumber(r[15]),
+      commission_base: brNumber(r[16]),
+      // Comissão de valor fixo vem como texto ("comissão informada"), sem percentual.
+      commission_pct: /^-?[\d.,]+\s*%?$/.test(pct) ? brNumber(pct.replace('%', '')) : null,
+      acquirer_discount: Math.abs(brNumber(r[18])),
+      commission_value: brNumber(r[19]),
+      ticket_fee: brNumber(r[20]),
+      registered_by: r[21].trim() || null,
+      commission_to: r[22].trim() || null,
+    })
+  }
+
+  // Conferência dupla com o rodapé do Trinks: valor dos itens e comissão.
+  if (fileTotal !== null) {
+    const sum = out.reduce((a, x) => a + x.value, 0)
+    const com = out.reduce((a, x) => a + x.commission_value, 0)
+    if (Math.abs(sum - fileTotal) > 0.05) {
+      throw new ReportError(`soma dos itens ${sum.toFixed(2)} difere do total do arquivo ${fileTotal.toFixed(2)}`)
+    }
+    if (fileCommission !== null && Math.abs(com - fileCommission) > 0.05) {
+      throw new ReportError(`soma das comissoes ${com.toFixed(2)} difere do total do arquivo ${fileCommission.toFixed(2)}`)
+    }
+  }
+
+  return {
+    type: 'comissoes', period_start: start, period_end: end, generated_at: generatedAt(pre),
+    rows: out, file_total: fileTotal, file_commission_total: fileCommission,
   }
 }
