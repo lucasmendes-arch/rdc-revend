@@ -300,6 +300,31 @@ export default function Unidades() {
       .range(from, to)),
   })
 
+  // Comissão estimada: o webhook do Trinks não traz comissão, então os itens
+  // dele recebem o percentual do histórico (trinks_commission_pct_guess). Só
+  // valem nos dias DEPOIS do último relatório CSV de Comissões da unidade —
+  // antes disso o CSV manda e o valor é o real.
+  const { data: estimatedDays = [] } = useQuery({
+    queryKey: ['trinks-commission-estimated', bounds.from, bounds.to],
+    queryFn: async () => {
+      const [{ data: items }, { data: imports }] = await Promise.all([
+        supabase.from('trinks_sale_items')
+          .select('store_id, business_date')
+          .eq('source', 'webhook').eq('commission_estimated', true)
+          .gte('business_date', bounds.from).lte('business_date', bounds.to),
+        supabase.from('trinks_imports')
+          .select('store_id, period_end')
+          .eq('report_type', 'comissoes'),
+      ])
+      const coveredThrough = new Map<string, string>()
+      for (const i of imports ?? []) {
+        const prev = coveredThrough.get(i.store_id)
+        if (!prev || i.period_end > prev) coveredThrough.set(i.store_id, i.period_end)
+      }
+      return (items ?? []).filter(i => i.business_date > (coveredThrough.get(i.store_id) ?? ''))
+    },
+  })
+
   // Formas de pagamento, descontos e recorrência — calculados no banco a
   // partir dos fechamentos importados (get_trinks_breakdown).
   const { data: breakdown } = useQuery({
@@ -317,6 +342,11 @@ export default function Unidades() {
 
   const inStore = <T extends { store_id: string }>(rows: T[]) =>
     storeFilter === 'all' ? rows : rows.filter(r => r.store_id === storeFilter)
+
+  const estimatedRange = useMemo(() => {
+    const days = inStore(estimatedDays).map(d => d.business_date).sort()
+    return days.length ? { from: days[0], to: days[days.length - 1] } : null
+  }, [estimatedDays, storeFilter])
 
   const current = useMemo(
     () => inStore(daily).filter(d => d.business_date >= bounds.from && d.business_date <= bounds.to),
@@ -491,7 +521,7 @@ export default function Unidades() {
                   hint={<Delta current={cmpAvgTicket} previous={prevAvgTicket} />}
                 />
                 <StatCard
-                  icon={Users} label="Clientes novos"
+                  icon={Users} label="Cadastros novos"
                   value={sum(current, 'new_customers').toLocaleString('pt-BR')}
                   hint={<Delta current={sum(currentCmp, 'new_customers')} previous={sum(previous, 'new_customers')} />}
                 />
@@ -639,7 +669,7 @@ export default function Unidades() {
                         <th className="text-right">Serviços</th>
                         <th className="text-right">Faturamento</th>
                         <th className="text-right">Ticket médio</th>
-                        <th className="text-right">Comissão</th>
+                        <th className="text-right">Comissão{estimatedRange ? '*' : ''}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -660,6 +690,15 @@ export default function Unidades() {
                   </table>
                 </div>
               )}
+              {profRanking.length > 0 && estimatedRange && (
+                <p className="text-[12px] text-muted-foreground px-4 sm:px-5 py-3 border-t border-border">
+                  * Comissão {estimatedRange.from === estimatedRange.to
+                    ? `de ${fmtDay(estimatedRange.from)}`
+                    : `de ${fmtDay(estimatedRange.from)} a ${fmtDay(estimatedRange.to)}`} é estimada:
+                  o Trinks não envia comissão em tempo real. Usa o percentual que cada profissional recebeu
+                  no mesmo serviço; vira o valor exato quando o relatório de Comissões do período é importado.
+                </p>
+              )}
             </div>
 
             {/* Comparativo entre unidades */}
@@ -676,7 +715,7 @@ export default function Unidades() {
                         <th className="text-right">Faturamento</th>
                         <th className="text-right">Comandas</th>
                         <th className="text-right">Ticket médio</th>
-                        <th className="text-right">Clientes novos</th>
+                        <th className="text-right">Cadastros novos</th>
                         <th className="text-right">Dados até</th>
                       </tr>
                     </thead>

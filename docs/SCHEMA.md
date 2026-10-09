@@ -1390,6 +1390,8 @@ Dados de faturamento dos salões coletados do Trinks pela edge function `sync-tr
 | `trinks_sync_runs` | 1 linha por execução |
 | `trinks_professionals` | `(store_id, trinks_professional_id)` — nome/apelido dos IDs, vindo dos webhooks 5/6 |
 
+> **Comissão estimada** (`20261009000010`): o fechamento do webhook não traz comissão. O trigger `trg_trinks_sale_item_estimate_commission` (itens `source=webhook`) calcula `(value − client_discount) × pct` — fórmula do Trinks, erro zero contra o CSV — com `pct` de `trinks_commission_pct_guess`: mesmo profissional+item no CSV (mais recente) → mais frequente do profissional para o tipo (180 dias) → mais frequente da unidade → 0. Marca `commission_estimated = true`. Recalcula quando o profissional muda (nome chegando depois). Nos dias cobertos pelo CSV de Comissões o CSV manda; a tela de Unidades marca a coluna com * e mostra a faixa estimada.
+> **"Cadastros novos"** em Unidades = `trinks_clients.registered_on` no dia (cadastro, não compra). "Novos" do card Clientes atendidos = primeiro pagamento no período. São números diferentes de propósito.
 > **Nome do profissional chega depois** (`20261009000009`): fechamento e agendamento do webhook só trazem o ID; até o evento 5/6 chegar, o rótulo é "Profissional #<id>". O trigger `trg_trinks_professional_relabel` em `trinks_professionals` troca esse rótulo em `trinks_sale_items`/`trinks_appointments` (por `trinks_professional_id`) e recalcula só os dias afetados. Rótulo = apelido, senão nome — igual ao CSV, para a mesma pessoa não virar duas linhas. Para puxar o nome de um profissional: salvar o cadastro dele no Trinks.
 
 > `business_date` é **regime de caixa** (data de pagamento, não de atendimento) —
