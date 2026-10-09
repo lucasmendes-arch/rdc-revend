@@ -3,6 +3,7 @@ import { useQuery, keepPreviousData } from '@tanstack/react-query'
 import { useLocation } from 'react-router-dom'
 import {
   SlidersHorizontal, Download, Loader, Users, ChevronRight, ChevronLeft, X, Repeat, HeartHandshake,
+  CalendarCheck, UserMinus, Wallet, MessageCircle, BarChart3, type LucideIcon,
 } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -12,6 +13,7 @@ import {
 } from '@/components/admin/ui/AdminPage'
 import StyledSelect from '@/components/ui/styled-select'
 import { Button } from '@/components/ui/button'
+import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/components/ui/sheet'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { cn } from '@/lib/utils'
 import { supabase } from '@/lib/supabase'
@@ -64,26 +66,152 @@ function StatusCard({ status, count, active, onClick }: {
 const pct = (n: number, base: number) =>
   base ? `${((n / base) * 100).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%` : '—'
 
-/** Retorno e fidelização da seleção (unidade, busca e filtros; ignora a situação). */
+const num = (n: number) => Number(n).toLocaleString('pt-BR')
+
+/** Indicadores principais da seleção (unidade, busca e filtros; ignora a situação). */
 function KpiCards({ kpis }: { kpis: CrmKpis | null }) {
-  const k = kpis ?? { with_purchase: 0, returned: 0, recent: 0, active: 0 }
+  const cards: { icon: LucideIcon; label: string; value: (k: CrmKpis) => string; hint: (k: CrmKpis) => string }[] = [
+    {
+      icon: Repeat, label: 'Taxa de retorno',
+      value: k => pct(k.returned, k.with_purchase),
+      hint: k => `${num(k.returned)} de ${num(k.with_purchase)} voltaram (2+ visitas)`,
+    },
+    {
+      icon: HeartHandshake, label: 'Taxa de fidelização',
+      value: k => pct(k.active, k.recent),
+      hint: k => `${num(k.active)} ativas de ${num(k.recent)} que compraram no último ano`,
+    },
+    {
+      icon: CalendarCheck, label: 'Ativas com horário',
+      value: k => pct(k.active_scheduled, k.active),
+      hint: k => `${num(k.active_scheduled)} de ${num(k.active)} ativas já têm próximo horário`,
+    },
+    {
+      icon: UserMinus, label: 'Taxa de churn',
+      value: k => pct(k.churned, k.with_purchase),
+      hint: k => `${num(k.churned)} sumidas ou perdidas de ${num(k.with_purchase)} com compra`,
+    },
+    {
+      icon: Wallet, label: 'LTV médio',
+      value: k => brl(k.with_purchase ? Number(k.revenue) / k.with_purchase : 0),
+      hint: () => 'Gasto total médio por cliente com compra',
+    },
+    {
+      icon: MessageCircle, label: 'Alcance no WhatsApp',
+      value: k => pct(k.reachable, k.total),
+      hint: k => `${num(k.reachable)} de ${num(k.total)} com WhatsApp e sem opt-out`,
+    },
+  ]
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-      <StatCard
-        icon={Repeat}
-        label="Taxa de retorno"
-        value={kpis ? pct(k.returned, k.with_purchase) : '—'}
-        hint={`${k.returned.toLocaleString('pt-BR')} de ${k.with_purchase.toLocaleString('pt-BR')} voltaram (2+ visitas)`}
-        wrapHint
-      />
-      <StatCard
-        icon={HeartHandshake}
-        label="Taxa de fidelização"
-        value={kpis ? pct(k.active, k.recent) : '—'}
-        hint={`${k.active.toLocaleString('pt-BR')} ativas de ${k.recent.toLocaleString('pt-BR')} que compraram no último ano`}
-        wrapHint
-      />
+    <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3">
+      {cards.map(c => (
+        <StatCard
+          key={c.label}
+          icon={c.icon}
+          label={c.label}
+          value={kpis ? c.value(kpis) : '—'}
+          hint={kpis ? c.hint(kpis) : ' '}
+          wrapHint
+        />
+      ))}
     </div>
+  )
+}
+
+/** Indicadores que não cabem no quadro principal, agrupados por tema. */
+function MoreKpisSheet({ kpis, open, onClose }: { kpis: CrmKpis | null; open: boolean; onClose: () => void }) {
+  const k = kpis
+  const groups: { title: string; rows: { label: string; value: string; hint: string }[] }[] = !k ? [] : [
+    {
+      title: 'Retenção e ciclo',
+      rows: [
+        {
+          label: 'Em risco', value: pct(k.at_risk, k.active + k.at_risk),
+          hint: `${num(k.at_risk)} em risco de ${num(k.active + k.at_risk)} ativas ou em risco — a fila de reativação`,
+        },
+        {
+          label: 'Intervalo médio entre visitas',
+          value: k.avg_interval_days != null ? `${num(Math.round(Number(k.avg_interval_days)))} dias` : '—',
+          hint: 'Média das clientes com 2+ visitas',
+        },
+        {
+          label: 'Visitas por cliente',
+          value: k.with_purchase ? (Number(k.visits) / k.with_purchase).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) : '—',
+          hint: `${num(k.visits)} visitas de ${num(k.with_purchase)} clientes com compra`,
+        },
+      ],
+    },
+    {
+      title: 'Agenda',
+      rows: [
+        {
+          label: 'Clientes com falta', value: pct(k.with_no_show, k.total),
+          hint: `${num(k.with_no_show)} faltaram ao menos 1 vez · ${num(k.repeat_no_show)} reincidentes (2+)`,
+        },
+        {
+          label: 'Cancelou e não remarcou', value: pct(k.missed_unresolved, k.total),
+          hint: `${num(k.missed_unresolved)} clientes — público do resgate da agenda`,
+        },
+      ],
+    },
+    {
+      title: 'Valor',
+      rows: [
+        {
+          label: 'Ticket médio', value: brl(k.visits ? Number(k.revenue) / Number(k.visits) : 0),
+          hint: 'Gasto total ÷ visitas das clientes com compra',
+        },
+        {
+          label: 'Concentração (top 20%)', value: pct(Number(k.top20_revenue), Number(k.revenue)),
+          hint: `Do faturamento vem dos 20% que mais gastam (${brl(Number(k.top20_revenue))} de ${brl(Number(k.revenue))})`,
+        },
+        {
+          label: 'Compram produto', value: pct(k.product_buyers, k.with_purchase),
+          hint: `${num(k.product_buyers)} de ${num(k.with_purchase)} já levaram produto — potencial de venda cruzada`,
+        },
+      ],
+    },
+    {
+      title: 'Contato',
+      rows: [
+        {
+          label: 'Aniversário cadastrado', value: pct(k.with_birthday, k.total),
+          hint: `${num(k.with_birthday)} de ${num(k.total)} clientes`,
+        },
+      ],
+    },
+  ]
+  return (
+    <Sheet open={open} onOpenChange={o => { if (!o) onClose() }}>
+      <SheetContent side="right" className="w-full sm:max-w-md p-0 gap-0 flex flex-col">
+        <div className="px-5 pt-5 pb-4 border-b border-border">
+          <SheetTitle className="text-[17px]">Mais indicadores</SheetTitle>
+          <SheetDescription className="text-[12px] mt-1">
+            Mesma seleção da lista (unidade, busca e filtros), sem o filtro de situação.
+          </SheetDescription>
+        </div>
+        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-6">
+          {!k ? (
+            <PageLoading label="Calculando…" />
+          ) : groups.map(g => (
+            <section key={g.title}>
+              <h3 className="text-[12.5px] font-medium text-muted-foreground mb-2">{g.title}</h3>
+              <ul className="divide-y divide-border rounded-lg border border-border">
+                {g.rows.map(r => (
+                  <li key={r.label} className="px-4 py-3">
+                    <div className="flex items-baseline justify-between gap-3">
+                      <span className="text-[13px] font-medium text-foreground">{r.label}</span>
+                      <span className="font-title text-[18px] font-semibold text-foreground tabular-nums shrink-0">{r.value}</span>
+                    </div>
+                    <p className="text-[12px] text-muted-foreground mt-0.5">{r.hint}</p>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ))}
+        </div>
+      </SheetContent>
+    </Sheet>
   )
 }
 
@@ -120,6 +248,7 @@ export default function CrmClientes() {
   const [page, setPage] = useState(0)
   const [selected, setSelected] = useState<SalonClient | null>(null)
   const [exporting, setExporting] = useState(false)
+  const [showMoreKpis, setShowMoreKpis] = useState(false)
 
   // Busca com atraso curto: não dispara uma consulta por tecla.
   useEffect(() => {
@@ -216,10 +345,16 @@ export default function CrmClientes() {
             : 'Clientes dos salões, com histórico do Trinks'
         }
         actions={
-          <Button variant="secondary" onClick={exportCsv} disabled={exporting || !data?.total}>
-            {exporting ? <Loader className="animate-spin" /> : <Download />}
-            Exportar
-          </Button>
+          <>
+            <Button variant="secondary" onClick={() => setShowMoreKpis(true)}>
+              <BarChart3 />
+              Mais indicadores
+            </Button>
+            <Button variant="secondary" onClick={exportCsv} disabled={exporting || !data?.total}>
+              {exporting ? <Loader className="animate-spin" /> : <Download />}
+              Exportar
+            </Button>
+          </>
         }
         toolbar={
           <Toolbar>
@@ -411,6 +546,7 @@ export default function CrmClientes() {
       </AdminPage>
 
       {selected && <ClientDrawer client={selected} onClose={() => setSelected(null)} />}
+      <MoreKpisSheet kpis={kpis} open={showMoreKpis} onClose={() => setShowMoreKpis(false)} />
     </AdminLayout>
   )
 }

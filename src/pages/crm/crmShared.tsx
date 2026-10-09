@@ -182,7 +182,9 @@ export async function searchClients(filters: CrmFilters, sort: string, limit: nu
   return data as { total: number; with_whatsapp: number; rows: SalonClient[] }
 }
 
+/** Contagens/somas da seleção; ver supabase/migrations/20261009000023_salon_crm_overview_more_kpis.sql. */
 export interface CrmKpis {
+  total: number
   /** Com pelo menos 1 visita. */
   with_purchase: number
   /** Com 2+ visitas. */
@@ -191,6 +193,23 @@ export interface CrmKpis {
   recent: number
   /** Situação "ativa". */
   active: number
+  /** "Ativa" com próximo horário marcado. */
+  active_scheduled: number
+  at_risk: number
+  /** "Sumida" + "perdida". */
+  churned: number
+  revenue: number
+  visits: number
+  /** Gasto dos 20% que mais gastam. */
+  top20_revenue: number
+  avg_interval_days: number | null
+  with_no_show: number
+  repeat_no_show: number
+  missed_unresolved: number
+  product_buyers: number
+  /** WhatsApp válido e sem opt-out. */
+  reachable: number
+  with_birthday: number
 }
 
 /** Contagem por situação + indicadores, com os filtros da lista (sem o de situação). */
