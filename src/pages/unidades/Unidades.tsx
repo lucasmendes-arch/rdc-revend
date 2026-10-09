@@ -96,7 +96,20 @@ const fmtBRLCents = (v: number) =>
 const toISO = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 
-function computeBounds(preset: string, customFrom: string, customTo: string) {
+/**
+ * Período exibido e período de comparação.
+ *
+ * A comparação depende do tipo de período — antes era sempre "os N dias
+ * imediatamente antes", e "este mês" (01–08/10) virava 23–30/09, uma semana
+ * de fim de mês: a tela mostrava queda num mês que estava 27% acima.
+ *   • mês (este/passado): mesmos dias do mês anterior (01–08/10 × 01–08/09)
+ *   • hoje/ontem: mesmo dia da semana passada (salão tem padrão semanal)
+ *   • demais: mesmo nº de dias imediatamente antes
+ *
+ * `dataThrough` = último dia com faturamento: a comparação para nele, para
+ * um dia ainda sem fechamento não ser comparado com um dia cheio.
+ */
+function computeBounds(preset: string, customFrom: string, customTo: string, dataThrough: string | null) {
   const now = new Date()
   const sod = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate())
   const shift = (d: Date, days: number) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + days)
@@ -122,18 +135,52 @@ function computeBounds(preset: string, customFrom: string, customTo: string) {
   }
 
   const days = Math.round((end.getTime() - start.getTime()) / 86400000) + 1
-  const prevEnd = shift(start, -1)
-  const prevStart = shift(prevEnd, -(days - 1))
+
+  // Fim efetivo da comparação: não passa do último dia com dado.
+  let cmpEnd = end
+  if (dataThrough) {
+    const dt = sod(new Date(`${dataThrough}T12:00:00`))
+    if (dt < cmpEnd && dt >= start) cmpEnd = dt
+  }
+
+  let prevStart: Date
+  let prevEnd: Date
+  let compareLabel: string
+  if (preset === 'month' || preset === 'last_month') {
+    const y = start.getFullYear()
+    const m = start.getMonth()
+    const daysInPrev = new Date(y, m, 0).getDate()
+    const fullMonth = cmpEnd.getDate() === new Date(y, m + 1, 0).getDate()
+    prevStart = new Date(y, m - 1, 1)
+    // Mês inteiro × mês anterior inteiro (fev completo × jan completo);
+    // mês em andamento × os mesmos dias do mês anterior.
+    prevEnd = new Date(y, m - 1, fullMonth ? daysInPrev : Math.min(cmpEnd.getDate(), daysInPrev))
+    compareLabel = fullMonth
+      ? 'vs. mês anterior'
+      : `vs. 01–${String(prevEnd.getDate()).padStart(2, '0')} do mês anterior`
+  } else if (preset === 'today' || preset === 'yesterday') {
+    prevStart = shift(start, -7)
+    prevEnd = shift(cmpEnd, -7)
+    compareLabel = 'vs. mesmo dia da semana passada'
+  } else {
+    const cmpDays = Math.round((cmpEnd.getTime() - start.getTime()) / 86400000) + 1
+    prevEnd = shift(start, -1)
+    prevStart = shift(prevEnd, -(cmpDays - 1))
+    compareLabel = `vs. ${cmpDays} dias anteriores`
+  }
 
   return {
     from: toISO(start), to: toISO(end),
+    // Fim do período atual usado na comparação (≤ to).
+    compareTo: toISO(cmpEnd),
     prevFrom: toISO(prevStart), prevTo: toISO(prevEnd),
+    compareLabel,
     days,
   }
 }
 
-function Delta({ current, previous }: { current: number; previous: number }) {
-  if (!previous) return <span className="text-muted-foreground">sem base anterior</span>
+function Delta({ current, previous, label }: { current: number; previous: number; label: string }) {
+  if (!previous) return <span className="text-muted-foreground">sem base para comparar</span>
   const pct = ((current - previous) / previous) * 100
   const flat = Math.abs(pct) < 0.5
   const Icon = flat ? Minus : pct > 0 ? ArrowUpRight : ArrowDownRight
@@ -141,7 +188,7 @@ function Delta({ current, previous }: { current: number; previous: number }) {
   return (
     <span className={`inline-flex items-center gap-0.5 ${color}`}>
       <Icon className="w-3 h-3" />
-      {Math.abs(pct).toFixed(1)}% vs. anterior
+      {Math.abs(pct).toFixed(1)}% {label}
     </span>
   )
 }
@@ -164,9 +211,32 @@ export default function Unidades() {
   const [customTo, setCustomTo] = useState('')
   const [storeFilter, setStoreFilter] = useState('all')
 
+  // Até quando cada unidade tem dado. A fonte agora é a importação dos
+  // relatórios + webhook (o sync automático morreu no WAF do Trinks), então
+  // "última execução" deixou de significar algo: o que importa é a cobertura.
+  // Vem antes de `bounds`: a comparação com o período anterior para no
+  // último dia com dado.
+  const { data: freshness = [] } = useQuery({
+    queryKey: ['trinks-freshness'],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('trinks_data_freshness').select('*')
+      if (error) throw error
+      return data as FreshnessRow[]
+    },
+    refetchInterval: 5 * 60 * 1000,
+  })
+
+  const dataThrough = useMemo(() => {
+    const days = freshness
+      .filter(f => storeFilter === 'all' || f.store_id === storeFilter)
+      .map(f => f.last_revenue_day)
+      .filter(Boolean) as string[]
+    return days.length ? days.reduce((a, b) => (a > b ? a : b)) : null
+  }, [freshness, storeFilter])
+
   const bounds = useMemo(
-    () => computeBounds(activePreset, customFrom, customTo),
-    [activePreset, customFrom, customTo],
+    () => computeBounds(activePreset, customFrom, customTo, dataThrough),
+    [activePreset, customFrom, customTo, dataThrough],
   )
 
   const { data: units = [] } = useQuery({
@@ -233,19 +303,6 @@ export default function Unidades() {
       .range(from, to)),
   })
 
-  // Até quando cada unidade tem dado. A fonte agora é a importação dos
-  // relatórios + webhook (o sync automático morreu no WAF do Trinks), então
-  // "última execução" deixou de significar algo: o que importa é a cobertura.
-  const { data: freshness = [] } = useQuery({
-    queryKey: ['trinks-freshness'],
-    queryFn: async () => {
-      const { data, error } = await supabase.from('trinks_data_freshness').select('*')
-      if (error) throw error
-      return data as FreshnessRow[]
-    },
-    refetchInterval: 5 * 60 * 1000,
-  })
-
   // Formas de pagamento, descontos e recorrência — calculados no banco a
   // partir dos fechamentos importados (get_trinks_breakdown).
   const { data: breakdown } = useQuery({
@@ -277,10 +334,17 @@ export default function Unidades() {
     rows.reduce((acc, r) => acc + (Number(r[key]) || 0), 0)
 
   const gross = sum(current, 'gross_revenue')
-  const prevGross = sum(previous, 'gross_revenue')
   const tickets = sum(current, 'tickets_count')
-  const prevTickets = sum(previous, 'tickets_count')
   const avgTicket = tickets ? gross / tickets : 0
+
+  // Lado atual da comparação: só até o último dia com dado (compareTo), para
+  // casar dia a dia com o período anterior.
+  const currentCmp = current.filter(d => d.business_date <= bounds.compareTo)
+  const cmpGross = sum(currentCmp, 'gross_revenue')
+  const cmpTickets = sum(currentCmp, 'tickets_count')
+  const cmpAvgTicket = cmpTickets ? cmpGross / cmpTickets : 0
+  const prevGross = sum(previous, 'gross_revenue')
+  const prevTickets = sum(previous, 'tickets_count')
   const prevAvgTicket = prevTickets ? prevGross / prevTickets : 0
 
   const chartData = useMemo(() => {
@@ -418,20 +482,20 @@ export default function Unidades() {
               <AdminSummaryCard
                 icon={DollarSign} iconColor="text-gold"
                 label="Faturamento" value={fmtBRL(gross)}
-                subtitle={<Delta current={gross} previous={prevGross} />}
+                subtitle={<Delta current={cmpGross} previous={prevGross} label={bounds.compareLabel} />}
               />
               <AdminSummaryCard
                 icon={Receipt} label="Comandas" value={tickets.toLocaleString('pt-BR')}
-                subtitle={<Delta current={tickets} previous={prevTickets} />}
+                subtitle={<Delta current={cmpTickets} previous={prevTickets} label={bounds.compareLabel} />}
               />
               <AdminSummaryCard
                 icon={TrendingUp} label="Ticket médio" value={fmtBRLCents(avgTicket)}
-                subtitle={<Delta current={avgTicket} previous={prevAvgTicket} />}
+                subtitle={<Delta current={cmpAvgTicket} previous={prevAvgTicket} label={bounds.compareLabel} />}
               />
               <AdminSummaryCard
                 icon={Users} label="Clientes novos"
                 value={sum(current, 'new_customers').toLocaleString('pt-BR')}
-                subtitle={<Delta current={sum(current, 'new_customers')} previous={sum(previous, 'new_customers')} />}
+                subtitle={<Delta current={sum(currentCmp, 'new_customers')} previous={sum(previous, 'new_customers')} label={bounds.compareLabel} />}
               />
             </div>
 
