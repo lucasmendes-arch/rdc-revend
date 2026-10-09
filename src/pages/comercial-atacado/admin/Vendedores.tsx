@@ -3,6 +3,16 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase, callEdgeFunction } from '@/lib/supabase'
 import { Loader, Plus, UserCheck, Pencil, Trash2, Star, Link2, FileText, Send, CheckCircle2, AlertCircle } from 'lucide-react'
 import AdminLayout from '@/components/admin/AdminLayout'
+import { AdminPage, Panel, EmptyState, PageLoading } from '@/components/admin/ui/AdminPage'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Switch } from '@/components/ui/switch'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table'
+import { Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogDescription } from '@/components/ui/dialog'
+import { toast } from 'sonner'
 import { DateField } from '@/components/ui/date-field'
 import StyledSelect from '@/components/ui/styled-select'
 
@@ -144,7 +154,7 @@ export default function AdminVendedores() {
       closeModal()
     },
     onError: (err) => {
-      alert(`Erro ao salvar: ${err instanceof Error ? err.message : 'Desconhecido'}`)
+      toast.error(`Não foi possível salvar o vendedor: ${err instanceof Error ? err.message : 'erro desconhecido'}`)
     },
   })
 
@@ -160,7 +170,7 @@ export default function AdminVendedores() {
       queryClient.invalidateQueries({ queryKey: ['admin-sellers'] })
     },
     onError: (err) => {
-      alert(`Erro: ${err instanceof Error ? err.message : 'Desconhecido'}`)
+      toast.error(`Não foi possível atualizar o vendedor: ${err instanceof Error ? err.message : 'erro desconhecido'}`)
     },
   })
 
@@ -173,7 +183,7 @@ export default function AdminVendedores() {
       queryClient.invalidateQueries({ queryKey: ['admin-sellers'] })
     },
     onError: (err) => {
-      alert(`Erro: ${err instanceof Error ? err.message : 'Desconhecido'}`)
+      toast.error(`Não foi possível atualizar o vendedor: ${err instanceof Error ? err.message : 'erro desconhecido'}`)
     },
   })
 
@@ -187,7 +197,7 @@ export default function AdminVendedores() {
       setDeleteConfirm(null)
     },
     onError: (err) => {
-      alert(`Erro ao deletar: ${err instanceof Error ? err.message : 'Desconhecido'}`)
+      toast.error(`Não foi possível excluir o vendedor: ${err instanceof Error ? err.message : 'erro desconhecido'}`)
     },
   })
 
@@ -221,481 +231,437 @@ export default function AdminVendedores() {
 
   function handleSave() {
     if (!form.name.trim()) {
-      alert('Nome é obrigatório')
+      toast.error('Informe o nome do vendedor.')
       return
     }
     const pct = Number(form.commission_pct)
     if (isNaN(pct) || pct < 0 || pct > 100) {
-      alert('Comissão deve ser entre 0 e 100')
+      toast.error('A comissão deve ficar entre 0 e 100%.')
       return
     }
     const goal = Number(form.monthly_goal)
     if (isNaN(goal) || goal < 0) {
-      alert('Meta mensal deve ser >= 0')
+      toast.error('A meta mensal não pode ser negativa.')
       return
     }
     saveMutation.mutate({ id: editingId, payload: { ...form, commission_pct: pct, monthly_goal: goal } })
   }
 
+  const linkedUserLabel = (userId: string) => {
+    const u = systemUsers.find(x => x.id === userId)
+    return u?.full_name || u?.email || 'Vinculado'
+  }
+
   return (
     <AdminLayout>
-      {/* Header */}
-      <div className="bg-card border-b border-border sticky top-0 z-30">
-        <div className="px-4 sm:px-6 py-4 flex items-center justify-between gap-4">
-          <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-foreground">Vendedores</h1>
-            <p className="text-sm text-muted-foreground mt-1">Gerencie a equipe de vendas e comissões</p>
-          </div>
-          <button
-            onClick={openCreate}
-            className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg btn-action text-sm font-medium transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            <span className="hidden sm:inline">Novo Vendedor</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Content */}
-      <div className="px-4 sm:px-6 py-8">
+      <AdminPage
+        title="Vendedores"
+        description="Gerencie a equipe de vendas e comissões"
+        actions={
+          <Button onClick={openCreate} aria-label="Novo vendedor">
+            <Plus />
+            <span className="hidden sm:inline">Novo vendedor</span>
+          </Button>
+        }
+      >
         {isLoading ? (
-          <div className="text-center py-16">
-            <Loader className="w-8 h-8 animate-spin text-gold-text mx-auto mb-4" />
-            <p className="text-muted-foreground">Carregando vendedores...</p>
-          </div>
+          <PageLoading label="Carregando vendedores…" />
         ) : sellers.length === 0 ? (
-          <div className="text-center py-16">
-            <UserCheck className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
-            <p className="text-muted-foreground font-medium">Nenhum vendedor cadastrado.</p>
-            <p className="text-sm text-muted-foreground mt-1">Clique em "Novo Vendedor" para começar.</p>
-          </div>
+          <Panel>
+            <EmptyState
+              icon={UserCheck}
+              title="Nenhum vendedor cadastrado"
+              description="Cadastre a equipe de vendas para atribuir pedidos e calcular comissões."
+              action={
+                <Button onClick={openCreate}>
+                  <Plus />
+                  Novo vendedor
+                </Button>
+              }
+            />
+          </Panel>
         ) : (
-          <div className="bg-card rounded-xl border border-border shadow-[var(--shadow-card)] overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-border bg-muted/50">
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-foreground">Nome</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-foreground">Código</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-foreground hidden md:table-cell">Telefone</th>
-                    <th className="px-4 py-3 text-center text-sm font-semibold text-foreground">Comissão</th>
-                    <th className="px-4 py-3 text-center text-sm font-semibold text-foreground hidden sm:table-cell">Meta mensal</th>
-                    <th className="px-4 py-3 text-center text-sm font-semibold text-foreground">Ativo</th>
-                    <th className="px-4 py-3 text-center text-sm font-semibold text-foreground">Padrão</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-foreground hidden lg:table-cell">Usuário CRM</th>
-                    <th className="px-4 py-3 text-right text-sm font-semibold text-foreground">Ações</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {sellers.map((seller, index) => (
-                    <tr key={seller.id} className={`border-b border-border/40 last:border-0 ${index % 2 === 0 ? '' : 'bg-muted/30'}`}>
-                      <td className="px-4 py-3 text-sm font-medium text-foreground">{seller.name}</td>
-                      <td className="px-4 py-3 text-sm text-muted-foreground">
-                        {seller.code ? (
-                          <span className="px-2 py-0.5 rounded-md bg-surface-alt text-xs font-mono font-semibold">
-                            {seller.code}
-                          </span>
-                        ) : (
-                          <span className="text-muted-foreground/40">—</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-muted-foreground hidden md:table-cell">
-                        {seller.phone || <span className="text-muted-foreground/40">—</span>}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-center">
-                        <span className="font-medium text-foreground">{seller.commission_pct}%</span>
-                      </td>
-                      <td className="px-4 py-3 text-sm text-center hidden sm:table-cell">
-                        {seller.monthly_goal > 0 ? (
-                          <span className="font-medium text-foreground">R$ {seller.monthly_goal.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
-                        ) : (
-                          <span className="text-muted-foreground/40">—</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        <button
-                          onClick={() => toggleActiveMutation.mutate({ id: seller.id, active: !seller.active })}
-                          className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none ${
-                            seller.active ? 'bg-success-solid' : 'bg-muted-foreground/30'
-                          }`}
-                          title={seller.active ? 'Desativar' : 'Ativar'}
+          <Panel flush className="overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow className="hover:bg-transparent">
+                  <TableHead>Nome</TableHead>
+                  <TableHead>Código</TableHead>
+                  <TableHead className="hidden md:table-cell">Telefone</TableHead>
+                  <TableHead className="text-right">Comissão</TableHead>
+                  <TableHead className="text-right hidden sm:table-cell">Meta mensal</TableHead>
+                  <TableHead className="text-center">Ativo</TableHead>
+                  <TableHead className="text-center">Padrão</TableHead>
+                  <TableHead className="hidden lg:table-cell">Usuário CRM</TableHead>
+                  <TableHead className="text-right"><span className="sr-only">Ações</span></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {sellers.map((seller) => (
+                  <TableRow key={seller.id}>
+                    <TableCell className="font-medium text-foreground whitespace-nowrap">{seller.name}</TableCell>
+                    <TableCell>
+                      {seller.code ? (
+                        <span className="px-1.5 py-0.5 rounded-sm bg-muted border border-border text-[12px] font-mono font-medium text-ink-600">
+                          {seller.code}
+                        </span>
+                      ) : (
+                        <span className="text-ink-400">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground hidden md:table-cell whitespace-nowrap">
+                      {seller.phone || <span className="text-ink-400">—</span>}
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums text-foreground">
+                      {seller.commission_pct}%
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums hidden sm:table-cell whitespace-nowrap">
+                      {seller.monthly_goal > 0 ? (
+                        <span className="text-foreground">R$ {seller.monthly_goal.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
+                      ) : (
+                        <span className="text-ink-400">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <Switch
+                        checked={seller.active}
+                        onCheckedChange={(checked) => toggleActiveMutation.mutate({ id: seller.id, active: checked })}
+                        title={seller.active ? 'Desativar' : 'Ativar'}
+                        aria-label={seller.active ? `Desativar ${seller.name}` : `Ativar ${seller.name}`}
+                        className="align-middle"
+                      />
+                    </TableCell>
+                    <TableCell className="text-center whitespace-nowrap">
+                      {seller.is_default ? (
+                        <Badge variant="brand">
+                          <Star className="w-3 h-3 fill-current" />
+                          Padrão
+                        </Badge>
+                      ) : (
+                        <Button
+                          variant="link"
+                          size="xs"
+                          onClick={() => setDefaultMutation.mutate(seller.id)}
+                          disabled={setDefaultMutation.isPending}
+                          className="text-muted-foreground hover:text-foreground"
                         >
-                          <span
-                            className={`inline-block h-3.5 w-3.5 transform rounded-full bg-card shadow transition-transform ${
-                              seller.active ? 'translate-x-4.5' : 'translate-x-0.5'
-                            }`}
-                          />
-                        </button>
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        {seller.is_default ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-brand-subtle text-brand-strong text-xs font-semibold">
-                            <Star className="w-3 h-3 fill-brand-solid text-brand-solid" />
-                            Padrão
-                          </span>
-                        ) : (
-                          <button
-                            onClick={() => setDefaultMutation.mutate(seller.id)}
-                            disabled={setDefaultMutation.isPending}
-                            className="text-xs text-muted-foreground hover:text-foreground hover:underline transition-colors disabled:opacity-50"
-                          >
-                            Tornar padrão
-                          </button>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 hidden lg:table-cell">
-                        {seller.user_id ? (
-                          <span className="inline-flex items-center gap-1 text-xs font-medium text-success bg-success-subtle border border-success-border px-2 py-0.5 rounded-full">
-                            <Link2 className="w-3 h-3" />
-                            {systemUsers.find(u => u.id === seller.user_id)?.full_name ||
-                             systemUsers.find(u => u.id === seller.user_id)?.email ||
-                             'Vinculado'}
-                          </span>
-                        ) : (
-                          <span className="text-xs text-muted-foreground/40">—</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <button
-                            onClick={() => openEdit(seller)}
-                            className="p-1.5 rounded-lg hover:bg-surface-alt transition-colors text-muted-foreground hover:text-foreground"
-                            title="Editar"
-                          >
-                            <Pencil className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => openReport(seller)}
-                            className="p-1.5 rounded-lg hover:bg-success-subtle transition-colors text-muted-foreground hover:text-success"
-                            title="Relatório de comissão"
-                          >
-                            <FileText className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => setDeleteConfirm(seller.id)}
-                            className="p-1.5 rounded-lg hover:bg-danger-subtle transition-colors text-muted-foreground hover:text-danger"
-                            title="Deletar"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
+                          Tornar padrão
+                        </Button>
+                      )}
+                    </TableCell>
+                    <TableCell className="hidden lg:table-cell">
+                      {seller.user_id ? (
+                        <Badge variant="success">
+                          <Link2 className="w-3 h-3" />
+                          {linkedUserLabel(seller.user_id)}
+                        </Badge>
+                      ) : (
+                        <span className="text-ink-400">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-0.5">
+                        <Button variant="ghost" size="icon-sm" onClick={() => openEdit(seller)} title="Editar" aria-label="Editar vendedor">
+                          <Pencil />
+                        </Button>
+                        <Button variant="ghost" size="icon-sm" onClick={() => openReport(seller)} title="Relatório de comissão" aria-label="Relatório de comissão">
+                          <FileText />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          onClick={() => setDeleteConfirm(seller.id)}
+                          className="hover:text-danger hover:bg-danger-subtle"
+                          title="Excluir"
+                          aria-label="Excluir vendedor"
+                        >
+                          <Trash2 />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </Panel>
         )}
-      </div>
+      </AdminPage>
 
-      {/* Create / Edit Modal */}
-      {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-foreground/40 backdrop-blur-sm" onClick={closeModal} />
-          <div className="relative bg-card rounded-2xl shadow-2xl border border-border p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center gap-3 mb-5">
-              <div className="w-10 h-10 rounded-xl gradient-gold flex items-center justify-center flex-shrink-0">
-                <UserCheck className="w-5 h-5 text-white" />
-              </div>
-              <h2 className="text-xl font-bold text-foreground">
-                {editingId ? 'Editar Vendedor' : 'Novo Vendedor'}
-              </h2>
+      {/* Criar / editar */}
+      <Dialog open={modalOpen} onOpenChange={(open) => { if (!open) closeModal() }}>
+        <DialogContent className="max-w-md w-[calc(100%-2rem)] max-h-[90vh] overflow-y-auto">
+          <DialogHeader className="text-left">
+            <DialogTitle className="text-[16px]">
+              {editingId ? 'Editar vendedor' : 'Novo vendedor'}
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="seller-name" className="field-label">Nome *</Label>
+              <Input
+                id="seller-name"
+                type="text"
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+                placeholder="Ex: Rebeca Silva"
+              />
             </div>
 
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1">Nome *</label>
-                <input
-                  type="text"
-                  value={form.name}
-                  onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                  placeholder="Ex: Rebeca Silva"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1">
-                  Código interno
-                  <span className="text-muted-foreground font-normal ml-1">(apelido único)</span>
-                </label>
-                <input
-                  type="text"
-                  value={form.code}
-                  onChange={(e) => setForm({ ...form, code: e.target.value.toUpperCase() })}
-                  className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring font-mono"
-                  placeholder="Ex: REBECA"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1">Telefone</label>
-                <input
-                  type="text"
-                  value={form.phone}
-                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                  className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                  placeholder="(11) 99999-9999"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-1">Comissão %</label>
-                  <input
-                    type="number"
-                    min="0"
-                    max="100"
-                    step="0.5"
-                    value={form.commission_pct}
-                    onChange={(e) => setForm({ ...form, commission_pct: parseFloat(e.target.value) || 0 })}
-                    className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-1">Meta mensal R$</label>
-                  <input
-                    type="number"
-                    min="0"
-                    step="100"
-                    value={form.monthly_goal}
-                    onChange={(e) => setForm({ ...form, monthly_goal: parseFloat(e.target.value) || 0 })}
-                    className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                    placeholder="0 = sem meta"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1">E-mail</label>
-                <input
-                  type="email"
-                  value={form.email}
-                  onChange={(e) => setForm({ ...form, email: e.target.value })}
-                  className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                  placeholder="vendedor@email.com"
-                />
-              </div>
-
-              {/* Vínculo com usuário admin — permite resolução automática de "Minhas contas" no CRM */}
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1">
-                  Usuário CRM vinculado
-                  <span className="text-muted-foreground font-normal ml-1">(opcional)</span>
-                </label>
-                <StyledSelect
-                  value={form.linked_user_id}
-                  onChange={(v) => setForm({ ...form, linked_user_id: v })}
-                  options={systemUsers.map(u => ({
-                    value: u.id,
-                    label: `${u.full_name ? `${u.full_name} (${u.email})` : u.email}${u.role === 'admin' ? ' · admin' : ' · salao'}`,
-                  }))}
-                  emptyLabel="— Sem usuário vinculado —"
-                  placeholder="— Sem usuário vinculado —"
-                />
-                <p className="text-[11px] text-muted-foreground mt-1">
-                  Permite que a view "Minhas contas" no CRM seja resolvida automaticamente para este usuário.
-                </p>
-              </div>
-
-              <div className="flex items-center justify-between pt-1">
-                <div className="flex items-center gap-3">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={form.active}
-                      onChange={(e) => setForm({ ...form, active: e.target.checked })}
-                      className="w-4 h-4 rounded border-border accent-success-solid"
-                    />
-                    <span className="text-sm font-medium text-foreground">Ativo</span>
-                  </label>
-                </div>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={form.is_default}
-                    onChange={(e) => setForm({ ...form, is_default: e.target.checked })}
-                    className="w-4 h-4 rounded border-border accent-ink-900"
-                  />
-                  <span className="text-sm font-medium text-foreground flex items-center gap-1">
-                    <Star className="w-3.5 h-3.5 text-brand-solid" />
-                    Vendedor padrão
-                  </span>
-                </label>
-              </div>
-
-              {form.is_default && (
-                <p className="text-xs text-muted-foreground bg-surface rounded-lg px-3 py-2">
-                  Definir como padrão removerá o padrão do vendedor atual automaticamente.
-                </p>
-              )}
+            <div>
+              <Label htmlFor="seller-code" className="field-label">
+                Código interno
+                <span className="text-muted-foreground font-normal ml-1">(apelido único)</span>
+              </Label>
+              <Input
+                id="seller-code"
+                type="text"
+                value={form.code}
+                onChange={(e) => setForm({ ...form, code: e.target.value.toUpperCase() })}
+                className="font-mono"
+                placeholder="Ex: REBECA"
+              />
             </div>
 
-            <div className="flex gap-3 mt-6">
-              <button
-                onClick={handleSave}
-                disabled={saveMutation.isPending}
-                className="flex-1 px-4 py-2.5 rounded-lg btn-action font-medium disabled:opacity-70 transition-colors"
-              >
-                {saveMutation.isPending ? 'Salvando...' : editingId ? 'Salvar alterações' : 'Criar Vendedor'}
-              </button>
-              <button
-                onClick={closeModal}
-                className="flex-1 px-4 py-2.5 rounded-lg border border-border bg-card text-foreground font-medium hover:bg-accent"
-              >
-                Cancelar
-              </button>
+            <div>
+              <Label htmlFor="seller-phone" className="field-label">Telefone</Label>
+              <Input
+                id="seller-phone"
+                type="text"
+                value={form.phone}
+                onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                placeholder="(11) 99999-9999"
+              />
             </div>
-          </div>
-        </div>
-      )}
 
-      {/* Delete Confirmation */}
-      {deleteConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-foreground/40 backdrop-blur-sm" onClick={() => setDeleteConfirm(null)} />
-          <div className="relative bg-card border border-border rounded-2xl shadow-2xl p-6 w-full max-w-sm">
-            <h2 className="text-lg font-bold text-foreground mb-2">Confirmar exclusão</h2>
-            <p className="text-sm text-muted-foreground mb-5">
-              O vendedor será removido. Pedidos existentes associados a ele ficarão com vendedor em branco (não serão deletados).
-            </p>
-            <div className="flex gap-3">
-              <button
-                onClick={() => deleteMutation.mutate(deleteConfirm)}
-                disabled={deleteMutation.isPending}
-                className="flex-1 px-4 py-2.5 rounded-lg bg-danger-solid hover:bg-danger-solid/90 text-white font-medium disabled:opacity-70 transition-colors"
-              >
-                {deleteMutation.isPending ? 'Removendo...' : 'Deletar'}
-              </button>
-              <button
-                onClick={() => setDeleteConfirm(null)}
-                className="flex-1 px-4 py-2.5 rounded-lg border border-border bg-card text-foreground font-medium hover:bg-accent"
-              >
-                Cancelar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-      {/* Commission Report Modal */}
-      {reportSeller && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-foreground/40 backdrop-blur-sm" onClick={closeReport} />
-          <div className="relative bg-card rounded-2xl shadow-2xl border border-border p-6 w-full max-w-md">
-            <div className="flex items-center gap-3 mb-5">
-              <div className="w-10 h-10 rounded-xl bg-success-solid flex items-center justify-center flex-shrink-0">
-                <FileText className="w-5 h-5 text-white" />
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label htmlFor="seller-pct" className="field-label">Comissão (%)</Label>
+                <Input
+                  id="seller-pct"
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.5"
+                  value={form.commission_pct}
+                  onChange={(e) => setForm({ ...form, commission_pct: parseFloat(e.target.value) || 0 })}
+                  className="tabular-nums"
+                />
               </div>
               <div>
-                <h2 className="text-xl font-bold text-foreground">Relatório de Comissão</h2>
-                <p className="text-sm text-muted-foreground">{reportSeller.name}{reportSeller.code ? ` · ${reportSeller.code}` : ''} · {reportSeller.commission_pct}%</p>
+                <Label htmlFor="seller-goal" className="field-label">Meta mensal (R$)</Label>
+                <Input
+                  id="seller-goal"
+                  type="number"
+                  min="0"
+                  step="100"
+                  value={form.monthly_goal}
+                  onChange={(e) => setForm({ ...form, monthly_goal: parseFloat(e.target.value) || 0 })}
+                  className="tabular-nums"
+                  placeholder="0 = sem meta"
+                />
               </div>
             </div>
 
-            {!reportResult ? (
-              <>
-                <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-sm font-medium text-foreground mb-1">Data inicial</label>
-                      <DateField
-                        value={reportStart || null}
-                        onChange={v => setReportStart(v ?? '')}
-                        max={reportEnd || null}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-foreground mb-1">Data final</label>
-                      <DateField
-                        value={reportEnd || null}
-                        onChange={v => setReportEnd(v ?? '')}
-                        min={reportStart || null}
-                      />
-                    </div>
-                  </div>
+            <div>
+              <Label htmlFor="seller-email" className="field-label">E-mail</Label>
+              <Input
+                id="seller-email"
+                type="email"
+                value={form.email}
+                onChange={(e) => setForm({ ...form, email: e.target.value })}
+                placeholder="vendedor@email.com"
+              />
+            </div>
 
-                  <p className="text-xs text-muted-foreground bg-muted/50 rounded-lg px-3 py-2">
-                    Será gerado um PDF com os pedidos finalizados (pago + concluído) e enviado via WhatsApp para o financeiro.
-                  </p>
+            {/* Vínculo com usuário admin — permite resolução automática de "Minhas contas" no CRM */}
+            <div>
+              <span className="field-label">
+                Usuário CRM vinculado
+                <span className="text-muted-foreground font-normal ml-1">(opcional)</span>
+              </span>
+              <StyledSelect
+                value={form.linked_user_id}
+                onChange={(v) => setForm({ ...form, linked_user_id: v })}
+                options={systemUsers.map(u => ({
+                  value: u.id,
+                  label: `${u.full_name ? `${u.full_name} (${u.email})` : u.email}${u.role === 'admin' ? ' · admin' : ' · salão'}`,
+                }))}
+                emptyLabel="Sem usuário vinculado"
+                placeholder="Sem usuário vinculado"
+              />
+              <p className="text-[12px] text-muted-foreground mt-1.5">
+                Permite que a visão "Minhas contas" no CRM seja resolvida automaticamente para este usuário.
+              </p>
+            </div>
 
-                  {reportError && (
-                    <div className="flex items-start gap-2 text-danger bg-danger-subtle rounded-lg px-3 py-2 text-sm">
-                      <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                      {reportError}
-                    </div>
-                  )}
-                </div>
+            <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <Checkbox
+                  checked={form.active}
+                  onCheckedChange={(checked) => setForm({ ...form, active: checked === true })}
+                />
+                <span className="text-[13px] font-medium text-foreground">Ativo</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <Checkbox
+                  checked={form.is_default}
+                  onCheckedChange={(checked) => setForm({ ...form, is_default: checked === true })}
+                />
+                <span className="text-[13px] font-medium text-foreground flex items-center gap-1">
+                  <Star className="w-3.5 h-3.5 text-brand-strong" />
+                  Vendedor padrão
+                </span>
+              </label>
+            </div>
 
-                <div className="flex gap-3 mt-6">
-                  <button
-                    onClick={sendReport}
-                    disabled={reportLoading || !reportStart || !reportEnd}
-                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-success-solid hover:bg-success-solid/90 text-white font-medium disabled:opacity-60 transition-colors"
-                  >
-                    {reportLoading ? (
-                      <Loader className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <Send className="w-4 h-4" />
-                    )}
-                    {reportLoading ? 'Gerando...' : 'Enviar via WhatsApp'}
-                  </button>
-                  <button
-                    onClick={closeReport}
-                    className="flex-1 px-4 py-2.5 rounded-lg border border-border bg-card text-foreground font-medium hover:bg-accent"
-                  >
-                    Cancelar
-                  </button>
-                </div>
-              </>
-            ) : (
-              <>
-                <div className="flex items-center gap-2 text-success mb-4">
-                  <CheckCircle2 className="w-5 h-5" />
-                  <span className="font-semibold">Relatório enviado!</span>
-                </div>
-
-                <div className="bg-muted/50 rounded-xl p-4 space-y-2 mb-5">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Pedidos finalizados</span>
-                    <span className="font-medium text-foreground">{reportResult.summary.total_orders}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Valor total</span>
-                    <span className="font-medium text-foreground">
-                      {reportResult.summary.total_value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                    </span>
-                  </div>
-                  <div className="flex justify-between text-sm border-t border-border pt-2 mt-2">
-                    <span className="font-semibold text-success">Comissão ({reportResult.summary.commission_pct}%)</span>
-                    <span className="font-bold text-success">
-                      {reportResult.summary.commission_amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="flex gap-3">
-                  <a
-                    href={reportResult.pdf_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-success-solid text-success font-medium hover:bg-success-subtle transition-colors text-sm"
-                  >
-                    <FileText className="w-4 h-4" />
-                    Ver PDF
-                  </a>
-                  <button
-                    onClick={closeReport}
-                    className="flex-1 px-4 py-2.5 rounded-lg border border-border bg-card text-foreground font-medium hover:bg-accent"
-                  >
-                    Fechar
-                  </button>
-                </div>
-              </>
+            {form.is_default && (
+              <p className="text-[12px] text-muted-foreground bg-surface border border-border rounded-md px-3 py-2">
+                Definir como padrão removerá o padrão do vendedor atual automaticamente.
+              </p>
             )}
           </div>
-        </div>
-      )}
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="secondary" onClick={closeModal}>
+              Cancelar
+            </Button>
+            <Button onClick={handleSave} disabled={saveMutation.isPending}>
+              {saveMutation.isPending && <Loader className="animate-spin" />}
+              {saveMutation.isPending ? 'Salvando…' : editingId ? 'Salvar alterações' : 'Criar vendedor'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Confirmação de exclusão */}
+      <Dialog open={!!deleteConfirm} onOpenChange={(open) => { if (!open) setDeleteConfirm(null) }}>
+        <DialogContent className="max-w-sm w-[calc(100%-2rem)]">
+          <DialogHeader className="text-left">
+            <DialogTitle className="text-[16px]">Excluir vendedor?</DialogTitle>
+            <DialogDescription>
+              O vendedor será removido. Pedidos já associados a ele ficam sem vendedor (não são apagados).
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="secondary" onClick={() => setDeleteConfirm(null)}>
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => deleteConfirm && deleteMutation.mutate(deleteConfirm)}
+              disabled={deleteMutation.isPending}
+            >
+              {deleteMutation.isPending ? 'Excluindo…' : 'Excluir vendedor'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Relatório de comissão */}
+      <Dialog open={!!reportSeller} onOpenChange={(open) => { if (!open) closeReport() }}>
+        <DialogContent className="max-w-md w-[calc(100%-2rem)]">
+          {reportSeller && (
+            <>
+              <DialogHeader className="text-left">
+                <DialogTitle className="text-[16px]">Relatório de comissão</DialogTitle>
+                <DialogDescription>
+                  {reportSeller.name}{reportSeller.code ? ` · ${reportSeller.code}` : ''} · {reportSeller.commission_pct}%
+                </DialogDescription>
+              </DialogHeader>
+
+              {!reportResult ? (
+                <>
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <span className="field-label">Data inicial</span>
+                        <DateField
+                          value={reportStart || null}
+                          onChange={v => setReportStart(v ?? '')}
+                          max={reportEnd || null}
+                        />
+                      </div>
+                      <div>
+                        <span className="field-label">Data final</span>
+                        <DateField
+                          value={reportEnd || null}
+                          onChange={v => setReportEnd(v ?? '')}
+                          min={reportStart || null}
+                        />
+                      </div>
+                    </div>
+
+                    <p className="text-[12px] text-muted-foreground bg-surface border border-border rounded-md px-3 py-2">
+                      Será gerado um PDF com os pedidos finalizados (pago + concluído) e enviado pelo WhatsApp para o financeiro.
+                    </p>
+
+                    {reportError && (
+                      <div className="flex items-start gap-2 text-danger bg-danger-subtle border border-danger-border rounded-md px-3 py-2 text-[13px]">
+                        <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
+                        {reportError}
+                      </div>
+                    )}
+                  </div>
+
+                  <DialogFooter className="gap-2 sm:gap-0">
+                    <Button variant="secondary" onClick={closeReport}>
+                      Cancelar
+                    </Button>
+                    {/* Verde WhatsApp: exceção de marca documentada */}
+                    <Button
+                      onClick={sendReport}
+                      disabled={reportLoading || !reportStart || !reportEnd}
+                      className="bg-success-solid hover:bg-success-solid/90 text-white"
+                    >
+                      {reportLoading ? <Loader className="animate-spin" /> : <Send />}
+                      {reportLoading ? 'Gerando…' : 'Enviar pelo WhatsApp'}
+                    </Button>
+                  </DialogFooter>
+                </>
+              ) : (
+                <>
+                  <div className="flex items-center gap-2 text-success">
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span className="text-[14px] font-semibold">Relatório enviado</span>
+                  </div>
+
+                  <div className="bg-surface border border-border rounded-lg p-4 space-y-2 text-[13px] tabular-nums">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Pedidos finalizados</span>
+                      <span className="font-medium text-foreground">{reportResult.summary.total_orders}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Valor total</span>
+                      <span className="font-medium text-foreground">
+                        {reportResult.summary.total_value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                      </span>
+                    </div>
+                    <div className="flex justify-between border-t border-border pt-2 mt-2">
+                      <span className="font-medium text-foreground">Comissão ({reportResult.summary.commission_pct}%)</span>
+                      <span className="font-semibold text-success">
+                        {reportResult.summary.commission_amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                      </span>
+                    </div>
+                  </div>
+
+                  <DialogFooter className="gap-2 sm:gap-0">
+                    <Button variant="secondary" onClick={closeReport}>
+                      Fechar
+                    </Button>
+                    <Button variant="secondary" asChild>
+                      <a href={reportResult.pdf_url} target="_blank" rel="noopener noreferrer">
+                        <FileText />
+                        Ver PDF
+                      </a>
+                    </Button>
+                  </DialogFooter>
+                </>
+              )}
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </AdminLayout>
   )
 }

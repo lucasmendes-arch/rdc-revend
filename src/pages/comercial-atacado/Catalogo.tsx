@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import DOMPurify from "dompurify";
-import { ArrowRight, Check, Crown, Filter, Lock, LogIn, LogOut, Search, ShoppingCart, Tag, Trash2, TrendingUp, X, PackageSearch, ShieldCheck, ChevronDown, ChevronUp, Truck, Leaf, Sparkles, Briefcase } from "lucide-react";
+import { ArrowRight, Check, Crown, Filter, Lock, LogOut, MessageCircle, Minus, Plus, Search, ShoppingCart, Tag, Trash2, TrendingUp, X, ShieldCheck, Truck, Leaf } from "lucide-react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import PackageCards from "@/components/catalog/PackageCards";
 import CategoryBubbles from "@/components/catalog/CategoryBubbles";
@@ -21,6 +21,11 @@ import HowItWorks from "@/components/catalog/HowItWorks";
 import WhatsAppCTA from "@/components/catalog/WhatsAppCTA";
 import CartDrawer from "@/components/CartDrawer";
 import StyledSelect from '@/components/ui/styled-select';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { EmptyState, PageLoading } from '@/components/admin/ui/AdminPage';
+import ProductCard from '@/components/catalog/ProductCard';
 
 // ============================================================================
 // TYPES & CONSTANTS
@@ -57,41 +62,32 @@ interface FilterChipProps {
 }
 
 const FilterChip = ({ label, onRemove }: FilterChipProps) => (
-  <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-medium bg-gold-light text-gold-text border border-gold-border whitespace-nowrap">
+  <span className="inline-flex items-center gap-1 h-7 pl-2.5 pr-1 rounded-md text-[12px] font-medium bg-brand-subtle text-brand-strong border border-brand-border whitespace-nowrap">
     {label}
-    <button onClick={onRemove} className="ml-0.5 hover:text-danger transition-colors">
-      <X className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+    <button
+      type="button"
+      onClick={onRemove}
+      aria-label={`Remover filtro ${label}`}
+      className="h-5 w-5 flex items-center justify-center rounded-sm hover:bg-brand-border/60 transition-colors"
+    >
+      <X className="w-3 h-3" />
     </button>
   </span>
 );
 
+/**
+ * Faixa de confiança sob o cabeçalho. Era uma pílula flutuante de 80px com
+ * `shadow-lg`, `hover:scale`, caixa-alta e um rótulo de 9px — e ficava presa
+ * no topo, comendo um quarto da tela do celular. Virou uma linha fina que
+ * rola junto com a página.
+ */
 const RotatingTrustBanner = () => {
   const items = [
-    {
-      icon: <Leaf className="w-5 h-5 sm:w-6 sm:h-6 text-success" />,
-      label: "Fórmula Limpa",
-      sub: "100% Vegano, Liberado e sem Petrolatos"
-    },
-    {
-      icon: <Truck className="w-5 h-5 sm:w-6 sm:h-6 text-ink-500" />,
-      label: "Envio Rápido para ES & BA",
-      sub: "Logística própria e transportadoras"
-    },
-    {
-      icon: <ShieldCheck className="w-5 h-5 sm:w-6 sm:h-6 text-success" />,
-      label: "Compra 100% Segura",
-      sub: "Ambiente Seguro e Dados Protegidos"
-    },
-    {
-      icon: <Check className="w-5 h-5 sm:w-6 sm:h-6 text-info" />,
-      label: "Alto Giro",
-      sub: "Fazem sucesso com as cacheadas"
-    },
-    {
-      icon: <div className="w-3 h-3 sm:w-4 sm:h-4 rounded-full bg-success-solid animate-pulse m-1" />,
-      label: "Suporte WhatsApp",
-      sub: "Seg à Sex, 08h às 18h • Online agora"
-    }
+    { icon: Leaf, tone: 'text-success', label: 'Fórmula limpa', sub: '100% vegano, liberado e sem petrolatos' },
+    { icon: Truck, tone: 'text-ink-500', label: 'Envio rápido para ES e BA', sub: 'Logística própria e transportadoras' },
+    { icon: ShieldCheck, tone: 'text-success', label: 'Compra 100% segura', sub: 'Ambiente seguro e dados protegidos' },
+    { icon: TrendingUp, tone: 'text-info', label: 'Alto giro', sub: 'Fazem sucesso com as cacheadas' },
+    { icon: MessageCircle, tone: 'text-success', label: 'Suporte no WhatsApp', sub: 'Seg. a sex., 8h às 18h' },
   ];
 
   const [index, setIndex] = useState(0);
@@ -103,36 +99,24 @@ const RotatingTrustBanner = () => {
     return () => clearInterval(timer);
   }, [items.length]);
 
-  return (
-    <div className="w-full mb-3 sm:mb-8 px-3 flex justify-center">
-      <div className="w-full max-w-4xl bg-white/95 backdrop-blur-md border border-border/40 rounded-lg sm:rounded-full px-4 sm:px-8 py-3 sm:py-4 shadow-lg flex items-center justify-between gap-4 h-16 sm:h-20 overflow-hidden transition-all duration-300 hover:scale-[1.01] active:scale-[0.99] ring-1 ring-border">
-        <div key={index} className="flex items-center gap-3 sm:gap-5 animate-in fade-in slide-in-from-bottom-3 duration-500 flex-1">
-          <div className="flex-shrink-0 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-muted flex items-center justify-center border border-border/30">
-            {items[index].icon}
-          </div>
-          <div className="flex flex-col justify-center leading-tight">
-            <span className="text-[12px] sm:text-base font-semibold text-foreground uppercase tracking-tight sm:tracking-normal">
-              {items[index].label}
-            </span>
-            <span className="text-[10px] sm:text-[13px] text-muted-foreground italic font-medium opacity-80 line-clamp-1">
-              {items[index].sub}
-            </span>
-          </div>
-        </div>
+  const item = items[index];
+  const Icon = item.icon;
 
-        <div className="flex flex-col sm:flex-row items-center gap-1.5 sm:gap-3 border-l border-border/40 pl-4 sm:pl-6 shrink-0">
-          <div className="hidden sm:flex flex-col items-end mr-2">
-             <span className="text-[9px] font-bold text-ink-400 uppercase tracking-widest">Confiança</span>
-             <span className="text-[8px] text-muted-foreground whitespace-nowrap">Certificada B2B</span>
-          </div>
-          <div className="flex gap-1">
-            {items.map((_, i) => (
-              <div
-                key={i}
-                className={`w-1.5 sm:w-2 h-1.5 sm:h-2 rounded-full transition-all duration-500 ${i === index ? 'bg-muted0 sm:w-6' : 'bg-border/40 hover:bg-border/80'}`}
-              />
-            ))}
-          </div>
+  return (
+    <div className="border-b border-border bg-surface">
+      <div className="mx-auto max-w-7xl h-10 px-4 sm:px-6 flex items-center justify-center gap-4">
+        <div key={index} className="flex items-center gap-2 min-w-0 animate-in fade-in duration-500" aria-live="polite">
+          <Icon className={`w-4 h-4 shrink-0 ${item.tone}`} />
+          <span className="text-[13px] font-medium text-foreground whitespace-nowrap">{item.label}</span>
+          <span className="hidden sm:inline text-[13px] text-muted-foreground truncate">· {item.sub}</span>
+        </div>
+        <div className="hidden md:flex gap-1 shrink-0" aria-hidden>
+          {items.map((_, i) => (
+            <span
+              key={i}
+              className={`h-1.5 rounded-full transition-all duration-500 ${i === index ? 'w-4 bg-ink-500' : 'w-1.5 bg-ink-200'}`}
+            />
+          ))}
         </div>
       </div>
     </div>
@@ -258,7 +242,7 @@ const Catalogo = () => {
 
   const clearAllFilters = () => {
     setSearch('');
-    setSortBy('name_asc');
+    setSortBy('default');
     setFilterMinPrice('');
     setFilterMaxPrice('');
     setFilterOnlySuggested(false);
@@ -455,962 +439,684 @@ const Catalogo = () => {
   // RENDER
   // ========================================================================
 
+  const showBrowse = !debouncedSearch && !viewAll;
+  const countBadge = 'absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full text-[11px] font-semibold flex items-center justify-center leading-none numeric border-2 border-background';
+
+  const renderProductCard = (product: typeof products[0]) => (
+    <ProductCard
+      key={product.id}
+      product={product}
+      isGuest={isGuest}
+      isPartner={isPartner}
+      suggested={getSuggestedPrice(product.price, product.compare_at_price)}
+      showSuggested={!product.is_professional}
+      reserveSuggested
+      qty={getQty(product.id)}
+      setQty={(q) => setQty(product.id, q)}
+      added={addedId === product.id}
+      onAdd={() => handleAddItem(product)}
+      onSelect={() => handleSelectProduct(product)}
+    />
+  );
+
+  const emptyResults = (
+    <div className="surface-card shadow-xs mb-8">
+      <EmptyState
+        icon={Tag}
+        title="Nenhum produto encontrado"
+        description="Tente outro termo de busca ou ajuste os filtros."
+        action={activeFiltersCount > 0 ? (
+          <Button variant="secondary" onClick={clearAllFilters}>Limpar filtros</Button>
+        ) : undefined}
+      />
+    </div>
+  );
+
+  // Filtros: o mesmo conteúdo serve à barra lateral (desktop) e à gaveta (mobile).
+  const filterFields = (idPrefix: string) => (
+    <div className="space-y-5">
+      <div>
+        <label className="field-label">Ordenar por</label>
+        <StyledSelect
+          value={sortBy}
+          onChange={(v) => setSortBy(v as SortOption)}
+          options={SORT_OPTIONS}
+          searchable={false}
+        />
+      </div>
+
+      <div>
+        <span className="field-label">Faixa de custo</span>
+        <div className="grid grid-cols-2 gap-2">
+          <Input
+            type="number"
+            inputMode="decimal"
+            aria-label="Custo mínimo"
+            placeholder="Mín."
+            value={filterMinPrice}
+            onChange={(e) => setFilterMinPrice(e.target.value === '' ? '' : parseFloat(e.target.value))}
+          />
+          <Input
+            type="number"
+            inputMode="decimal"
+            aria-label="Custo máximo"
+            placeholder="Máx."
+            value={filterMaxPrice}
+            onChange={(e) => setFilterMaxPrice(e.target.value === '' ? '' : parseFloat(e.target.value))}
+          />
+        </div>
+      </div>
+
+      {categoriesToDisplay.length > 0 && (
+        <fieldset>
+          <legend className="field-label">Categorias</legend>
+          <div className="space-y-1 max-h-[260px] overflow-y-auto scrollbar-thin -mx-1 px-1">
+            {categoriesToDisplay.map(cat => (
+              <label key={cat.id} htmlFor={`${idPrefix}-cat-${cat.id}`} className="flex items-center gap-2.5 h-8 cursor-pointer text-[13px] text-foreground">
+                <input
+                  id={`${idPrefix}-cat-${cat.id}`}
+                  type="checkbox"
+                  checked={filterCategories.includes(cat.id)}
+                  onChange={() => toggleCategory(cat.id)}
+                  className="w-4 h-4 rounded border-border accent-primary"
+                />
+                {cat.name}
+              </label>
+            ))}
+          </div>
+        </fieldset>
+      )}
+
+      <fieldset className="space-y-1">
+        <legend className="field-label">Mais filtros</legend>
+        <label className="flex items-center gap-2.5 h-8 cursor-pointer text-[13px] text-foreground">
+          <input
+            type="checkbox"
+            checked={filterProfessional}
+            onChange={(e) => setFilterProfessional(e.target.checked)}
+            className="w-4 h-4 rounded border-border accent-primary"
+          />
+          Uso profissional
+        </label>
+        {!isGuest && (
+          <label className="flex items-center gap-2.5 h-8 cursor-pointer text-[13px] text-foreground">
+            <input
+              type="checkbox"
+              checked={filterOnlySuggested}
+              onChange={(e) => setFilterOnlySuggested(e.target.checked)}
+              className="w-4 h-4 rounded border-border accent-primary"
+            />
+            Com preço sugerido
+          </label>
+        )}
+      </fieldset>
+    </div>
+  );
+
   return (
     <>
-    <div className="min-h-screen bg-surface-alt overflow-x-hidden">
-      {/* Header */}
-      <div className="sticky top-0 z-40 w-full overflow-visible">
-        <header className="bg-background border-b border-border transition-colors">
-          <div className="container mx-auto px-3 sm:px-4 lg:px-6 py-2 sm:h-16 flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4">
-
-          <div className="flex items-center justify-between w-full sm:w-auto">
-            <div className="flex items-center gap-2 sm:gap-3 select-none pointer-events-none">
-              <img src={logo} alt="Rei dos Cachos" className="h-9 sm:h-11 w-auto flex-shrink-0" />
-              <span className="hidden sm:inline-flex h-6 px-2.5 items-center rounded-full bg-brand-subtle border border-brand-border text-brand-strong text-[11px] font-semibold">
-                Atacado
-              </span>
+    <div className="min-h-screen bg-background overflow-x-hidden">
+      {/* Cabeçalho fixo. No mobile leva junto as categorias, para não
+          depender de um `top-36` mágico que quebrava quando a altura mudava. */}
+      <div className="sticky top-0 z-40 w-full bg-background/95 backdrop-blur border-b border-border">
+        <header className="mx-auto max-w-7xl px-4 sm:px-6 py-2 sm:py-0 sm:h-16 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+          <div className="flex items-center justify-between gap-2 sm:shrink-0">
+            <div className="flex items-center gap-2.5 select-none">
+              <img src={logo} alt="Rei dos Cachos" className="h-9 sm:h-10 w-auto flex-shrink-0" />
+              <Badge variant="brand" className="hidden sm:inline-flex">Atacado</Badge>
             </div>
 
-            {/* Mobile Actions in Header Row */}
-            <div className="flex items-center gap-1 sm:hidden text-ink-500">
+            {/* Ações no mobile */}
+            <div className="flex items-center gap-0.5 sm:hidden">
               {isGuest ? (
                 <>
-                  <Link
-                    to="/login"
-                    className="text-xs font-medium h-8 px-3 rounded-md btn-secondary inline-flex items-center"
-                  >
-                    Entrar
-                  </Link>
-                  <Link
-                    to="/cadastro"
-                    className="text-xs font-medium h-8 px-3 rounded-md btn-primary inline-flex items-center"
-                  >
-                    Criar conta
-                  </Link>
+                  <Button asChild variant="ghost" size="sm">
+                    <Link to="/login">Entrar</Link>
+                  </Button>
+                  <Button asChild size="sm">
+                    <Link to="/cadastro">Criar conta</Link>
+                  </Button>
                 </>
               ) : (
                 <>
-                  <button
+                  <Button
+                    variant="ghost"
+                    size="icon"
                     onClick={() => setCartOpen(true)}
-                    className="relative p-1.5 hover:bg-muted rounded-full transition-colors flex items-center justify-center"
-                    title="Carrinho"
+                    aria-label={cartCount > 0 ? `Ver pedido (${cartCount} itens)` : 'Ver pedido'}
+                    className={`relative ${cartBounce ? 'animate-bounce' : ''}`}
                   >
-                    <ShoppingCart className="w-5 h-5" />
+                    <ShoppingCart />
                     {cartCount > 0 && (
-                      <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-danger-solid text-white text-[9px] font-bold flex items-center justify-center border-2 border-background shadow-sm">
-                        {cartCount}
-                      </span>
+                      <span className={`${countBadge} bg-primary text-primary-foreground`}>{cartCount > 99 ? '99+' : cartCount}</span>
                     )}
-                  </button>
+                  </Button>
 
-                  <button
+                  <Button
+                    variant="ghost"
+                    size="icon"
                     onClick={() => setFiltersOpen(!filtersOpen)}
-                    className="relative p-1.5 hover:bg-muted rounded-full transition-colors flex items-center justify-center"
+                    aria-label="Filtros"
+                    className="relative"
                   >
-                    <Filter className="w-5 h-5" />
+                    <Filter />
                     {activeFiltersCount > 0 && (
-                      <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-danger-solid text-white text-[9px] font-bold flex items-center justify-center border-2 border-background shadow-sm">
-                        {activeFiltersCount}
-                      </span>
+                      <span className={`${countBadge} bg-foreground text-background`}>{activeFiltersCount}</span>
                     )}
-                  </button>
+                  </Button>
 
                   {role === 'admin' && (
-                    <Link
-                      to="/admin/catalogo"
-                      className="p-1.5 hover:bg-muted rounded-full transition-colors flex items-center justify-center"
-                      title="Painel Admin"
-                    >
-                      <ShieldCheck className="w-5 h-5" />
-                    </Link>
+                    <Button asChild variant="ghost" size="icon" aria-label="Painel admin">
+                      <Link to="/admin/catalogo"><ShieldCheck /></Link>
+                    </Button>
                   )}
 
                   {role === 'salao' && (
-                    <Link
-                      to="/salao/pedido"
-                      className="p-1.5 hover:bg-muted rounded-full transition-colors flex items-center justify-center"
-                      title="Área do Salão"
-                    >
-                      <Crown className="w-5 h-5" />
-                    </Link>
+                    <Button asChild variant="ghost" size="icon" aria-label="Área do salão">
+                      <Link to="/salao/pedido"><Crown /></Link>
+                    </Button>
                   )}
 
-                  <button
-                    onClick={handleLogout}
-                    className="p-1.5 hover:bg-muted rounded-full transition-colors flex items-center justify-center"
-                    title="Sair"
-                  >
-                    <LogOut className="w-5 h-5" />
-                  </button>
+                  <Button variant="ghost" size="icon" onClick={handleLogout} aria-label="Sair">
+                    <LogOut />
+                  </Button>
                 </>
               )}
             </div>
           </div>
 
-          {/* Search App Form */}
-          <div className="flex-1 w-full sm:max-w-md pb-1 sm:pb-0">
-            <div className="relative w-full">
-              <input
-                type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Estou buscando por..."
-                className="w-full pl-9 pr-4 py-2 sm:py-2.5 rounded-md border border-input bg-background text-sm text-foreground placeholder:text-ink-400 transition-colors hover:border-ink-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-              />
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            </div>
+          {/* Busca */}
+          <div className="relative flex-1 w-full sm:max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-400 pointer-events-none" />
+            <Input
+              type="search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Buscar produto"
+              aria-label="Buscar produto"
+              className="pl-9 pr-9 [&::-webkit-search-cancel-button]:hidden"
+            />
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch('')}
+                aria-label="Limpar busca"
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 h-6 w-6 flex items-center justify-center rounded-sm text-ink-400 hover:text-foreground hover:bg-muted"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
 
-          <div className="hidden sm:flex items-center gap-3">
-            {/* Desktop Actions */}
+          {/* Ações no desktop */}
+          <div className="hidden sm:flex items-center gap-1.5 ml-auto shrink-0">
             {isGuest ? (
               <>
-                <Link
-                  to="/login"
-                  className="h-9 px-3.5 rounded-md btn-secondary text-[13px] inline-flex items-center"
-                >
-                  Entrar
-                </Link>
-                <Link
-                  to="/cadastro"
-                  className="h-9 px-3.5 rounded-md btn-primary text-[13px] inline-flex items-center"
-                >
-                  Criar conta
-                </Link>
+                <Button asChild variant="secondary">
+                  <Link to="/login">Entrar</Link>
+                </Button>
+                <Button asChild>
+                  <Link to="/cadastro">Criar conta</Link>
+                </Button>
               </>
             ) : (
               <>
-                <button
+                {/* A gaveta de filtros só existe abaixo de lg; acima, a barra lateral. */}
+                <Button
+                  variant="ghost"
+                  size="icon"
                   onClick={() => setFiltersOpen(!filtersOpen)}
-                  className="relative p-2 text-ink-500 hover:bg-muted rounded-lg transition-colors"
-                  title="Filtros"
+                  aria-label="Filtros"
+                  className="relative lg:hidden"
                 >
-                  <Filter className="w-5 h-5" />
+                  <Filter />
                   {activeFiltersCount > 0 && (
-                    <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-danger-solid text-white text-[9px] font-bold flex items-center justify-center">
-                      {activeFiltersCount}
-                    </span>
+                    <span className={`${countBadge} bg-foreground text-background`}>{activeFiltersCount}</span>
                   )}
-                </button>
-
-                {/* Cart */}
-                <button
-                  onClick={() => setCartOpen(true)}
-                  className={`relative h-9 px-3.5 rounded-md btn-secondary text-[13px] inline-flex items-center gap-1.5 ${cartBounce ? 'animate-bounce' : ''}`}
-                >
-                  <ShoppingCart className="w-4 h-4" />
-                  <span>Pedido</span>
-                  {cartCount > 0 && (
-                    <span className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center">
-                      {cartCount}
-                    </span>
-                  )}
-                </button>
+                </Button>
 
                 {role === 'admin' && (
-                  <Link
-                    to="/admin/catalogo"
-                    className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-transparent text-sm font-medium text-ink-500 hover:bg-muted transition-colors"
-                    title="Painel Admin"
-                  >
-                    <ShieldCheck className="w-4 h-4" />
-                    <span>Admin</span>
-                  </Link>
+                  <Button asChild variant="ghost">
+                    <Link to="/admin/catalogo"><ShieldCheck />Admin</Link>
+                  </Button>
                 )}
 
                 {role === 'salao' && (
-                  <Link
-                    to="/salao/pedido"
-                    className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-transparent text-sm font-medium text-ink-500 hover:bg-muted transition-colors"
-                    title="Área do Salão"
-                  >
-                    <Crown className="w-4 h-4" />
-                    <span>Salão</span>
-                  </Link>
+                  <Button asChild variant="ghost">
+                    <Link to="/salao/pedido"><Crown />Salão</Link>
+                  </Button>
                 )}
 
-                <button
-                  onClick={handleLogout}
-                  className="h-9 px-3 rounded-md text-[13px] text-ink-500 hover:text-foreground hover:bg-muted transition-colors inline-flex items-center gap-1.5"
+                <Button variant="ghost" onClick={handleLogout}>
+                  <LogOut />
+                  Sair
+                </Button>
+
+                <Button
+                  variant="secondary"
+                  onClick={() => setCartOpen(true)}
+                  className={`relative ${cartBounce ? 'animate-bounce' : ''}`}
+                  aria-label={cartCount > 0 ? `Ver pedido (${cartCount} itens)` : 'Ver pedido'}
                 >
-                  <LogOut className="w-4 h-4" />
-                  <span>Sair</span>
-                </button>
+                  <ShoppingCart />
+                  Pedido
+                  {cartCount > 0 && (
+                    <span className="ml-0.5 min-w-[20px] h-5 px-1.5 rounded-full bg-primary text-primary-foreground text-[11px] font-semibold flex items-center justify-center leading-none numeric">
+                      {cartCount > 99 ? '99+' : cartCount}
+                    </span>
+                  )}
+                </Button>
               </>
             )}
           </div>
-        </div>
-      </header>
+        </header>
 
-      {/* Rotating Trust Banner Layer (Lower part of sticky header) */}
-      <div className="bg-white/95 backdrop-blur-md pt-2.5 pb-1 border-b border-border/10 shadow-sm sm:-mb-6 relative z-[39]">
-        <RotatingTrustBanner />
+        {/* Categorias no mobile, presas junto com o cabeçalho */}
+        {showBrowse && categoriesToDisplay.length > 0 && (
+          <div className="sm:hidden border-t border-border pt-2.5 pb-1">
+            <CategoryBubbles
+              categories={categoriesToDisplay}
+              activeCategories={filterCategories}
+              onToggleCategory={toggleCategory}
+            />
+          </div>
+        )}
       </div>
-    </div>
 
-      {/* Mobile sticky category chips — below header, above content */}
-      {!debouncedSearch && !viewAll && categoriesToDisplay.length > 0 && (
-        <div className="sm:hidden sticky top-36 z-20 bg-surface-alt border-b border-border/30 shadow-sm py-2">
-          <CategoryBubbles
-            categories={categoriesToDisplay}
-            activeCategories={filterCategories}
-            onToggleCategory={toggleCategory}
-          />
-        </div>
-      )}
+      <RotatingTrustBanner />
 
-      {/* Hero B2B Section - Visible before anything else */}
-      {!debouncedSearch && !viewAll && (
+      {/* Hero B2B — só no modo navegação */}
+      {showBrowse && (
         <B2BHero
           onScrollToKits={scrollToKits}
           onScrollToProducts={scrollToProducts}
         />
       )}
 
-      <div className="flex flex-col lg:flex-row lg:gap-6 w-full max-w-full">
-        {/* Sidebar Filters (Desktop) */}
-        <aside className="hidden lg:block w-64 px-3 pt-4 pb-6">
-          <div className="sticky top-24 bg-card rounded-lg p-1 shadow-sm border border-border">
-            <div className="p-3 border-b border-border mb-1">
-              <h3 className="font-bold text-foreground">Filtros</h3>
-            </div>
-
-            {/* Sort */}
-            <div className="border-b border-border/60">
-              <button
-                onClick={() => toggleSection('sort')}
-                className="w-full flex items-center justify-between p-3 text-xs font-bold text-muted-foreground hover:bg-surface-alt transition-colors"
-              >
-                <span>ORDENAR POR</span>
-                {openSections.sort ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-              </button>
-              {openSections.sort && (
-                <div className="px-3 pb-3 animate-in fade-in slide-in-from-top-1 duration-200">
-                  <StyledSelect
-                    value={sortBy}
-                    onChange={(v) => setSortBy(v as SortOption)}
-                    options={SORT_OPTIONS}
-                    searchable={false}
-                    className="rounded-lg bg-card"
-                  />
-                </div>
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 flex flex-col lg:flex-row lg:gap-8">
+        {/* Filtros (desktop) */}
+        <aside className="hidden lg:block w-60 shrink-0 pt-8 pb-6" aria-label="Filtros">
+          <div className="sticky top-24 rounded-lg border border-border bg-card shadow-xs">
+            <div className="flex items-center justify-between gap-2 px-4 h-12 border-b border-border">
+              <h2 className="text-[14px] font-semibold text-foreground tracking-tight">Filtros</h2>
+              {activeFiltersCount > 0 && (
+                <Button variant="ghost" size="xs" onClick={clearAllFilters} className="text-ink-500">
+                  <Trash2 />
+                  Limpar
+                </Button>
               )}
             </div>
-
-            {/* Price Range */}
-            <div className="border-b border-border/60">
-              <button
-                onClick={() => toggleSection('price')}
-                className="w-full flex items-center justify-between p-3 text-xs font-bold text-muted-foreground hover:bg-surface-alt transition-colors"
-              >
-                <span>FAIXA DE CUSTO</span>
-                {openSections.price ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-              </button>
-              {openSections.price && (
-                <div className="px-3 pb-3 space-y-2 animate-in fade-in slide-in-from-top-1 duration-200">
-                  <input
-                    type="number"
-                    placeholder="Mín"
-                    value={filterMinPrice}
-                    onChange={(e) => setFilterMinPrice(e.target.value === '' ? '' : parseFloat(e.target.value))}
-                    className="w-full px-3 py-2 rounded-lg border border-border bg-card text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                  />
-                  <input
-                    type="number"
-                    placeholder="Máx"
-                    value={filterMaxPrice}
-                    onChange={(e) => setFilterMaxPrice(e.target.value === '' ? '' : parseFloat(e.target.value))}
-                    className="w-full px-3 py-2 rounded-lg border border-border bg-card text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                  />
-                </div>
-              )}
-            </div>
-
-            {/* Categories */}
-            <div className="border-b border-border/60">
-              <button
-                onClick={() => toggleSection('categories')}
-                className="w-full flex items-center justify-between p-3 text-xs font-bold text-muted-foreground hover:bg-surface-alt transition-colors"
-              >
-                <span>CATEGORIAS</span>
-                {openSections.categories ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-              </button>
-              {openSections.categories && (
-                <div className="px-3 pb-3 max-h-[250px] overflow-y-auto scrollbar-thin animate-in fade-in slide-in-from-top-1 duration-200">
-                  <div className="space-y-1.5">
-                    {categoriesToDisplay.map(cat => (
-                      <label key={cat.id} className="flex items-center gap-2 cursor-pointer group">
-                        <input
-                          type="checkbox"
-                          checked={filterCategories.includes(cat.id)}
-                          onChange={() => toggleCategory(cat.id)}
-                          className="w-4 h-4 rounded border-border text-gold focus:ring-ring"
-                        />
-                        <span className="text-sm text-foreground group-hover:text-foreground transition-colors">{cat.name}</span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Extra */}
-            <div>
-              <button
-                onClick={() => toggleSection('extra')}
-                className="w-full flex items-center justify-between p-3 text-xs font-bold text-muted-foreground hover:bg-surface-alt transition-colors"
-              >
-                <span>ADICIONAL</span>
-                {openSections.extra ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-              </button>
-              {openSections.extra && (
-                <div className="px-3 pb-3 space-y-3 animate-in fade-in slide-in-from-top-1 duration-200">
-                  <label className="flex items-center gap-2 cursor-pointer group">
-                    <input
-                      type="checkbox"
-                      checked={filterProfessional}
-                      onChange={(e) => setFilterProfessional(e.target.checked)}
-                      className="w-4 h-4 rounded border-border text-gold focus:ring-ring"
-                    />
-                    <span className="text-sm text-foreground group-hover:text-foreground font-medium">Uso Profissional</span>
-                  </label>
-
-                  {!isGuest && (
-                    <label className="flex items-center gap-2 cursor-pointer group border-t border-border/40 pt-2">
-                      <input
-                        type="checkbox"
-                        checked={filterOnlySuggested}
-                        onChange={(e) => setFilterOnlySuggested(e.target.checked)}
-                        className="w-4 h-4 rounded border-border text-gold focus:ring-ring"
-                      />
-                      <span className="text-sm text-foreground group-hover:text-foreground font-medium">Preço sugerido</span>
-                    </label>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* Clear filters */}
-            {activeFiltersCount > 0 && (
-              <div className="p-3 bg-surface-alt rounded-b-2xl">
-                <button
-                  onClick={clearAllFilters}
-                  className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-card border border-border text-xs font-bold text-danger hover:bg-danger-subtle hover:border-danger-border transition-all shadow-sm"
-                >
-                  <Trash2 className="w-3 h-3" />
-                  LIMPAR FILTROS
-                </button>
-              </div>
-            )}
+            <div className="p-4">{filterFields('side')}</div>
           </div>
         </aside>
 
-        {/* Main Content */}
-        <div className="flex-1 min-w-0 pb-20 sm:pb-6 w-full max-w-full">
-          {/* Mobile Only: Trust Banner (Removed as it is now in the sticky header) */}
+        {/* Conteúdo */}
+        <main className="flex-1 min-w-0 pt-6 sm:pt-8 pb-28 sm:pb-10">
+          {/* Cabeçalho do modo busca / ver todos (no modo navegação o hero faz esse papel) */}
+          {!showBrowse && (
+            <div className="flex flex-wrap items-end justify-between gap-3 mb-5">
+              <div className="min-w-0">
+                <h1 className="text-[26px] leading-tight text-foreground truncate">
+                  {debouncedSearch ? `Resultados para “${debouncedSearch}”` : 'Todos os produtos'}
+                </h1>
+                <p className="text-[14px] text-muted-foreground mt-1 numeric">
+                  {isLoading ? 'Carregando…' : `${filteredSortedByCategory.length} ${filteredSortedByCategory.length === 1 ? 'produto' : 'produtos'}`}
+                </p>
+              </div>
+              {viewAll && !debouncedSearch && (
+                <Button variant="secondary" onClick={() => setViewAll(false)}>
+                  <X />
+                  Voltar ao catálogo
+                </Button>
+              )}
+            </div>
+          )}
 
-          {/* Mobile Only: Seleção dos Mais Vendidos — ocultar durante busca ou viewAll */}
-          {!debouncedSearch && !viewAll && !isLoading && !error && products.length > 0 && (
-            <div className="pt-2 px-3 sm:hidden">
-              <div id="kits-section" className="flex items-center justify-between mb-4 mt-2">
-                <div className="flex items-center gap-1.5">
-                  <div className="bg-muted p-1 rounded">
-                    <PackageSearch className="w-4 h-4 text-ink-500" />
+          {activeFiltersCount > 0 && (
+            <div className="flex flex-wrap items-center gap-1.5 mb-5">
+              {debouncedSearch && (
+                <FilterChip label={`Busca: "${debouncedSearch.substring(0, 14)}${debouncedSearch.length > 14 ? '…' : ''}"`} onRemove={() => setSearch('')} />
+              )}
+              {filterMinPrice !== '' && (
+                <FilterChip label={`≥ R$ ${filterMinPrice}`} onRemove={() => setFilterMinPrice('')} />
+              )}
+              {filterMaxPrice !== '' && (
+                <FilterChip label={`≤ R$ ${filterMaxPrice}`} onRemove={() => setFilterMaxPrice('')} />
+              )}
+              {!isGuest && filterOnlySuggested && (
+                <FilterChip label="Com sugestão" onRemove={() => setFilterOnlySuggested(false)} />
+              )}
+              {filterProfessional && (
+                <FilterChip label="Uso profissional" onRemove={() => setFilterProfessional(false)} />
+              )}
+              {sortBy !== 'default' && (
+                <FilterChip label={SORT_OPTIONS.find(o => o.value === sortBy)?.label ?? 'Ordenação'} onRemove={() => setSortBy('default')} />
+              )}
+              {filterCategories.map(catId => {
+                const cat = categoriesToDisplay.find(c => c.id === catId);
+                return cat ? <FilterChip key={catId} label={cat.name} onRemove={() => toggleCategory(catId)} /> : null;
+              })}
+              <Button variant="ghost" size="xs" onClick={clearAllFilters} className="text-ink-500">
+                Limpar tudo
+              </Button>
+            </div>
+          )}
+
+          {/* Kits — uma seção só para todos os tamanhos (antes eram duas com o
+              mesmo id, e no desktop o "Ver kits" rolava para a cópia oculta). */}
+          {showBrowse && !isLoading && !error && products.length > 0 && !isPartner && (
+            <section id="kits-section" className="mb-10 scroll-mt-40 sm:scroll-mt-24">
+              <h2 className="text-[15px] font-semibold text-foreground tracking-tight mb-1">Kits mais vendidos</h2>
+              <p className="text-[13px] text-muted-foreground mb-1">Pedido montado em um clique, com margem estimada.</p>
+              <div className="-mx-4 sm:mx-0">
+                <PackageCards products={products} isGuest={isGuest} isPartner={isPartner} />
+              </div>
+            </section>
+          )}
+
+          {/* Destaques (mobile) */}
+          {showBrowse && !isLoading && !error && filtered.length > 0 && (
+            <div className="sm:hidden -mx-4">
+              <CompactProductCarousel
+                title="Destaques para você"
+                products={products.filter(p => p.is_highlight)}
+                cartAddedId={addedId}
+                getQty={getQty}
+                setQty={setQty}
+                onAdd={handleAddItem}
+                onSelect={handleSelectProduct}
+                getSuggestedPrice={getSuggestedPrice}
+                isGuest={isGuest}
+                isPartner={isPartner}
+                onViewAll={() => setViewAll(true)}
+              />
+            </div>
+          )}
+
+          {showBrowse && <HowItWorks />}
+
+          {/* Carregando */}
+          {isLoading && <PageLoading label="Carregando catálogo…" />}
+
+          {/* Erro */}
+          {error && (
+            <div role="alert" className="mb-6 p-4 rounded-lg bg-danger-subtle border border-danger-border text-danger">
+              <p className="text-[13px] font-medium">Não foi possível carregar o catálogo</p>
+              <p className="text-[12px] mt-0.5 opacity-80">
+                {error instanceof Error ? error.message : 'Erro desconhecido'}. Recarregue a página; se persistir, fale com o vendedor pelo WhatsApp.
+              </p>
+            </div>
+          )}
+
+          {priceListError && !error && (
+            <div role="status" className="mb-5 px-3.5 py-2.5 rounded-md bg-warning-subtle border border-warning-border text-warning text-[13px]">
+              Não foi possível carregar sua tabela de preços. Os valores exibidos podem não refletir as suas condições.
+            </div>
+          )}
+
+          {/* Produtos */}
+          {!isLoading && !error && (
+            <>
+              {!showBrowse ? (
+                /* MODO BUSCA / VER TODOS: grade plana, ordenada por categoria */
+                filteredSortedByCategory.length > 0 ? (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3 mb-8">
+                    {filteredSortedByCategory.map(renderProductCard)}
                   </div>
-                  <h2 className="text-[15px] sm:text-lg font-semibold text-foreground">Seleção dos Mais Vendidos</h2>
-                </div>
-              </div>
+                ) : emptyResults
+              ) : (
+                /* MODO NAVEGAÇÃO: carrosséis por categoria */
+                <div id="produtos-section" className="scroll-mt-40 sm:scroll-mt-24">
+                  {filtered.length > 0 && (
+                    <h2 className="text-[15px] font-semibold text-foreground tracking-tight mb-1 mt-2">Produtos por categoria</h2>
+                  )}
+                  {filtered.length > 0 && (
+                    <p className="text-[13px] text-muted-foreground mb-4">Monte o pedido com produtos avulsos.</p>
+                  )}
 
-              {!isPartner && (
-                <div className="mb-4">
-                  <PackageCards products={products} isGuest={isGuest} isPartner={isPartner} />
+                  <div className="flex flex-col mb-2 -mx-4 sm:mx-0">
+                    {categoriesToDisplay.map(category => {
+                      const categoryProducts = filtered.filter(p => p.category_id === category.id);
+                      if (categoryProducts.length === 0) return null;
+                      return (
+                        <div
+                          key={category.id}
+                          id={`categoria-${category.name.toLowerCase().replace(/\s+/g, '-')}`}
+                          className="w-full scroll-mt-40 sm:scroll-mt-24"
+                        >
+                          <CompactProductCarousel
+                            title={category.name}
+                            products={categoryProducts}
+                            cartAddedId={addedId}
+                            getQty={getQty}
+                            setQty={setQty}
+                            onAdd={handleAddItem}
+                            onSelect={handleSelectProduct}
+                            getSuggestedPrice={getSuggestedPrice}
+                            isGuest={isGuest}
+                            isPartner={isPartner}
+                            onViewAll={() => setViewAll(true)}
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {filtered.length === 0 && products.length > 0 && emptyResults}
+
+                  {products.length === 0 && (
+                    <div className="surface-card shadow-xs mb-8">
+                      <EmptyState
+                        icon={ShoppingCart}
+                        title="Catálogo em atualização"
+                        description="Nenhum produto disponível agora. Volte mais tarde ou fale com o vendedor pelo WhatsApp."
+                      />
+                    </div>
+                  )}
                 </div>
               )}
-            </div>
+
+              <WhatsAppCTA />
+            </>
           )}
+        </main>
 
-          {/* Mobile Only: Destaques & Rest — ocultar durante busca ou viewAll */}
-          {!debouncedSearch && !viewAll && (
-            <div className="pt-0 sm:hidden">
-              {/* Mobile Only: Compact Product Carousel for Featured Items */}
-              {!isLoading && !error && filtered.length > 0 && (
-                <CompactProductCarousel
-                  title="Destaques para você"
-                  products={products.filter(p => p.is_highlight)}
-                  cartAddedId={addedId}
-                  getQty={getQty}
-                  setQty={setQty}
-                  onAdd={handleAddItem}
-                  onSelect={handleSelectProduct}
-                  getSuggestedPrice={getSuggestedPrice}
-                  isGuest={isGuest}
-                  isPartner={isPartner}
-                  onViewAll={() => setViewAll(true)}
-                />
-              )}
-            </div>
-          )}
-
-          <div className="px-3 sm:px-4 lg:px-6 pt-2 sm:pt-6">
-            {/* Page Header (Desktop) */}
-            <div className="hidden sm:block mb-3">
-              <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border border-gold-border bg-gold-light mb-1">
-                <Crown className="w-2.5 h-2.5 text-gold-text" />
-                <span className="text-[9px] sm:text-xs font-semibold text-gold-text tracking-wide uppercase">B2B</span>
-              </div>
-              <h1 className="text-lg sm:text-2xl lg:text-3xl font-bold text-foreground leading-tight">Catálogo</h1>
-              <p className="text-xs sm:text-sm text-muted-foreground mt-0">{isLoading ? "Carregando..." : `${filtered.length} produtos disponíveis`}</p>
-            </div>
-
-            {/* Package Cards Header (Desktop Only) — ocultar durante busca ou viewAll */}
-            {!debouncedSearch && !viewAll && !isLoading && !error && products.length > 0 && !isPartner && (
-              <div id="kits-section" className="hidden sm:block">
-                <div className="mb-8">
-                  <PackageCards products={products} isGuest={isGuest} isPartner={isPartner} />
-                </div>
-              </div>
-            )}
-
-            {!debouncedSearch && !viewAll && (
-              <HowItWorks />
-            )}
-
-            {/* Category Bubbles: moved to sticky bar above content */}
-
-            {/* Banner de saída do modo Ver todos */}
-            {viewAll && !debouncedSearch && (
-              <div className="flex items-center justify-between mt-4 sm:mt-6 mb-4 py-2.5 px-3 rounded-lg bg-muted border border-border">
-                <span className="text-xs sm:text-sm font-semibold text-ink-600">
-                  Todos os produtos ({filtered.length})
-                </span>
-                <button
-                  onClick={() => setViewAll(false)}
-                  className="flex items-center gap-1 text-xs font-bold text-ink-600 hover:text-foreground transition-colors"
-                >
-                  <X className="w-3.5 h-3.5" /> Voltar ao catálogo
-                </button>
-              </div>
-            )}
-
-            {/* Título da seção de produtos — oculto em viewAll sem busca (substituído pelo banner) */}
-            <div id="produtos-section">
-              {!isLoading && !error && filtered.length > 0 && (!viewAll || debouncedSearch) && (
-                <div className="flex items-center gap-1.5 mb-4 mt-4 sm:mt-8">
-                  <div className="w-1 h-5 bg-muted0 rounded-full"></div>
-                  <h2 className="text-[16px] sm:text-lg font-bold text-foreground">
-                    {debouncedSearch ? `Resultados para "${debouncedSearch}"` : "Aproveite e leve também"}
-                  </h2>
-                </div>
-              )}
-            </div>
-            {activeFiltersCount > 0 && (
-              <div className="flex flex-wrap gap-1 mb-2.5">
-                {debouncedSearch && (
-                  <FilterChip label={`Busca: "${debouncedSearch.substring(0, 10)}${debouncedSearch.length > 10 ? '...' : ''}"`} onRemove={() => setSearch('')} />
-                )}
-                {filterMinPrice !== '' && (
-                  <FilterChip label={`≥ R$ ${filterMinPrice}`} onRemove={() => setFilterMinPrice('')} />
-                )}
-                {filterMaxPrice !== '' && (
-                  <FilterChip label={`≤ R$ ${filterMaxPrice}`} onRemove={() => setFilterMaxPrice('')} />
-                )}
-                {!isGuest && filterOnlySuggested && (
-                  <FilterChip label="C/ sugestão" onRemove={() => setFilterOnlySuggested(false)} />
-                )}
-                {filterProfessional && (
-                  <FilterChip label="Uso Profissional" onRemove={() => setFilterProfessional(false)} />
-                )}
-                {filterCategories.map(catId => {
-                  const cat = categoriesToDisplay.find(c => c.id === catId);
-                  return cat ? <FilterChip key={catId} label={cat.name} onRemove={() => toggleCategory(catId)} /> : null;
-                })}
-                <button
-                  onClick={clearAllFilters}
-                  className="text-[10px] sm:text-xs text-muted-foreground hover:text-danger underline ml-0.5 transition-colors"
-                >
-                  Limpar
-                </button>
-              </div>
-            )}
-
-            {/* Loading */}
-            {isLoading && (
-              <div className="text-center py-16">
-                <div className="w-8 h-8 border-2 border-background/30 border-t-gold rounded-full animate-spin mx-auto mb-4" />
-                <p className="text-muted-foreground">Carregando catálogo...</p>
-              </div>
-            )}
-
-            {/* Error */}
-            {error && (
-              <div className="mb-6 p-4 rounded-lg bg-danger-subtle border border-danger-border text-danger">
-                <p className="font-medium">Erro ao carregar catálogo</p>
-                <p className="text-sm">{error instanceof Error ? error.message : 'Desconhecido'}</p>
-              </div>
-            )}
-
-            {priceListError && !error && (
-              <div className="mb-4 px-4 py-2.5 rounded-lg bg-muted border border-border text-ink-600 text-sm">
-                Não foi possível carregar sua tabela de preços. Os preços exibidos podem não refletir sua tabela personalizada.
-              </div>
-            )}
-
-            {/* Products Grid */}
-            {!isLoading && !error && (
-              <>
-                {debouncedSearch || viewAll ? (
-                  /* MODO BUSCA / VER TODOS: lista plana, ordenada por categoria */
-                  filteredSortedByCategory.length > 0 ? (
-                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4 mb-8">
-                      {filteredSortedByCategory.map(product => {
-                        const suggested = getSuggestedPrice(product.price, product.compare_at_price);
-                        const { baseName, volume } = extractVolume(product.name);
-                        return (
-                          <div
-                            key={product.id}
-                            className="bg-card rounded-lg border border-border shadow-xs transition-all flex flex-col overflow-hidden group"
-                          >
-                            <div
-                              className="w-full aspect-square bg-surface-alt flex items-center justify-center overflow-hidden cursor-pointer relative"
-                              onClick={() => handleSelectProduct(product)}
-                            >
-                              {product.main_image ? (
-                                <img
-                                  src={product.main_image}
-                                  alt={product.name}
-                                  loading="lazy"
-                                  className="w-full h-full object-contain mix-blend-multiply transition-transform duration-500 scale-[1.1] group-hover:scale-[1.2]"
-                                />
-                              ) : (
-                                <ShoppingCart className="w-10 h-10 text-muted-foreground/25" />
-                              )}
-                              {volume && (
-                                <div className="absolute bottom-2 right-2 z-10">
-                                  <span className="inline-flex items-center px-1.5 py-0.5 rounded shadow-sm text-[9px] sm:text-[10px] font-semibold bg-white/90 backdrop-blur-sm text-foreground border border-border uppercase tracking-wider">
-                                    {volume}
-                                  </span>
-                                </div>
-                              )}
-                            </div>
-                            <div className="p-2.5 sm:p-3 flex flex-col flex-1">
-                              <div 
-                                className="cursor-pointer group-hover:text-foreground transition-colors"
-                                onClick={() => handleSelectProduct(product)}
-                              >
-                                <h3 className="font-bold text-foreground text-[11px] sm:text-[13px] leading-snug line-clamp-2 mb-1.5 sm:mb-2">
-                                  {baseName}
-                                </h3>
-                              </div>
-                              <div className="mt-auto">
-                                {/* Resale price: hidden for guest */}
-                                {!isGuest && !product.is_professional && (
-                                  <div className="text-[10px] sm:text-xs text-success font-bold mb-0.5">
-                                    Revenda: R$ {suggested.toFixed(2)}
-                                  </div>
-                                )}
-                                {/* Cost price: hidden for guest */}
-                                {isGuest ? (
-                                  <div className="flex items-center gap-1 mb-2">
-                                    <Lock className="w-3 h-3 text-muted-foreground flex-shrink-0" />
-                                    <span className="text-[11px] text-muted-foreground font-medium">Ver preço ao cadastrar</span>
-                                  </div>
-                                ) : (
-                                  <div className="text-sm sm:text-[15px] font-semibold text-foreground mb-2">
-                                    {isPartner && product.partner_price
-                                      ? <>R$ {product.partner_price.toFixed(2)}</>
-                                      : <>R$ {product.price.toFixed(2)}</>
-                                    }
-                                  </div>
-                                )}
-                                {isGuest ? (
-                                  <Link
-                                    to="/cadastro"
-                                    className="w-full flex items-center justify-center gap-1 py-1.5 rounded-lg text-[10px] font-bold border border-gold-border text-gold-text hover:bg-gold hover:text-white transition-all shadow-sm"
-                                  >
-                                    Cadastre-se para comprar
-                                  </Link>
-                                ) : (
-                                  <div className="flex flex-col gap-1 mt-1">
-                                    <div className="flex items-center gap-1">
-                                      <button onClick={(e) => { e.stopPropagation(); setQty(product.id, 6); }} className="flex-1 py-0.5 rounded bg-surface-alt text-muted-foreground text-[9px] font-bold border border-border hover:bg-muted hover:text-foreground hover:border-border transition-colors">+6</button>
-                                      <button onClick={(e) => { e.stopPropagation(); setQty(product.id, 12); }} className="flex-1 py-0.5 rounded bg-surface-alt text-muted-foreground text-[9px] font-bold border border-border hover:bg-muted hover:text-foreground hover:border-border transition-colors">+12</button>
-                                      <button onClick={(e) => { e.stopPropagation(); setQty(product.id, 24); }} className="flex-1 py-0.5 rounded bg-surface-alt text-muted-foreground text-[9px] font-bold border border-border hover:bg-muted hover:text-foreground hover:border-border transition-colors">+24</button>
-                                    </div>
-                                    <div className="flex items-center gap-1.5 mt-0.5">
-                                      <div className="flex items-center gap-0.5">
-                                        <button
-                                          onClick={(e) => { e.stopPropagation(); setQty(product.id, getQty(product.id) - 1); }}
-                                          disabled={getQty(product.id) <= 1}
-                                          className="w-7 h-7 flex items-center justify-center rounded-md border border-border bg-surface-alt text-muted-foreground hover:bg-border transition-colors disabled:opacity-40 text-xs font-medium"
-                                        >−</button>
-                                        <input
-                                          type="text"
-                                          inputMode="numeric"
-                                          value={getQty(product.id)}
-                                          onChange={(e) => { const v = parseInt(e.target.value, 10); if (!isNaN(v)) setQty(product.id, v); }}
-                                          onBlur={(e) => { const v = parseInt(e.target.value, 10); if (isNaN(v) || v < 1) setQty(product.id, 1); }}
-                                          className="w-8 h-7 text-center text-xs font-bold text-foreground border border-border rounded-md bg-surface focus:outline-none focus:ring-1 focus:ring-ring"
-                                        />
-                                        <button
-                                          onClick={(e) => { e.stopPropagation(); setQty(product.id, getQty(product.id) + 1); }}
-                                          className="w-7 h-7 flex items-center justify-center rounded-md border border-border bg-surface-alt text-muted-foreground hover:bg-border transition-colors text-xs font-medium"
-                                        >+</button>
-                                      </div>
-                                      <button
-                                        onClick={(e) => { e.stopPropagation(); handleAddItem(product); }}
-                                        className={`flex-1 h-7 flex items-center justify-center gap-1 rounded-md text-[10px] font-semibold transition-all uppercase tracking-wider shadow-sm ${addedId === product.id ? 'bg-success-solid text-white' : 'btn-primary'}`}
-                                      >
-                                        {addedId === product.id
-                                          ? <><Check className="w-3.5 h-3.5" /> OK</>
-                                          : <><ShoppingCart className="w-3.5 h-3.5" /> ADD</>}
-                                      </button>
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <div className="text-center py-16">
-                      <Tag className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                      <h3 className="text-lg font-semibold text-foreground mb-2">Nenhum produto encontrado</h3>
-                      <p className="text-muted-foreground text-sm">Tente outro termo de busca ou ajuste os filtros.</p>
-                    </div>
-                  )
-                ) : (
-                  /* MODO NAVEGAÇÃO: carrosséis por categoria */
-                  <>
-                    <div className="flex flex-col gap-4 sm:gap-8 mb-8">
-                      {categoriesToDisplay.map(category => {
-                        const categoryProducts = filtered.filter(p => p.category_id === category.id);
-                        if (categoryProducts.length === 0) return null;
-                        return (
-                          <div 
-                            key={category.id} 
-                            id={`categoria-${category.name.toLowerCase().replace(/\s+/g, '-')}`}
-                            className="w-full scroll-mt-24"
-                          >
-                            <CompactProductCarousel
-                              title={category.name}
-                              products={categoryProducts}
-                              cartAddedId={addedId}
-                              getQty={getQty}
-                              setQty={setQty}
-                              onAdd={handleAddItem}
-                              onSelect={handleSelectProduct}
-                              getSuggestedPrice={getSuggestedPrice}
-                              isGuest={isGuest}
-                              isPartner={isPartner}
-                              onViewAll={() => setViewAll(true)}
-                            />
-                          </div>
-                        );
-                      })}
-                    </div>
-
-                    {filtered.length === 0 && products.length > 0 && (
-                      <div className="text-center py-16">
-                        <Tag className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                        <h3 className="text-lg font-semibold text-foreground mb-2">Nenhum produto encontrado</h3>
-                        <p className="text-muted-foreground text-sm">Tente outro termo de busca ou ajuste os filtros.</p>
-                      </div>
-                    )}
-
-                    {products.length === 0 && (
-                      <div className="text-center py-16">
-                        <ShoppingCart className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                        <h3 className="text-lg font-semibold text-foreground mb-2">Catálogo vazio</h3>
-                        <p className="text-muted-foreground text-sm">Volte mais tarde para ver os produtos.</p>
-                      </div>
-                    )}
-                  </>
-                )}
-
-                <WhatsAppCTA />
-              </>
-            )}
-          </div>
-        </div>
-
-        {/* Mobile Filters Drawer */}
+        {/* Gaveta de filtros (abaixo de lg) */}
         {filtersOpen && (
-          <div className="fixed inset-0 z-50 lg:hidden flex justify-end">
-            <div className="absolute inset-0 bg-foreground/40 backdrop-blur-sm" onClick={() => setFiltersOpen(false)} />
-            <div className="relative bg-card w-full sm:max-w-sm h-full flex flex-col shadow-2xl overflow-y-auto">
-              {/* Header */}
-              <div className="flex items-center justify-between p-3 sm:p-4 border-b border-border sticky top-0 bg-card">
-                <h2 className="font-bold text-foreground text-base sm:text-lg">Filtros</h2>
-                <button onClick={() => setFiltersOpen(false)} className="text-muted-foreground hover:text-foreground">
-                  <X className="w-5 h-5" />
-                </button>
+          <div className="fixed inset-0 z-50 lg:hidden flex justify-end" role="dialog" aria-modal="true" aria-label="Filtros">
+            <div className="absolute inset-0 bg-ink-950/45 backdrop-blur-[2px]" onClick={() => setFiltersOpen(false)} />
+            <div className="relative bg-background w-full sm:max-w-sm h-full flex flex-col border-l border-border shadow-xl">
+              <div className="h-14 px-4 flex items-center justify-between border-b border-border shrink-0">
+                <h2 className="text-[15px] font-semibold text-foreground tracking-tight">Filtros</h2>
+                <Button variant="ghost" size="icon-sm" onClick={() => setFiltersOpen(false)} aria-label="Fechar filtros">
+                  <X />
+                </Button>
               </div>
 
-              {/* Content */}
-              <div className="flex-1 p-3 sm:p-4 space-y-3 sm:space-y-4">
-                {/* Sort */}
-                <div>
-                  <label className="text-xs font-semibold text-muted-foreground mb-2 block">Ordenar por</label>
-                  <StyledSelect
-                    value={sortBy}
-                    onChange={(v) => setSortBy(v as SortOption)}
-                    options={SORT_OPTIONS}
-                    searchable={false}
-                    className="rounded-lg bg-card"
-                  />
-                </div>
+              <div className="flex-1 overflow-y-auto p-4">{filterFields('drawer')}</div>
 
-                {/* Price Range */}
-                <div>
-                  <label className="text-xs font-semibold text-muted-foreground mb-2 block">Faixa de custo</label>
-                  <div className="space-y-2">
-                    <input
-                      type="number"
-                      placeholder="Mín"
-                      value={filterMinPrice}
-                      onChange={(e) => setFilterMinPrice(e.target.value === '' ? '' : parseFloat(e.target.value))}
-                      className="w-full px-3 py-2 rounded-lg border border-border bg-card text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                    />
-                    <input
-                      type="number"
-                      placeholder="Máx"
-                      value={filterMaxPrice}
-                      onChange={(e) => setFilterMaxPrice(e.target.value === '' ? '' : parseFloat(e.target.value))}
-                      className="w-full px-3 py-2 rounded-lg border border-border bg-card text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                    />
-                  </div>
-                </div>
-
-                {/* Categories */}
-                <div>
-                  <label className="text-xs font-semibold text-muted-foreground mb-2 block">Categorias</label>
-                  <div className="space-y-1.5">
-                    {categoriesToDisplay.map(cat => (
-                      <label key={cat.id} className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={filterCategories.includes(cat.id)}
-                          onChange={() => toggleCategory(cat.id)}
-                          className="w-4 h-4 rounded border-border text-gold focus:ring-ring"
-                        />
-                        <span className="text-sm text-foreground">{cat.name}</span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Uso Profissional */}
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={filterProfessional}
-                    onChange={(e) => setFilterProfessional(e.target.checked)}
-                    className="w-4 h-4 rounded border-border text-gold focus:ring-ring"
-                  />
-                  <span className="text-sm text-foreground font-medium">Uso Profissional</span>
-                </label>
-
-                {/* Suggested Price Only */}
-                {!isGuest && (
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={filterOnlySuggested}
-                      onChange={(e) => setFilterOnlySuggested(e.target.checked)}
-                      className="w-4 h-4 rounded border-border text-gold focus:ring-ring"
-                    />
-                    <span className="text-sm text-foreground font-medium">Somente com preço sugerido</span>
-                  </label>
-                )}
-              </div>
-
-              {/* Footer */}
-              <div className="p-3 sm:p-4 border-t border-border space-y-1.5 sm:space-y-2">
+              <div className="px-4 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))] border-t border-border flex gap-2 shrink-0">
                 {activeFiltersCount > 0 && (
-                  <button
-                    onClick={clearAllFilters}
-                    className="w-full px-2 sm:px-3 py-1.5 sm:py-2 rounded text-xs sm:text-sm font-medium text-foreground bg-surface-alt hover:bg-border transition-colors"
-                  >
+                  <Button variant="secondary" className="flex-1" onClick={clearAllFilters}>
                     Limpar
-                  </button>
+                  </Button>
                 )}
-                <button
-                  onClick={() => setFiltersOpen(false)}
-                  className="w-full px-2 sm:px-3 py-2 sm:py-2.5 rounded btn-gold text-xs sm:text-sm font-semibold"
-                >
-                  Aplicar
-                </button>
+                <Button className="flex-1" onClick={() => setFiltersOpen(false)}>
+                  Ver {filtered.length} {filtered.length === 1 ? 'produto' : 'produtos'}
+                </Button>
               </div>
             </div>
           </div>
         )}
 
-        {/* Product Detail Modal */}
+        {/* Detalhe do produto */}
         {selectedProduct && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4" role="dialog" aria-modal="true" aria-label={selectedProduct.name}>
             <div
-              className="absolute inset-0 bg-foreground/40 backdrop-blur-sm"
+              className="absolute inset-0 bg-ink-950/45 backdrop-blur-[2px]"
               onClick={() => setSelectedProduct(null)}
             />
-            <div className="relative bg-card rounded-xl sm:rounded-lg shadow-lg w-full sm:max-w-xl max-h-[92vh] overflow-y-auto">
-              {/* Close button */}
-              <button
+            <div className="relative bg-card rounded-t-xl sm:rounded-xl border border-border shadow-xl w-full sm:max-w-xl max-h-[92vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-[0.98] duration-150">
+              <Button
+                variant="secondary"
+                size="icon-sm"
                 onClick={() => setSelectedProduct(null)}
-                className="absolute top-3 right-3 z-10 w-7 h-7 flex items-center justify-center rounded-full bg-white/80 backdrop-blur-sm text-muted-foreground hover:text-foreground hover:bg-card transition-all shadow-sm"
+                aria-label="Fechar"
+                className="absolute top-3 right-3 z-10 rounded-full"
               >
-                <X className="w-4 h-4" />
-              </button>
+                <X />
+              </Button>
 
-              {/* Image */}
-              {selectedProduct.main_image && (
-                <div className="w-full h-52 sm:h-64 bg-surface-alt overflow-hidden flex items-center justify-center">
-                  <img
-                    src={selectedProduct.main_image}
-                    alt={selectedProduct.name}
-                    loading="lazy"
-                    className="w-full h-full object-contain mix-blend-multiply"
-                  />
-                </div>
-              )}
-
-              {/* Content */}
-              <div className="p-4 sm:p-6">
-                <h2 className="text-base sm:text-xl font-bold text-foreground mb-3">
-                  {selectedProduct.name}
-                </h2>
-
-                {/* Pricing */}
-                <div className="bg-surface-alt rounded-xl p-3 sm:p-4 mb-4">
-                  {isGuest ? (
-                    <div className="flex items-center gap-2 py-1">
-                      <Lock className="w-4 h-4 text-ink-400 flex-shrink-0" />
-                      <span className="text-sm font-medium text-muted-foreground">
-                        Preços visíveis após cadastro gratuito
-                      </span>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-4">
-                      <div className="flex-1">
-                        <div className="text-[11px] text-muted-foreground mb-0.5 uppercase tracking-wide font-medium">Custo</div>
-                        <div className="text-lg sm:text-xl font-bold text-foreground">
-                          {isPartner && selectedProduct.partner_price
-                            ? <>R$ {selectedProduct.partner_price.toFixed(2)}</>
-                            : <>R$ {selectedProduct.price.toFixed(2)}</>
-                          }
-                        </div>
-                      </div>
-                      {!selectedProduct.is_professional && (
-                        <div className="flex-1 border-l border-border pl-4">
-                          <div className="text-[11px] text-muted-foreground mb-0.5 uppercase tracking-wide font-medium">Revenda sugerida</div>
-                          <div className="text-lg sm:text-xl font-bold gradient-gold-text">
-                            R$ {getSuggestedPrice(isPartner && selectedProduct.partner_price ? selectedProduct.partner_price : selectedProduct.price, selectedProduct.compare_at_price).toFixed(2)}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-
-                {/* Description */}
-                {selectedProduct.description_html && (
-                  <div className="mb-4 sm:mb-6">
-                    <h3 className="text-xs sm:text-sm font-semibold text-foreground mb-1.5 sm:mb-2">
-                      Descrição
-                    </h3>
-                    <div className="text-xs sm:text-sm text-muted-foreground prose prose-sm max-w-none">
-                      <div
-                        dangerouslySetInnerHTML={{
-                          __html: DOMPurify.sanitize(renderDescription(selectedProduct.description_html)),
-                        }}
-                      />
-                    </div>
+              <div className="overflow-y-auto">
+                {selectedProduct.main_image && (
+                  <div className="w-full h-56 sm:h-64 bg-surface flex items-center justify-center">
+                    <img
+                      src={selectedProduct.main_image}
+                      alt={selectedProduct.name}
+                      loading="lazy"
+                      className="w-full h-full object-contain mix-blend-multiply dark:mix-blend-normal"
+                    />
                   </div>
                 )}
 
-                {/* Quantity Control & Quick Lot Buttons */}
-                <div className="flex flex-col mb-4 bg-surface rounded-xl border border-border p-3 sm:p-4 shadow-sm">
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-sm font-bold text-foreground">Quantidade</span>
-                    <div className="flex gap-2">
-                       <button onClick={() => setQty(selectedProduct.id, 6)} className="px-2 py-0.5 rounded bg-muted text-ink-600 text-xs font-bold border border-border hover:bg-muted transition-colors">+6</button>
-                       <button onClick={() => setQty(selectedProduct.id, 12)} className="px-2 py-0.5 rounded bg-muted text-ink-600 text-xs font-bold border border-border hover:bg-muted transition-colors">+12</button>
-                       <button onClick={() => setQty(selectedProduct.id, 24)} className="px-2 py-0.5 rounded bg-muted text-ink-600 text-xs font-bold border border-border hover:bg-muted transition-colors">+24</button>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => setQty(selectedProduct.id, getQty(selectedProduct.id) - 1)}
-                      disabled={getQty(selectedProduct.id) <= 1}
-                      className="w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center text-muted-foreground bg-card border border-border hover:bg-surface-alt rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed text-lg font-medium flex-shrink-0"
-                    >
-                      −
-                    </button>
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      value={getQty(selectedProduct.id)}
-                      onChange={(e) => {
-                        const v = parseInt(e.target.value, 10);
-                        if (!isNaN(v)) setQty(selectedProduct.id, v);
-                      }}
-                      onBlur={(e) => {
-                        const v = parseInt(e.target.value, 10);
-                        if (isNaN(v) || v < 1) setQty(selectedProduct.id, 1);
-                      }}
-                      className="flex-1 min-w-0 h-10 sm:h-12 text-center text-base sm:text-lg font-semibold text-foreground border border-border rounded-lg bg-card shadow-inner focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition-all"
-                    />
-                    <button
-                      onClick={() => setQty(selectedProduct.id, getQty(selectedProduct.id) + 1)}
-                      className="w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center text-muted-foreground bg-card border border-border hover:bg-surface-alt rounded-lg transition-colors text-lg font-medium flex-shrink-0"
-                    >
-                      +
-                    </button>
-                  </div>
-                </div>
+                <div className="p-4 sm:p-6">
+                  <h2 className="text-[16px] font-semibold text-foreground tracking-tight leading-snug pr-8 mb-4">
+                    {selectedProduct.name}
+                  </h2>
 
-                {/* Action buttons */}
-                <div className="space-y-2">
-                  {isGuest ? (
-                    <Link
-                      to="/cadastro"
-                      className="w-full flex items-center justify-center gap-1.5 py-3 sm:py-3.5 rounded-xl text-sm sm:text-base font-bold btn-primary shadow-sm"
-                    >
-                      <ArrowRight className="w-4 h-4" />
-                      Cadastre-se para comprar
-                    </Link>
-                  ) : (
-                    <button
-                      onClick={() => {
-                        handleAddItem(selectedProduct);
-                        setSelectedProduct(null);
-                      }}
-                      className={`w-full flex items-center justify-center gap-2 py-3 sm:py-3.5 rounded-xl text-sm sm:text-base font-semibold text-white transition-all shadow-sm uppercase tracking-wide ${addedId === selectedProduct.id
-                        ? 'bg-success-solid hover:bg-success-solid/90'
-                        : 'btn-primary'
-                        }`}
-                    >
-                      {addedId === selectedProduct.id ? (
-                        <>
-                          <Check className="w-5 h-5" />
-                          Adicionado!
-                        </>
-                      ) : (
-                        <>
-                          <ShoppingCart className="w-5 h-5" />
-                          Adicionar ao Pedido
-                        </>
-                      )}
-                    </button>
+                  {/* Preços: custo é o número principal; revenda, a referência */}
+                  <div className="rounded-lg border border-border bg-surface p-3.5 mb-5">
+                    {isGuest ? (
+                      <div className="flex items-center gap-2">
+                        <Lock className="w-4 h-4 text-ink-400 flex-shrink-0" />
+                        <span className="text-[13px] text-muted-foreground">
+                          Preços visíveis após o cadastro gratuito.
+                        </span>
+                      </div>
+                    ) : (
+                      <dl className="grid grid-cols-2 gap-4">
+                        <div>
+                          <dt className="text-[12px] font-medium text-muted-foreground">Seu custo</dt>
+                          <dd className="font-title text-[24px] font-semibold text-foreground numeric leading-tight mt-0.5">
+                            R$ {(isPartner && selectedProduct.partner_price ? selectedProduct.partner_price : selectedProduct.price).toFixed(2)}
+                          </dd>
+                        </div>
+                        {!selectedProduct.is_professional && (
+                          <div className="border-l border-border pl-4">
+                            <dt className="text-[12px] font-medium text-muted-foreground">Revenda sugerida</dt>
+                            <dd className="text-[18px] font-semibold text-success numeric leading-tight mt-1">
+                              R$ {getSuggestedPrice(isPartner && selectedProduct.partner_price ? selectedProduct.partner_price : selectedProduct.price, selectedProduct.compare_at_price).toFixed(2)}
+                            </dd>
+                          </div>
+                        )}
+                      </dl>
+                    )}
+                  </div>
+
+                  {selectedProduct.description_html && (
+                    <div className="mb-5">
+                      <h3 className="text-[13px] font-semibold text-foreground mb-1.5">Descrição</h3>
+                      <div className="text-[13px] text-muted-foreground leading-relaxed prose prose-sm max-w-none dark:prose-invert">
+                        <div
+                          dangerouslySetInnerHTML={{
+                            __html: DOMPurify.sanitize(renderDescription(selectedProduct.description_html)),
+                          }}
+                        />
+                      </div>
+                    </div>
                   )}
-                  <button
-                    onClick={() => setSelectedProduct(null)}
-                    className="w-full py-2.5 sm:py-3 rounded-xl text-sm font-semibold text-muted-foreground hover:text-foreground hover:bg-surface-alt transition-colors"
-                  >
-                    Fechar
-                  </button>
+
+                  {!isGuest && (
+                    <div className="mb-1">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-[13px] font-semibold text-foreground">Quantidade</span>
+                        <div className="flex gap-1">
+                          {[6, 12, 24].map(n => (
+                            <button
+                              key={n}
+                              type="button"
+                              onClick={() => setQty(selectedProduct.id, n)}
+                              aria-pressed={getQty(selectedProduct.id) === n}
+                              className={`h-7 px-2.5 rounded-md border text-[12px] font-medium numeric transition-colors ${
+                                getQty(selectedProduct.id) === n
+                                  ? 'bg-brand-subtle border-brand-border text-brand-strong'
+                                  : 'bg-card border-border text-ink-500 hover:border-ink-300 hover:text-foreground'
+                              }`}
+                            >
+                              {n} un.
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="secondary"
+                          size="icon"
+                          className="h-10 w-10 shrink-0"
+                          onClick={() => setQty(selectedProduct.id, getQty(selectedProduct.id) - 1)}
+                          disabled={getQty(selectedProduct.id) <= 1}
+                          aria-label="Diminuir quantidade"
+                        >
+                          <Minus />
+                        </Button>
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          aria-label="Quantidade"
+                          value={getQty(selectedProduct.id)}
+                          onChange={(e) => {
+                            const v = parseInt(e.target.value, 10);
+                            if (!isNaN(v)) setQty(selectedProduct.id, v);
+                          }}
+                          onBlur={(e) => {
+                            const v = parseInt(e.target.value, 10);
+                            if (isNaN(v) || v < 1) setQty(selectedProduct.id, 1);
+                          }}
+                          className="flex-1 min-w-0 h-10 text-center text-[16px] font-semibold text-foreground numeric border border-input rounded-md bg-background hover:border-ink-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:border-transparent transition-colors"
+                        />
+                        <Button
+                          variant="secondary"
+                          size="icon"
+                          className="h-10 w-10 shrink-0"
+                          onClick={() => setQty(selectedProduct.id, getQty(selectedProduct.id) + 1)}
+                          aria-label="Aumentar quantidade"
+                        >
+                          <Plus />
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </div>
+              </div>
+
+              {/* Ação fixa no rodapé do modal */}
+              <div className="px-4 sm:px-6 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))] border-t border-border bg-card flex flex-col-reverse sm:flex-row gap-2 shrink-0">
+                <Button variant="secondary" size="lg" className="sm:flex-1" onClick={() => setSelectedProduct(null)}>
+                  Fechar
+                </Button>
+                {isGuest ? (
+                  <Button asChild size="lg" className="sm:flex-[2]">
+                    <Link to="/cadastro">
+                      Cadastre-se para comprar
+                      <ArrowRight />
+                    </Link>
+                  </Button>
+                ) : (
+                  <Button
+                    size="lg"
+                    className={`sm:flex-[2] ${addedId === selectedProduct.id ? 'bg-success-subtle text-success border-success-border hover:bg-success-subtle' : ''}`}
+                    onClick={() => {
+                      handleAddItem(selectedProduct);
+                      setSelectedProduct(null);
+                    }}
+                  >
+                    {addedId === selectedProduct.id ? (
+                      <><Check /> Adicionado</>
+                    ) : (
+                      <><ShoppingCart /> Adicionar ao pedido</>
+                    )}
+                  </Button>
+                )}
               </div>
             </div>
           </div>
@@ -1418,6 +1124,26 @@ const Catalogo = () => {
 
         <CartDrawer />
       </div>
+
+      {/* Barra do pedido no mobile — mesmo padrão da barra de ação do
+          checkout: total sempre visível + uma ação. */}
+      {!isGuest && cartCount > 0 && !cartOpen && !selectedProduct && !filtersOpen && (
+        <div className="sm:hidden fixed bottom-0 inset-x-0 z-40 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] bg-background/95 backdrop-blur border-t border-border">
+          <div className="flex items-center gap-3">
+            <div className="min-w-0 flex-1">
+              <p className="text-[12px] text-muted-foreground numeric">
+                {cartCount} {cartCount === 1 ? 'item' : 'itens'}
+                {cartTotal < minOrderValue && ` · faltam R$ ${(minOrderValue - cartTotal).toFixed(2)}`}
+              </p>
+              <p className="text-[17px] font-semibold text-foreground numeric leading-tight">R$ {cartTotal.toFixed(2)}</p>
+            </div>
+            <Button size="lg" onClick={() => setCartOpen(true)} className="shrink-0">
+              Ver pedido
+              <ArrowRight />
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
 
       {/* Progressive Profiling Popup */}

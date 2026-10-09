@@ -20,6 +20,10 @@ import MensagemVariaveisModal from '@/components/rh/MensagemVariaveisModal'
 import ConfirmarAutomacaoModal, { type AutomationPreview } from '@/components/rh/ConfirmarAutomacaoModal'
 import ConversaWhatsapp from '@/components/rh/ConversaWhatsapp'
 import StyledSelect from '@/components/ui/styled-select'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
+import { AdminPage, PageTabs, Toolbar, PageLoading, PAGE_X } from '@/components/admin/ui/AdminPage'
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
 import { DateField } from '@/components/ui/date-field'
 import { QuickDatePopover } from '@/components/ui/quick-date-popover'
@@ -244,13 +248,13 @@ function CandidatePhoto({ candidate }: { candidate: Pick<Candidate, 'photo_url' 
           alt=""
           loading="lazy"
           decoding="async"
-          width={224}
+          width={240}
           height={120}
           className="w-full h-full object-cover"
         />
       ) : (
         <div className="w-full h-full flex items-center justify-center">
-          <span className="text-lg font-bold text-ink-400">{initials(candidate.name)}</span>
+          <span className="text-lg font-semibold text-ink-400">{initials(candidate.name)}</span>
         </div>
       )}
     </div>
@@ -284,12 +288,12 @@ function CandidateCard({
       {...listeners}
       {...attributes}
       onClick={() => !isDragging && onOpen(candidate)}
-      className={`relative bg-card rounded-lg border border-border/60 border-l-4 shadow-[0_1px_2px_rgba(0,0,0,0.06)] overflow-hidden cursor-grab active:cursor-grabbing touch-none select-none ${
+      className={`relative bg-card rounded-lg border border-border border-l-[3px] shadow-xs hover:border-ink-300 transition-colors overflow-hidden cursor-grab active:cursor-grabbing touch-none select-none ${
         isDragging ? 'opacity-50' : ''
       }`}
     >
       {dueOverdue && (
-        <div className="absolute top-1.5 right-1.5 z-10 flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-danger-solid text-white text-[10px] font-bold shadow" title="Data fim já passou">
+        <div className="absolute top-1.5 right-1.5 z-10 flex items-center gap-1 px-1.5 py-0.5 rounded-full border border-danger-border bg-danger-subtle text-danger text-[11px] font-medium" title="Data fim já passou">
           <AlertTriangle className="w-2.5 h-2.5" /> Atrasado
         </div>
       )}
@@ -305,8 +309,8 @@ function CandidateCard({
             options={jobOpeningOptions}
             placeholder={candidate.job_openings?.role_title || 'Vaga removida'}
           />
-          <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-md ${
-            candidate.source === 'manual' ? 'bg-ink-100 text-ink-600' : 'bg-violet-100 text-violet-700 dark:bg-violet-500/20 dark:text-violet-300'
+          <span className={`text-[11px] font-medium px-1.5 py-0.5 rounded-sm ${
+            candidate.source === 'manual' ? 'bg-muted text-ink-600' : 'bg-violet-100 text-violet-700 dark:bg-violet-500/20 dark:text-violet-300'
           }`}>
             {candidate.source === 'manual' ? 'Manual' : 'Formulário'}
           </span>
@@ -314,7 +318,7 @@ function CandidateCard({
         {candidate.candidate_answers.some((a) => a.form_fields?.show_on_card) && (
           <div className="flex items-center gap-1 flex-wrap">
             {candidate.candidate_answers.filter((a) => a.form_fields?.show_on_card).map((a) => (
-              <span key={a.form_fields!.field_key} className="text-[10px] font-medium px-1.5 py-0.5 rounded-md bg-surface-alt text-muted-foreground truncate max-w-full">
+              <span key={a.form_fields!.field_key} className="text-[11px] font-medium px-1.5 py-0.5 rounded-sm bg-muted text-ink-600 truncate max-w-full">
                 {a.form_fields!.label}: {formatAnswerValue(a)}
               </span>
             ))}
@@ -326,7 +330,7 @@ function CandidateCard({
             {candidate.candidate_tags.filter((ct) => ct.tags).map((ct) => (
               <span
                 key={ct.tags!.id}
-                className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full truncate max-w-full"
+                className="text-[11px] font-medium px-1.5 py-0.5 rounded-full truncate max-w-full"
                 style={{ backgroundColor: `${ct.tags!.color}22`, color: ct.tags!.color }}
               >
                 {ct.tags!.name}
@@ -343,7 +347,7 @@ function CandidateCard({
             <div className="flex items-center justify-between gap-1.5">
               <div className="flex items-center gap-1 flex-wrap min-w-0">
                 {showAssignee && (
-                  <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-md bg-ink-100 text-ink-600 truncate max-w-full" title={assigneeName}>
+                  <span className="text-[11px] font-medium px-1.5 py-0.5 rounded-sm bg-muted text-ink-600 truncate max-w-full" title={assigneeName}>
                     {assigneeName}
                   </span>
                 )}
@@ -356,7 +360,7 @@ function CandidateCard({
                 )}
               </div>
               {showAttach && (
-                <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-surface-alt text-muted-foreground flex items-center gap-0.5 shrink-0">
+                <span className="text-[11px] font-medium px-1.5 py-0.5 rounded-sm bg-muted text-ink-600 tabular-nums flex items-center gap-0.5 shrink-0">
                   <Paperclip className="w-2.5 h-2.5" /> {attachmentCount(candidate)}
                 </span>
               )}
@@ -392,20 +396,20 @@ function StageColumn({
   // do próprio accent, que se funde ao fundo escuro em vez de destoar dele.
   const columnBg = isDark ? `${accent}1A` : bg
   return (
-    <section className="w-56 shrink-0 space-y-2">
-      <div className="flex items-center gap-1.5 px-1">
+    <section className="w-60 shrink-0 flex flex-col gap-2">
+      <div className="flex items-center gap-2 h-7 px-1">
         <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: accent }} />
-        <h2 className="text-[11px] font-bold uppercase tracking-wide truncate text-muted-foreground">
+        <h2 className="text-[13px] font-semibold text-foreground truncate">
           {label}
         </h2>
-        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-surface-alt text-muted-foreground shrink-0">
+        <span className="min-w-[20px] h-5 px-1.5 inline-flex items-center justify-center rounded-full bg-muted text-[11.5px] font-medium tabular-nums text-ink-500 shrink-0">
           {candidates.length}
         </span>
       </div>
       <div
         ref={setNodeRef}
         style={{ backgroundColor: columnBg, borderColor: isOver ? accent : undefined }}
-        className={`space-y-2 min-h-[80px] max-h-[calc(100vh-280px)] overflow-y-auto scrollbar-thin rounded-2xl border p-1.5 transition-colors ${isOver ? '' : 'border-dashed border-border/70'}`}
+        className={`space-y-2 min-h-[80px] max-h-[calc(100vh-300px)] overflow-y-auto scrollbar-thin rounded-lg border p-1.5 transition-colors ${isOver ? '' : 'border-transparent'}`}
       >
         {candidates.map((c) => (
           <CandidateCard
@@ -422,9 +426,9 @@ function StageColumn({
           onClick={onAddClick}
           disabled={addDisabled}
           title={addDisabled ? 'Cadastre uma vaga nesta unidade primeiro' : undefined}
-          className="w-full flex items-center justify-center gap-1 py-2 rounded-xl border border-dashed border-border/70 text-[11px] font-medium text-muted-foreground hover:border-border hover:bg-surface-alt transition-colors disabled:opacity-40 disabled:hover:border-border/70 disabled:hover:bg-transparent"
+          className="w-full h-8 flex items-center justify-center gap-1 rounded-md text-[12.5px] font-medium text-muted-foreground hover:text-foreground hover:bg-card/70 transition-colors disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-muted-foreground"
         >
-          <Plus className="w-3 h-3" /> Cadastrar candidato
+          <Plus className="w-3.5 h-3.5" /> Cadastrar candidato
         </button>
       </div>
     </section>
@@ -1005,50 +1009,57 @@ export default function RhCandidatos() {
     }
   }
 
+  const storeTabs = [
+    { key: '', label: 'Todas as unidades', icon: StoreIcon },
+    ...stores.map((s) => ({ key: s.id, label: s.name })),
+  ]
+
   return (
     <AdminLayout>
-      <div className="bg-card border-b border-border sticky top-0 z-30">
-        <div className="px-4 sm:px-6 py-4 flex items-center justify-between gap-4 flex-wrap">
-          <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-foreground">Candidatos</h1>
-            <p className="text-sm text-muted-foreground mt-1">Kanban do processo seletivo por unidade</p>
-          </div>
-          {/* w-full joga a barra de ações pra uma linha própria, logo acima das
-              abas de unidade — mesma altura em que ela aparece na tela de
-              Contratação, onde o número de botões já a fazia quebrar. Sem isto
-              a posição mudava conforme a largura da tela. */}
-          <div className="w-full flex items-center gap-2 flex-wrap">
-            <Link
-              to="/admin/rh/automacoes"
-              className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border text-sm font-medium hover:bg-surface-alt transition-colors"
-              title="Automações do processo seletivo"
-            >
-              <Zap className="w-4 h-4" />
-              <span className="hidden sm:inline">Automações</span>
-            </Link>
+      <AdminPage
+        title="Candidatos"
+        description="Kanban do processo seletivo por unidade"
+        flush
+        actions={
+          <Button
+            onClick={openCreate}
+            disabled={jobOpenings.length === 0}
+            title={jobOpenings.length === 0 ? 'Cadastre uma vaga primeiro' : undefined}
+            aria-label="Cadastrar candidato"
+          >
+            <Plus />
+            <span className="hidden sm:inline">Cadastrar candidato</span>
+          </Button>
+        }
+        tabs={<PageTabs items={storeTabs} value={storeId} onChange={setStoreId} />}
+        toolbar={
+          <Toolbar>
+            <Button variant="secondary" size="sm" asChild>
+              <Link to="/admin/rh/automacoes" title="Automações do processo seletivo" aria-label="Automações">
+                <Zap />
+                <span className="hidden sm:inline">Automações</span>
+              </Link>
+            </Button>
             <Popover>
               <PopoverTrigger asChild>
-                <button
-                  className="relative flex items-center gap-2 px-3 py-2 rounded-lg border border-border text-sm font-medium hover:bg-surface-alt transition-colors"
-                  title="Filtrar candidatos"
-                >
-                  <Filter className="w-4 h-4" />
+                <Button variant="secondary" size="sm" title="Filtrar candidatos" aria-label="Filtros">
+                  <Filter />
                   <span className="hidden sm:inline">Filtros</span>
                   {activeFilterCount > 0 && (
-                    <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-gold text-[10px] font-bold text-white flex items-center justify-center">
+                    <span className="min-w-[18px] h-[18px] px-1 rounded-full bg-brand-subtle text-brand-strong text-[11px] font-medium tabular-nums inline-flex items-center justify-center">
                       {activeFilterCount}
                     </span>
                   )}
-                </button>
+                </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-72" align="end">
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-[11px] font-semibold text-muted-foreground uppercase">Filtrar por</p>
+              <PopoverContent className="w-72" align="start">
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-[13px] font-semibold text-foreground">Filtrar por</p>
                   {activeFilterCount > 0 && (
                     <button
                       type="button"
                       onClick={() => { setFilterRoleTitle(''); setFilterTagId(''); setFilterDueDate(''); setFilterAssigneeId('') }}
-                      className="text-[11px] font-medium text-accent hover:underline"
+                      className="text-[12px] font-medium text-muted-foreground hover:text-foreground hover:underline"
                     >
                       Limpar filtros
                     </button>
@@ -1056,7 +1067,7 @@ export default function RhCandidatos() {
                 </div>
                 <div className="space-y-3">
                   <div>
-                    <label className="block text-[11px] text-muted-foreground mb-1">Cargo / Vaga</label>
+                    <label className="block text-[12px] font-medium text-muted-foreground mb-1">Cargo / vaga</label>
                     <ColorSelect
                       variant="pill"
                       value={filterRoleTitle}
@@ -1067,7 +1078,7 @@ export default function RhCandidatos() {
                     />
                   </div>
                   <div>
-                    <label className="block text-[11px] text-muted-foreground mb-1">Tag</label>
+                    <label className="block text-[12px] font-medium text-muted-foreground mb-1">Tag</label>
                     <ColorSelect
                       variant="pill"
                       value={filterTagId}
@@ -1078,7 +1089,7 @@ export default function RhCandidatos() {
                     />
                   </div>
                   <div>
-                    <label className="block text-[11px] text-muted-foreground mb-1">Data fim</label>
+                    <label className="block text-[12px] font-medium text-muted-foreground mb-1">Data fim</label>
                     <StyledSelect
                       value={filterDueDate}
                       onChange={(v) => setFilterDueDate(v as typeof filterDueDate)}
@@ -1093,7 +1104,7 @@ export default function RhCandidatos() {
                     />
                   </div>
                   <div>
-                    <label className="block text-[11px] text-muted-foreground mb-1">Responsável</label>
+                    <label className="block text-[12px] font-medium text-muted-foreground mb-1">Responsável</label>
                     <StyledSelect
                       value={filterAssigneeId}
                       onChange={setFilterAssigneeId}
@@ -1107,31 +1118,28 @@ export default function RhCandidatos() {
             </Popover>
             <Popover>
               <PopoverTrigger asChild>
-                <button
-                  className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border text-sm font-medium hover:bg-surface-alt transition-colors"
-                  title="Personalizar campos exibidos no card"
-                >
-                  <SlidersHorizontal className="w-4 h-4" />
+                <Button variant="secondary" size="sm" title="Personalizar campos exibidos no card" aria-label="Personalizar cartão">
+                  <SlidersHorizontal />
                   <span className="hidden sm:inline">Personalizar cartão</span>
-                </button>
+                </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-72" align="end">
-                <p className="text-[11px] font-semibold text-muted-foreground uppercase mb-2">Elementos do card</p>
+              <PopoverContent className="w-72" align="start">
+                <p className="text-[13px] font-semibold text-foreground mb-2.5">Elementos do card</p>
                 <div className="space-y-2.5 mb-4">
                   {CARD_PREF_LABELS.map(([key, label]) => (
                     <label key={key} className="flex items-center justify-between gap-3 cursor-pointer">
-                      <span className="text-sm text-foreground">{label}</span>
+                      <span className="text-[13px] text-foreground">{label}</span>
                       <Switch checked={cardPrefs[key]} onCheckedChange={(v) => updateCardPref(key, v)} />
                     </label>
                   ))}
                 </div>
                 {formFields.length > 0 && (
                   <>
-                    <p className="text-[11px] font-semibold text-muted-foreground uppercase mb-2">Campos do formulário</p>
+                    <p className="text-[13px] font-semibold text-foreground pt-3 mb-2.5 border-t border-border">Campos do formulário</p>
                     <div className="space-y-2.5 max-h-56 overflow-y-auto">
                       {formFields.map((f) => (
                         <label key={f.id} className="flex items-center justify-between gap-3 cursor-pointer">
-                          <span className="text-sm text-foreground truncate">{f.label}</span>
+                          <span className="text-[13px] text-foreground truncate">{f.label}</span>
                           <Switch
                             checked={f.show_on_card}
                             onCheckedChange={(v) => toggleFormFieldCard.mutate({ id: f.id, showOnCard: v })}
@@ -1143,56 +1151,24 @@ export default function RhCandidatos() {
                 )}
               </PopoverContent>
             </Popover>
-            <button
+            <Button
+              variant="secondary"
+              size="sm"
               onClick={() => setVariablesOpen(true)}
-              className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border text-sm font-medium hover:bg-surface-alt transition-colors"
               title="Data e horários usados nas mensagens automáticas"
+              aria-label="Variáveis da mensagem"
             >
-              <Variable className="w-4 h-4" />
+              <Variable />
               <span className="hidden sm:inline">Variáveis da mensagem</span>
-            </button>
-            <button
-              onClick={openCreate}
-              disabled={jobOpenings.length === 0}
-              className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg btn-action text-sm font-medium transition-colors disabled:opacity-50"
-              title={jobOpenings.length === 0 ? 'Cadastre uma vaga primeiro' : undefined}
-            >
-              <Plus className="w-4 h-4" />
-              <span className="hidden sm:inline">Cadastrar candidato</span>
-            </button>
-          </div>
-        </div>
-        <div className="px-4 sm:px-6 flex gap-1 border-t border-border overflow-x-auto scrollbar-none">
-          <button onClick={() => setStoreId('')}
-            className={`flex items-center gap-1.5 px-3 py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
-              storeId === ''
-                ? 'border-gold text-foreground'
-                : 'border-transparent text-muted-foreground hover:text-foreground'
-            }`}>
-            <StoreIcon className="w-4 h-4" />Todas as unidades
-          </button>
-          {stores.map((s) => (
-            <button key={s.id} onClick={() => setStoreId(s.id)}
-              className={`flex items-center gap-1.5 px-3 py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
-                storeId === s.id
-                  ? 'border-gold text-foreground'
-                  : 'border-transparent text-muted-foreground hover:text-foreground'
-              }`}>
-              {s.name}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="px-4 sm:px-6 py-6">
+            </Button>
+          </Toolbar>
+        }
+      >
         {isLoading ? (
-          <div className="text-center py-16">
-            <Loader className="w-8 h-8 animate-spin text-gold-text mx-auto mb-4" />
-            <p className="text-muted-foreground">Carregando candidatos...</p>
-          </div>
+          <PageLoading label="Carregando candidatos…" />
         ) : (
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-            <div className="flex gap-3 overflow-x-auto scrollbar-thin pb-2">
+            <div className={`${PAGE_X} flex gap-3 overflow-x-auto scrollbar-thin pb-3`}>
               {STAGE_COLUMNS.map((col) => (
                 <StageColumn
                   key={col.stage}
@@ -1213,7 +1189,7 @@ export default function RhCandidatos() {
             <DragOverlay dropAnimation={null}>
               {activeCandidate ? (
                 <div
-                  className="bg-card rounded-lg border border-border/60 border-l-4 shadow-lg overflow-hidden w-56"
+                  className="bg-card rounded-lg border border-border border-l-[3px] shadow-lg overflow-hidden w-[228px]"
                   style={{ borderLeftColor: getStageColors(activeCandidate.stage).accent }}
                 >
                   <CandidatePhoto candidate={activeCandidate} />
@@ -1225,23 +1201,23 @@ export default function RhCandidatos() {
             </DragOverlay>
           </DndContext>
         )}
-      </div>
+      </AdminPage>
 
       {/* Modal: cadastro manual */}
       {createOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-foreground/40 backdrop-blur-sm" onClick={closeCreate} />
-          <div className="relative bg-card rounded-2xl shadow-2xl border border-border p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
+          <div className="absolute inset-0 bg-ink-950/45 backdrop-blur-[2px]" onClick={closeCreate} />
+          <div className="relative bg-popover rounded-xl shadow-xl border border-border p-5 w-full max-w-md max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-5">
-              <h2 className="text-xl font-bold text-foreground">Cadastrar candidato</h2>
-              <button onClick={closeCreate} className="p-1.5 rounded-lg hover:bg-surface-alt text-muted-foreground">
+              <h2 className="text-[16px] font-semibold text-foreground">Cadastrar candidato</h2>
+              <Button variant="ghost" size="icon-sm" className="shrink-0" onClick={closeCreate} aria-label="Fechar">
                 <X className="w-4 h-4" />
-              </button>
+              </Button>
             </div>
 
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-foreground mb-1">Vaga *</label>
+                <label className="field-label">Vaga *</label>
                 <ColorSelect
                   variant="pill"
                   value={createForm.job_opening_id}
@@ -1255,70 +1231,67 @@ export default function RhCandidatos() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-foreground mb-1">Nome *</label>
-                <input
+                <label className="field-label">Nome *</label>
+                <Input
                   type="text"
                   value={createForm.name}
                   onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })}
-                  className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-foreground mb-1">Idade *</label>
-                  <input
+                  <label className="field-label">Idade *</label>
+                  <Input
                     type="number"
                     min={1}
                     value={createForm.age}
                     onChange={(e) => setCreateForm({ ...createForm, age: e.target.value })}
-                    className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-foreground mb-1">WhatsApp *</label>
-                  <input
+                  <label className="field-label">WhatsApp *</label>
+                  <Input
                     type="text"
                     value={createForm.whatsapp}
                     onChange={(e) => setCreateForm({ ...createForm, whatsapp: e.target.value })}
                     placeholder="(27) 99999-9999"
-                    className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-foreground mb-1">Foto</label>
+                  <label className="field-label">Foto</label>
                   <input ref={photoInputRef} type="file" accept="image/*" className="hidden"
                     onChange={(e) => setCreatePhotoFile(e.target.files?.[0] ?? null)} />
                   <div className="flex items-center gap-1.5">
                     <button type="button" onClick={() => photoInputRef.current?.click()}
-                      className="flex-1 min-w-0 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border border-dashed border-border text-sm text-muted-foreground hover:bg-surface-alt">
+                      className="flex-1 min-w-0 h-9 flex items-center justify-center gap-1.5 px-3 rounded-md border border-dashed border-border text-[13px] text-muted-foreground hover:border-ink-300 hover:bg-surface">
                       <ImageIcon className="w-4 h-4 shrink-0" /> <span className="truncate">{createPhotoFile ? createPhotoFile.name.slice(0, 14) : 'Selecionar'}</span>
                     </button>
                     {createPhotoFile && (
                       <button type="button" title="Remover arquivo"
                         onClick={() => { setCreatePhotoFile(null); if (photoInputRef.current) photoInputRef.current.value = '' }}
-                        className="p-2 rounded-lg border border-border text-muted-foreground hover:bg-surface-alt shrink-0">
+                        className="h-9 w-9 flex items-center justify-center rounded-md border border-border text-muted-foreground hover:bg-surface shrink-0" aria-label="Remover arquivo">
                         <X className="w-4 h-4" />
                       </button>
                     )}
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-foreground mb-1">Currículo</label>
+                  <label className="field-label">Currículo</label>
                   <input ref={resumeInputRef} type="file" accept=".pdf,.doc,.docx" className="hidden"
                     onChange={(e) => setCreateResumeFile(e.target.files?.[0] ?? null)} />
                   <div className="flex items-center gap-1.5">
                     <button type="button" onClick={() => resumeInputRef.current?.click()}
-                      className="flex-1 min-w-0 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border border-dashed border-border text-sm text-muted-foreground hover:bg-surface-alt">
+                      className="flex-1 min-w-0 h-9 flex items-center justify-center gap-1.5 px-3 rounded-md border border-dashed border-border text-[13px] text-muted-foreground hover:border-ink-300 hover:bg-surface">
                       <FileText className="w-4 h-4 shrink-0" /> <span className="truncate">{createResumeFile ? createResumeFile.name.slice(0, 14) : 'Selecionar'}</span>
                     </button>
                     {createResumeFile && (
                       <button type="button" title="Remover arquivo"
                         onClick={() => { setCreateResumeFile(null); if (resumeInputRef.current) resumeInputRef.current.value = '' }}
-                        className="p-2 rounded-lg border border-border text-muted-foreground hover:bg-surface-alt shrink-0">
+                        className="h-9 w-9 flex items-center justify-center rounded-md border border-border text-muted-foreground hover:bg-surface shrink-0" aria-label="Remover arquivo">
                         <X className="w-4 h-4" />
                       </button>
                     )}
@@ -1327,17 +1300,16 @@ export default function RhCandidatos() {
               </div>
             </div>
 
-            <div className="flex gap-3 mt-6">
-              <button
+            <div className="flex flex-row-reverse justify-start gap-2 mt-6">
+              <Button
                 onClick={handleCreateSave}
                 disabled={createCandidate.isPending || uploadingPhoto || uploadingResume}
-                className="flex-1 px-4 py-2.5 rounded-lg btn-action font-medium disabled:opacity-70 transition-colors"
               >
-                {createCandidate.isPending || uploadingPhoto || uploadingResume ? 'Salvando...' : 'Cadastrar'}
-              </button>
-              <button onClick={closeCreate} className="flex-1 px-4 py-2.5 rounded-lg border border-border bg-card text-foreground font-medium hover:bg-accent">
+                {createCandidate.isPending || uploadingPhoto || uploadingResume ? 'Salvando…' : 'Cadastrar'}
+              </Button>
+              <Button variant="secondary" onClick={closeCreate}>
                 Cancelar
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -1346,11 +1318,11 @@ export default function RhCandidatos() {
       {/* Modal: detalhe do candidato */}
       {detailCandidate && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-foreground/40 backdrop-blur-sm" onClick={closeDetail} />
-          <div className="relative bg-card rounded-2xl shadow-2xl border border-border p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-5">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-full overflow-hidden shrink-0 bg-surface-alt border border-border flex items-center justify-center">
+          <div className="absolute inset-0 bg-ink-950/45 backdrop-blur-[2px]" onClick={closeDetail} />
+          <div className="relative bg-popover rounded-xl shadow-xl border border-border p-5 w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between gap-3 mb-5">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-12 h-12 rounded-full overflow-hidden shrink-0 bg-muted border border-border flex items-center justify-center">
                   {detailCandidate.photo_url ? (
                     <img src={detailCandidate.photo_url} alt="" className="w-full h-full object-cover" />
                   ) : (
@@ -1358,35 +1330,35 @@ export default function RhCandidatos() {
                   )}
                 </div>
                 <div className="min-w-0">
-                  <h2 className="text-lg font-bold text-foreground truncate">{detailCandidate.name}</h2>
-                  <p className="text-xs text-muted-foreground truncate">{detailCandidate.job_openings?.role_title}</p>
+                  <h2 className="text-[16px] font-semibold text-foreground truncate">{detailCandidate.name}</h2>
+                  <p className="text-[12.5px] text-muted-foreground truncate">{detailCandidate.job_openings?.role_title}</p>
                 </div>
               </div>
               <div className="flex items-center gap-1.5 shrink-0">
                 {!promotedIds.has(detailCandidate.id) && (
-                  <button
-                    type="button"
+                  <Button
+                    variant="secondary"
+                    size="sm"
                     onClick={() => {
                       setPromoteCandidate(detailCandidate)
                       setPromoteEmploymentType('clt')
                       setPromoteFormacaoData(EMPTY_FORMACAO_DATA)
                     }}
                     title="Contratar candidato"
-                    className="px-2.5 py-1.5 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-medium transition-colors"
                   >
                     Contratar
-                  </button>
+                  </Button>
                 )}
-                <button onClick={closeDetail} className="p-1.5 rounded-lg hover:bg-surface-alt text-muted-foreground">
+                <Button variant="ghost" size="icon-sm" className="shrink-0" onClick={closeDetail} aria-label="Fechar">
                   <X className="w-4 h-4" />
-                </button>
+                </Button>
               </div>
             </div>
 
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-3 text-sm">
+              <div className="grid grid-cols-2 gap-3 text-[13px]">
                 <div>
-                  <p className="text-[11px] font-semibold text-muted-foreground uppercase">Idade</p>
+                  <p className="text-[12px] font-medium text-muted-foreground">Idade</p>
                   <p className="text-foreground">
                     {(() => {
                       const age = detailCandidate.age ?? getAnswerValue(detailCandidate, 'idade')
@@ -1395,7 +1367,7 @@ export default function RhCandidatos() {
                   </p>
                 </div>
                 <div>
-                  <p className="text-[11px] font-semibold text-muted-foreground uppercase">WhatsApp</p>
+                  <p className="text-[12px] font-medium text-muted-foreground">WhatsApp</p>
                   <button
                     type="button"
                     onClick={() => {
@@ -1411,7 +1383,7 @@ export default function RhCandidatos() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-foreground mb-1">Etapa</label>
+                <label className="field-label">Etapa</label>
                 <ColorSelect
                   variant="dot"
                   value={detailCandidate.stage}
@@ -1424,11 +1396,11 @@ export default function RhCandidatos() {
                   }}
                   options={STAGE_SELECT_OPTIONS}
                 />
-                <p className="text-[11px] text-muted-foreground mt-1">Alternativa ao arrastar no kanban — útil no mobile.</p>
+                <p className="text-[12px] text-muted-foreground mt-1">Alternativa ao arrastar no kanban — útil no mobile.</p>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-foreground mb-1">Vaga</label>
+                <label className="field-label">Vaga</label>
                 <ColorSelect
                   variant="pill"
                   value={jobOpeningDraft}
@@ -1443,7 +1415,7 @@ export default function RhCandidatos() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <p className="text-sm font-medium text-foreground mb-1">Foto</p>
+                  <p className="field-label">Foto</p>
                   <input ref={detailPhotoInputRef} type="file" accept="image/*" className="hidden"
                     onChange={(e) => { const f = e.target.files?.[0]; if (f) handleDetailPhotoChange(f) }} />
                   {detailCandidate.photo_url ? (
@@ -1454,13 +1426,13 @@ export default function RhCandidatos() {
                     />
                   ) : (
                     <button type="button" onClick={() => detailPhotoInputRef.current?.click()} disabled={uploadingPhoto}
-                      className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border border-dashed border-border text-sm text-muted-foreground hover:bg-surface-alt disabled:opacity-60">
-                      <ImageIcon className="w-4 h-4" /> {uploadingPhoto ? 'Enviando...' : 'Adicionar foto'}
+                      className="w-full h-9 flex items-center justify-center gap-1.5 px-3 rounded-md border border-dashed border-border text-[13px] text-muted-foreground hover:border-ink-300 hover:bg-surface disabled:opacity-60">
+                      <ImageIcon className="w-4 h-4" /> {uploadingPhoto ? 'Enviando…' : 'Adicionar foto'}
                     </button>
                   )}
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-foreground mb-1">Currículo</p>
+                  <p className="field-label">Currículo</p>
                   <input ref={detailResumeInputRef} type="file" accept=".pdf,.doc,.docx" className="hidden"
                     onChange={(e) => { const f = e.target.files?.[0]; if (f) handleDetailResumeChange(f) }} />
                   {detailCandidate.resume_url ? (
@@ -1471,8 +1443,8 @@ export default function RhCandidatos() {
                     />
                   ) : (
                     <button type="button" onClick={() => detailResumeInputRef.current?.click()} disabled={uploadingResume}
-                      className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border border-dashed border-border text-sm text-muted-foreground hover:bg-surface-alt disabled:opacity-60">
-                      <FileText className="w-4 h-4" /> {uploadingResume ? 'Enviando...' : 'Adicionar currículo'}
+                      className="w-full h-9 flex items-center justify-center gap-1.5 px-3 rounded-md border border-dashed border-border text-[13px] text-muted-foreground hover:border-ink-300 hover:bg-surface disabled:opacity-60">
+                      <FileText className="w-4 h-4" /> {uploadingResume ? 'Enviando…' : 'Adicionar currículo'}
                     </button>
                   )}
                 </div>
@@ -1480,8 +1452,8 @@ export default function RhCandidatos() {
 
               {detailCandidate.candidate_answers.length > 0 && (
                 <div>
-                  <p className="text-sm font-medium text-foreground mb-1.5">Respostas do formulário</p>
-                  <div className="space-y-1.5 text-sm bg-surface-alt rounded-lg p-3">
+                  <p className="field-label">Respostas do formulário</p>
+                  <div className="space-y-1.5 text-[13px] bg-surface border border-border rounded-lg p-3">
                     {detailCandidate.candidate_answers.map((a) => {
                       const fieldType = a.form_fields?.field_type
                       const isUpload = fieldType === 'upload_imagem' || fieldType === 'upload_arquivo' || fieldType === 'upload_imagens'
@@ -1528,7 +1500,7 @@ export default function RhCandidatos() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-foreground mb-1">Data início</label>
+                  <label className="field-label">Data início</label>
                   <DateField
                     value={startDateDraft || null}
                     onChange={(v) => setStartDateDraft(v ?? '')}
@@ -1536,7 +1508,7 @@ export default function RhCandidatos() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-foreground mb-1">Data fim</label>
+                  <label className="field-label">Data fim</label>
                   <DateField
                     value={dueDateDraft || null}
                     onChange={(v) => setDueDateDraft(v ?? '')}
@@ -1544,7 +1516,7 @@ export default function RhCandidatos() {
                   />
                 </div>
                 <div className="col-span-2">
-                  <label className="block text-sm font-medium text-foreground mb-1">Responsável</label>
+                  <label className="field-label">Responsável</label>
                   <StyledSelect
                     value={assigneeDraft}
                     onChange={setAssigneeDraft}
@@ -1557,7 +1529,7 @@ export default function RhCandidatos() {
 
               {rhTags.length > 0 && (
                 <div>
-                  <label className="block text-sm font-medium text-foreground mb-1.5">Tags</label>
+                  <label className="field-label">Tags</label>
                   <div className="flex flex-wrap gap-2">
                     {rhTags.map((t) => {
                       const checked = detailCandidate.candidate_tags.some((ct) => ct.tags?.id === t.id)
@@ -1566,10 +1538,10 @@ export default function RhCandidatos() {
                           key={t.id}
                           type="button"
                           onClick={() => toggleTag.mutate({ candidateId: detailCandidate.id, tagId: t.id, checked: !checked })}
-                          className="text-xs font-semibold px-2.5 py-1 rounded-full border transition-colors"
+                          className="text-[12px] font-medium px-2.5 py-1 rounded-full border transition-colors"
                           style={checked
                             ? { backgroundColor: `${t.color}22`, color: t.color, borderColor: t.color }
-                            : { borderColor: 'var(--border)', color: 'var(--muted-foreground)' }}
+                            : { borderColor: 'hsl(var(--border))', color: 'hsl(var(--muted-foreground))' }}
                         >
                           {t.name}
                         </button>
@@ -1582,20 +1554,20 @@ export default function RhCandidatos() {
               <ConversaWhatsapp candidateId={detailCandidate.id} />
 
               <div>
-                <label className="block text-sm font-medium text-foreground mb-1.5">Atividade</label>
-                <div className="space-y-1.5 bg-surface-alt rounded-lg p-3">
+                <label className="field-label">Atividade</label>
+                <div className="space-y-1.5 bg-surface border border-border rounded-lg p-3">
                   {activity.length === 0 ? (
-                    <p className="text-xs text-muted-foreground">Sem atividade registrada.</p>
+                    <p className="text-[12.5px] text-muted-foreground">Sem atividade registrada.</p>
                   ) : (
                     <>
                       <div className={showAllActivity ? 'space-y-1.5 max-h-48 overflow-y-auto' : 'space-y-1.5'}>
                         {(showAllActivity ? activity : activity.slice(0, 3)).map((row) => (
-                          <div key={row.id} className="flex items-start justify-between gap-3 text-xs">
+                          <div key={row.id} className="flex items-start justify-between gap-3 text-[12.5px]">
                             <span className="text-foreground">
                               {describeActivity(row)}
-                              {row.automation_id && <span className="ml-1.5 text-[10px] font-semibold px-1 py-0.5 rounded bg-violet-100 text-violet-700 dark:bg-violet-500/20 dark:text-violet-300">automação</span>}
+                              {row.automation_id && <span className="ml-1.5 text-[11px] font-medium px-1.5 py-0.5 rounded-sm bg-violet-100 text-violet-700 dark:bg-violet-500/20 dark:text-violet-300">automação</span>}
                             </span>
-                            <span className="text-muted-foreground shrink-0">{new Date(row.changed_at).toLocaleString('pt-BR')}</span>
+                            <span className="text-muted-foreground tabular-nums shrink-0">{new Date(row.changed_at).toLocaleString('pt-BR')}</span>
                           </div>
                         ))}
                       </div>
@@ -1603,7 +1575,7 @@ export default function RhCandidatos() {
                         <button
                           type="button"
                           onClick={() => setShowAllActivity(true)}
-                          className="text-xs font-semibold text-primary hover:underline"
+                          className="text-[12.5px] font-medium text-brand-strong hover:underline"
                         >
                           Ver mais
                         </button>
@@ -1614,29 +1586,30 @@ export default function RhCandidatos() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-foreground mb-1">Observações</label>
-                <textarea
+                <label className="field-label">Observações</label>
+                <Textarea
                   value={notesDraft}
                   onChange={(e) => setNotesDraft(e.target.value)}
                   rows={4}
-                  className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none"
-                  placeholder="Anotações sobre a entrevista, observações gerais..."
+                  className="resize-none"
+                  placeholder="Anotações sobre a entrevista, observações gerais…"
                 />
               </div>
 
               {(() => {
                 const hasDraftChanges = hasDetailDraftChanges(detailCandidate)
                 return (
-                  <button
+                  <div className="flex justify-end pt-4 border-t border-border">
+                  <Button
                     onClick={() => saveCandidateChanges.mutate({
                       id: detailCandidate.id,
                       patch: detailDraftPatch(),
                     })}
                     disabled={saveCandidateChanges.isPending || !hasDraftChanges}
-                    className="w-full px-4 py-2.5 rounded-lg btn-action text-sm font-medium disabled:opacity-50"
                   >
-                    {saveCandidateChanges.isPending ? 'Salvando...' : 'Salvar Alterações'}
-                  </button>
+                    {saveCandidateChanges.isPending ? 'Salvando…' : 'Salvar alterações'}
+                  </Button>
+                  </div>
                 )
               })()}
             </div>
@@ -1653,13 +1626,13 @@ export default function RhCandidatos() {
           garante que este empilha por cima mesmo com o mesmo z-index. */}
       {promoteCandidate && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-foreground/40 backdrop-blur-sm" onClick={() => setPromoteCandidate(null)} />
-          <div className="relative bg-card rounded-2xl shadow-2xl border border-border p-6 w-full max-w-sm max-h-[90vh] overflow-y-auto">
-            <h2 className="text-lg font-bold text-foreground mb-1">Contratar {promoteCandidate.name}</h2>
-            <p className="text-xs text-muted-foreground mb-4">
+          <div className="absolute inset-0 bg-ink-950/45 backdrop-blur-[2px]" onClick={() => setPromoteCandidate(null)} />
+          <div className="relative bg-popover rounded-xl shadow-xl border border-border p-5 w-full max-w-sm max-h-[90vh] overflow-y-auto">
+            <h2 className="text-[16px] font-semibold text-foreground mb-1">Contratar {promoteCandidate.name}</h2>
+            <p className="text-[13px] text-muted-foreground mb-4">
               Selecione o tipo de vínculo — o candidato passa a ser gerenciado no módulo Departamento Pessoal, mantendo o histórico de recrutamento.
             </p>
-            <label className="block text-sm font-medium text-foreground mb-1">Tipo de vínculo *</label>
+            <label className="field-label">Tipo de vínculo *</label>
             <StyledSelect
               value={promoteEmploymentType}
               onChange={(v) => setPromoteEmploymentType(v as EmploymentType)}
@@ -1672,15 +1645,15 @@ export default function RhCandidatos() {
                 processo nasce em 'formacao' e o contrato do curso é gerado na
                 hora — mas só se estes campos vierem juntos. */}
             {promoteFormacaoTrack && (
-              <div className="mb-5 rounded-xl border border-border bg-surface-alt p-3 space-y-3">
+              <div className="mb-5 rounded-lg border border-border bg-surface p-3 space-y-3">
                 <div>
-                  <p className="text-sm font-semibold text-foreground">Dados para o contrato de formação</p>
-                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                  <p className="text-[14px] font-semibold text-foreground">Dados para o contrato de formação</p>
+                  <p className="text-[12px] text-muted-foreground mt-0.5">
                     Este cargo passa pela trilha de formação. O contrato do curso é gerado automaticamente ao confirmar.
                   </p>
                 </div>
                 <div>
-                  <label className="block text-[11px] text-muted-foreground mb-1">
+                  <label className="block text-[12px] font-medium text-muted-foreground mb-1">
                     Início do contrato <span className="text-danger">*</span>
                   </label>
                   <DateField
@@ -1688,7 +1661,7 @@ export default function RhCandidatos() {
                     onChange={(v) => setPromoteFormacaoData({ ...promoteFormacaoData, contract_start_date: v ?? '' })}
                     placeholder="Selecionar"
                   />
-                  <p className="text-[10px] text-muted-foreground mt-1">
+                  <p className="text-[12px] text-muted-foreground mt-1">
                     {promoteFormacaoData.contract_start_date ? (
                       <>
                         Fim da vigência:{' '}
@@ -1706,20 +1679,19 @@ export default function RhCandidatos() {
                   </p>
                 </div>
                 <div>
-                  <label className="block text-[11px] text-muted-foreground mb-1">
+                  <label className="block text-[12px] font-medium text-muted-foreground mb-1">
                     CPF <span className="text-danger">*</span>
                   </label>
-                  <input
+                  <Input
                     type="text"
                     inputMode="numeric"
                     value={promoteFormacaoData.cpf}
                     onChange={(e) => setPromoteFormacaoData({ ...promoteFormacaoData, cpf: e.target.value.replace(/\D/g, '').slice(0, 11) })}
                     placeholder="Somente números"
-                    className="w-full px-2.5 py-1.5 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                   />
                 </div>
                 <div>
-                  <label className="block text-[11px] text-muted-foreground mb-1">
+                  <label className="block text-[12px] font-medium text-muted-foreground mb-1">
                     Data de nascimento <span className="text-danger">*</span>
                   </label>
                   {/* Faixa de um século: nascimento estoura o padrão de ±10 anos
@@ -1734,31 +1706,29 @@ export default function RhCandidatos() {
                   />
                 </div>
                 <div>
-                  <label className="block text-[11px] text-muted-foreground mb-1">
+                  <label className="block text-[12px] font-medium text-muted-foreground mb-1">
                     Endereço completo <span className="text-danger">*</span>
                   </label>
-                  <input
+                  <Input
                     type="text"
                     value={promoteFormacaoData.address}
                     onChange={(e) => setPromoteFormacaoData({ ...promoteFormacaoData, address: e.target.value })}
                     placeholder="Rua, número, bairro, cidade"
-                    className="w-full px-2.5 py-1.5 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                   />
                 </div>
                 <div>
-                  <label className="block text-[11px] text-muted-foreground mb-1">E-mail</label>
-                  <input
+                  <label className="block text-[12px] font-medium text-muted-foreground mb-1">E-mail</label>
+                  <Input
                     type="email"
                     value={promoteFormacaoData.email}
                     onChange={(e) => setPromoteFormacaoData({ ...promoteFormacaoData, email: e.target.value })}
-                    className="w-full px-2.5 py-1.5 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                   />
                 </div>
               </div>
             )}
 
-            <div className="flex gap-3">
-              <button
+            <div className="flex flex-row-reverse justify-start gap-2">
+              <Button
                 onClick={() => promoteToDp.mutate({
                   id: promoteCandidate.id,
                   employmentType: promoteEmploymentType,
@@ -1771,15 +1741,14 @@ export default function RhCandidatos() {
                 })}
                 disabled={promoteToDp.isPending || promoteFormacaoIncomplete}
                 title={promoteFormacaoIncomplete ? 'Preencha início do contrato, CPF, data de nascimento e endereço' : undefined}
-                className="flex-1 px-4 py-2.5 rounded-lg btn-action font-medium disabled:opacity-70 transition-colors"
               >
                 {promoteToDp.isPending
-                  ? (promoteFormacaoTrack ? 'Gerando contrato...' : 'Contratando...')
+                  ? (promoteFormacaoTrack ? 'Gerando contrato…' : 'Contratando…')
                   : 'Confirmar'}
-              </button>
-              <button onClick={() => setPromoteCandidate(null)} className="flex-1 px-4 py-2.5 rounded-lg border border-border bg-card text-foreground font-medium hover:bg-accent">
+              </Button>
+              <Button variant="secondary" onClick={() => setPromoteCandidate(null)}>
                 Cancelar
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -1805,9 +1774,9 @@ export default function RhCandidatos() {
           kanban parece travado quando a RPC demora. */}
       {checkingPreview && (
         <div className="fixed inset-0 z-40 flex items-center justify-center bg-foreground/10 backdrop-blur-[1px]">
-          <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-card border border-border shadow-lg">
-            <Loader className="w-4 h-4 animate-spin text-gold-text" />
-            <span className="text-sm text-foreground">Checando automações...</span>
+          <div className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-popover border border-border shadow-lg">
+            <Loader className="w-4 h-4 animate-spin text-muted-foreground" />
+            <span className="text-[13px] text-foreground">Checando automações…</span>
           </div>
         </div>
       )}

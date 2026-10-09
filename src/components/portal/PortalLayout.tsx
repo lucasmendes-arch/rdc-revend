@@ -6,6 +6,7 @@ import { useCart } from '@/contexts/CartContext'
 import { supabase } from '@/lib/supabase'
 import logo from '@/assets/logo-rei-dos-cachos.png'
 import CartDrawer from '@/components/CartDrawer'
+import { Button } from '@/components/ui/button'
 
 type NavItem = { label: string; path: string; icon: React.ElementType }
 
@@ -91,7 +92,7 @@ function SidebarContent({ profile, onNavClick }: { profile: { name?: string }; o
           </div>
           <div className="min-w-0">
             <p className="text-[13px] font-medium text-foreground truncate leading-tight">{displayName}</p>
-            <p className="text-[11px] text-muted-foreground truncate mt-0.5">{user?.email}</p>
+            <p className="text-[12px] text-muted-foreground truncate mt-0.5">{user?.email}</p>
           </div>
         </div>
         <a
@@ -132,26 +133,29 @@ export default function PortalLayout({ children, profile = {} }: PortalLayoutPro
           <img src={logo} alt="Rei dos Cachos" className="h-8 w-auto" />
         </Link>
         <div className="flex items-center gap-0.5">
-          <button
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={() => setCartOpen(true)}
-            aria-label="Ver carrinho"
-            className="relative h-9 w-9 flex items-center justify-center rounded-md text-ink-600 hover:bg-muted hover:text-foreground transition-colors"
+            aria-label={cartCount > 0 ? `Ver carrinho (${cartCount} itens)` : 'Ver carrinho'}
+            className="relative"
           >
-            <ShoppingCart className="w-[18px] h-[18px]" />
+            <ShoppingCart className="!size-[18px]" />
             {cartCount > 0 && (
-              <span className="absolute top-1 right-0.5 min-w-[16px] h-4 px-1 rounded-full bg-primary text-primary-foreground text-[9px] font-semibold flex items-center justify-center leading-none numeric">
+              <span className="absolute top-1 right-0.5 min-w-[16px] h-4 px-1 rounded-full bg-primary text-primary-foreground text-[10px] font-semibold flex items-center justify-center leading-none numeric">
                 {cartCount > 9 ? '9+' : cartCount}
               </span>
             )}
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={() => setMobileOpen(!mobileOpen)}
             aria-label="Menu de navegação"
             aria-expanded={mobileOpen}
-            className="h-9 w-9 flex items-center justify-center rounded-md text-ink-600 hover:bg-muted hover:text-foreground transition-colors"
           >
-            {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-          </button>
+            {mobileOpen ? <X className="!size-5" /> : <Menu className="!size-5" />}
+          </Button>
         </div>
       </header>
 

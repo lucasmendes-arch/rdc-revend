@@ -6,6 +6,9 @@ import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 import { useMyStore } from '@/hooks/useMyStore'
 import EstoqueLayout from '@/components/estoque/EstoqueLayout'
+import { AdminPage, PageLoading } from '@/components/admin/ui/AdminPage'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { naturalCompare } from '@/lib/naturalSort'
 
 interface RequestItem {
@@ -28,9 +31,9 @@ interface ReplenishmentRequest {
 }
 
 const COLUMNS = [
-  { status: 'open' as const, label: 'Aberto', dot: 'bg-warning-solid', header: 'text-warning' },
-  { status: 'picking' as const, label: 'Em separação', dot: 'bg-info-solid', header: 'text-info' },
-  { status: 'shipped' as const, label: 'Enviado', dot: 'bg-success-solid', header: 'text-success' },
+  { status: 'open' as const, label: 'Aberto', dot: 'bg-warning-solid' },
+  { status: 'picking' as const, label: 'Em separação', dot: 'bg-info-solid' },
+  { status: 'shipped' as const, label: 'Enviado', dot: 'bg-success-solid' },
 ]
 
 function RequestCard({
@@ -115,46 +118,48 @@ function RequestCard({
     <div
       id={`pedido-${request.id}`}
       onClick={() => isShipped && setExpanded((v) => !v)}
-      className={`bg-card rounded-2xl border shadow-card p-4 space-y-3 scroll-mt-24 transition-shadow ${
-        highlighted ? 'border-foreground ring-2 ring-ink-300' : 'border-border'
-      } ${isShipped ? 'cursor-pointer' : ''}`}
+      className={`bg-card rounded-lg border shadow-xs p-4 space-y-3 scroll-mt-24 transition-colors ${
+        highlighted ? 'border-brand ring-1 ring-brand/40' : 'border-border'
+      } ${isShipped ? 'cursor-pointer hover:border-ink-300' : ''}`}
     >
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0">
-          <Store className="w-4 h-4 text-muted-foreground shrink-0" />
-          <p className="text-base font-bold text-foreground truncate">{request.stores?.name || 'Loja'}</p>
+          <Store className="w-4 h-4 text-ink-400 shrink-0" />
+          <p className="text-[14px] font-semibold text-foreground truncate">{request.stores?.name || 'Loja'}</p>
           {isShipped && (
-            expanded ? <ChevronUp className="w-3.5 h-3.5 text-muted-foreground shrink-0" /> : <ChevronDown className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+            expanded ? <ChevronUp className="w-3.5 h-3.5 text-ink-400 shrink-0" /> : <ChevronDown className="w-3.5 h-3.5 text-ink-400 shrink-0" />
           )}
         </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <p className="text-xs text-muted-foreground">
+        <div className="flex items-center gap-1.5 shrink-0">
+          <p className="text-[12px] text-muted-foreground">
             {new Date(request.generated_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
           </p>
           {isShipped ? (
             <CheckCircle2 className="w-4 h-4 text-success shrink-0" />
           ) : (
-            <button
-              type="button"
+            <Button
+              variant="ghost"
+              size="icon-sm"
               onClick={handleDelete}
               disabled={isDeletePending}
-              className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground hover:text-danger hover:bg-danger-subtle transition-colors disabled:opacity-60"
+              className="hover:text-danger hover:bg-danger-subtle"
               title="Excluir pedido"
+              aria-label="Excluir pedido"
             >
-              <Trash2 className="w-4 h-4" />
-            </button>
+              <Trash2 />
+            </Button>
           )}
         </div>
       </div>
 
-      <p className="text-xs text-muted-foreground">
+      <p className="text-[12.5px] text-muted-foreground tabular-nums">
         {items.length} {items.length === 1 ? 'item' : 'itens'} ·{' '}
         {request.status === 'shipped' ? `${totalShipped} un. enviadas` : `${totalSuggested} un. sugeridas`}
         {request.status === 'shipped' && request.shipped_at && (
           <> · {new Date(request.shipped_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}</>
         )}
         {isPicking && (
-          <span className={`ml-1.5 font-bold ${pickedCount === items.length ? 'text-success' : 'text-info'}`}>
+          <span className={`ml-1.5 font-semibold ${pickedCount === items.length ? 'text-success' : 'text-info'}`}>
             · {pickedCount}/{items.length} separados
           </span>
         )}
@@ -169,7 +174,7 @@ function RequestCard({
           // lugar, sem deslocar o conteúdo nem vazar do card.
           <div
             key={item.id}
-            className={`text-sm rounded-xl border p-1.5 transition-colors ${
+            className={`text-[13.5px] rounded-md border p-1.5 transition-colors ${
               declareItemId === item.id && isPicking && !shipping
                 ? 'border-warning-border bg-warning-subtle'
                 : 'border-transparent'
@@ -181,19 +186,21 @@ function RequestCard({
               <button
                 type="button"
                 onClick={() => onTogglePicked(item.id, item.picked_at === null)}
-                className={`w-8 h-8 rounded-lg border flex items-center justify-center shrink-0 transition-colors ${
+                className={`w-10 h-10 rounded-md border flex items-center justify-center shrink-0 transition-colors ${
                   item.picked_at ? 'bg-success-solid border-success-solid text-white' : 'bg-card border-border text-transparent hover:border-success-border'
                 }`}
                 title={item.picked_at ? 'Desmarcar separação' : 'Marcar como separado'}
+                aria-label={item.picked_at ? 'Desmarcar separação' : 'Marcar como separado'}
+                aria-pressed={!!item.picked_at}
               >
                 <Check className="w-[18px] h-[18px]" />
               </button>
             )}
-            <div className="w-11 h-11 rounded-lg overflow-hidden shrink-0 bg-card border border-border">
+            <div className="w-11 h-11 rounded-md overflow-hidden shrink-0 bg-card border border-border">
               {item.catalog_products?.main_image ? (
                 <img src={item.catalog_products.main_image} alt="" className="w-full h-full object-contain" />
               ) : (
-                <div className="w-full h-full flex items-center justify-center text-muted-foreground bg-surface-alt"><Package className="w-4 h-4" /></div>
+                <div className="w-full h-full flex items-center justify-center text-ink-400 bg-muted"><Package className="w-4 h-4" /></div>
               )}
             </div>
             <button
@@ -204,18 +211,18 @@ function RequestCard({
                 setDeclareItemId(item.id)
                 setDeclareQty(String(item.shipped_quantity ?? item.suggested_quantity))
               }}
-              className={`flex-1 min-w-0 text-left leading-snug line-clamp-2 ${isPicking && item.picked_at ? 'text-muted-foreground line-through' : 'text-foreground'}`}
+              className={`flex-1 min-w-0 min-h-[40px] text-left leading-snug line-clamp-2 ${isPicking && item.picked_at ? 'text-muted-foreground line-through' : 'text-foreground'}`}
               title={isPicking && !shipping ? 'Toque para declarar falta ou quantidade parcial' : undefined}
             >
               {item.catalog_products?.name || 'Produto removido'}
             </button>
             {isPicking && !shipping && item.shipped_quantity !== null && (
               item.shipped_quantity === 0 ? (
-                <span className="text-[10px] font-bold px-2 py-1 rounded-md bg-danger-subtle text-danger uppercase shrink-0">Em falta</span>
+                <Badge variant="danger" className="shrink-0">Em falta</Badge>
               ) : item.shipped_quantity < item.suggested_quantity ? (
-                <span className="text-[10px] font-bold px-2 py-1 rounded-md bg-warning-subtle text-warning shrink-0">
+                <Badge variant="warning" className="shrink-0 tabular-nums">
                   {item.shipped_quantity} de {item.suggested_quantity}
-                </span>
+                </Badge>
               ) : null
             )}
             {shipping ? (
@@ -223,12 +230,13 @@ function RequestCard({
                 type="number"
                 inputMode="numeric"
                 min={0}
+                aria-label={`Quantidade enviada de ${item.catalog_products?.name || 'produto'}`}
                 value={shipQty[item.id] ?? ''}
                 onChange={(e) => setShipQty((prev) => ({ ...prev, [item.id]: e.target.value }))}
-                className="w-16 h-9 rounded-lg border border-input text-center text-sm font-semibold bg-card focus:outline-none focus:ring-2 focus:ring-ring shrink-0"
+                className="w-16 h-10 rounded-md border border-input text-center text-base font-semibold tabular-nums bg-card text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring shrink-0"
               />
             ) : (
-              <span className="text-base font-bold shrink-0 tabular-nums">
+              <span className="font-title text-[17px] font-semibold shrink-0 tabular-nums">
                 {request.status === 'shipped' ? (item.shipped_quantity ?? item.suggested_quantity) : item.suggested_quantity}
               </span>
             )}
@@ -236,7 +244,7 @@ function RequestCard({
 
           {declareItemId === item.id && isPicking && !shipping && (
             <div className="mt-2 pt-2 border-t border-warning-border space-y-1.5">
-              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
+              <p className="text-[12px] font-medium text-muted-foreground">
                 Separação parcial — sugerido: {item.suggested_quantity}
               </p>
               <div className="flex items-center gap-1.5 flex-wrap">
@@ -245,12 +253,14 @@ function RequestCard({
                   inputMode="numeric"
                   min={0}
                   max={item.suggested_quantity}
+                  aria-label="Quantidade separada"
                   value={declareQty}
                   onChange={(e) => setDeclareQty(e.target.value)}
-                  className="w-16 h-8 rounded-lg border border-input text-center font-semibold bg-card focus:outline-none focus:ring-2 focus:ring-ring"
+                  className="w-16 h-10 rounded-md border border-input text-center text-base font-semibold tabular-nums bg-card text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 />
-                <button
-                  type="button"
+                <Button
+                  size="lg"
+                  className="px-3"
                   onClick={() => {
                     const parsed = parseInt(declareQty)
                     if (Number.isNaN(parsed) || parsed < 0 || parsed > item.suggested_quantity) {
@@ -260,33 +270,30 @@ function RequestCard({
                     onDeclareQty(item.id, parsed)
                     setDeclareItemId(null)
                   }}
-                  className="px-2.5 h-8 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground text-[11px] font-bold transition-colors"
                 >
                   Declarar
-                </button>
-                <button
-                  type="button"
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="lg"
+                  className="px-3 text-danger border-danger-border hover:bg-danger-subtle"
                   onClick={() => { onDeclareQty(item.id, 0); setDeclareItemId(null) }}
-                  className="px-2.5 h-8 rounded-lg bg-danger-subtle border border-danger-border text-danger hover:bg-danger-subtle text-[11px] font-bold transition-colors"
                 >
                   Em falta
-                </button>
+                </Button>
                 {item.shipped_quantity !== null && (
-                  <button
-                    type="button"
+                  <Button
+                    variant="secondary"
+                    size="lg"
+                    className="px-3"
                     onClick={() => { onDeclareQty(item.id, null); setDeclareItemId(null) }}
-                    className="px-2.5 h-8 rounded-lg border border-border text-muted-foreground hover:text-foreground text-[11px] font-semibold transition-colors"
                   >
                     Limpar
-                  </button>
+                  </Button>
                 )}
-                <button
-                  type="button"
-                  onClick={() => setDeclareItemId(null)}
-                  className="px-2 h-8 text-muted-foreground hover:text-foreground text-[11px]"
-                >
+                <Button variant="ghost" size="lg" className="px-3" onClick={() => setDeclareItemId(null)}>
                   Cancelar
-                </button>
+                </Button>
               </div>
             </div>
           )}
@@ -296,42 +303,33 @@ function RequestCard({
       )}
 
       {request.status === 'open' && (
-        <button
-          onClick={() => onAdvance(request.id, 'picking')}
-          disabled={isPending}
-          className="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-semibold transition-colors disabled:opacity-60"
-        >
-          <PlayCircle className="w-4 h-4" /> Iniciar separação
-        </button>
+        <Button size="lg" onClick={() => onAdvance(request.id, 'picking')} disabled={isPending} className="w-full">
+          <PlayCircle /> Iniciar separação
+        </Button>
       )}
 
       {request.status === 'picking' && !shipping && (
-        <button
-          onClick={startShipping}
-          disabled={isPending}
-          className="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-success-solid hover:bg-success-solid/90 text-white text-sm font-semibold transition-colors disabled:opacity-60"
-        >
-          <Truck className="w-4 h-4" /> Confirmar envio
-        </button>
+        <Button size="lg" onClick={startShipping} disabled={isPending} className="w-full">
+          <Truck /> Confirmar envio
+        </Button>
       )}
 
       {request.status === 'picking' && shipping && (
         <div className="flex items-center gap-1.5">
-          <button
-            onClick={confirmShipping}
-            disabled={isPending}
-            className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-success-solid hover:bg-success-solid/90 text-white text-sm font-bold transition-colors disabled:opacity-60"
-          >
-            {isPending ? <Loader className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+          <Button size="lg" onClick={confirmShipping} disabled={isPending} className="flex-1">
+            {isPending ? <Loader className="animate-spin" /> : <Check />}
             Enviar
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="secondary"
+            size="icon"
             onClick={() => setShipping(false)}
-            className="px-3 py-2 rounded-xl border border-border text-xs font-semibold hover:bg-surface-alt transition-colors"
+            className="h-10 w-10"
             title="Cancelar"
+            aria-label="Cancelar envio"
           >
-            <X className="w-3.5 h-3.5" />
-          </button>
+            <X />
+          </Button>
         </div>
       )}
     </div>
@@ -479,9 +477,9 @@ export default function EstoquePedidos() {
   if (storeLoading) {
     return (
       <EstoqueLayout>
-        <div className="text-center py-16">
-          <Loader className="w-8 h-8 animate-spin text-gold-text mx-auto mb-4" />
-        </div>
+        <AdminPage title="Pedidos de reposição">
+          <PageLoading />
+        </AdminPage>
       </EstoqueLayout>
     )
   }
@@ -497,58 +495,53 @@ export default function EstoquePedidos() {
 
   return (
     <EstoqueLayout>
-      <div className="bg-card rounded-2xl border border-border shadow-card p-5">
-        <h1 className="text-lg font-bold text-foreground">Pedidos de reposição</h1>
-        <p className="text-xs text-muted-foreground mt-1">
-          Um pedido consolidado por loja, gerado automaticamente na confirmação da contagem — com todos os itens abaixo da meta.
-        </p>
-      </div>
-
-      {requestsLoading ? (
-        <div className="text-center py-16">
-          <Loader className="w-8 h-8 animate-spin text-gold-text mx-auto mb-4" />
-          <p className="text-muted-foreground">Carregando pedidos…</p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-start pb-8">
-          {COLUMNS.map((col) => {
-            const colRequests = col.status === 'shipped'
-              ? shippedRecent
-              : requests.filter((r) => r.status === col.status)
-            return (
-              <section key={col.status} className="space-y-2">
-                <div className="flex items-center gap-2 px-1">
-                  <span className={`w-2 h-2 rounded-full ${col.dot}`} />
-                  <h2 className={`text-xs font-bold uppercase tracking-wide ${col.header}`}>{col.label}</h2>
-                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-surface-alt text-muted-foreground">
-                    {colRequests.length}
-                  </span>
-                </div>
-                {colRequests.length === 0 ? (
-                  <div className="rounded-2xl border border-dashed border-border p-6 text-center">
-                    <p className="text-xs text-muted-foreground">Nenhum pedido</p>
+      <AdminPage
+        title="Pedidos de reposição"
+        description="Um pedido consolidado por loja, gerado automaticamente na confirmação da contagem — com todos os itens abaixo da meta."
+      >
+        {requestsLoading ? (
+          <PageLoading label="Carregando pedidos…" />
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
+            {COLUMNS.map((col) => {
+              const colRequests = col.status === 'shipped'
+                ? shippedRecent
+                : requests.filter((r) => r.status === col.status)
+              return (
+                <section key={col.status} className="space-y-2">
+                  <div className="flex items-center gap-2 px-1 h-7">
+                    <span className={`w-2 h-2 rounded-full ${col.dot}`} aria-hidden />
+                    <h2 className="text-[13px] font-semibold text-foreground">{col.label}</h2>
+                    <span className="min-w-[18px] h-[18px] px-1 rounded-full text-[11px] font-medium tabular-nums inline-flex items-center justify-center bg-muted text-ink-500">
+                      {colRequests.length}
+                    </span>
                   </div>
-                ) : (
-                  colRequests.map((request) => (
-                    <RequestCard
-                      key={request.id}
-                      request={request}
-                      categoryOrderByName={categoryOrderByName}
-                      onAdvance={(requestId, newStatus, shippedItems) => updateStatus.mutate({ requestId, newStatus, shippedItems })}
-                      onTogglePicked={(itemId, picked) => togglePicked.mutate({ itemId, picked })}
-                      onDeclareQty={(itemId, qty) => declareQty.mutate({ itemId, qty })}
-                      onDelete={(requestId) => deleteRequest.mutate(requestId)}
-                      isPending={updateStatus.isPending}
-                      isDeletePending={deleteRequest.isPending}
-                      highlighted={request.id === focusRequestId}
-                    />
-                  ))
-                )}
-              </section>
-            )
-          })}
-        </div>
-      )}
+                  {colRequests.length === 0 ? (
+                    <div className="rounded-lg border border-dashed border-border p-6 text-center">
+                      <p className="text-[12.5px] text-muted-foreground">Nenhum pedido</p>
+                    </div>
+                  ) : (
+                    colRequests.map((request) => (
+                      <RequestCard
+                        key={request.id}
+                        request={request}
+                        categoryOrderByName={categoryOrderByName}
+                        onAdvance={(requestId, newStatus, shippedItems) => updateStatus.mutate({ requestId, newStatus, shippedItems })}
+                        onTogglePicked={(itemId, picked) => togglePicked.mutate({ itemId, picked })}
+                        onDeclareQty={(itemId, qty) => declareQty.mutate({ itemId, qty })}
+                        onDelete={(requestId) => deleteRequest.mutate(requestId)}
+                        isPending={updateStatus.isPending}
+                        isDeletePending={deleteRequest.isPending}
+                        highlighted={request.id === focusRequestId}
+                      />
+                    ))
+                  )}
+                </section>
+              )
+            })}
+          </div>
+        )}
+      </AdminPage>
     </EstoqueLayout>
   )
 }

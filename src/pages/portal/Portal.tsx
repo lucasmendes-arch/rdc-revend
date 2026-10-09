@@ -14,6 +14,8 @@ import {
   type PortalProfile,
 } from '@/components/portal/portalIdentity'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { EmptyState, Segmented } from '@/components/admin/ui/AdminPage'
 import { getOrderStatus, ACTIVE_ORDER_STATUSES } from '@/lib/design/orderStatus'
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
@@ -109,39 +111,9 @@ function SeeAll({ to, children = 'Ver tudo' }: { to: string; children?: React.Re
   )
 }
 
-/** Controle segmentado — substitui dois carrosséis empilhados por um só. */
-function Segmented<T extends string>({ value, onChange, options }: {
-  value: T
-  onChange: (v: T) => void
-  options: { value: T; label: string }[]
-}) {
+function MetricCard({ label, className, children }: { label: string; className?: string; children: React.ReactNode }) {
   return (
-    <div role="tablist" className="inline-flex items-center gap-0.5 rounded-lg border border-border bg-muted p-0.5">
-      {options.map(o => {
-        const active = o.value === value
-        return (
-          <button
-            key={o.value}
-            role="tab"
-            aria-selected={active}
-            onClick={() => onChange(o.value)}
-            className={`h-7 px-2.5 rounded-md text-[12px] font-medium tracking-snug transition-colors ${
-              active
-                ? 'bg-background text-foreground shadow-xs'
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            {o.label}
-          </button>
-        )
-      })}
-    </div>
-  )
-}
-
-function MetricCard({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="surface-card p-4 sm:p-5">
+    <div className={`surface-card shadow-xs p-4 sm:p-5 min-w-0 ${className ?? ''}`}>
       <p className="text-[12px] font-medium text-muted-foreground mb-2">{label}</p>
       {children}
     </div>
@@ -207,7 +179,7 @@ function ProductRow({ products, loading }: { products: CarouselProduct[]; loadin
                     <p className="text-[18px] font-semibold tracking-tight text-foreground leading-none numeric">
                       R$ {brl(cost)}
                     </p>
-                    <div className="flex items-baseline gap-1.5 text-[11px] leading-none">
+                    <div className="flex items-baseline gap-1.5 text-[12px] leading-none">
                       {margin != null && (
                         <span className="font-medium text-success numeric">+{margin}% margem</span>
                       )}
@@ -221,12 +193,9 @@ function ProductRow({ products, loading }: { products: CarouselProduct[]; loadin
             </Link>
 
             <div className="px-3 pb-3">
-              <Link
-                to="/catalogo"
-                className="flex items-center justify-center w-full h-8 rounded-md btn-primary text-[13px]"
-              >
-                Pedir agora
-              </Link>
+              <Button asChild size="sm" className="w-full">
+                <Link to="/catalogo">Pedir agora</Link>
+              </Button>
             </div>
           </div>
         )
@@ -388,19 +357,15 @@ export default function Portal() {
         }
         actions={
           <>
-            <Link
-              to="/catalogo"
-              className="inline-flex items-center gap-1.5 h-10 px-4 rounded-md btn-primary text-[14px]"
-            >
-              Fazer pedido
-              <ArrowRight className="w-3.5 h-3.5" />
-            </Link>
-            <Link
-              to="/meus-pedidos"
-              className="inline-flex items-center h-10 px-4 rounded-md btn-secondary text-[14px]"
-            >
-              Meus pedidos
-            </Link>
+            <Button asChild size="lg">
+              <Link to="/catalogo">
+                Fazer pedido
+                <ArrowRight />
+              </Link>
+            </Button>
+            <Button asChild size="lg" variant="secondary">
+              <Link to="/meus-pedidos">Meus pedidos</Link>
+            </Button>
           </>
         }
       >
@@ -426,7 +391,7 @@ export default function Portal() {
                   R$ {brl(awaitingPayment.reduce((s, o) => s + o.total, 0))} em aberto
                 </p>
               </div>
-              <ArrowRight className="w-4 h-4 text-warning shrink-0 transition-transform group-hover:translate-x-0.5" />
+              <ArrowRight className="w-4 h-4 text-warning shrink-0" />
             </Link>
           </PortalSection>
         )}
@@ -436,31 +401,33 @@ export default function Portal() {
             cores num bloco de três itens sugere categorias que não existem. */}
         {loadingOrders ? (
           <PortalSection title="Resumo do mês">
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               {[1, 2, 3].map(i => <MetricSkeleton key={i} />)}
             </div>
           </PortalSection>
         ) : hasOrders && (
           <PortalSection title="Resumo do mês">
-            <div className="grid grid-cols-3 gap-2">
+            {/* No mobile o valor investido ocupa a linha inteira: em 1/3 de
+                375px um "R$ 12.345,67" estourava o card. */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              <MetricCard label="Investido" className="col-span-2 sm:col-span-1">
+                <p className="font-title text-[26px] font-semibold text-foreground leading-none numeric truncate">
+                  <span className="text-[15px] text-muted-foreground font-medium mr-1">R$</span>{brl(thisMonthTotal)}
+                </p>
+              </MetricCard>
+
               <MetricCard label="Pedidos">
-                <p className="text-[26px] font-semibold tracking-tight text-foreground leading-none numeric">
+                <p className="font-title text-[26px] font-semibold text-foreground leading-none numeric">
                   {thisMonthOrders.length}
                 </p>
                 {activeOrders.length > 0 && (
-                  <p className="text-[11px] text-muted-foreground mt-1.5 leading-none numeric">
+                  <p className="text-[12px] text-muted-foreground mt-1.5 leading-none numeric">
                     {activeOrders.length} em aberto
                   </p>
                 )}
               </MetricCard>
 
-              <MetricCard label="Investido">
-                <p className="text-[20px] sm:text-[26px] font-semibold tracking-tight text-foreground leading-none numeric">
-                  <span className="text-[14px] sm:text-[15px] text-muted-foreground font-medium mr-1">R$</span>{brl(thisMonthTotal)}
-                </p>
-              </MetricCard>
-
-              <MetricCard label="Último">
+              <MetricCard label="Último pedido">
                 {lastOrder ? (
                   <>
                     <p className="text-[12px] font-medium text-foreground leading-none mono">
@@ -482,24 +449,20 @@ export default function Portal() {
             para agir, não ausência de conteúdo. */}
         {isNewPartner && (
           <PortalSection>
-            <div className="surface-card p-8 text-center">
-              <div className="w-11 h-11 rounded-lg bg-brand-subtle ring-1 ring-brand-border flex items-center justify-center mx-auto mb-4">
-                <ShoppingBag className="w-5 h-5 text-brand-strong" />
-              </div>
-              <h2 className="text-[18px] font-semibold tracking-tight text-foreground">
-                Faça o seu primeiro pedido
-              </h2>
-              <p className="text-[13px] text-muted-foreground mt-1 mb-5 max-w-sm mx-auto">
-                Assim que o primeiro pedido entrar, este painel passa a mostrar o seu
-                resumo do mês, o andamento das entregas e a recompra em um clique.
-              </p>
-              <Link
-                to="/catalogo"
-                className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-md btn-primary text-[13px]"
-              >
-                Ver catálogo
-                <ArrowRight className="w-3.5 h-3.5" />
-              </Link>
+            <div className="surface-card shadow-xs">
+              <EmptyState
+                icon={ShoppingBag}
+                title="Faça o seu primeiro pedido"
+                description="Assim que o primeiro pedido entrar, este painel passa a mostrar o seu resumo do mês, o andamento das entregas e a recompra em um clique."
+                action={
+                  <Button asChild>
+                    <Link to="/catalogo">
+                      Ver catálogo
+                      <ArrowRight />
+                    </Link>
+                  </Button>
+                }
+              />
             </div>
           </PortalSection>
         )}
@@ -525,7 +488,7 @@ export default function Portal() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-[12px] font-medium text-foreground truncate">{name}</p>
-                    <p className="text-[11px] text-muted-foreground numeric">Comprado {qty}x</p>
+                    <p className="text-[12px] text-muted-foreground numeric">Comprado {qty}x</p>
                   </div>
                   <ArrowRight className="w-3.5 h-3.5 text-ink-300 group-hover:text-foreground transition-colors shrink-0" />
                 </Link>
@@ -552,7 +515,7 @@ export default function Portal() {
                       <p className="text-[12px] font-medium text-foreground mono">
                         #{order.id.slice(0, 8).toUpperCase()}
                       </p>
-                      <p className="text-[11px] text-muted-foreground mt-0.5 numeric">
+                      <p className="text-[12px] text-muted-foreground mt-0.5 numeric">
                         {date} · {itemCount} {itemCount === 1 ? 'item' : 'itens'}
                       </p>
                     </div>
@@ -579,11 +542,12 @@ export default function Portal() {
               {/* Genérico explícito: o literal em `options` faz o TS alargar
                   T para `string` se deixado inferir. */}
               <Segmented<ProductTab>
+                size="sm"
                 value={productTab}
                 onChange={setProductTab}
-                options={[
-                  { value: 'vendidos', label: 'Mais vendidos' },
-                  { value: 'recomendados', label: 'Recomendados' },
+                items={[
+                  { key: 'vendidos', label: 'Mais vendidos' },
+                  { key: 'recomendados', label: 'Recomendados' },
                 ]}
               />
               <span className="hidden sm:inline-flex items-center gap-0.5 ml-1">
@@ -647,7 +611,7 @@ export default function Portal() {
                         )}
                         <div className="absolute inset-0 bg-gradient-to-t from-ink-950/85 via-ink-950/25 to-transparent" />
                         <div className="absolute inset-x-0 bottom-0 p-4">
-                          <span className="inline-block text-[10px] font-semibold px-1.5 py-0.5 rounded bg-white/15 text-white uppercase tracking-eyebrow mb-2 backdrop-blur-sm">
+                          <span className="inline-block text-[12px] font-medium px-1.5 py-0.5 rounded-sm bg-white/15 text-white mb-2 backdrop-blur-sm">
                             {banner.badge_text}
                           </span>
                           <p className="text-white font-medium text-[15px] leading-snug tracking-tight line-clamp-2">

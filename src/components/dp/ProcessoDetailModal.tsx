@@ -9,6 +9,10 @@ import { useImageUpload, PHOTO_MAX_DIMENSION } from '@/hooks/useImageUpload'
 import { useFileUpload } from '@/hooks/useFileUpload'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import StyledSelect from '@/components/ui/styled-select'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import { DateField } from '@/components/ui/date-field'
 import {
   EMPLOYMENT_TYPE_LABELS, DOCUMENT_CHECKLIST_LABELS, DOCUMENT_STATUS_LABELS, CONTRACT_TYPE_LABELS,
@@ -55,7 +59,7 @@ function stageDurationLabel(days: number): string {
 // formato/conteúdo.
 function FieldLabel({ text, filled }: { text: string; filled: boolean }) {
   return (
-    <label className="flex items-center gap-1 text-[11px] font-semibold text-muted-foreground uppercase mb-1.5">
+    <label className="flex items-center gap-1 text-[12px] font-medium text-muted-foreground mb-1.5">
       {text}
       {filled && <Check className="w-3 h-3 text-muted-foreground/50" />}
     </label>
@@ -95,11 +99,11 @@ function formatAnswerValue(a: { value: string; form_fields: { field_type: string
 function AttachmentLine({ url, onRemove }: { url: string; onRemove: () => void }) {
   const name = fileNameFromUrl(url)
   return (
-    <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border bg-card">
-      <a href={url} target="_blank" rel="noopener noreferrer" className="text-sm text-muted-foreground hover:text-foreground hover:underline truncate flex-1 min-w-0" title={name}>
+    <div className="flex items-center gap-2 h-9 pl-3 pr-1 rounded-md border border-border bg-background">
+      <a href={url} target="_blank" rel="noopener noreferrer" className="text-[13px] text-foreground hover:underline underline-offset-4 truncate flex-1 min-w-0" title={name}>
         {name}
       </a>
-      <button type="button" onClick={onRemove} className="p-1 rounded hover:bg-danger-subtle text-muted-foreground hover:text-danger shrink-0" title="Remover e escolher outro">
+      <button type="button" onClick={onRemove} className="h-7 w-7 flex items-center justify-center rounded-sm hover:bg-danger-subtle text-ink-400 hover:text-danger shrink-0" title="Remover e escolher outro" aria-label="Remover anexo">
         <X className="w-3.5 h-3.5" />
       </button>
     </div>
@@ -509,15 +513,19 @@ export default function ProcessoDetailModal({ processo, onClose, estagio }: Proc
   const rhTimeline = timelineRows.filter((t) => t.source === 'rh')
   const dpTimeline = timelineRows.filter((t) => t.source === 'dp')
 
+  // Item do menu lateral (sm+): selecionado = cartão neutro, como a sidebar
+  // do admin. No mobile segue o TabsList segmentado padrão.
+  const navTrigger = 'sm:w-full sm:justify-start sm:text-left sm:h-8 sm:px-2.5 sm:rounded-md sm:data-[state=active]:bg-muted sm:data-[state=active]:shadow-none sm:data-[state=active]:text-foreground sm:text-ink-500 sm:hover:bg-muted/60 sm:hover:text-foreground'
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-foreground/40 backdrop-blur-sm" onClick={onClose} />
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="dp-processo-title">
+      <div className="absolute inset-0 bg-ink-950/45 backdrop-blur-[2px] animate-in fade-in-0" onClick={onClose} />
       {/* Altura fixa (não max-h) — do contrário o card muda de tamanho a
           cada troca de aba, dependendo de quanto conteúdo aquela aba tem.
           min() trava num teto de 720px em telas grandes e cede pra 85vh só
           em telas baixas. O scroll fica todo dentro do painel de conteúdo. */}
-      <div className="relative bg-card rounded-2xl shadow-2xl border border-border w-full max-w-2xl h-[min(85vh,720px)] flex flex-col overflow-hidden">
-        <div className="flex items-start justify-between px-6 pt-6 pb-4 shrink-0 border-b border-border/60">
+      <div className="relative w-full max-w-2xl h-[min(85vh,720px)] flex flex-col overflow-hidden rounded-xl border border-border bg-popover shadow-xl animate-in fade-in-0 zoom-in-[0.98] duration-150">
+        <div className="flex items-start justify-between gap-3 px-5 pt-5 pb-4 shrink-0 border-b border-border">
           <div className="flex items-center gap-3 min-w-0">
             <input
               ref={photoInputRef}
@@ -531,135 +539,110 @@ export default function ProcessoDetailModal({ processo, onClose, estagio }: Proc
               onClick={() => photoInputRef.current?.click()}
               disabled={uploadingPhoto}
               title="Alterar foto"
-              className="relative w-12 h-12 rounded-full overflow-hidden shrink-0 bg-surface-alt border border-border flex items-center justify-center group"
+              aria-label="Alterar foto"
+              className="relative w-12 h-12 rounded-full overflow-hidden shrink-0 bg-muted border border-border flex items-center justify-center group"
             >
               {photoUrl ? (
                 <img src={photoUrl} alt="" className="w-full h-full object-cover" />
               ) : (
-                <span className="text-sm font-bold text-muted-foreground">{initials(processo.candidates?.name || '?')}</span>
+                <span className="text-sm font-semibold text-muted-foreground">{initials(processo.candidates?.name || '?')}</span>
               )}
-              <span className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+              <span className="absolute inset-0 bg-ink-950/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                 <Camera className="w-4 h-4 text-white" />
               </span>
             </button>
             <div className="min-w-0">
               <div className="flex items-center gap-2 min-w-0">
-                <h2 className="text-lg font-bold text-foreground truncate">{processo.candidates?.name}</h2>
+                <h2 id="dp-processo-title" className="text-[16px] font-semibold leading-tight tracking-tight text-foreground truncate">
+                  {processo.candidates?.name}
+                </h2>
                 {isExperienceTagActive(processo) ? (
-                  <span
-                    className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-info-subtle text-info shrink-0"
-                    title="Período de experiência em andamento"
-                  >
+                  <Badge variant="info" className="shrink-0" title="Período de experiência em andamento">
                     {getExperienceInfo(processo)?.label}
-                  </span>
+                  </Badge>
                 ) : (
                   // "Ativo" só faz sentido pra quem já é colaborador de fato
                   // (estagio.mode === 'ativo') — no kanban de Contratação
                   // (mode 'kanban') o processo ainda não tem activated_at,
                   // então essa tag ficaria enganosa (parece efetivado sem ser).
                   estagio.mode === 'ativo' && (
-                    <span
-                      className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-success-subtle text-success shrink-0"
-                      title="Período de experiência concluído"
-                    >
+                    <Badge variant="success" className="shrink-0" title="Período de experiência concluído">
                       Ativo
-                    </span>
+                    </Badge>
                   )
                 )}
               </div>
-              <p className="text-xs text-muted-foreground truncate">
+              <p className="mt-0.5 text-[13px] text-muted-foreground truncate">
                 {processo.role_title} · {processo.stores?.name} · {EMPLOYMENT_TYPE_LABELS[processo.employment_type]}
               </p>
               {processo.candidates?.whatsapp && (
-                <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                <p className="text-[12px] text-muted-foreground flex items-center gap-1 mt-0.5 tabular-nums">
                   <Phone className="w-3 h-3" /> {processo.candidates.whatsapp}
                 </p>
               )}
             </div>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-surface-alt text-muted-foreground shrink-0">
-            <X className="w-4 h-4" />
-          </button>
+          <Button variant="ghost" size="icon-sm" onClick={onClose} aria-label="Fechar" className="-mr-1 -mt-1 shrink-0">
+            <X />
+          </Button>
         </div>
 
         {/* Sidebar de navegação a partir de sm: — no mobile as abas continuam
             em linha no topo (mesmo padrão de antes), já que a barra lateral
             fixa não cabe numa tela estreita. */}
         <Tabs value={detailTab} onValueChange={setDetailTab} orientation="vertical" className="flex-1 min-h-0 flex flex-col sm:flex-row overflow-hidden">
-          {/* sm:pt-6 (não sm:p-3 pro topo) — alinha o primeiro item do menu
-              com o primeiro campo do painel de conteúdo (p-6), que também
-              começa a 24px do topo. Só o topo precisa bater; laterais/base
-              ficam mais compactas (sidebar estreita, w-40). */}
-          <TabsList className="flex flex-row flex-wrap gap-1 h-auto rounded-lg bg-surface-alt/60 p-1.5 mx-6 mt-4 shrink-0 sm:flex-col sm:flex-nowrap sm:mx-0 sm:mt-0 sm:w-40 sm:h-auto sm:items-stretch sm:justify-start sm:rounded-none sm:border-r sm:border-border/60 sm:bg-transparent sm:px-3 sm:pb-3 sm:pt-6 sm:gap-0.5 sm:overflow-y-auto sm:scrollbar-thin">
-            <TabsTrigger
-              value="recrutamento"
-              className="sm:w-full sm:justify-start sm:text-left sm:px-3 sm:py-2 sm:rounded-lg sm:data-[state=active]:bg-card sm:data-[state=active]:shadow-none sm:data-[state=active]:text-foreground sm:text-muted-foreground sm:hover:bg-card/60 sm:hover:text-foreground"
-            >
-              Recrutamento
-            </TabsTrigger>
-            <TabsTrigger
-              value="documentos"
-              className="sm:w-full sm:justify-start sm:text-left sm:px-3 sm:py-2 sm:rounded-lg sm:data-[state=active]:bg-card sm:data-[state=active]:shadow-none sm:data-[state=active]:text-foreground sm:text-muted-foreground sm:hover:bg-card/60 sm:hover:text-foreground"
-            >
-              Documentos
-            </TabsTrigger>
-            <TabsTrigger
-              value="contrato"
-              className="sm:w-full sm:justify-start sm:text-left sm:px-3 sm:py-2 sm:rounded-lg sm:data-[state=active]:bg-card sm:data-[state=active]:shadow-none sm:data-[state=active]:text-foreground sm:text-muted-foreground sm:hover:bg-card/60 sm:hover:text-foreground"
-            >
-              Contrato
-            </TabsTrigger>
-            <TabsTrigger
-              value="timeline"
-              className="sm:w-full sm:justify-start sm:text-left sm:px-3 sm:py-2 sm:rounded-lg sm:data-[state=active]:bg-card sm:data-[state=active]:shadow-none sm:data-[state=active]:text-foreground sm:text-muted-foreground sm:hover:bg-card/60 sm:hover:text-foreground"
-            >
-              Timeline
-            </TabsTrigger>
+          {/* sm:pt-5 alinha o primeiro item do menu com o primeiro campo do
+              painel de conteúdo (p-5). */}
+          <TabsList className="flex flex-row flex-wrap gap-0.5 h-auto mx-5 mt-4 shrink-0 self-start sm:self-auto sm:flex-col sm:flex-nowrap sm:mx-0 sm:mt-0 sm:w-40 sm:h-auto sm:items-stretch sm:justify-start sm:rounded-none sm:border-0 sm:border-r sm:border-border sm:bg-transparent sm:px-2.5 sm:pb-3 sm:pt-5 sm:gap-0.5 sm:overflow-y-auto sm:scrollbar-thin">
+            <TabsTrigger value="recrutamento" className={navTrigger}>Recrutamento</TabsTrigger>
+            <TabsTrigger value="documentos" className={navTrigger}>Documentos</TabsTrigger>
+            <TabsTrigger value="contrato" className={navTrigger}>Contrato</TabsTrigger>
+            <TabsTrigger value="timeline" className={navTrigger}>Linha do tempo</TabsTrigger>
           </TabsList>
 
-          <div className="flex-1 min-w-0 overflow-y-auto scrollbar-thin p-6">
-          <TabsContent value="recrutamento">
-            <div className="space-y-6 py-3">
+          <div className="flex-1 min-w-0 overflow-y-auto scrollbar-thin p-5">
+          <TabsContent value="recrutamento" className="mt-0">
+            <div className="space-y-6">
               {/* Status do processo — era a aba "Estágio" separada; trazida
                   pra cá porque é o campo mais acionado no dia a dia (etapa
                   atual / encerrar vínculo), não faz sentido escondido numa
                   aba à parte. */}
               <div>
-                <label className="block text-[11px] font-semibold text-muted-foreground uppercase mb-1.5">Status</label>
+                <label className="block text-[12px] font-medium text-muted-foreground mb-1.5">Etapa</label>
                 {estagio.mode === 'kanban' ? (
                   <>
+                    {/* Mesma cor da etapa no kanban (bolinha), regra de
+                        "tudo que tem cor aparece com a cor". */}
                     <StyledSelect
                       value={processo.current_stage}
                       onChange={estagio.onChangeStage}
-                      options={estagio.columns.map((col) => ({ value: col.stage, label: col.label }))}
+                      options={estagio.columns.map((col) => ({ value: col.stage, label: col.label, dotColor: col.accent }))}
                       searchable={false}
                     />
-                    <p className="text-[11px] text-muted-foreground mt-1">
+                    <p className="text-[12px] text-muted-foreground mt-1.5">
                       Alternativa ao arrastar no kanban — útil no mobile. Nesta etapa {stageDurationLabel(daysInStage(processo.stage_started_at))}.
                     </p>
                   </>
                 ) : (
                   <div className="flex items-center justify-between gap-3 flex-wrap">
-                    <p className="text-sm text-foreground">
-                      Efetivado em <span className="font-medium">{formatCalendarDateBR(processo.activated_at)}</span>
+                    <p className="text-[13px] text-foreground">
+                      Efetivado em <span className="font-medium tabular-nums">{formatCalendarDateBR(processo.activated_at)}</span>
                     </p>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       {processo.employment_type === 'clt' && !experienceRenewedAt && (
-                        <button
+                        <Button
+                          variant="secondary"
+                          size="sm"
                           onClick={() => renewExperience.mutate()}
                           disabled={renewExperience.isPending}
                           title="Renova o contrato de experiência por mais 45 dias (teto de 90d desde a efetivação)"
-                          className="px-3 py-1.5 rounded-lg border border-border text-sm font-medium hover:bg-surface-alt transition-colors disabled:opacity-70"
                         >
-                          {renewExperience.isPending ? 'Renovando...' : 'Renovar experiência (+45d)'}
-                        </button>
+                          {renewExperience.isPending ? 'Renovando…' : 'Renovar experiência (+45d)'}
+                        </Button>
                       )}
-                      <button
-                        onClick={estagio.onEncerrar}
-                        className="px-3 py-1.5 rounded-lg bg-danger-solid hover:bg-danger-solid/90 text-white text-sm font-medium transition-colors"
-                      >
+                      <Button variant="destructive" size="sm" onClick={estagio.onEncerrar}>
                         Encerrar vínculo
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 )}
@@ -669,7 +652,7 @@ export default function ProcessoDetailModal({ processo, onClose, estagio }: Proc
                   funil de RH). Serve de data de referência pras automações de
                   Contratação. */}
               <div>
-                <label className="block text-[11px] font-semibold text-muted-foreground uppercase mb-1.5">Prazo do processo</label>
+                <label className="block text-[12px] font-medium text-muted-foreground mb-1.5">Prazo do processo</label>
                 <div className="max-w-[220px]">
                   <DateField
                     value={dueDateDraft}
@@ -677,18 +660,18 @@ export default function ProcessoDetailModal({ processo, onClose, estagio }: Proc
                     placeholder="Sem prazo"
                   />
                 </div>
-                <p className="text-[11px] text-muted-foreground mt-1">
-                  Opcional. Uma automação pode usar esta data como gatilho — ver Automações da Contratação.
+                <p className="text-[12px] text-muted-foreground mt-1.5">
+                  Opcional. Uma automação pode usar esta data como gatilho — ver Automações da contratação.
                 </p>
               </div>
 
               {/* Perfil trazido do candidato — mesmos campos do modal de
                   detalhe de Candidatos (src/pages/rh/Candidatos.tsx), pra não
                   perder informação de recrutamento na promoção pro DP. */}
-              <div className="grid grid-cols-2 gap-4 text-sm">
+              <div className="grid grid-cols-2 gap-4 text-[13px]">
                 <div>
-                  <p className="text-[11px] font-semibold text-muted-foreground uppercase mb-0.5">Idade</p>
-                  <input
+                  <p className="text-[12px] font-medium text-muted-foreground mb-1.5">Idade</p>
+                  <Input
                     type="number"
                     inputMode="numeric"
                     min={1}
@@ -696,12 +679,12 @@ export default function ProcessoDetailModal({ processo, onClose, estagio }: Proc
                     onChange={(e) => setAgeDraft(e.target.value)}
                     onBlur={handleAgeBlur}
                     placeholder="—"
-                    className="w-20 px-2 py-1 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                    className="w-24 tabular-nums"
                   />
                 </div>
                 <div>
-                  <p className="text-[11px] font-semibold text-muted-foreground uppercase mb-0.5">Origem</p>
-                  <p className="text-foreground">{processo.candidates?.source === 'manual' ? 'Manual' : 'Formulário'}</p>
+                  <p className="text-[12px] font-medium text-muted-foreground mb-1.5">Origem</p>
+                  <p className="h-9 flex items-center text-foreground">{processo.candidates?.source === 'manual' ? 'Manual' : 'Formulário'}</p>
                 </div>
               </div>
 
@@ -709,44 +692,45 @@ export default function ProcessoDetailModal({ processo, onClose, estagio }: Proc
                 <button
                   type="button"
                   onClick={() => setRhNotesOpen((v) => !v)}
-                  className="w-full flex items-center justify-between text-[11px] font-semibold text-muted-foreground uppercase"
+                  aria-expanded={rhNotesOpen}
+                  className="w-full flex items-center justify-between text-[12px] font-medium text-muted-foreground hover:text-foreground"
                 >
                   <span>Observações do RH{processo.candidates?.notes ? ' (1)' : ''}</span>
                   {rhNotesOpen ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
                 </button>
                 {rhNotesOpen && (
-                  <textarea
+                  <Textarea
                     defaultValue={processo.candidates?.notes || ''}
                     onBlur={(e) => updateCandidateField.mutate({ field: 'notes', value: e.target.value.trim() || null })}
                     rows={2}
                     placeholder="Sem observações."
-                    className="w-full mt-2 px-3 py-2 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring resize-none"
+                    className="mt-2 min-h-0 resize-none"
                   />
                 )}
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <p className="text-[11px] font-semibold text-muted-foreground uppercase mb-1.5">Foto</p>
+                  <p className="text-[12px] font-medium text-muted-foreground mb-1.5">Foto</p>
                   {photoUrl ? (
                     <AttachmentLine url={photoUrl} onRemove={() => clearPhoto.mutate()} />
                   ) : (
                     <button type="button" onClick={() => photoInputRef.current?.click()} disabled={uploadingPhoto}
-                      className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border border-dashed border-border text-sm text-muted-foreground hover:bg-surface-alt disabled:opacity-60">
-                      <ImageIcon className="w-4 h-4" /> {uploadingPhoto ? 'Enviando...' : 'Adicionar foto'}
+                      className="w-full h-9 flex items-center justify-center gap-1.5 px-3 rounded-md border border-dashed border-border text-[13px] text-muted-foreground hover:bg-muted hover:text-foreground transition-colors disabled:opacity-60">
+                      <ImageIcon className="w-4 h-4" /> {uploadingPhoto ? 'Enviando…' : 'Adicionar foto'}
                     </button>
                   )}
                 </div>
                 <div>
-                  <p className="text-[11px] font-semibold text-muted-foreground uppercase mb-1.5">Currículo</p>
+                  <p className="text-[12px] font-medium text-muted-foreground mb-1.5">Currículo</p>
                   <input ref={resumeInputRef} type="file" accept=".pdf,.doc,.docx" className="hidden"
                     onChange={(e) => { const f = e.target.files?.[0]; if (f) handleResumeChange(f) }} />
                   {resumeUrl ? (
                     <AttachmentLine url={resumeUrl} onRemove={() => updateResume.mutate(null)} />
                   ) : (
                     <button type="button" onClick={() => resumeInputRef.current?.click()} disabled={uploadingResume}
-                      className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border border-dashed border-border text-sm text-muted-foreground hover:bg-surface-alt disabled:opacity-60">
-                      <FileText className="w-4 h-4" /> {uploadingResume ? 'Enviando...' : 'Adicionar currículo'}
+                      className="w-full h-9 flex items-center justify-center gap-1.5 px-3 rounded-md border border-dashed border-border text-[13px] text-muted-foreground hover:bg-muted hover:text-foreground transition-colors disabled:opacity-60">
+                      <FileText className="w-4 h-4" /> {uploadingResume ? 'Enviando…' : 'Adicionar currículo'}
                     </button>
                   )}
                 </div>
@@ -754,8 +738,8 @@ export default function ProcessoDetailModal({ processo, onClose, estagio }: Proc
 
               {(processo.candidates?.candidate_answers.length ?? 0) > 0 && (
                 <div>
-                  <p className="text-[11px] font-semibold text-muted-foreground uppercase mb-1.5">Respostas do formulário</p>
-                  <div className="space-y-1.5 text-sm bg-surface-alt rounded-lg p-3">
+                  <p className="text-[12px] font-medium text-muted-foreground mb-1.5">Respostas do formulário</p>
+                  <div className="space-y-1.5 text-[13px] rounded-lg border border-border bg-surface p-3">
                     {processo.candidates!.candidate_answers.map((a) => (
                       <div key={a.form_fields?.field_key || a.value} className="flex items-start justify-between gap-3">
                         <span className="text-muted-foreground shrink-0">{a.form_fields?.label || '—'}</span>
@@ -768,21 +752,21 @@ export default function ProcessoDetailModal({ processo, onClose, estagio }: Proc
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-[11px] font-semibold text-muted-foreground uppercase mb-1.5">Data início</label>
+                  <label className="block text-[12px] font-medium text-muted-foreground mb-1.5">Data início</label>
                   <DateField
                     value={candidateDraft.start_date}
                     onChange={(v) => updateCandidateField.mutate({ field: 'start_date', value: v })}
                   />
                 </div>
                 <div>
-                  <label className="block text-[11px] font-semibold text-muted-foreground uppercase mb-1.5">Data fim</label>
+                  <label className="block text-[12px] font-medium text-muted-foreground mb-1.5">Data fim</label>
                   <DateField
                     value={candidateDraft.due_date}
                     onChange={(v) => updateCandidateField.mutate({ field: 'due_date', value: v })}
                   />
                 </div>
                 <div className="col-span-2">
-                  <label className="block text-[11px] font-semibold text-muted-foreground uppercase mb-1.5">Responsável</label>
+                  <label className="block text-[12px] font-medium text-muted-foreground mb-1.5">Responsável</label>
                   <StyledSelect
                     value={candidateDraft.assignee_id ?? ''}
                     onChange={(v) => updateCandidateField.mutate({ field: 'assignee_id', value: v || null })}
@@ -795,14 +779,14 @@ export default function ProcessoDetailModal({ processo, onClose, estagio }: Proc
 
               {(processo.candidates?.candidate_tags.length ?? 0) > 0 && (
                 <div>
-                  <p className="text-[11px] font-semibold text-muted-foreground uppercase mb-1.5 flex items-center gap-1.5">
+                  <p className="text-[12px] font-medium text-muted-foreground mb-1.5 flex items-center gap-1.5">
                     <Tag className="w-3 h-3" /> Tags
                   </p>
                   <div className="flex flex-wrap gap-2">
                     {processo.candidates!.candidate_tags.filter((ct) => ct.tags).map((ct) => (
                       <span
                         key={ct.tags!.id}
-                        className="text-xs font-semibold px-2.5 py-1 rounded-full"
+                        className="text-[12px] font-medium px-2 py-0.5 rounded-full"
                         style={{ backgroundColor: `${ct.tags!.color}22`, color: ct.tags!.color }}
                       >
                         {ct.tags!.name}
@@ -816,16 +800,16 @@ export default function ProcessoDetailModal({ processo, onClose, estagio }: Proc
                   técnico do cargo. Não é o checklist de documentos (aba
                   Documentos) — são 2 verificações à parte que também fazem
                   parte da etapa única "contratação" (ver docs/SCHEMA.md). */}
-              <div className="border-t border-border/60 pt-4 space-y-2.5">
-                <p className="text-[11px] font-semibold text-muted-foreground uppercase mb-0.5">Checklist de admissão</p>
+              <div className="border-t border-border pt-4 space-y-2.5">
+                <h3 className="text-[14px] font-semibold text-foreground">Checklist de admissão</h3>
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={checklist.onboarding_completed}
                     onChange={(e) => updateChecklist.mutate({ onboarding_completed: e.target.checked })}
-                    className="w-4 h-4 rounded border-border accent-success-solid"
+                    className="w-4 h-4 rounded border-border accent-ink-900"
                   />
-                  <span className="text-sm text-foreground">Onboarding institucional concluído</span>
+                  <span className="text-[13px] text-foreground">Onboarding institucional concluído</span>
                 </label>
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
@@ -834,7 +818,7 @@ export default function ProcessoDetailModal({ processo, onClose, estagio }: Proc
                     onChange={(e) => updateChecklist.mutate({ training_applicable: e.target.checked })}
                     className="w-4 h-4 rounded border-border accent-ink-900"
                   />
-                  <span className="text-sm text-foreground">Treinamento técnico aplicável a este cargo</span>
+                  <span className="text-[13px] text-foreground">Treinamento técnico aplicável a este cargo</span>
                 </label>
                 {checklist.training_applicable && (
                   <label className="flex items-center gap-2 cursor-pointer pl-6">
@@ -842,9 +826,9 @@ export default function ProcessoDetailModal({ processo, onClose, estagio }: Proc
                       type="checkbox"
                       checked={checklist.training_completed}
                       onChange={(e) => updateChecklist.mutate({ training_completed: e.target.checked })}
-                      className="w-4 h-4 rounded border-border accent-success-solid"
+                      className="w-4 h-4 rounded border-border accent-ink-900"
                     />
-                    <span className="text-sm text-foreground">Treinamento concluído</span>
+                    <span className="text-[13px] text-foreground">Treinamento concluído</span>
                   </label>
                 )}
               </div>
@@ -853,22 +837,22 @@ export default function ProcessoDetailModal({ processo, onClose, estagio }: Proc
                   etapa herdadas do funil de RH (candidate_stage_history),
                   histórico secundário, não precisa competir por espaço com
                   o resto do perfil. */}
-              <div className="border-t border-border/60 pt-4">
+              <div className="border-t border-border pt-4">
                 <button
                   type="button"
                   onClick={() => setRhHistoryOpen((v) => !v)}
-                  className="w-full flex items-center justify-between text-[11px] font-semibold text-muted-foreground uppercase"
+                  className="w-full flex items-center justify-between text-[12px] font-medium text-muted-foreground hover:text-foreground"
                 >
                   <span>Histórico do RH ({rhTimeline.length})</span>
                   {rhHistoryOpen ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
                 </button>
                 {rhHistoryOpen && (
                   rhTimeline.length === 0 ? (
-                    <p className="text-sm text-muted-foreground py-2">Sem histórico de recrutamento.</p>
+                    <p className="text-[13px] text-muted-foreground py-2">Sem histórico de recrutamento.</p>
                   ) : (
                     <div className="mt-2 space-y-1">
                       {rhTimeline.map((t) => (
-                        <div key={t.id} className="flex items-center justify-between gap-2 text-xs py-1 border-b border-border/40 last:border-0">
+                        <div key={t.id} className="flex items-center justify-between gap-2 text-[12px] py-1.5 border-b border-border last:border-0">
                           <span className="text-foreground truncate">{t.note}</span>
                           <span className="text-muted-foreground shrink-0">{formatDateBR(t.occurred_at)}</span>
                         </div>
@@ -880,7 +864,7 @@ export default function ProcessoDetailModal({ processo, onClose, estagio }: Proc
             </div>
           </TabsContent>
 
-          <TabsContent value="documentos">
+          <TabsContent value="documentos" className="mt-0">
             <input
               ref={documentFileInputRef}
               type="file"
@@ -892,68 +876,64 @@ export default function ProcessoDetailModal({ processo, onClose, estagio }: Proc
                 e.target.value = ''
               }}
             />
-            <div className="space-y-6 py-3">
+            <div className="space-y-6">
               <div>
-                <label className="flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground uppercase mb-1.5">
+                <label className="flex items-center gap-1.5 text-[12px] font-medium text-muted-foreground mb-1.5">
                   <FolderOpen className="w-3 h-3" /> Pasta do Drive
                 </label>
                 <div className="flex items-center gap-2">
-                  <input
+                  <Input
                     type="url"
                     value={driveDraft}
                     onChange={(e) => setDriveDraft(e.target.value)}
                     onBlur={() => updateDriveFolder.mutate(driveDraft.trim() || null)}
                     placeholder="https://drive.google.com/drive/folders/..."
-                    className="flex-1 min-w-0 px-3 py-2 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                    className="flex-1 min-w-0"
                   />
                   {driveDraft.trim() && (
-                    <a
-                      href={driveDraft.trim()}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="p-2 rounded-lg border border-border text-muted-foreground hover:bg-surface-alt hover:text-foreground shrink-0"
-                      title="Abrir pasta"
-                    >
-                      <ExternalLink className="w-4 h-4" />
-                    </a>
+                    <Button variant="secondary" size="icon" asChild className="shrink-0">
+                      <a href={driveDraft.trim()} target="_blank" rel="noopener noreferrer" title="Abrir pasta" aria-label="Abrir pasta">
+                        <ExternalLink />
+                      </a>
+                    </Button>
                   )}
                 </div>
               </div>
 
-              <div className="border-t border-border/60 pt-4">
-                <p className="text-[11px] font-semibold text-muted-foreground uppercase mb-3">Dados pessoais</p>
-                <div className="grid grid-cols-2 gap-4">
+              <div className="border-t border-border pt-4">
+                <h3 className="text-[14px] font-semibold text-foreground mb-3">Dados pessoais</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <FieldLabel text="RG" filled={!!personalDraft.rg.trim()} />
-                    <input
+                    <Input
                       value={personalDraft.rg}
                       onChange={(e) => setPersonalDraft((p) => ({ ...p, rg: e.target.value }))}
                       onBlur={() => updatePersonalData.mutate('rg')}
                       maxLength={20}
-                      className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                     
                     />
                   </div>
                   <div>
                     <FieldLabel text="CPF" filled={!!personalDraft.cpf.trim()} />
-                    <input
+                    <Input
                       value={personalDraft.cpf}
                       onChange={(e) => setPersonalDraft((p) => ({ ...p, cpf: e.target.value.replace(/\D/g, '').slice(0, 11) }))}
                       onBlur={() => updatePersonalData.mutate('cpf')}
                       inputMode="numeric"
                       placeholder="Somente números"
-                      className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                     
                     />
                   </div>
                   {processo.employment_type === 'mei' && (
                     <div>
                       <FieldLabel text="CNPJ" filled={!!personalDraft.cnpj.trim()} />
-                      <input
+                      <Input
                         value={personalDraft.cnpj}
                         onChange={(e) => setPersonalDraft((p) => ({ ...p, cnpj: e.target.value.replace(/\D/g, '').slice(0, 14) }))}
                         onBlur={() => updatePersonalData.mutate('cnpj')}
                         inputMode="numeric"
                         placeholder="Somente números"
-                        className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                       
                       />
                     </div>
                   )}
@@ -964,12 +944,12 @@ export default function ProcessoDetailModal({ processo, onClose, estagio }: Proc
                           é o que o placeholder mostra. Preencher só quando a
                           razão social real fugir da regra. */}
                       <FieldLabel text="Razão social (MEI)" filled={!!personalDraft.legal_name.trim()} />
-                      <input
+                      <Input
                         value={personalDraft.legal_name}
                         onChange={(e) => setPersonalDraft((p) => ({ ...p, legal_name: e.target.value }))}
                         onBlur={() => updatePersonalData.mutate('legal_name')}
                         placeholder={meiLegalName(personalDraft.cnpj, processo.candidates?.name ?? '')}
-                        className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                       
                       />
                     </div>
                   )}
@@ -995,30 +975,30 @@ export default function ProcessoDetailModal({ processo, onClose, estagio }: Proc
                   </div>
                   <div>
                     <FieldLabel text="Endereço" filled={!!personalDraft.address.trim()} />
-                    <input
+                    <Input
                       value={personalDraft.address}
                       onChange={(e) => setPersonalDraft((p) => ({ ...p, address: e.target.value }))}
                       onBlur={() => updatePersonalData.mutate('address')}
-                      className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                     
                     />
                   </div>
                   <div>
                     <FieldLabel text="E-mail" filled={!!personalDraft.email.trim()} />
-                    <input
+                    <Input
                       type="email"
                       value={personalDraft.email}
                       onChange={(e) => setPersonalDraft((p) => ({ ...p, email: e.target.value }))}
                       onBlur={() => updatePersonalData.mutate('email')}
-                      className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                     
                     />
                   </div>
                   <div>
                     <FieldLabel text="Chave PIX" filled={!!personalDraft.pix_key.trim()} />
-                    <input
+                    <Input
                       value={personalDraft.pix_key}
                       onChange={(e) => setPersonalDraft((p) => ({ ...p, pix_key: e.target.value }))}
                       onBlur={() => updatePersonalData.mutate('pix_key')}
-                      className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                     
                     />
                   </div>
                 </div>
@@ -1030,42 +1010,48 @@ export default function ProcessoDetailModal({ processo, onClose, estagio }: Proc
                   20260822000004 — o guard por employment_type impede que
                   qualquer resíduo volte a aparecer no card do parceiro. */}
               {processo.employment_type !== 'mei' && documentRows.length > 0 && (
-              <div className="border-t border-border/60 pt-4 space-y-1">
-              <p className="text-[11px] font-semibold text-muted-foreground uppercase mb-2">Checklist de documentos</p>
+              <div className="border-t border-border pt-4 space-y-1">
+              <h3 className="text-[14px] font-semibold text-foreground mb-2">Checklist de documentos</h3>
               {documentRows.map((doc) => (
-                <div key={doc.id} className="flex items-center justify-between gap-2 py-2.5 border-b border-border/50 last:border-0">
-                  <span className="text-sm text-foreground truncate flex-1 min-w-0">{DOCUMENT_CHECKLIST_LABELS[doc.document_type] || doc.document_type}</span>
-                  <div className="flex items-center gap-1.5 shrink-0">
+                <div key={doc.id} className="flex items-center justify-between gap-2 py-2 border-b border-border last:border-0">
+                  <span className="text-[13px] text-foreground truncate flex-1 min-w-0">{DOCUMENT_CHECKLIST_LABELS[doc.document_type] || doc.document_type}</span>
+                  <div className="flex items-center gap-1 shrink-0">
                     {doc.file_url ? (
-                      <span className="flex items-center gap-0.5">
-                        <a
-                          href={doc.file_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="p-1.5 rounded-lg text-accent hover:bg-surface-alt"
-                          title="Ver arquivo anexado"
-                        >
-                          <Paperclip className="w-3.5 h-3.5" />
-                        </a>
-                        <button
-                          type="button"
+                      <span className="flex items-center">
+                        <Button variant="ghost" size="icon-sm" asChild>
+                          <a
+                            href={doc.file_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            title="Ver arquivo anexado"
+                            aria-label="Ver arquivo anexado"
+                            className="text-brand-strong"
+                          >
+                            <Paperclip />
+                          </a>
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
                           onClick={() => updateDocumentFile.mutate({ id: doc.id, url: null })}
-                          className="p-1 rounded hover:bg-danger-subtle text-muted-foreground hover:text-danger"
                           title="Remover anexo"
+                          aria-label="Remover anexo"
+                          className="hover:bg-danger-subtle hover:text-danger"
                         >
-                          <X className="w-3 h-3" />
-                        </button>
+                          <X />
+                        </Button>
                       </span>
                     ) : (
-                      <button
-                        type="button"
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
                         onClick={() => { setUploadTargetDocId(doc.id); documentFileInputRef.current?.click() }}
                         disabled={uploadingDocumentFile && uploadTargetDocId === doc.id}
-                        className="p-1.5 rounded-lg text-muted-foreground hover:bg-surface-alt hover:text-foreground disabled:opacity-50"
                         title="Anexar arquivo"
+                        aria-label="Anexar arquivo"
                       >
-                        <Paperclip className="w-3.5 h-3.5" />
-                      </button>
+                        <Paperclip />
+                      </Button>
                     )}
                     <StyledSelect
                       variant="xs"
@@ -1082,95 +1068,97 @@ export default function ProcessoDetailModal({ processo, onClose, estagio }: Proc
             </div>
           </TabsContent>
 
-          <TabsContent value="contrato">
-            <div className="space-y-3 py-2">
+          <TabsContent value="contrato" className="mt-0">
+            <div className="space-y-3">
               {contractRows.map((c) => (
-                <div key={c.id} className="text-sm bg-surface-alt rounded-lg p-2.5 space-y-0.5">
+                <div key={c.id} className="rounded-lg border border-border bg-surface px-3 py-2.5 space-y-0.5">
                   <div className="flex items-center justify-between gap-2">
-                    <p className="font-medium text-foreground">{CONTRACT_TYPE_LABELS[c.contract_type]}</p>
+                    <p className="text-[13px] font-medium text-foreground">{CONTRACT_TYPE_LABELS[c.contract_type]}</p>
                     {c.file_url && (
                       <a
                         href={c.file_url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-xs font-medium text-accent hover:underline shrink-0"
+                        className="text-[12px] font-medium text-brand-strong hover:underline underline-offset-4 shrink-0"
                       >
                         Abrir contrato
                       </a>
                     )}
                   </div>
-                  <p className="text-[11px] text-muted-foreground">Assinatura: {formatCalendarDateBR(c.signature_date)}</p>
-                  <p className="text-[11px] text-muted-foreground">Vigência: {formatCalendarDateBR(c.term_start)} — {formatCalendarDateBR(c.term_end)}</p>
+                  <p className="text-[12px] text-muted-foreground tabular-nums">Assinatura: {formatCalendarDateBR(c.signature_date)}</p>
+                  <p className="text-[12px] text-muted-foreground tabular-nums">Vigência: {formatCalendarDateBR(c.term_start)} — {formatCalendarDateBR(c.term_end)}</p>
                 </div>
               ))}
-              <div className="border border-border rounded-lg p-3 space-y-3">
-                <p className="text-[11px] font-semibold text-muted-foreground uppercase">Registrar contrato</p>
-                <StyledSelect
-                  value={contractForm.contract_type}
-                  onChange={(v) => setContractForm({ ...contractForm, contract_type: v as ContractType })}
-                  options={(Object.keys(CONTRACT_TYPE_LABELS) as ContractType[]).map((tc) => ({ value: tc, label: CONTRACT_TYPE_LABELS[tc] }))}
-                  searchable={false}
-                />
-                <div className="grid grid-cols-3 gap-2">
+              <div className="rounded-lg border border-border p-4 space-y-3">
+                <h3 className="text-[14px] font-semibold text-foreground">Registrar contrato</h3>
+                <div>
+                  <label className="block text-[12px] font-medium text-muted-foreground mb-1.5">Tipo</label>
+                  <StyledSelect
+                    value={contractForm.contract_type}
+                    onChange={(v) => setContractForm({ ...contractForm, contract_type: v as ContractType })}
+                    options={(Object.keys(CONTRACT_TYPE_LABELS) as ContractType[]).map((tc) => ({ value: tc, label: CONTRACT_TYPE_LABELS[tc] }))}
+                    searchable={false}
+                  />
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div>
-                    <label className="block text-[11px] font-semibold text-muted-foreground uppercase mb-1.5">Assinatura</label>
+                    <label className="block text-[12px] font-medium text-muted-foreground mb-1.5">Assinatura</label>
                     <DateField
                       value={contractForm.signature_date || null}
                       onChange={(v) => setContractForm({ ...contractForm, signature_date: v || '' })}
                     />
                   </div>
                   <div>
-                    <label className="block text-[11px] font-semibold text-muted-foreground uppercase mb-1.5">Início vigência</label>
+                    <label className="block text-[12px] font-medium text-muted-foreground mb-1.5">Início da vigência</label>
                     <DateField
                       value={contractForm.term_start || null}
                       onChange={(v) => setContractForm({ ...contractForm, term_start: v || '' })}
                     />
                   </div>
                   <div>
-                    <label className="block text-[11px] font-semibold text-muted-foreground uppercase mb-1.5">Fim vigência</label>
+                    <label className="block text-[12px] font-medium text-muted-foreground mb-1.5">Fim da vigência</label>
                     <DateField
                       value={contractForm.term_end || null}
                       onChange={(v) => setContractForm({ ...contractForm, term_end: v || '' })}
                     />
                   </div>
                 </div>
-                <button
-                  onClick={() => createContract.mutate()}
-                  disabled={createContract.isPending}
-                  className="w-full px-3 py-2 rounded-lg btn-action text-sm font-medium disabled:opacity-70"
-                >
-                  {createContract.isPending ? 'Salvando...' : 'Registrar contrato'}
-                </button>
+                <div className="flex justify-end">
+                  <Button onClick={() => createContract.mutate()} disabled={createContract.isPending}>
+                    {createContract.isPending ? 'Salvando…' : 'Registrar contrato'}
+                  </Button>
+                </div>
               </div>
             </div>
           </TabsContent>
 
-          <TabsContent value="timeline">
-            <div className="space-y-2 py-2">
+          <TabsContent value="timeline" className="mt-0">
+            <div className="space-y-2">
               {dpTimeline.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Sem anotações ainda.</p>
+                <p className="text-[13px] text-muted-foreground py-1">Sem anotações ainda.</p>
               ) : (
                 dpTimeline.map((t) => (
-                  <div key={t.id} className="text-sm bg-surface-alt rounded-lg p-2.5">
-                    <p className="text-foreground">{t.note}</p>
-                    <p className="text-[11px] text-muted-foreground mt-0.5">{formatDateBR(t.occurred_at)}</p>
+                  <div key={t.id} className="rounded-lg border border-border bg-surface px-3 py-2.5">
+                    <p className="text-[13px] text-foreground">{t.note}</p>
+                    <p className="text-[12px] text-muted-foreground mt-0.5 tabular-nums">{formatDateBR(t.occurred_at)}</p>
                   </div>
                 ))
               )}
-              <textarea
+              <Textarea
                 value={timelineDraft}
                 onChange={(e) => setTimelineDraft(e.target.value)}
                 rows={3}
-                placeholder="Nova anotação..."
-                className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring resize-none"
+                placeholder="Nova anotação…"
+                className="resize-none"
               />
-              <button
-                onClick={() => addTimelineEntry.mutate()}
-                disabled={addTimelineEntry.isPending || !timelineDraft.trim()}
-                className="px-4 py-2 rounded-lg btn-action text-sm font-medium disabled:opacity-70"
-              >
-                {addTimelineEntry.isPending ? 'Salvando...' : 'Adicionar anotação'}
-              </button>
+              <div className="flex justify-end">
+                <Button
+                  onClick={() => addTimelineEntry.mutate()}
+                  disabled={addTimelineEntry.isPending || !timelineDraft.trim()}
+                >
+                  {addTimelineEntry.isPending ? 'Salvando…' : 'Adicionar anotação'}
+                </Button>
+              </div>
             </div>
           </TabsContent>
           </div>

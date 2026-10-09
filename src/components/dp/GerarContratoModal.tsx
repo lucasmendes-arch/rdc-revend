@@ -7,6 +7,8 @@ import { useEscapeToClose } from '@/hooks/useEscapeToClose'
 import { DateField } from '@/components/ui/date-field'
 import StyledSelect from '@/components/ui/styled-select'
 import NacionalidadeField from '@/components/dp/NacionalidadeField'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import {
   CONTRACT_TYPE_LABELS, resolveAutoContractType, REQUIRED_CONTRACT_DATA_FIELDS,
   CONTRACT_DATA_FIELD_LABELS, MARITAL_STATUS_OPTIONS, toSelectOptions, meiLegalName,
@@ -47,7 +49,7 @@ export default function GerarContratoModal({ processo, onClose }: GerarContratoM
   const isRequired = (field: ContractDataField) => requiredFields.includes(field)
   function fieldLabel(field: ContractDataField) {
     return (
-      <label className="block text-[11px] text-muted-foreground mb-1">
+      <label className="field-label">
         {CONTRACT_DATA_FIELD_LABELS[field]}{isRequired(field) && <span className="text-danger"> *</span>}
       </label>
     )
@@ -173,69 +175,62 @@ export default function GerarContratoModal({ processo, onClose }: GerarContratoM
   })
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-foreground/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-card rounded-2xl shadow-2xl border border-border p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
-        <div className="flex items-start justify-between mb-4">
-          <div className="min-w-0">
-            <h2 className="text-lg font-bold text-foreground truncate">{processo.candidates?.name}</h2>
-            <p className="text-xs text-muted-foreground truncate">{processo.role_title} · {processo.stores?.name}</p>
-          </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-surface-alt text-muted-foreground shrink-0">
-            <X className="w-4 h-4" />
-          </button>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="dp-gerar-contrato-title">
+      <div className="absolute inset-0 bg-ink-950/45 backdrop-blur-[2px] animate-in fade-in-0" onClick={onClose} />
+      <div className="relative w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-xl border border-border bg-popover p-5 shadow-xl animate-in fade-in-0 zoom-in-[0.98] duration-150">
+        <div className="min-w-0 pr-8">
+          <h2 id="dp-gerar-contrato-title" className="text-[16px] font-semibold leading-tight tracking-tight text-foreground truncate">
+            {processo.candidates?.name}
+          </h2>
+          <p className="mt-1 text-[13px] text-muted-foreground truncate">{processo.role_title} · {processo.stores?.name}</p>
         </div>
+        <Button variant="ghost" size="icon-sm" onClick={onClose} aria-label="Fechar" className="absolute right-3 top-3">
+          <X />
+        </Button>
 
         {contractRows.length > 0 && (
-          <div className="mb-4 space-y-2">
-            <p className="text-xs font-semibold text-muted-foreground uppercase">Contratos gerados</p>
+          <section className="mt-5 space-y-2">
+            <h3 className="text-[14px] font-semibold text-foreground">Contratos gerados</h3>
             {contractRows.map((c) => (
-              <div key={c.id} className="flex items-center justify-between gap-2 text-sm bg-surface-alt rounded-lg p-2.5">
+              <div key={c.id} className="flex items-center justify-between gap-2 rounded-lg border border-border bg-surface px-3 py-2.5">
                 <div className="min-w-0">
-                  <p className="font-medium text-foreground truncate">{CONTRACT_TYPE_LABELS[c.contract_type]}</p>
-                  <p className="text-[11px] text-muted-foreground">Vigência: {formatDateBR(c.term_start)} — {formatDateBR(c.term_end)}</p>
+                  <p className="text-[13px] font-medium text-foreground truncate">{CONTRACT_TYPE_LABELS[c.contract_type]}</p>
+                  <p className="text-[12px] text-muted-foreground tabular-nums">Vigência: {formatDateBR(c.term_start)} — {formatDateBR(c.term_end)}</p>
                 </div>
                 {c.file_url && (
-                  <a
-                    href={c.file_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-1 text-xs font-medium text-accent hover:underline shrink-0"
-                  >
-                    <FileText className="w-3.5 h-3.5" /> Abrir contrato
-                  </a>
+                  <Button variant="ghost" size="sm" asChild className="shrink-0">
+                    <a href={c.file_url} target="_blank" rel="noopener noreferrer">
+                      <FileText /> Abrir contrato
+                    </a>
+                  </Button>
                 )}
               </div>
             ))}
-          </div>
+          </section>
         )}
 
-        <div className="space-y-3 mb-4">
-          <p className="text-xs font-semibold text-muted-foreground uppercase">Dados para contrato</p>
-          <div className="grid grid-cols-2 gap-3">
+        <section className="mt-5 space-y-3">
+          <h3 className="text-[14px] font-semibold text-foreground">Dados para contrato</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               {fieldLabel('cpf')}
-              <input type="text" value={dataForm.cpf} onChange={(e) => setDataForm({ ...dataForm, cpf: e.target.value })}
-                className="w-full px-2.5 py-1.5 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
+              <Input type="text" value={dataForm.cpf} onChange={(e) => setDataForm({ ...dataForm, cpf: e.target.value })} />
             </div>
             <div>
               {fieldLabel('rg')}
-              <input type="text" value={dataForm.rg} onChange={(e) => setDataForm({ ...dataForm, rg: e.target.value })}
-                className="w-full px-2.5 py-1.5 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
+              <Input type="text" value={dataForm.rg} onChange={(e) => setDataForm({ ...dataForm, rg: e.target.value })} />
             </div>
             <div>
               {fieldLabel('cnpj')}
-              <input type="text" value={dataForm.cnpj} onChange={(e) => setDataForm({ ...dataForm, cnpj: e.target.value })}
-                className="w-full px-2.5 py-1.5 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
+              <Input type="text" value={dataForm.cnpj} onChange={(e) => setDataForm({ ...dataForm, cnpj: e.target.value })} />
             </div>
             <div>
               {/* Não é obrigatória: em branco, o contrato usa a regra fixa de
                   MEI (raiz do CNPJ + nome em caixa alta), que é o que o
                   placeholder mostra. */}
               {fieldLabel('legal_name')}
-              <input type="text" value={dataForm.legal_name} onChange={(e) => setDataForm({ ...dataForm, legal_name: e.target.value })}
-                placeholder={meiLegalName(dataForm.cnpj, processo.candidates?.name ?? '')}
-                className="w-full px-2.5 py-1.5 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
+              <Input type="text" value={dataForm.legal_name} onChange={(e) => setDataForm({ ...dataForm, legal_name: e.target.value })}
+                placeholder={meiLegalName(dataForm.cnpj, processo.candidates?.name ?? '')} />
             </div>
             <div>
               {fieldLabel('birth_date')}
@@ -266,60 +261,52 @@ export default function GerarContratoModal({ processo, onClose }: GerarContratoM
                 onChange={(v) => setDataForm({ ...dataForm, nationality: v })}
               />
             </div>
-            <div className="col-span-2">
+            <div className="sm:col-span-2">
               {fieldLabel('address')}
-              <input type="text" value={dataForm.address} onChange={(e) => setDataForm({ ...dataForm, address: e.target.value })}
-                className="w-full px-2.5 py-1.5 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
+              <Input type="text" value={dataForm.address} onChange={(e) => setDataForm({ ...dataForm, address: e.target.value })} />
             </div>
-            <div className="col-span-2">
+            <div className="sm:col-span-2">
               {fieldLabel('email')}
-              <input type="email" value={dataForm.email} onChange={(e) => setDataForm({ ...dataForm, email: e.target.value })}
-                className="w-full px-2.5 py-1.5 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
+              <Input type="email" value={dataForm.email} onChange={(e) => setDataForm({ ...dataForm, email: e.target.value })} />
             </div>
             <div>
               {fieldLabel('bank_name')}
-              <input type="text" value={dataForm.bank_name} onChange={(e) => setDataForm({ ...dataForm, bank_name: e.target.value })}
-                className="w-full px-2.5 py-1.5 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
+              <Input type="text" value={dataForm.bank_name} onChange={(e) => setDataForm({ ...dataForm, bank_name: e.target.value })} />
             </div>
             <div>
               {fieldLabel('bank_agency')}
-              <input type="text" value={dataForm.bank_agency} onChange={(e) => setDataForm({ ...dataForm, bank_agency: e.target.value })}
-                className="w-full px-2.5 py-1.5 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
+              <Input type="text" value={dataForm.bank_agency} onChange={(e) => setDataForm({ ...dataForm, bank_agency: e.target.value })} />
             </div>
             <div>
               {fieldLabel('bank_account')}
-              <input type="text" value={dataForm.bank_account} onChange={(e) => setDataForm({ ...dataForm, bank_account: e.target.value })}
-                className="w-full px-2.5 py-1.5 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
+              <Input type="text" value={dataForm.bank_account} onChange={(e) => setDataForm({ ...dataForm, bank_account: e.target.value })} />
             </div>
             <div>
               {fieldLabel('pix_key')}
-              <input type="text" value={dataForm.pix_key} onChange={(e) => setDataForm({ ...dataForm, pix_key: e.target.value })}
-                className="w-full px-2.5 py-1.5 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
+              <Input type="text" value={dataForm.pix_key} onChange={(e) => setDataForm({ ...dataForm, pix_key: e.target.value })} />
             </div>
           </div>
-          <button
-            onClick={() => saveData.mutate()}
-            disabled={saveData.isPending}
-            className="w-full px-3 py-2 rounded-lg border border-border text-sm font-medium hover:bg-surface-alt disabled:opacity-70"
-          >
-            {saveData.isPending ? 'Salvando...' : 'Salvar dados'}
-          </button>
-        </div>
+          <div className="flex justify-end">
+            <Button variant="secondary" onClick={() => saveData.mutate()} disabled={saveData.isPending}>
+              {saveData.isPending ? 'Salvando…' : 'Salvar alterações'}
+            </Button>
+          </div>
+        </section>
 
-        <div className="border border-border rounded-lg p-3 space-y-3">
-          <p className="text-xs font-semibold text-muted-foreground uppercase">Gerar contrato</p>
+        <section className="mt-5 rounded-lg border border-border bg-surface p-4 space-y-3">
+          <h3 className="text-[14px] font-semibold text-foreground">Gerar contrato</h3>
           {contractType ? (
-            <p className="text-sm text-foreground">
+            <p className="text-[13px] text-foreground">
               Tipo: <span className="font-medium">{CONTRACT_TYPE_LABELS[contractType]}</span>
             </p>
           ) : (
-            <p className="text-sm text-warning">
-              Este vínculo (CLT) ainda não tem template de contrato configurado — geração automática indisponível.
+            <p className="text-[13px] text-warning">
+              Este vínculo (CLT) ainda não tem modelo de contrato configurado — geração automática indisponível.
             </p>
           )}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-[11px] text-muted-foreground mb-1">Início vigência</label>
+              <label className="field-label">Início da vigência</label>
               <DateField
                 value={termStart || null}
                 onChange={(v) => setTermStart(v ?? '')}
@@ -328,7 +315,7 @@ export default function GerarContratoModal({ processo, onClose }: GerarContratoM
               />
             </div>
             <div>
-              <label className="block text-[11px] text-muted-foreground mb-1">Fim vigência</label>
+              <label className="field-label">Fim da vigência</label>
               <DateField
                 value={termEnd || null}
                 onChange={(v) => setTermEnd(v ?? '')}
@@ -340,34 +327,34 @@ export default function GerarContratoModal({ processo, onClose }: GerarContratoM
           {contractType === 'prestacao_servico' && (
             <>
               <div>
-                <label className="block text-[11px] text-muted-foreground mb-1">Modelo base</label>
+                <label className="field-label">Modelo base</label>
                 <StyledSelect
                   value={templateId}
                   onChange={setTemplateId}
                   options={(templates?.templates ?? []).map((t) => ({ value: t.id, label: t.name }))}
-                  placeholder={loadingTemplates ? 'Carregando modelos...' : 'Selecionar'}
+                  placeholder={loadingTemplates ? 'Carregando modelos…' : 'Selecionar'}
                   disabled={loadingTemplates}
                 />
               </div>
-              <p className="text-[11px] text-muted-foreground">
+              <p className="text-[12px] text-muted-foreground">
                 Em branco: assinatura hoje e vigência de 12 meses, como manda a cláusula 4.1 do contrato de parceria.
               </p>
             </>
           )}
           {contractType && missingFields.length > 0 && (
-            <p className="text-[11px] text-warning">
-              Faltam dados obrigatórios pra este tipo de contrato: {missingFields.map((f) => CONTRACT_DATA_FIELD_LABELS[f]).join(', ')}.
+            <p className="text-[12px] text-warning">
+              Faltam dados obrigatórios para este tipo de contrato: {missingFields.map((f) => CONTRACT_DATA_FIELD_LABELS[f]).join(', ')}.
             </p>
           )}
-          <button
+          <Button
+            className="w-full"
             onClick={() => generateContract.mutate()}
             disabled={!contractType || missingFields.length > 0 || generateContract.isPending}
             title={missingFields.length > 0 ? 'Preencha e salve os dados obrigatórios antes de gerar' : undefined}
-            className="w-full px-3 py-2 rounded-lg btn-action text-sm font-medium disabled:opacity-50"
           >
-            {generateContract.isPending ? 'Gerando...' : 'Gerar Contrato'}
-          </button>
-        </div>
+            {generateContract.isPending ? 'Gerando…' : 'Gerar contrato'}
+          </Button>
+        </section>
       </div>
     </div>
   )

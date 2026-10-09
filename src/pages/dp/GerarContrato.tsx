@@ -1,8 +1,11 @@
 import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Loader, Search, FileSignature, Store as StoreIcon, Building2 } from 'lucide-react'
+import { FileSignature, Store as StoreIcon, Building2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import AdminLayout from '@/components/admin/AdminLayout'
+import { AdminPage, Toolbar, SearchInput, Panel, EmptyState, PageLoading } from '@/components/admin/ui/AdminPage'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import StyledSelect from '@/components/ui/styled-select'
 import GerarContratoModal from '@/components/dp/GerarContratoModal'
 import LojasDadosModal from '@/components/dp/LojasDadosModal'
@@ -22,9 +25,9 @@ function AvatarBubble({ name, photoUrl }: { name: string; photoUrl: string | nul
   return (
     <div className="w-8 h-8 rounded-full overflow-hidden shrink-0 bg-surface-alt border border-border flex items-center justify-center">
       {photoUrl ? (
-        <img src={photoUrl} alt="" className="w-full h-full object-cover" />
+        <img src={photoUrl} alt="" loading="lazy" decoding="async" width={32} height={32} className="w-full h-full object-cover" />
       ) : (
-        <span className="text-[10px] font-bold text-muted-foreground">{initials(name)}</span>
+        <span className="text-[11px] font-semibold text-muted-foreground">{initials(name)}</span>
       )}
     </div>
   )
@@ -73,33 +76,25 @@ export default function DpGerarContrato() {
 
   return (
     <AdminLayout>
-      <div className="bg-card border-b border-border sticky top-0 z-30">
-        <div className="px-4 sm:px-6 py-4 flex items-center justify-between gap-4 flex-wrap">
-          <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-foreground">Gerar Contrato</h1>
-            <p className="text-sm text-muted-foreground mt-1">Geração automática dos contratos de formação e de profissional parceiro</p>
-          </div>
-          <div className="flex items-center gap-2 flex-wrap">
-            <button
-              onClick={() => setLojasOpen(true)}
-              className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border text-sm font-medium hover:bg-surface-alt transition-colors"
-              title="Razão social, CNPJ, endereço, contato e representante legal por unidade"
-            >
-              <Building2 className="w-4 h-4" />
-              <span className="hidden sm:inline">Dados das lojas</span>
-            </button>
-            <div className="relative">
-              <Search className="w-4 h-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
-              <input
-                type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Buscar por nome..."
-                className="pl-9 pr-3 py-2 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-              />
-            </div>
+      <AdminPage
+        title="Contratos"
+        description="Geração automática dos contratos de formação e de profissional parceiro"
+        actions={
+          <Button
+            variant="secondary"
+            onClick={() => setLojasOpen(true)}
+            title="Razão social, CNPJ, endereço, contato e representante legal por unidade"
+            aria-label="Dados das lojas"
+          >
+            <Building2 />
+            <span className="hidden sm:inline">Dados das lojas</span>
+          </Button>
+        }
+        toolbar={
+          <Toolbar>
+            <SearchInput value={search} onChange={setSearch} placeholder="Buscar por nome…" />
             <StyledSelect
-              variant="inline"
+              className="w-full sm:w-56"
               icon={<StoreIcon className="w-4 h-4 text-muted-foreground shrink-0" />}
               value={storeId}
               onChange={setStoreId}
@@ -107,57 +102,53 @@ export default function DpGerarContrato() {
               emptyLabel="Todas as unidades"
               placeholder="Todas as unidades"
             />
-          </div>
-        </div>
-      </div>
-
-      <div className="px-4 sm:px-6 py-8">
+          </Toolbar>
+        }
+      >
         {isLoading ? (
-          <div className="text-center py-16">
-            <Loader className="w-8 h-8 animate-spin text-gold-text mx-auto mb-4" />
-            <p className="text-muted-foreground">Carregando processos...</p>
-          </div>
+          <PageLoading label="Carregando processos…" />
         ) : filtered.length === 0 ? (
-          <div className="text-center py-16">
-            <FileSignature className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
-            <p className="text-muted-foreground font-medium">Nenhum processo encontrado.</p>
-          </div>
+          <Panel>
+            <EmptyState
+              icon={FileSignature}
+              title="Nenhum processo encontrado"
+              description={
+                search.trim()
+                  ? 'Nenhum nome bate com a busca. Confira a grafia ou limpe o filtro.'
+                  : 'Processos em andamento ou ativos aparecem aqui para gerar o contrato.'
+              }
+            />
+          </Panel>
         ) : (
-          <div className="bg-card rounded-xl border border-border shadow-[var(--shadow-card)] overflow-hidden">
+          <Panel flush className="overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="w-full">
+              <table className="data-table">
                 <thead>
-                  <tr className="border-b border-border bg-muted/50">
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-foreground">Nome</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-foreground">Cargo</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-foreground hidden sm:table-cell">Unidade</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-foreground hidden md:table-cell">Vínculo</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-foreground hidden lg:table-cell">Contrato sugerido</th>
+                  <tr>
+                    <th>Nome</th>
+                    <th>Cargo</th>
+                    <th className="hidden sm:table-cell">Unidade</th>
+                    <th className="hidden md:table-cell">Vínculo</th>
+                    <th className="hidden lg:table-cell">Contrato sugerido</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filtered.map((p, index) => {
+                  {filtered.map((p) => {
                     const suggestedType = resolveAutoContractType(p.employment_type, p.current_stage)
                     return (
-                      <tr
-                        key={p.id}
-                        onClick={() => setSelected(p)}
-                        className={`border-b border-border/40 last:border-0 cursor-pointer hover:bg-surface-alt transition-colors ${index % 2 === 0 ? '' : 'bg-muted/30'}`}
-                      >
-                        <td className="px-4 py-3 text-sm font-medium text-foreground">
-                          <div className="flex items-center gap-2.5">
+                      <tr key={p.id} onClick={() => setSelected(p)} className="cursor-pointer">
+                        <td>
+                          <div className="flex items-center gap-2.5 min-w-0">
                             <AvatarBubble name={p.candidates?.name || '?'} photoUrl={p.candidates?.photo_url} />
-                            {p.candidates?.name || 'Candidato removido'}
+                            <span className="font-medium text-foreground truncate">{p.candidates?.name || 'Candidato removido'}</span>
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-sm text-muted-foreground">{p.role_title}</td>
-                        <td className="px-4 py-3 text-sm text-muted-foreground hidden sm:table-cell">{p.stores?.name || '—'}</td>
-                        <td className="px-4 py-3 text-sm hidden md:table-cell">
-                          <span className="px-2 py-0.5 rounded-md bg-teal-100 text-teal-700 dark:bg-teal-500/20 dark:text-teal-300 text-xs font-medium">
-                            {EMPLOYMENT_TYPE_LABELS[p.employment_type]}
-                          </span>
+                        <td className="text-muted-foreground">{p.role_title}</td>
+                        <td className="text-muted-foreground hidden sm:table-cell">{p.stores?.name || '—'}</td>
+                        <td className="hidden md:table-cell">
+                          <Badge variant="neutral">{EMPLOYMENT_TYPE_LABELS[p.employment_type]}</Badge>
                         </td>
-                        <td className="px-4 py-3 text-sm text-muted-foreground hidden lg:table-cell">
+                        <td className="text-muted-foreground hidden lg:table-cell">
                           {suggestedType ? CONTRACT_TYPE_LABELS[suggestedType] : '—'}
                         </td>
                       </tr>
@@ -166,9 +157,9 @@ export default function DpGerarContrato() {
                 </tbody>
               </table>
             </div>
-          </div>
+          </Panel>
         )}
-      </div>
+      </AdminPage>
 
       {selected && <GerarContratoModal processo={selected} onClose={() => setSelected(null)} />}
       {lojasOpen && <LojasDadosModal onClose={() => setLojasOpen(false)} />}

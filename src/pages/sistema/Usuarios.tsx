@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase, callEdgeFunction } from '@/lib/supabase'
 import { toast } from 'sonner'
 import {
-  Loader, Plus, UserPlus, ShieldCheck, Store, Users, Search,
+  Loader, Plus, ShieldCheck, Store, Users,
   X, Edit2, Check, User, Phone, Mail, FileText, Building2,
   DollarSign, KeyRound, RefreshCw, Lock, Unlock, Copy, Package,
   AlertTriangle, TrendingUp, Briefcase,
@@ -11,6 +11,13 @@ import {
 import AdminLayout from '@/components/admin/AdminLayout'
 import { ORDER_STATUS, ORDER_STATUS_SEQUENCE, toneClasses } from '@/lib/design/orderStatus'
 import StyledSelect from '@/components/ui/styled-select'
+import { AdminPage, PageTabs, Toolbar, SearchInput, Panel, EmptyState, PageLoading } from '@/components/admin/ui/AdminPage'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
+import { Switch } from '@/components/ui/switch'
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table'
+import { Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle } from '@/components/ui/dialog'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -86,8 +93,8 @@ const ROLE_ICONS: Record<string, React.ReactNode> = {
 
 const SEGMENT_OPTIONS = [
   { value: '',                label: 'Não classificado' },
-  { value: 'network_partner', label: 'Parceiro da Rede' },
-  { value: 'wholesale_buyer', label: 'Comprador Atacado' },
+  { value: 'network_partner', label: 'Parceiro da rede' },
+  { value: 'wholesale_buyer', label: 'Comprador atacado' },
 ]
 // Mesma família de cor do segmentBadge.
 const SEGMENT_DOT: Record<string, string> = {
@@ -104,7 +111,7 @@ const segmentLabel = (v: string | null) =>
   SEGMENT_OPTIONS.find(o => o.value === (v || ''))?.label ?? 'Não classificado'
 
 const businessTypeLabels: Record<string, string> = {
-  salao: 'Salão de Beleza',
+  salao: 'Salão de beleza',
   revenda: 'Revenda',
   loja: 'Loja / Comércio',
 }
@@ -180,9 +187,9 @@ export default function AdminUsuarios() {
       queryClient.invalidateQueries({ queryKey: ['admin-system-users'] })
       setCreating(false)
       setCreateForm({ email: '', password: '', role: 'salao', store_id: '' })
-      alert('Usuário criado com sucesso!')
+      toast.success('Usuário criado')
     },
-    onError: (err) => alert(`Erro: ${err instanceof Error ? err.message : 'Desconhecido'}`),
+    onError: (err) => toast.error(`Erro: ${err instanceof Error ? err.message : 'Desconhecido'}`),
   })
 
   const updateRoleMutation = useMutation({
@@ -195,7 +202,7 @@ export default function AdminUsuarios() {
       if (error) throw error
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin-system-users'] }),
-    onError: (err) => alert(`Erro: ${err instanceof Error ? err.message : 'Desconhecido'}`),
+    onError: (err) => toast.error(`Erro: ${err instanceof Error ? err.message : 'Desconhecido'}`),
   })
 
   const updatePermissionMutation = useMutation({
@@ -215,8 +222,8 @@ export default function AdminUsuarios() {
   })
 
   const handleCreate = () => {
-    if (!createForm.email || !createForm.password) { alert('Email e senha são obrigatórios'); return }
-    if (createForm.password.length < 6) { alert('Senha deve ter pelo menos 6 caracteres'); return }
+    if (!createForm.email || !createForm.password) { toast.error('E-mail e senha são obrigatórios'); return }
+    if (createForm.password.length < 6) { toast.error('A senha deve ter pelo menos 6 caracteres'); return }
     createUserMutation.mutate(createForm)
   }
 
@@ -263,45 +270,33 @@ export default function AdminUsuarios() {
 
   return (
     <AdminLayout>
-      <div className="bg-card border-b border-border sticky top-0 z-30">
-        <div className="px-4 sm:px-6 py-4 flex items-center justify-between gap-4">
-          <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-foreground">Usuários</h1>
-            <p className="text-sm text-muted-foreground mt-1">Sistema, parceiros e clientes</p>
-          </div>
-          {activeTab === 'sistema' && (
-            <button onClick={() => setCreating(true)}
-              className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg btn-action text-sm font-medium transition-colors">
-              <Plus className="w-4 h-4" />
-              <span className="hidden sm:inline">Novo Usuário</span>
-            </button>
-          )}
-          {activeTab === 'parceiros' && (
-            <button onClick={() => setCreatingPartner(true)}
-              className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg btn-action text-sm font-medium transition-colors">
-              <Plus className="w-4 h-4" />
-              <span className="hidden sm:inline">Novo Parceiro</span>
-            </button>
-          )}
-        </div>
-        <div className="px-4 sm:px-6 flex gap-1 border-t border-border">
-          {tabs.map(tab => (
-            <button key={tab.key} onClick={() => setActiveTab(tab.key)}
-              className={`flex items-center gap-1.5 px-3 py-2.5 text-sm font-medium border-b-2 transition-colors ${
-                activeTab === tab.key
-                  ? 'border-gold text-foreground'
-                  : 'border-transparent text-muted-foreground hover:text-foreground'
-              }`}>
-              <tab.icon className="w-4 h-4" />{tab.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="px-4 sm:px-6 py-6 space-y-6">
+      <AdminPage
+        title="Usuários"
+        description="Sistema, parceiros e clientes"
+        actions={
+          activeTab === 'sistema' ? (
+            <Button onClick={() => setCreating(true)} aria-label="Novo usuário">
+              <Plus />
+              <span className="hidden sm:inline">Novo usuário</span>
+            </Button>
+          ) : activeTab === 'parceiros' ? (
+            <Button onClick={() => setCreatingPartner(true)} aria-label="Novo parceiro">
+              <Plus />
+              <span className="hidden sm:inline">Novo parceiro</span>
+            </Button>
+          ) : undefined
+        }
+        tabs={
+          <PageTabs<'sistema' | 'parceiros' | 'clientes'>
+            items={tabs.map(t => ({ key: t.key, label: t.label, icon: t.icon }))}
+            value={activeTab}
+            onChange={setActiveTab}
+          />
+        }
+      >
         {activeTab === 'sistema' && (
           isLoading
-            ? <LoadingState label="Carregando..." />
+            ? <PageLoading />
             : <SystemTab
                 users={users}
                 stores={stores}
@@ -312,128 +307,115 @@ export default function AdminUsuarios() {
         )}
         {activeTab === 'parceiros' && <ClientStatsTab rpc="get_network_partners" queryKey="network-partners" emptyLabel="Nenhum parceiro da rede cadastrado." showSegment={false} />}
         {activeTab === 'clientes'  && <ClientStatsTab rpc="get_all_client_stats"  queryKey="all-client-stats"  emptyLabel="Nenhum cliente cadastrado."           showSegment />}
-      </div>
+      </AdminPage>
 
-      {creatingPartner && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-foreground/40 backdrop-blur-sm" onClick={() => setCreatingPartner(false)} />
-          <div className="relative bg-card border border-border rounded-2xl shadow-2xl p-6 w-full max-w-md">
-            <div className="flex items-center gap-3 mb-5">
-              <div className="w-10 h-10 rounded-xl gradient-gold flex items-center justify-center">
-                <TrendingUp className="w-5 h-5 text-white" />
-              </div>
-              <h2 className="text-xl font-bold text-foreground">Novo Parceiro</h2>
+      <Dialog open={creatingPartner} onOpenChange={setCreatingPartner}>
+        <DialogContent className="max-w-md">
+          <DialogHeader className="text-left">
+            <DialogTitle className="text-[16px]">Novo parceiro</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="field-label">Nome completo *</label>
+              <Input
+                type="text"
+                value={partnerForm.full_name}
+                onChange={e => setPartnerForm({ ...partnerForm, full_name: e.target.value })}
+                placeholder="Nome do parceiro"
+                autoFocus
+              />
             </div>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1">Nome completo *</label>
-                <input
-                  type="text"
-                  value={partnerForm.full_name}
-                  onChange={e => setPartnerForm({ ...partnerForm, full_name: e.target.value })}
-                  className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                  placeholder="Nome do parceiro"
-                  autoFocus
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1">Telefone (WhatsApp) *</label>
-                <input
-                  type="tel"
-                  value={partnerForm.phone}
-                  onChange={e => setPartnerForm({ ...partnerForm, phone: e.target.value })}
-                  className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                  placeholder="(11) 99999-9999"
-                />
-              </div>
-            </div>
-            <div className="flex gap-3 mt-6">
-              <button
-                onClick={() => {
-                  if (!partnerForm.full_name.trim()) { toast.error('Nome é obrigatório'); return }
-                  if (!partnerForm.phone.replace(/\D/g, '')) { toast.error('Telefone é obrigatório'); return }
-                  createPartnerMutation.mutate(partnerForm)
-                }}
-                disabled={createPartnerMutation.isPending}
-                className="flex-1 px-4 py-2.5 rounded-lg btn-action font-medium disabled:opacity-70 transition-colors">
-                {createPartnerMutation.isPending ? 'Criando...' : 'Criar Parceiro'}
-              </button>
-              <button onClick={() => setCreatingPartner(false)}
-                className="flex-1 px-4 py-2.5 rounded-lg border border-border bg-card text-foreground font-medium hover:bg-accent">
-                Cancelar
-              </button>
+            <div>
+              <label className="field-label">Telefone (WhatsApp) *</label>
+              <Input
+                type="tel"
+                value={partnerForm.phone}
+                onChange={e => setPartnerForm({ ...partnerForm, phone: e.target.value })}
+                placeholder="(11) 99999-9999"
+              />
             </div>
           </div>
-        </div>
-      )}
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="secondary" onClick={() => setCreatingPartner(false)}>Cancelar</Button>
+            <Button
+              onClick={() => {
+                if (!partnerForm.full_name.trim()) { toast.error('Nome é obrigatório'); return }
+                if (!partnerForm.phone.replace(/\D/g, '')) { toast.error('Telefone é obrigatório'); return }
+                createPartnerMutation.mutate(partnerForm)
+              }}
+              disabled={createPartnerMutation.isPending}
+            >
+              {createPartnerMutation.isPending ? 'Criando…' : 'Criar parceiro'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-      {creating && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-foreground/40 backdrop-blur-sm" onClick={() => setCreating(false)} />
-          <div className="relative bg-card border border-border rounded-2xl shadow-2xl p-6 w-full max-w-md">
-            <div className="flex items-center gap-3 mb-5">
-              <div className="w-10 h-10 rounded-xl gradient-gold flex items-center justify-center">
-                <UserPlus className="w-5 h-5 text-white" />
-              </div>
-              <h2 className="text-xl font-bold text-foreground">Novo Usuário</h2>
+      <Dialog open={creating} onOpenChange={setCreating}>
+        <DialogContent className="max-w-md">
+          <DialogHeader className="text-left">
+            <DialogTitle className="text-[16px]">Novo usuário</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <span className="field-label">Tipo de acesso</span>
+              <RolePicker
+                value={createForm.role}
+                onChange={r => setCreateForm({ ...createForm, role: r, store_id: r === 'salao' ? createForm.store_id : '' })}
+              />
             </div>
-            <div className="space-y-4">
+            {createForm.role === 'salao' && (
               <div>
-                <label className="block text-sm font-medium text-foreground mb-1">Tipo de acesso</label>
-                <div className="grid grid-cols-3 gap-2">
-                  {(['salao', 'administrativo', 'admin'] as const).map(r => (
-                    <button key={r} type="button" onClick={() => setCreateForm({ ...createForm, role: r, store_id: r === 'salao' ? createForm.store_id : '' })}
-                      className={`flex items-center justify-center gap-2 py-2.5 rounded-lg border text-xs sm:text-sm font-semibold transition-all ${
-                        createForm.role === r
-                          ? `${ROLE_STYLES[r]} border-current/30`
-                          : 'bg-background text-muted-foreground border-border hover:bg-accent'
-                      }`}>
-                      {ROLE_ICONS[r]}{ROLE_LABELS[r]}
-                    </button>
-                  ))}
-                </div>
+                <span className="field-label">Loja vinculada (opcional)</span>
+                <p className="text-[12px] text-muted-foreground mb-1.5">Sem loja, o colaborador só acessa o módulo de venda — não o de contagem de estoque.</p>
+                <StyledSelect
+                  value={createForm.store_id}
+                  onChange={(v) => setCreateForm({ ...createForm, store_id: v })}
+                  options={stores.map(s => ({ value: s.id, label: s.name }))}
+                  emptyLabel="Nenhuma (só vendas)"
+                  placeholder="Nenhuma (só vendas)"
+                />
               </div>
-              {createForm.role === 'salao' && (
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-1">Loja vinculada (opcional)</label>
-                  <p className="text-xs text-muted-foreground mb-1.5">Sem loja, o colaborador só acessa o módulo de venda — não o de contagem de estoque.</p>
-                  <StyledSelect
-                    value={createForm.store_id}
-                    onChange={(v) => setCreateForm({ ...createForm, store_id: v })}
-                    options={stores.map(s => ({ value: s.id, label: s.name }))}
-                    emptyLabel="Nenhuma (só vendas)"
-                    placeholder="Nenhuma (só vendas)"
-                    className="rounded-lg"
-                  />
-                </div>
-              )}
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1">E-mail *</label>
-                <input type="email" value={createForm.email} onChange={e => setCreateForm({ ...createForm, email: e.target.value })}
-                  className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                  placeholder="usuario@email.com" autoFocus />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1">Senha *</label>
-                <input type="password" value={createForm.password} onChange={e => setCreateForm({ ...createForm, password: e.target.value })}
-                  className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                  placeholder="Mínimo 6 caracteres" />
-              </div>
+            )}
+            <div>
+              <label className="field-label">E-mail *</label>
+              <Input type="email" value={createForm.email} onChange={e => setCreateForm({ ...createForm, email: e.target.value })}
+                placeholder="usuario@email.com" autoFocus />
             </div>
-            <div className="flex gap-3 mt-6">
-              <button onClick={handleCreate} disabled={createUserMutation.isPending}
-                className="flex-1 px-4 py-2.5 rounded-lg btn-action font-medium disabled:opacity-70 transition-colors">
-                {createUserMutation.isPending ? 'Criando...' : 'Criar Usuário'}
-              </button>
-              <button onClick={() => setCreating(false)}
-                className="flex-1 px-4 py-2.5 rounded-lg border border-border bg-card text-foreground font-medium hover:bg-accent">
-                Cancelar
-              </button>
+            <div>
+              <label className="field-label">Senha *</label>
+              <Input type="password" value={createForm.password} onChange={e => setCreateForm({ ...createForm, password: e.target.value })}
+                placeholder="Mínimo 6 caracteres" />
             </div>
           </div>
-        </div>
-      )}
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="secondary" onClick={() => setCreating(false)}>Cancelar</Button>
+            <Button onClick={handleCreate} disabled={createUserMutation.isPending}>
+              {createUserMutation.isPending ? 'Criando…' : 'Criar usuário'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AdminLayout>
+  )
+}
+
+/** Seletor de papel (3 opções com a cor categórica do papel). */
+function RolePicker({ value, onChange, disabled }: { value: string; onChange: (r: 'salao' | 'administrativo' | 'admin') => void; disabled?: boolean }) {
+  return (
+    <div className="grid grid-cols-3 gap-2">
+      {(['salao', 'administrativo', 'admin'] as const).map(r => (
+        <button key={r} type="button" onClick={() => onChange(r)} disabled={disabled}
+          aria-pressed={value === r}
+          className={`flex items-center justify-center gap-1.5 h-9 px-2 rounded-md border text-[13px] font-medium transition-colors disabled:cursor-default ${
+            value === r
+              ? `${ROLE_STYLES[r]} border-current/30`
+              : 'bg-card text-ink-600 border-border hover:border-ink-300 hover:text-foreground disabled:opacity-50'
+          }`}>
+          {ROLE_ICONS[r]}<span className="truncate">{ROLE_LABELS[r]}</span>
+        </button>
+      ))}
+    </div>
   )
 }
 
@@ -479,91 +461,89 @@ function ClientStatsTab({
 
   const selected = rows.find(r => r.id === selectedId) ?? null
 
-  if (isLoading) return <LoadingState label="Carregando..." />
+  if (isLoading) return <PageLoading />
 
   return (
     <>
       <div className="space-y-4">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <input type="text" placeholder="Buscar por nome, e-mail ou telefone..."
-            value={search} onChange={e => setSearch(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 rounded-xl border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
-        </div>
+        <Toolbar>
+          <SearchInput
+            value={search}
+            onChange={setSearch}
+            placeholder="Buscar por nome, e-mail ou telefone…"
+            className="sm:w-80"
+          />
+          <span className="text-[12px] text-muted-foreground tabular-nums sm:ml-auto">
+            {filtered.length} {showSegment ? 'cliente' : 'parceiro'}{filtered.length !== 1 ? 's' : ''}
+          </span>
+        </Toolbar>
 
-        <p className="text-xs text-muted-foreground">
-          {filtered.length} {showSegment ? 'cliente' : 'parceiro'}{filtered.length !== 1 ? 's' : ''}
-        </p>
-
-        <div className="bg-card rounded-xl border border-border shadow-[var(--shadow-card)] overflow-x-auto">
-          <table className="w-full min-w-[720px]">
-            <thead>
-              <tr className="border-b border-border bg-muted/50">
-                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                  {showSegment ? 'Cliente' : 'Parceiro'}
-                </th>
-                {showSegment && (
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Segmento</th>
-                )}
-                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Tabela de Preço</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Último Acesso</th>
-                <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wide">Total Comprado</th>
-                <th className="px-4 py-3 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wide">Acesso</th>
-                <th className="px-4 py-3" />
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.length === 0 ? (
-                <tr>
-                  <td colSpan={showSegment ? 7 : 6} className="px-4 py-10 text-center text-sm text-muted-foreground">
-                    {search ? 'Nenhum resultado encontrado.' : emptyLabel}
-                  </td>
-                </tr>
-              ) : filtered.map((row, i) => (
-                <tr key={row.id} className={`border-b border-border/50 last:border-0 ${i % 2 === 0 ? '' : 'bg-muted/30'}`}>
-                  <td className="px-4 py-3">
-                    <p className="font-semibold text-sm text-foreground">{row.full_name || '—'}</p>
-                    <p className="text-xs text-muted-foreground">{row.email || row.phone || '—'}</p>
-                  </td>
-                  {showSegment && (
-                    <td className="px-4 py-3">
-                      <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${segmentBadge(row.customer_segment)}`}>
-                        {segmentLabel(row.customer_segment)}
-                      </span>
-                    </td>
-                  )}
-                  <td className="px-4 py-3 text-sm text-foreground">
-                    {row.price_list_name || <span className="text-xs text-muted-foreground">Padrão</span>}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-muted-foreground">
-                    {row.last_sign_in_at
-                      ? new Date(row.last_sign_in_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' })
-                      : '—'}
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <p className="text-sm font-semibold text-foreground">
-                      {row.total_purchased > 0
-                        ? `R$ ${Number(row.total_purchased).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
-                        : <span className="text-xs text-muted-foreground">—</span>}
-                    </p>
-                    {row.order_count > 0 && (
-                      <p className="text-[10px] text-muted-foreground">{row.order_count} pedido{row.order_count !== 1 ? 's' : ''}</p>
+        <Panel flush className="overflow-hidden">
+          {filtered.length === 0 ? (
+            <EmptyState
+              icon={Users}
+              title={search ? 'Nenhum resultado encontrado' : emptyLabel.replace(/\.$/, '')}
+              description={search ? 'Tente outro nome, e-mail ou telefone.' : undefined}
+            />
+          ) : (
+            <Table className="min-w-[720px]">
+              <TableHeader>
+                <TableRow className="hover:bg-transparent">
+                  <TableHead>{showSegment ? 'Cliente' : 'Parceiro'}</TableHead>
+                  {showSegment && <TableHead>Segmento</TableHead>}
+                  <TableHead>Tabela de preço</TableHead>
+                  <TableHead>Último acesso</TableHead>
+                  <TableHead className="text-right">Total comprado</TableHead>
+                  <TableHead className="text-center">Acesso</TableHead>
+                  <TableHead><span className="sr-only">Ações</span></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filtered.map((row) => (
+                  <TableRow key={row.id}>
+                    <TableCell>
+                      <p className="font-medium text-foreground">{row.full_name || '—'}</p>
+                      <p className="text-[12px] text-muted-foreground">{row.email || row.phone || '—'}</p>
+                    </TableCell>
+                    {showSegment && (
+                      <TableCell>
+                        <span className={`inline-flex text-[12px] font-medium px-2 py-0.5 rounded-full ${segmentBadge(row.customer_segment)}`}>
+                          {segmentLabel(row.customer_segment)}
+                        </span>
+                      </TableCell>
                     )}
-                  </td>
-                  <td className="px-4 py-3 text-center">
-                    <AccessBadge status={row.access_status} />
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <button onClick={() => setSelectedId(row.id)}
-                      className="text-xs font-medium text-foreground px-3 py-1.5 rounded-lg border border-border hover:bg-accent transition-colors">
-                      Editar
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                    <TableCell className="text-foreground">
+                      {row.price_list_name || <span className="text-muted-foreground">Padrão</span>}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {row.last_sign_in_at
+                        ? new Date(row.last_sign_in_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' })
+                        : '—'}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <p className="font-medium text-foreground">
+                        {row.total_purchased > 0
+                          ? `R$ ${Number(row.total_purchased).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
+                          : <span className="text-muted-foreground">—</span>}
+                      </p>
+                      {row.order_count > 0 && (
+                        <p className="text-[12px] text-muted-foreground">{row.order_count} pedido{row.order_count !== 1 ? 's' : ''}</p>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <AccessBadge status={row.access_status} />
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button variant="secondary" size="sm" onClick={() => setSelectedId(row.id)}>
+                        Editar
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </Panel>
       </div>
 
       {selected && (
@@ -673,27 +653,25 @@ function ClientSidePanel({
 
   return (
     <>
-      <div className="fixed inset-0 bg-foreground/40 z-40 backdrop-blur-sm" onClick={onClose} />
-      <div className="fixed right-0 top-0 bottom-0 w-full max-w-lg bg-card z-50 shadow-2xl flex flex-col border-l border-border">
+      <div className="fixed inset-0 bg-ink-950/45 z-40 backdrop-blur-[2px]" onClick={onClose} />
+      <div className="fixed right-0 top-0 bottom-0 w-full max-w-lg bg-card z-50 shadow-xl flex flex-col border-l border-border">
 
         {/* Header */}
         <div className="border-b border-border px-5 py-4 flex items-start gap-3.5 flex-shrink-0">
-          <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-sm flex-shrink-0 ${isPartner ? 'bg-brand' : 'bg-muted-foreground/40'}`}>
+          <div className={`w-11 h-11 rounded-full flex items-center justify-center font-semibold text-[13px] flex-shrink-0 ${isPartner ? 'bg-brand-subtle text-brand-strong' : 'bg-muted text-ink-600'}`}>
             {initials}
           </div>
           <div className="flex-1 min-w-0">
-            <h2 className="text-base font-bold text-foreground truncate">{client.full_name || 'Cliente'}</h2>
-            <p className="text-xs text-muted-foreground mt-0.5">{client.email || client.phone || '—'}</p>
+            <h2 className="text-[16px] font-semibold text-foreground truncate">{client.full_name || 'Cliente'}</h2>
+            <p className="text-[13px] text-muted-foreground mt-0.5 truncate">{client.email || client.phone || '—'}</p>
             <div className="flex items-center gap-2 mt-1.5">
-              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md ring-1 ring-inset ${segmentBadge(client.customer_segment)}`}>
+              <span className={`text-[12px] font-medium px-2 py-0.5 rounded-full ${segmentBadge(client.customer_segment)}`}>
                 {segmentLabel(client.customer_segment)}
               </span>
               <AccessBadge status={client.access_status} />
             </div>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-accent transition-colors text-muted-foreground hover:text-foreground flex-shrink-0">
-            <X className="w-5 h-5" />
-          </button>
+          <Button variant="ghost" size="icon-sm" onClick={onClose} aria-label="Fechar" className="flex-shrink-0 -mr-1.5 -mt-1"><X /></Button>
         </div>
 
         {/* Scrollable content */}
@@ -704,16 +682,16 @@ function ClientSidePanel({
             <div className="px-5 py-3 border-b border-border flex gap-6">
               {client.total_purchased > 0 && (
                 <div>
-                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Total comprado</p>
-                  <p className="text-sm font-bold text-foreground">
+                  <p className="text-[12px] text-muted-foreground">Total comprado</p>
+                  <p className="text-[14px] font-semibold text-foreground tabular-nums">
                     R$ {Number(client.total_purchased).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                    <span className="text-[11px] font-normal text-muted-foreground ml-1">({client.order_count} pedidos)</span>
+                    <span className="text-[12px] font-normal text-muted-foreground ml-1">({client.order_count} pedidos)</span>
                   </p>
                 </div>
               )}
               {client.last_sign_in_at && (
                 <div>
-                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Último acesso</p>
+                  <p className="text-[12px] text-muted-foreground">Último acesso</p>
                   <p className="text-sm font-medium text-foreground">
                     {new Date(client.last_sign_in_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}
                   </p>
@@ -725,17 +703,17 @@ function ClientSidePanel({
           {/* Dados do Cadastro */}
           <div className="px-5 py-4 border-b border-border">
             <div className="flex items-center justify-between mb-3.5">
-              <h3 className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest">Dados do Cadastro</h3>
+              <h3 className="text-[14px] font-semibold text-foreground tracking-tight">Dados do cadastro</h3>
               {!editingProfile ? (
                 <button onClick={() => {
                   setProfileForm({ full_name: client.full_name ?? '', phone: client.phone ?? '', document_type: client.document_type ?? '', document: client.document ?? '', business_type: client.business_type ?? '', employees: client.employees ?? '', revenue: client.revenue ?? '' })
                   setEditingProfile(true)
-                }} className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium text-foreground/70 hover:bg-accent border border-border transition-colors">
+                }} className="inline-flex items-center gap-1.5 h-7 px-2 rounded-sm text-[12px] font-medium text-ink-600 bg-card hover:bg-muted hover:text-foreground border border-border transition-colors">
                   <Edit2 className="w-3.5 h-3.5" />Editar
                 </button>
               ) : (
                 <button onClick={() => setEditingProfile(false)}
-                  className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium text-muted-foreground hover:bg-accent transition-colors">
+                  className="inline-flex items-center gap-1 h-7 px-2 rounded-sm text-[12px] font-medium text-ink-500 hover:bg-muted hover:text-foreground transition-colors">
                   <X className="w-3.5 h-3.5" />Cancelar
                 </button>
               )}
@@ -745,11 +723,11 @@ function ClientSidePanel({
               <div className="space-y-3">
                 <FormField label="Nome completo">
                   <input type="text" value={profileForm.full_name} onChange={e => setProfileForm(p => ({ ...p, full_name: e.target.value }))}
-                    className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring" autoFocus />
+                    className="w-full h-9 px-3 text-base md:text-sm rounded-md border border-input bg-background text-foreground hover:border-ink-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background transition-colors" autoFocus />
                 </FormField>
                 <FormField label="WhatsApp / Telefone">
                   <input type="text" value={profileForm.phone} onChange={e => setProfileForm(p => ({ ...p, phone: e.target.value }))}
-                    className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                    className="w-full h-9 px-3 text-base md:text-sm rounded-md border border-input bg-background text-foreground hover:border-ink-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background transition-colors"
                     placeholder="Ex: 5527999990000" />
                 </FormField>
                 <div className="flex gap-2">
@@ -761,14 +739,14 @@ function ClientSidePanel({
                         options={[{ value: 'CPF', label: 'CPF' }, { value: 'CNPJ', label: 'CNPJ' }]}
                         emptyLabel="—"
                         placeholder="—"
-                        className="px-2 rounded-lg"
+                        className="px-2"
                       />
                     </FormField>
                   </div>
                   <div className="flex-1">
                     <FormField label="Número">
                       <input type="text" value={profileForm.document} onChange={e => setProfileForm(p => ({ ...p, document: e.target.value }))}
-                        className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                        className="w-full h-9 px-3 text-base md:text-sm rounded-md border border-input bg-background text-foreground hover:border-ink-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background transition-colors"
                         placeholder="000.000.000-00" />
                     </FormField>
                   </div>
@@ -780,7 +758,6 @@ function ClientSidePanel({
                     options={Object.entries(businessTypeLabels).map(([value, label]) => ({ value, label }))}
                     emptyLabel="Não informado"
                     placeholder="Não informado"
-                    className="rounded-lg"
                   />
                 </FormField>
                 <FormField label="Funcionários">
@@ -790,7 +767,6 @@ function ClientSidePanel({
                     options={Object.entries(employeesLabels).map(([value, label]) => ({ value, label }))}
                     emptyLabel="Não informado"
                     placeholder="Não informado"
-                    className="rounded-lg"
                   />
                 </FormField>
                 <FormField label="Faturamento estimado">
@@ -800,11 +776,10 @@ function ClientSidePanel({
                     options={Object.entries(revenueLabels).map(([value, label]) => ({ value, label }))}
                     emptyLabel="Não informado"
                     placeholder="Não informado"
-                    className="rounded-lg"
                   />
                 </FormField>
                 <button onClick={() => profileMutation.mutate(profileForm)} disabled={profileMutation.isPending}
-                  className="flex items-center gap-1.5 px-4 py-2 rounded-lg btn-action text-sm font-medium disabled:opacity-50 transition-colors">
+                  className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-md btn-primary text-sm font-medium disabled:opacity-45 transition-colors">
                   {profileMutation.isPending ? <Loader className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
                   Salvar alterações
                 </button>
@@ -815,11 +790,11 @@ function ClientSidePanel({
                 {client.email      && <InfoRow icon={Mail}      label="E-mail"              value={client.email} />}
                 {client.phone      && <InfoRow icon={Phone}     label="Telefone / WhatsApp" value={client.phone} />}
                 {client.document   && <InfoRow icon={FileText}  label={client.document_type || 'Documento'} value={client.document} />}
-                {client.business_type && <InfoRow icon={Building2} label="Tipo de Atuação" value={businessTypeLabels[client.business_type] || client.business_type} />}
+                {client.business_type && <InfoRow icon={Building2} label="Tipo de atuação" value={businessTypeLabels[client.business_type] || client.business_type} />}
                 {client.employees  && <InfoRow icon={Users}     label="Funcionários"        value={employeesLabels[client.employees] || client.employees} />}
                 {client.revenue    && <InfoRow icon={DollarSign} label="Faturamento"        value={revenueLabels[client.revenue] || client.revenue} />}
                 {!client.full_name && !client.phone && (
-                  <div className="bg-warning-subtle ring-1 ring-inset ring-warning-border text-warning p-3 rounded-lg text-xs flex items-center gap-2">
+                  <div className="bg-warning-subtle border border-warning-border text-warning p-3 rounded-lg text-[13px] flex items-center gap-2">
                     <AlertTriangle className="w-4 h-4 flex-shrink-0" />
                     Perfil incompleto — clique em Editar para preencher.
                   </div>
@@ -830,7 +805,7 @@ function ClientSidePanel({
 
           {/* Segmento Comercial */}
           <div className="px-5 py-4 border-b border-border">
-            <h3 className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest mb-3">Segmento Comercial</h3>
+            <h3 className="text-[14px] font-semibold text-foreground tracking-tight mb-3">Segmento comercial</h3>
             <div className="flex items-center gap-3">
               <StyledSelect
                 variant="inline"
@@ -850,7 +825,7 @@ function ClientSidePanel({
 
           {/* Tabela de Preço */}
           <div className="px-5 py-4 border-b border-border">
-            <h3 className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest mb-3">Tabela de Preço</h3>
+            <h3 className="text-[14px] font-semibold text-foreground tracking-tight mb-3">Tabela de preço</h3>
             <div className="flex items-center gap-3">
               <StyledSelect
                 variant="inline"
@@ -867,27 +842,27 @@ function ClientSidePanel({
 
           {/* Pedidos */}
           <div className="px-5 py-4 border-b border-border">
-            <h3 className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest mb-3.5">
+            <h3 className="text-[14px] font-semibold text-foreground tracking-tight mb-3.5">
               Pedidos {!loadingOrders && orders.length > 0 && `(${orders.length})`}
             </h3>
             {loadingOrders ? (
               <div className="py-4 flex justify-center"><Loader className="w-5 h-5 animate-spin text-muted-foreground" /></div>
             ) : orders.length === 0 ? (
-              <p className="text-sm text-muted-foreground italic">Nenhum pedido registrado.</p>
+              <p className="text-[13px] text-muted-foreground">Nenhum pedido registrado.</p>
             ) : (
               <div className="space-y-3">
                 {orders.map(order => {
                   const si = orderStatusLabels[order.status] || { label: order.status, color: 'bg-muted text-muted-foreground' }
                   return (
-                    <div key={order.id} className="bg-muted/40 rounded-xl border border-border overflow-hidden">
-                      <div className="px-3.5 py-2.5 flex items-center justify-between border-b border-border/60 bg-card">
+                    <div key={order.id} className="bg-surface rounded-lg border border-border overflow-hidden">
+                      <div className="px-3.5 py-2.5 flex items-center justify-between gap-3 border-b border-border bg-card">
                         <div className="flex items-center gap-2.5">
-                          <span className="text-[13px] font-bold text-foreground">#{order.id.slice(0, 8).toUpperCase()}</span>
-                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md ${si.color}`}>{si.label}</span>
+                          <span className="text-[13px] font-mono font-medium text-foreground">#{order.id.slice(0, 8).toUpperCase()}</span>
+                          <span className={`text-[11.5px] font-medium px-2 py-0.5 rounded-full ${si.color}`}>{si.label}</span>
                         </div>
                         <div className="text-right">
-                          <p className="text-[13px] font-extrabold text-foreground">R$ {Number(order.total).toFixed(2)}</p>
-                          <p className="text-[10px] text-muted-foreground">{new Date(order.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}</p>
+                          <p className="text-[13px] font-semibold text-foreground tabular-nums">R$ {Number(order.total).toFixed(2)}</p>
+                          <p className="text-[12px] text-muted-foreground">{new Date(order.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}</p>
                         </div>
                       </div>
                       <div className="p-2.5 space-y-1.5">
@@ -896,20 +871,20 @@ function ClientSidePanel({
                             ? (item.catalog_products as any)[0]?.main_image
                             : item.catalog_products?.main_image || null
                           return (
-                            <div key={item.id} className="flex items-center gap-2.5 bg-card rounded-lg p-2 border border-border/60">
+                            <div key={item.id} className="flex items-center gap-2.5 bg-card rounded-md p-2 border border-border">
                               {imgUrl
-                                ? <img src={imgUrl} alt="" className="w-9 h-9 rounded-lg object-cover flex-shrink-0" />
-                                : <div className="w-9 h-9 rounded-lg bg-muted flex items-center justify-center flex-shrink-0"><Package className="w-4 h-4 text-muted-foreground" /></div>}
+                                ? <img src={imgUrl} alt="" className="w-9 h-9 rounded-md object-cover flex-shrink-0" />
+                                : <div className="w-9 h-9 rounded-md bg-muted flex items-center justify-center flex-shrink-0"><Package className="w-4 h-4 text-ink-400" /></div>}
                               <div className="flex-1 min-w-0">
                                 <p className="text-[13px] font-medium text-foreground truncate">{item.product_name_snapshot}</p>
-                                <p className="text-[11px] text-muted-foreground">{item.qty}× R$ {Number(item.unit_price_snapshot).toFixed(2)}</p>
+                                <p className="text-[12px] text-muted-foreground tabular-nums">{item.qty}× R$ {Number(item.unit_price_snapshot).toFixed(2)}</p>
                               </div>
-                              <span className="text-[13px] font-bold text-foreground">R$ {Number(item.line_total).toFixed(2)}</span>
+                              <span className="text-[13px] font-semibold text-foreground tabular-nums">R$ {Number(item.line_total).toFixed(2)}</span>
                             </div>
                           )
                         })}
                         {order.order_items.length > 3 && (
-                          <p className="text-[11px] text-muted-foreground text-center">+{order.order_items.length - 3} item(s)</p>
+                          <p className="text-[12px] text-muted-foreground text-center">+{order.order_items.length - 3} item(s)</p>
                         )}
                       </div>
                     </div>
@@ -997,20 +972,20 @@ function PartnerAccessPanel({ client, queryKey }: { client: ClientStats; queryKe
   return (
     <div className="px-5 py-4 border-b border-border">
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest">Acesso ao Portal</h3>
-        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md ring-1 ring-inset ${statusInfo.classes}`}>
+        <h3 className="text-[14px] font-semibold text-foreground tracking-tight">Acesso ao portal</h3>
+        <span className={`text-[12px] font-medium px-2 py-0.5 rounded-full ring-1 ring-inset ${statusInfo.classes}`}>
           {statusInfo.label}
         </span>
       </div>
 
       {client.credentials_created_at && (
-        <p className="text-[11px] text-muted-foreground mb-1">
+        <p className="text-[12px] text-muted-foreground mb-1">
           Criado em {new Date(client.credentials_created_at).toLocaleDateString('pt-BR')}
           {client.auth_phone && <> · Login: <span className="font-medium text-foreground">{client.auth_phone}</span></>}
         </p>
       )}
       {client.last_password_reset_at && (
-        <p className="text-[11px] text-muted-foreground mb-3">
+        <p className="text-[12px] text-muted-foreground mb-3">
           Senha resetada em {new Date(client.last_password_reset_at).toLocaleDateString('pt-BR')}
         </p>
       )}
@@ -1019,8 +994,8 @@ function PartnerAccessPanel({ client, queryKey }: { client: ClientStats; queryKe
         <div className="flex items-center gap-2 mb-3">
           <input type="text" placeholder="Senha personalizada (opcional)" value={manualPassword}
             onChange={e => setManualPassword(e.target.value)}
-            className="flex-1 px-3 py-1.5 text-sm border border-border rounded-lg focus:ring-2 focus:ring-ring focus:outline-none bg-background text-foreground" />
-          <button onClick={() => { setShowPasswordInput(false); setManualPassword('') }} className="text-muted-foreground hover:text-foreground p-1">
+            className="flex-1 min-w-0 h-9 px-3 text-base md:text-sm rounded-md border border-input bg-background text-foreground hover:border-ink-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background transition-colors" />
+          <button onClick={() => { setShowPasswordInput(false); setManualPassword('') }} aria-label="Cancelar senha personalizada" className="text-ink-400 hover:text-foreground p-1 rounded-sm hover:bg-muted">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -1030,12 +1005,12 @@ function PartnerAccessPanel({ client, queryKey }: { client: ClientStats; queryKe
         {accessStatus === 'not_created' && (
           <>
             <button onClick={() => createMutation.mutate()} disabled={isLoading}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold btn-action rounded-lg disabled:opacity-50 transition-colors">
+              className="inline-flex items-center gap-1.5 h-8 px-3 text-[13px] font-medium btn-primary rounded-md disabled:opacity-45 transition-colors">
               {isLoading ? <Loader className="w-3.5 h-3.5 animate-spin" /> : <KeyRound className="w-3.5 h-3.5" />}
-              Criar Acesso
+              Criar acesso
             </button>
             <button onClick={() => setShowPasswordInput(v => !v)}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-border rounded-lg hover:bg-accent text-foreground/70 transition-colors">
+              className="inline-flex items-center gap-1.5 h-8 px-3 text-[13px] font-medium btn-secondary rounded-md transition-colors">
               Definir senha
             </button>
           </>
@@ -1043,16 +1018,16 @@ function PartnerAccessPanel({ client, queryKey }: { client: ClientStats; queryKe
         {accessStatus === 'active' && (
           <>
             <button onClick={() => resetMutation.mutate()} disabled={isLoading}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold btn-action rounded-lg disabled:opacity-50 transition-colors">
+              className="inline-flex items-center gap-1.5 h-8 px-3 text-[13px] font-medium btn-primary rounded-md disabled:opacity-45 transition-colors">
               {resetMutation.isPending ? <Loader className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
-              Resetar Senha
+              Resetar senha
             </button>
             <button onClick={() => setShowPasswordInput(v => !v)}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-border rounded-lg hover:bg-accent text-foreground/70 transition-colors">
+              className="inline-flex items-center gap-1.5 h-8 px-3 text-[13px] font-medium btn-secondary rounded-md transition-colors">
               Definir senha
             </button>
             <button onClick={() => blockMutation.mutate()} disabled={isLoading}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold border border-danger-border text-danger bg-danger-subtle rounded-lg hover:bg-danger-subtle disabled:opacity-50 transition-colors">
+              className="inline-flex items-center gap-1.5 h-8 px-3 text-[13px] font-medium border border-danger-border text-danger bg-card rounded-md hover:bg-danger-subtle disabled:opacity-45 transition-colors">
               {blockMutation.isPending ? <Loader className="w-3.5 h-3.5 animate-spin" /> : <Lock className="w-3.5 h-3.5" />}
               Bloquear
             </button>
@@ -1060,7 +1035,7 @@ function PartnerAccessPanel({ client, queryKey }: { client: ClientStats; queryKe
         )}
         {accessStatus === 'blocked' && (
           <button onClick={() => unblockMutation.mutate()} disabled={isLoading}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold btn-action rounded-lg disabled:opacity-50 transition-colors">
+            className="inline-flex items-center gap-1.5 h-8 px-3 text-[13px] font-medium btn-primary rounded-md disabled:opacity-45 transition-colors">
             {unblockMutation.isPending ? <Loader className="w-3.5 h-3.5 animate-spin" /> : <Unlock className="w-3.5 h-3.5" />}
             Desbloquear
           </button>
@@ -1068,31 +1043,31 @@ function PartnerAccessPanel({ client, queryKey }: { client: ClientStats; queryKe
       </div>
 
       {credResult && (
-        <div className="mt-4 bg-ink-900 rounded-xl p-4 space-y-3">
-          <p className="text-[10px] font-bold text-ink-400 uppercase tracking-widest">Credenciais geradas</p>
+        <div className="mt-4 rounded-lg border border-border bg-surface p-4 space-y-3">
+          <p className="text-[13px] font-semibold text-foreground">Credenciais geradas</p>
           {[{ label: 'Login', value: credResult.phone }, { label: 'Senha', value: credResult.created_password }].map(({ label, value }) => (
-            <div key={label} className="flex items-center justify-between gap-2 bg-ink-800 rounded-lg px-3 py-2">
+            <div key={label} className="flex items-center justify-between gap-2 bg-card border border-border rounded-md px-3 py-2">
               <div>
-                <p className="text-[10px] text-muted-foreground leading-none">{label}</p>
-                <p className="text-sm font-mono font-bold text-white mt-0.5">{value}</p>
+                <p className="text-[12px] text-muted-foreground leading-none">{label}</p>
+                <p className="text-sm font-mono font-medium text-foreground mt-1">{value}</p>
               </div>
-              <button onClick={() => copyToClipboard(value, label)} className="p-1.5 rounded-md hover:bg-ink-700 text-ink-400 hover:text-white transition-colors">
+              <button onClick={() => copyToClipboard(value, label)} aria-label={`Copiar ${label.toLowerCase()}`} className="p-1.5 rounded-md hover:bg-muted text-ink-400 hover:text-foreground transition-colors">
                 <Copy className="w-3.5 h-3.5" />
               </button>
             </div>
           ))}
           <div className="flex gap-2 pt-1">
             <button onClick={() => copyToClipboard(buildWhatsAppMessage(credResult), 'Mensagem')}
-              className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-bold bg-ink-700 text-white rounded-lg hover:bg-ink-600 transition-colors">
-              <Copy className="w-3.5 h-3.5" />Copiar msg WA
+              className="flex-1 inline-flex items-center justify-center gap-1.5 h-8 px-3 text-[13px] font-medium btn-secondary rounded-md transition-colors">
+              <Copy className="w-3.5 h-3.5" />Copiar mensagem
             </button>
             <a href={`https://wa.me/${credResult.phone.replace(/\D/g, '')}?text=${encodeURIComponent(buildWhatsAppMessage(credResult))}`}
               target="_blank" rel="noopener noreferrer"
-              className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-bold bg-emerald-600 text-white rounded-lg hover:bg-emerald-500 transition-colors">
+              className="flex-1 inline-flex items-center justify-center gap-1.5 h-8 px-3 text-[13px] font-medium bg-emerald-600 text-white rounded-md hover:bg-emerald-700 transition-colors">
               <Phone className="w-3.5 h-3.5" />Abrir WhatsApp
             </a>
           </div>
-          <button onClick={() => setCredResult(null)} className="w-full text-[10px] text-muted-foreground hover:text-ink-300 transition-colors pt-1">
+          <button onClick={() => setCredResult(null)} className="w-full text-[12px] text-muted-foreground hover:text-foreground transition-colors pt-1">
             Fechar
           </button>
         </div>
@@ -1133,66 +1108,70 @@ function SystemTab({
   return (
     <>
       <div className="space-y-4">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <input type="text" placeholder="Buscar por nome ou e-mail..."
-            value={search} onChange={e => setSearch(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 rounded-xl border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
-        </div>
+        <Toolbar>
+          <SearchInput
+            value={search}
+            onChange={setSearch}
+            placeholder="Buscar por nome ou e-mail…"
+            className="sm:w-80"
+          />
+          <span className="text-[12px] text-muted-foreground tabular-nums sm:ml-auto">
+            {filtered.length} usuário{filtered.length !== 1 ? 's' : ''}
+          </span>
+        </Toolbar>
 
-        <p className="text-xs text-muted-foreground">{filtered.length} usuário{filtered.length !== 1 ? 's' : ''}</p>
-
-        <div className="bg-card rounded-xl border border-border shadow-[var(--shadow-card)] overflow-x-auto">
-          <table className="w-full min-w-[640px]">
-            <thead>
-              <tr className="border-b border-border bg-muted/50">
-                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Nome / E-mail</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Acesso</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Último Acesso</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Criado em</th>
-                <th className="px-4 py-3" />
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="px-4 py-10 text-center text-sm text-muted-foreground">
-                    {search ? 'Nenhum resultado encontrado.' : 'Nenhum usuário cadastrado.'}
-                  </td>
-                </tr>
-              ) : filtered.map((user, i) => (
-                <tr key={user.id} className={`border-b border-border/50 last:border-0 ${i % 2 === 0 ? '' : 'bg-surface-alt/30'}`}>
-                  <td className="px-4 py-3">
-                    <p className="font-semibold text-sm text-foreground">{user.full_name || '—'}</p>
-                    <p className="text-xs text-muted-foreground">{user.email}</p>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${ROLE_STYLES[user.role] ?? 'bg-ink-100 text-ink-700'}`}>
-                      {ROLE_LABELS[user.role] ?? user.role}
-                    </span>
-                    {user.role === 'salao' && user.store_name && (
-                      <p className="text-[11px] text-muted-foreground mt-1">{user.store_name}</p>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-muted-foreground">
-                    {user.last_sign_in_at
-                      ? new Date(user.last_sign_in_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' })
-                      : '—'}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-muted-foreground">
-                    {new Date(user.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' })}
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <button onClick={() => setSelectedId(user.id)}
-                      className="text-xs font-medium text-foreground px-3 py-1.5 rounded-lg border border-border hover:bg-surface-alt transition-colors">
-                      Editar
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <Panel flush className="overflow-hidden">
+          {filtered.length === 0 ? (
+            <EmptyState
+              icon={Users}
+              title={search ? 'Nenhum resultado encontrado' : 'Nenhum usuário cadastrado'}
+              description={search ? 'Tente outro nome ou e-mail.' : undefined}
+            />
+          ) : (
+            <Table className="min-w-[640px]">
+              <TableHeader>
+                <TableRow className="hover:bg-transparent">
+                  <TableHead>Nome / e-mail</TableHead>
+                  <TableHead>Acesso</TableHead>
+                  <TableHead>Último acesso</TableHead>
+                  <TableHead>Criado em</TableHead>
+                  <TableHead><span className="sr-only">Ações</span></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filtered.map((user) => (
+                  <TableRow key={user.id}>
+                    <TableCell>
+                      <p className="font-medium text-foreground">{user.full_name || '—'}</p>
+                      <p className="text-[12px] text-muted-foreground">{user.email}</p>
+                    </TableCell>
+                    <TableCell>
+                      <span className={`inline-flex text-[12px] font-medium px-2 py-0.5 rounded-full ${ROLE_STYLES[user.role] ?? 'bg-muted text-ink-600'}`}>
+                        {ROLE_LABELS[user.role] ?? user.role}
+                      </span>
+                      {user.role === 'salao' && user.store_name && (
+                        <p className="text-[12px] text-muted-foreground mt-1">{user.store_name}</p>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {user.last_sign_in_at
+                        ? new Date(user.last_sign_in_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' })
+                        : '—'}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {new Date(user.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' })}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button variant="secondary" size="sm" onClick={() => setSelectedId(user.id)}>
+                        Editar
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </Panel>
       </div>
 
       {selected && (
@@ -1233,7 +1212,7 @@ function SystemUserSidePanel({
   const [selectedStoreId, setSelectedStoreId] = useState(user.store_id ?? '')
 
   const initials = (user.full_name || user.email).split(/[\s@]/).map(w => w[0]).join('').slice(0, 2).toUpperCase()
-  const roleColor = user.role === 'admin' ? 'bg-purple-700' : user.role === 'administrativo' ? 'bg-blue-700' : 'bg-brand'
+  const roleColor = ROLE_STYLES[user.role] ?? 'bg-muted text-ink-600'
 
   const hasRoleChange = selectedRole !== user.role || (selectedRole === 'salao' && selectedStoreId !== (user.store_id ?? ''))
 
@@ -1271,39 +1250,37 @@ function SystemUserSidePanel({
 
   return (
     <>
-      <div className="fixed inset-0 bg-ink-950/45 z-40 backdrop-blur-sm" onClick={onClose} />
-      <div className="fixed right-0 top-0 bottom-0 w-full max-w-sm bg-card z-50 shadow-2xl flex flex-col">
+      <div className="fixed inset-0 bg-ink-950/45 z-40 backdrop-blur-[2px]" onClick={onClose} />
+      <div className="fixed right-0 top-0 bottom-0 w-full max-w-sm bg-card z-50 shadow-xl flex flex-col border-l border-border">
 
         {/* Header */}
         <div className="border-b border-border px-5 py-4 flex items-start gap-3.5 flex-shrink-0">
-          <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-sm flex-shrink-0 ${roleColor}`}>
+          <div className={`w-11 h-11 rounded-full flex items-center justify-center font-semibold text-[13px] flex-shrink-0 ${roleColor}`}>
             {initials}
           </div>
           <div className="flex-1 min-w-0">
-            <h2 className="text-base font-bold text-foreground truncate">{user.full_name || '—'}</h2>
-            <p className="text-xs text-muted-foreground mt-0.5">{user.email}</p>
-            <span className={`inline-block mt-1.5 text-[10px] font-bold px-1.5 py-0.5 rounded-md ${ROLE_STYLES[user.role] ?? 'bg-ink-100 text-ink-700'}`}>
+            <h2 className="text-[16px] font-semibold text-foreground truncate">{user.full_name || '—'}</h2>
+            <p className="text-[13px] text-muted-foreground mt-0.5 truncate">{user.email}</p>
+            <span className={`inline-flex mt-1.5 text-[12px] font-medium px-2 py-0.5 rounded-full ${ROLE_STYLES[user.role] ?? 'bg-muted text-ink-600'}`}>
               {ROLE_LABELS[user.role] ?? user.role}
             </span>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-ink-100 transition-colors text-ink-400 hover:text-ink-600 flex-shrink-0">
-            <X className="w-5 h-5" />
-          </button>
+          <Button variant="ghost" size="icon-sm" onClick={onClose} aria-label="Fechar" className="flex-shrink-0 -mr-1.5 -mt-1"><X /></Button>
         </div>
 
         <div className="flex-1 overflow-y-auto">
           {/* Datas */}
           <div className="px-5 py-4 border-b border-border flex gap-6">
             <div>
-              <p className="text-[10px] text-ink-400 uppercase tracking-wider">Criado em</p>
-              <p className="text-sm font-medium text-ink-700">
+              <p className="text-[12px] text-muted-foreground">Criado em</p>
+              <p className="text-[13.5px] font-medium text-foreground">
                 {new Date(user.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}
               </p>
             </div>
             {user.last_sign_in_at && (
               <div>
-                <p className="text-[10px] text-ink-400 uppercase tracking-wider">Último acesso</p>
-                <p className="text-sm font-medium text-ink-700">
+                <p className="text-[12px] text-muted-foreground">Último acesso</p>
+                <p className="text-[13.5px] font-medium text-foreground">
                   {new Date(user.last_sign_in_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}
                 </p>
               </div>
@@ -1313,15 +1290,15 @@ function SystemUserSidePanel({
           {/* Nome */}
           <div className="px-5 py-4 border-b border-border">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-[11px] font-bold text-ink-400 uppercase tracking-widest">Nome</h3>
+              <h3 className="text-[14px] font-semibold text-foreground tracking-tight">Nome</h3>
               {!editingName ? (
                 <button onClick={() => { setNameValue(user.full_name ?? ''); setEditingName(true) }}
-                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium text-ink-600 hover:bg-ink-100 border border-border transition-colors">
+                  className="inline-flex items-center gap-1.5 h-7 px-2 rounded-sm text-[12px] font-medium text-ink-600 bg-card hover:bg-muted hover:text-foreground border border-border transition-colors">
                   <Edit2 className="w-3.5 h-3.5" />Editar
                 </button>
               ) : (
                 <button onClick={() => setEditingName(false)}
-                  className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium text-ink-400 hover:bg-surface transition-colors">
+                  className="inline-flex items-center gap-1 h-7 px-2 rounded-sm text-[12px] font-medium text-ink-500 hover:bg-muted hover:text-foreground transition-colors">
                   <X className="w-3.5 h-3.5" />Cancelar
                 </button>
               )}
@@ -1330,15 +1307,15 @@ function SystemUserSidePanel({
               <div className="flex gap-2">
                 <input type="text" value={nameValue} onChange={e => setNameValue(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && nameMutation.mutate(nameValue)}
-                  className="flex-1 px-3 py-2 text-sm rounded-lg border border-border bg-card focus:outline-none focus:ring-2 focus:ring-ring"
+                  className="flex-1 min-w-0 h-9 px-3 text-base md:text-sm rounded-md border border-input bg-background text-foreground hover:border-ink-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background transition-colors"
                   placeholder="Nome completo" autoFocus />
                 <button onClick={() => nameMutation.mutate(nameValue)} disabled={nameMutation.isPending}
-                  className="px-3 py-2 rounded-lg bg-ink-900 text-white text-sm font-medium disabled:opacity-50 hover:bg-ink-700 transition-colors">
+                  aria-label="Salvar" className="btn-primary h-9 w-9 shrink-0 inline-flex items-center justify-center rounded-md disabled:opacity-45 transition-colors">
                   {nameMutation.isPending ? <Loader className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
                 </button>
               </div>
             ) : (
-              <p className="text-sm font-medium text-foreground">{user.full_name || <span className="text-ink-400 italic">Não informado</span>}</p>
+              <p className="text-sm font-medium text-foreground">{user.full_name || <span className="text-muted-foreground">Não informado</span>}</p>
             )}
           </div>
 
@@ -1346,15 +1323,15 @@ function SystemUserSidePanel({
               um candidato e um contrato é gerado automaticamente (DP). */}
           <div className="px-5 py-4 border-b border-border">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-[11px] font-bold text-ink-400 uppercase tracking-widest">WhatsApp</h3>
+              <h3 className="text-[14px] font-semibold text-foreground tracking-tight">WhatsApp</h3>
               {!editingWhatsapp ? (
                 <button onClick={() => { setWhatsappValue(user.whatsapp_number ?? ''); setEditingWhatsapp(true) }}
-                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium text-ink-600 hover:bg-ink-100 border border-border transition-colors">
+                  className="inline-flex items-center gap-1.5 h-7 px-2 rounded-sm text-[12px] font-medium text-ink-600 bg-card hover:bg-muted hover:text-foreground border border-border transition-colors">
                   <Edit2 className="w-3.5 h-3.5" />Editar
                 </button>
               ) : (
                 <button onClick={() => setEditingWhatsapp(false)}
-                  className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium text-ink-400 hover:bg-surface transition-colors">
+                  className="inline-flex items-center gap-1 h-7 px-2 rounded-sm text-[12px] font-medium text-ink-500 hover:bg-muted hover:text-foreground transition-colors">
                   <X className="w-3.5 h-3.5" />Cancelar
                 </button>
               )}
@@ -1363,47 +1340,34 @@ function SystemUserSidePanel({
               <div className="flex gap-2">
                 <input type="tel" value={whatsappValue} onChange={e => setWhatsappValue(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && whatsappMutation.mutate(whatsappValue)}
-                  className="flex-1 px-3 py-2 text-sm rounded-lg border border-border bg-card focus:outline-none focus:ring-2 focus:ring-ring"
+                  className="flex-1 min-w-0 h-9 px-3 text-base md:text-sm rounded-md border border-input bg-background text-foreground hover:border-ink-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background transition-colors"
                   placeholder="(27) 99999-9999" autoFocus />
                 <button onClick={() => whatsappMutation.mutate(whatsappValue)} disabled={whatsappMutation.isPending}
-                  className="px-3 py-2 rounded-lg bg-ink-900 text-white text-sm font-medium disabled:opacity-50 hover:bg-ink-700 transition-colors">
+                  aria-label="Salvar" className="btn-primary h-9 w-9 shrink-0 inline-flex items-center justify-center rounded-md disabled:opacity-45 transition-colors">
                   {whatsappMutation.isPending ? <Loader className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
                 </button>
               </div>
             ) : (
-              <p className="text-sm font-medium text-foreground">{user.whatsapp_number || <span className="text-ink-400 italic">Não informado</span>}</p>
+              <p className="text-sm font-medium text-foreground">{user.whatsapp_number || <span className="text-muted-foreground">Não informado</span>}</p>
             )}
           </div>
 
           {/* Nível de acesso */}
           <div className="px-5 py-4 border-b border-border">
-            <h3 className="text-[11px] font-bold text-ink-400 uppercase tracking-widest mb-3">Nível de Acesso</h3>
-            <div className="grid grid-cols-3 gap-2">
-              {(['salao', 'administrativo', 'admin'] as const).map(r => (
-                <button key={r} type="button"
-                  onClick={() => setSelectedRole(r)}
-                  disabled={isPending}
-                  className={`flex items-center justify-center gap-2 py-2.5 rounded-lg border text-xs sm:text-sm font-semibold transition-all disabled:cursor-default ${
-                    selectedRole === r
-                      ? `${ROLE_STYLES[r]} border-current/30`
-                      : 'bg-card text-muted-foreground border-border hover:bg-surface-alt disabled:opacity-50'
-                  }`}>
-                  {ROLE_ICONS[r]}{ROLE_LABELS[r]}
-                </button>
-              ))}
-            </div>
+            <h3 className="text-[14px] font-semibold text-foreground tracking-tight mb-3">Nível de acesso</h3>
+            <RolePicker value={selectedRole} onChange={setSelectedRole} disabled={isPending} />
 
             {selectedRole === 'salao' && (
               <div className="mt-3">
-                <label className="block text-[11px] text-muted-foreground mb-1">Loja vinculada (opcional)</label>
-                <p className="text-[11px] text-ink-400 mb-1">Sem loja, acessa só o módulo de venda.</p>
+                <span className="field-label">Loja vinculada (opcional)</span>
+                <p className="text-[12px] text-muted-foreground mb-1.5">Sem loja, acessa só o módulo de venda.</p>
                 <StyledSelect
                   value={selectedStoreId}
                   onChange={setSelectedStoreId}
                   options={stores.map(s => ({ value: s.id, label: s.name }))}
                   emptyLabel="Nenhuma (só vendas)"
                   placeholder="Nenhuma (só vendas)"
-                  className="rounded-lg bg-card"
+                  className="bg-card"
                 />
               </div>
             )}
@@ -1413,7 +1377,7 @@ function SystemUserSidePanel({
                 type="button"
                 onClick={() => { onRoleChange(user.id, selectedRole, selectedRole === 'salao' ? selectedStoreId : null); onClose() }}
                 disabled={isPending}
-                className="mt-3 w-full flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg btn-action text-sm font-medium disabled:opacity-50 transition-colors"
+                className="mt-3 w-full inline-flex items-center justify-center gap-1.5 h-9 px-3.5 rounded-md btn-primary text-sm font-medium disabled:opacity-45 transition-colors"
               >
                 {isPending ? <Loader className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
                 Salvar acesso
@@ -1423,7 +1387,7 @@ function SystemUserSidePanel({
 
           {/* Permissões granulares */}
           <div className="px-5 py-4 border-b border-border">
-            <h3 className="text-[11px] font-bold text-ink-400 uppercase tracking-widest mb-3">Permissões</h3>
+            <h3 className="text-[14px] font-semibold text-foreground tracking-tight mb-3">Permissões</h3>
             <div className="space-y-3">
               {[
                 { key: 'can_edit_orders', label: 'Editar pedidos', description: 'Permite alterar itens, vendedor e pagamento de pedidos criados' },
@@ -1434,19 +1398,15 @@ function SystemUserSidePanel({
                   <div key={key} className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <p className="text-sm font-medium text-foreground">{label}</p>
-                      <p className="text-[11px] text-ink-400 leading-snug mt-0.5">{description}</p>
+                      <p className="text-[12px] text-muted-foreground leading-snug mt-0.5">{description}</p>
                     </div>
-                    <button
-                      onClick={() => onPermissionChange(user.id, key, !enabled)}
+                    <Switch
+                      checked={enabled}
+                      onCheckedChange={(v) => onPermissionChange(user.id, key, v)}
                       disabled={isPending}
-                      className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none disabled:opacity-50 mt-0.5 ${
-                        enabled ? 'bg-success-solid' : 'bg-ink-200'
-                      }`}
-                    >
-                      <span className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-card shadow transform transition-transform duration-200 ${
-                        enabled ? 'translate-x-4' : 'translate-x-0'
-                      }`} />
-                    </button>
+                      aria-label={label}
+                      className="mt-0.5"
+                    />
                   </div>
                 )
               })}
@@ -1460,30 +1420,19 @@ function SystemUserSidePanel({
 
 // ─── Shared helpers ────────────────────────────────────────────────────────────
 
-function LoadingState({ label }: { label: string }) {
-  return (
-    <div className="text-center py-16">
-      <Loader className="w-8 h-8 animate-spin text-gold-text mx-auto mb-4" />
-      <p className="text-muted-foreground">{label}</p>
-    </div>
-  )
-}
-
 function AccessBadge({ status }: { status: string | null }) {
-  if (status === 'active')  return <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-success-subtle text-success">Ativo</span>
-  if (status === 'blocked') return <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-danger-subtle text-danger">Bloqueado</span>
-  return <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-ink-100 text-muted-foreground">Sem acesso</span>
+  if (status === 'active')  return <Badge variant="success">Ativo</Badge>
+  if (status === 'blocked') return <Badge variant="danger">Bloqueado</Badge>
+  return <Badge variant="neutral">Sem acesso</Badge>
 }
 
 function InfoRow({ icon: Icon, label, value }: { icon: typeof User; label: string; value: string }) {
   return (
-    <div className="flex items-center gap-3">
-      <div className="w-8 h-8 rounded-lg bg-ink-100 flex items-center justify-center flex-shrink-0">
-        <Icon className="w-4 h-4 text-muted-foreground" />
-      </div>
+    <div className="flex items-start gap-2.5">
+      <Icon className="w-4 h-4 text-ink-400 flex-shrink-0 mt-0.5" />
       <div className="min-w-0">
-        <p className="text-[11px] text-muted-foreground leading-none">{label}</p>
-        <p className="text-sm font-medium text-foreground truncate mt-0.5">{value}</p>
+        <p className="text-[12px] text-muted-foreground leading-none">{label}</p>
+        <p className="text-[13.5px] font-medium text-foreground truncate mt-1">{value}</p>
       </div>
     </div>
   )
@@ -1492,9 +1441,8 @@ function InfoRow({ icon: Icon, label, value }: { icon: typeof User; label: strin
 function FormField({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <label className="block text-[11px] text-muted-foreground mb-1">{label}</label>
+      <label className="block text-[12px] font-medium text-muted-foreground mb-1">{label}</label>
       {children}
     </div>
   )
 }
-

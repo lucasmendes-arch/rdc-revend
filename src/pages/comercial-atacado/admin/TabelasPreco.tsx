@@ -4,6 +4,13 @@ import { supabase } from '@/lib/supabase'
 import { toast } from 'sonner'
 import AdminLayout from '@/components/admin/AdminLayout'
 import StyledSelect from '@/components/ui/styled-select'
+import { AdminPage, Panel, EmptyState, PageLoading } from '@/components/admin/ui/AdminPage'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet'
+import { Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import {
   BadgeDollarSign, Plus, X, Loader, Package, Edit2,
   Check, Trash2, Search, Users, Tag, Power, ArrowRight, Layers,
@@ -65,61 +72,50 @@ function PriceListCard({
   onOpen,
   onToggle,
   isToggling,
+  archived,
 }: {
   list: PriceList
   onOpen: () => void
   onToggle: () => void
   isToggling: boolean
+  archived?: boolean
 }) {
   return (
-    <div className="bg-card rounded-xl border border-border shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-card-hover)] transition-all">
-      <div className="p-4 sm:p-5">
-        <div className="flex items-start justify-between gap-3 mb-2">
+    <div className="bg-card rounded-lg border border-border shadow-xs hover:border-ink-300 transition-colors flex flex-col">
+      <div className="p-4 sm:p-5 flex flex-col flex-1">
+        <div className="flex items-start justify-between gap-3 mb-1.5">
           <div className="flex-1 min-w-0">
-            <h3 className="font-bold text-foreground text-base truncate">{list.name}</h3>
+            <h3 className="text-[14px] font-semibold text-foreground tracking-tight truncate">{list.name}</h3>
             {list.description && (
-              <p className="text-sm text-muted-foreground mt-0.5 line-clamp-2">{list.description}</p>
+              <p className="text-[13px] text-muted-foreground mt-0.5 line-clamp-2">{list.description}</p>
             )}
           </div>
-          <span
-            className={`flex-shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded-md ring-1 ring-inset ${
-              list.is_active
-                ? 'bg-success-subtle text-success ring-success-border'
-                : 'bg-muted text-muted-foreground ring-border'
-            }`}
-          >
-            {list.is_active ? 'Ativa' : 'Inativa'}
-          </span>
+          <Badge variant={archived ? 'neutral' : list.is_active ? 'success' : 'neutral'} className="shrink-0">
+            {archived ? 'Arquivada' : list.is_active ? 'Ativa' : 'Inativa'}
+          </Badge>
         </div>
 
-        <p className="text-[11px] text-muted-foreground mb-4">
+        <p className="text-[12px] text-muted-foreground mb-4">
           Criada em {new Date(list.created_at).toLocaleDateString('pt-BR')}
         </p>
 
-        <div className="flex items-center gap-2 pt-3 border-t border-border">
-          <button
-            onClick={onToggle}
-            disabled={isToggling}
-            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
-              list.is_active
-                ? 'text-muted-foreground border-border hover:bg-accent'
-                : 'text-success border-success-border hover:bg-success-subtle'
-            }`}
-          >
-            {isToggling ? (
-              <Loader className="w-3.5 h-3.5 animate-spin" />
-            ) : (
-              <Power className="w-3.5 h-3.5" />
-            )}
-            {list.is_active ? 'Desativar' : 'Ativar'}
-          </button>
-          <button
-            onClick={onOpen}
-            className="flex-1 flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-lg btn-action text-xs font-medium transition-colors"
-          >
+        <div className="flex items-center gap-2 pt-3 mt-auto border-t border-border">
+          {!archived && (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={onToggle}
+              disabled={isToggling}
+              className={list.is_active ? '' : 'text-success hover:text-success'}
+            >
+              {isToggling ? <Loader className="animate-spin" /> : <Power />}
+              {list.is_active ? 'Desativar' : 'Ativar'}
+            </Button>
+          )}
+          <Button variant="secondary" size="sm" onClick={onOpen} className="flex-1">
             Abrir
-            <ArrowRight className="w-3.5 h-3.5" />
-          </button>
+            <ArrowRight />
+          </Button>
         </div>
       </div>
     </div>
@@ -492,67 +488,60 @@ export default function AdminTabelasPreco() {
 
   // ── Render ────────────────────────────────────────────────────────────
 
+  const sectionTitle = 'text-[14px] font-semibold text-foreground tracking-tight'
+  const moneyInput = 'pl-9 font-mono tabular-nums'
+
   return (
     <AdminLayout>
-      {/* ── Header ── */}
-      <div className="bg-card border-b border-border sticky top-0 z-30 shadow-sm">
-        <div className="px-4 sm:px-6 py-4 flex items-center justify-between gap-4">
-          <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-foreground">Tabelas de Preço</h1>
-            {!isLoading && (
-              <p className="text-sm text-muted-foreground mt-0.5">
-                {activeCount} {activeCount === 1 ? 'tabela ativa' : 'tabelas ativas'} ·{' '}
-                {priceLists.length} no total
-              </p>
-            )}
-          </div>
-          <button
-            onClick={() => setCreatingList(true)}
-            className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg btn-action text-sm font-medium transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            <span className="hidden sm:inline">Nova Tabela</span>
-          </button>
-        </div>
-      </div>
-
-      {/* ── Content ── */}
-      <div className="px-4 sm:px-6 py-6">
+      <AdminPage
+        title="Tabelas de preço"
+        description={
+          isLoading
+            ? 'Preços especiais por parceiro'
+            : `${activeCount} ${activeCount === 1 ? 'tabela ativa' : 'tabelas ativas'} · ${priceLists.length} no total`
+        }
+        actions={
+          <Button onClick={() => setCreatingList(true)} aria-label="Nova tabela">
+            <Plus />
+            <span className="hidden sm:inline">Nova tabela</span>
+          </Button>
+        }
+      >
         {error && (
-          <div className="mb-6 p-4 rounded-xl bg-danger-subtle border border-danger-border text-danger">
-            <p className="font-semibold text-sm">Erro ao carregar tabelas</p>
-            <p className="text-xs mt-0.5">{error instanceof Error ? error.message : 'Erro desconhecido'}</p>
+          <div className="mb-6 p-4 rounded-lg bg-danger-subtle border border-danger-border text-danger">
+            <p className="font-semibold text-[14px]">Não foi possível carregar as tabelas</p>
+            <p className="text-[13px] mt-0.5">{error instanceof Error ? error.message : 'Erro desconhecido'}. Recarregue a página para tentar de novo.</p>
           </div>
         )}
 
         {isLoading ? (
-          <div className="flex flex-col items-center justify-center py-24">
-            <div className="w-8 h-8 border-2 border-gold/30 border-t-gold rounded-full animate-spin mb-4" />
-            <p className="text-sm text-muted-foreground font-medium">Carregando tabelas...</p>
-          </div>
+          <PageLoading label="Carregando tabelas…" />
         ) : priceLists.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-32 bg-card rounded-2xl border border-dashed border-border">
-            <BadgeDollarSign className="w-12 h-12 text-muted-foreground/30 mb-4" />
-            <h3 className="text-lg font-bold text-foreground">Nenhuma tabela de preço</h3>
-            <p className="text-muted-foreground text-sm mt-1 mb-6 text-center max-w-xs">
-              Crie uma tabela para atribuir preços especiais a parceiros.
-            </p>
-            <button
-              onClick={() => setCreatingList(true)}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg btn-action text-sm font-medium transition-colors"
-            >
-              <Plus className="w-4 h-4" />
-              Nova Tabela
-            </button>
-          </div>
+          <Panel>
+            <EmptyState
+              icon={BadgeDollarSign}
+              title="Nenhuma tabela de preço"
+              description="Crie uma tabela para atribuir preços especiais a parceiros."
+              action={
+                <Button onClick={() => setCreatingList(true)}>
+                  <Plus />
+                  Nova tabela
+                </Button>
+              }
+            />
+          </Panel>
         ) : (
           <div className="space-y-6">
             {/* Ativas */}
             {activeLists.length === 0 && archivedLists.length > 0 ? (
-              <div className="flex flex-col items-center justify-center py-16 bg-card rounded-2xl border border-dashed border-border">
-                <BadgeDollarSign className="w-10 h-10 text-muted-foreground/30 mb-3" />
-                <p className="text-sm font-medium text-muted-foreground">Nenhuma tabela ativa.</p>
-              </div>
+              <Panel>
+                <EmptyState
+                  icon={BadgeDollarSign}
+                  title="Nenhuma tabela ativa"
+                  description="Todas as tabelas estão arquivadas. Restaure uma ou crie uma nova."
+                  className="py-10"
+                />
+              </Panel>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
                 {activeLists.map(list => (
@@ -570,30 +559,28 @@ export default function AdminTabelasPreco() {
             {/* Arquivadas */}
             {archivedLists.length > 0 && (
               <div>
-                <button
+                <Button
+                  variant="ghost"
+                  size="sm"
                   onClick={() => setShowArchived(v => !v)}
-                  className="flex items-center gap-2 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors mb-3"
+                  aria-expanded={showArchived}
+                  className="-ml-2 mb-2 text-muted-foreground"
                 >
-                  {showArchived ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-                  <Archive className="w-3.5 h-3.5" />
+                  {showArchived ? <ChevronDown /> : <ChevronRight />}
+                  <Archive />
                   Arquivadas ({archivedLists.length})
-                </button>
+                </Button>
                 {showArchived && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 opacity-60">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 opacity-70">
                     {archivedLists.map(list => (
-                      <div key={list.id} className="relative">
-                        <PriceListCard
-                          list={list}
-                          onOpen={() => openPanel(list)}
-                          onToggle={() => {}}
-                          isToggling={false}
-                        />
-                        <div className="absolute top-2 right-2">
-                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-muted text-muted-foreground ring-1 ring-inset ring-border">
-                            Arquivada
-                          </span>
-                        </div>
-                      </div>
+                      <PriceListCard
+                        key={list.id}
+                        list={list}
+                        archived
+                        onOpen={() => openPanel(list)}
+                        onToggle={() => {}}
+                        isToggling={false}
+                      />
                     ))}
                   </div>
                 )}
@@ -601,624 +588,578 @@ export default function AdminTabelasPreco() {
             )}
           </div>
         )}
-      </div>
+      </AdminPage>
 
-      {/* ── Detail Panel ── */}
-      {currentList && (
-        <>
-          <div
-            className="fixed inset-0 bg-ink-950/45 z-40 backdrop-blur-sm transition-opacity"
-            onClick={closePanel}
-          />
-          <div className="fixed right-0 top-0 bottom-0 w-full max-w-lg bg-card z-50 shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
-            {/* Panel Header */}
-            <div className="border-b border-border px-5 py-4 flex items-start gap-3.5 flex-shrink-0">
-              <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center flex-shrink-0">
-                <BadgeDollarSign className="w-6 h-6 text-foreground/70" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h2 className="text-base font-bold text-foreground truncate">{currentList.name}</h2>
-                  <span
-                    className={`flex-shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded-md ring-1 ring-inset ${
-                      currentList.is_active
-                        ? 'bg-success-subtle text-success ring-success-border'
-                        : 'bg-muted text-muted-foreground ring-border'
-                    }`}
-                  >
+      {/* ── Detalhe da tabela ── */}
+      <Sheet open={!!currentList} onOpenChange={(open) => { if (!open) closePanel() }}>
+        <SheetContent side="right" className="w-full sm:max-w-lg p-0 gap-0 flex flex-col">
+          {currentList && (
+            <>
+              {/* Cabeçalho */}
+              <SheetHeader className="border-b border-border px-5 pr-12 py-4 shrink-0 space-y-1 text-left">
+                <div className="flex items-center gap-2 flex-wrap min-w-0">
+                  <SheetTitle className="truncate">{currentList.name}</SheetTitle>
+                  <Badge variant={currentList.is_active ? 'success' : 'neutral'}>
                     {currentList.is_active ? 'Ativa' : 'Inativa'}
-                  </span>
+                  </Badge>
                 </div>
-                {currentList.description && (
-                  <p className="text-[11px] text-muted-foreground mt-0.5 truncate">{currentList.description}</p>
-                )}
-              </div>
-              <button
-                onClick={closePanel}
-                className="p-1.5 rounded-lg hover:bg-accent transition-colors text-muted-foreground hover:text-foreground flex-shrink-0"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Panel Body (scrollable) */}
-            <div className="flex-1 overflow-y-auto">
-
-              {/* ── Section: Configuração ── */}
-              <div className="px-5 py-4 border-b border-border">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest">
-                    Configuração
-                  </h3>
-                  <div className="flex items-center gap-2">
-                    {!editingInfo ? (
-                      <button
-                        onClick={() => startEditInfo(currentList)}
-                        className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium text-foreground/70 hover:bg-accent border border-border transition-colors"
-                      >
-                        <Edit2 className="w-3.5 h-3.5" />
-                        Editar
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => setEditingInfo(false)}
-                        className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium text-muted-foreground hover:bg-accent transition-colors"
-                      >
-                        <X className="w-3.5 h-3.5" />
-                        Cancelar
-                      </button>
-                    )}
-                    <button
-                      onClick={() => handleToggleActive(currentList)}
-                      disabled={updateListMutation.isPending}
-                      className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors ${
-                        currentList.is_active
-                          ? 'text-danger border-danger-border hover:bg-danger-subtle'
-                          : 'text-success border-success-border hover:bg-success-subtle'
-                      }`}
-                    >
-                      {updateListMutation.isPending && togglingId === currentList.id ? (
-                        <Loader className="w-3.5 h-3.5 animate-spin" />
-                      ) : (
-                        <Power className="w-3.5 h-3.5" />
-                      )}
-                      {currentList.is_active ? 'Desativar' : 'Ativar'}
-                    </button>
-                  </div>
-                </div>
-
-                {editingInfo ? (
-                  <div className="space-y-3">
-                    <div>
-                      <label className="block text-[11px] text-muted-foreground mb-1">Nome *</label>
-                      <input
-                        type="text"
-                        value={infoForm.name}
-                        onChange={e => setInfoForm(p => ({ ...p, name: e.target.value }))}
-                        className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                        autoFocus
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[11px] text-muted-foreground mb-1">Descrição</label>
-                      <input
-                        type="text"
-                        value={infoForm.description}
-                        onChange={e => setInfoForm(p => ({ ...p, description: e.target.value }))}
-                        placeholder="Opcional"
-                        className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                      />
-                    </div>
-                    <button
-                      onClick={handleSaveInfo}
-                      disabled={!infoForm.name.trim() || updateListMutation.isPending}
-                      className="flex items-center gap-1.5 px-4 py-2 rounded-lg btn-action text-sm font-medium disabled:opacity-50 transition-colors"
-                    >
-                      <Check className="w-4 h-4" />
-                      Salvar
-                    </button>
-                  </div>
+                {currentList.description ? (
+                  <SheetDescription className="truncate">{currentList.description}</SheetDescription>
                 ) : (
-                  <div className="space-y-1.5">
-                    <div className="flex items-center gap-2">
-                      <Tag className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
-                      <span className="text-sm font-medium text-foreground">{currentList.name}</span>
-                    </div>
-                    {currentList.description && (
-                      <p className="text-[11px] text-muted-foreground pl-5">{currentList.description}</p>
-                    )}
-                    {!currentList.is_active && (
-                      <div className="mt-2 flex items-start gap-2 bg-surface ring-1 ring-inset ring-border rounded-lg px-3 py-2">
-                        <p className="text-[11px] text-muted-foreground">
-                          Lista inativa — parceiros vinculados recebem preço padrão do catálogo.
-                        </p>
-                      </div>
-                    )}
-                  </div>
+                  <SheetDescription className="sr-only">Detalhes da tabela de preço</SheetDescription>
                 )}
-              </div>
+              </SheetHeader>
 
-              {/* ── Section: Itens de Preço ── */}
-              <div className="px-5 py-4 border-b border-border">
-                <h3 className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest mb-3.5">
-                  Itens de Preço ({priceListItems.length})
-                </h3>
+              {/* Corpo (rolável) */}
+              <div className="flex-1 overflow-y-auto">
 
-                {priceListItems.length === 0 ? (
-                  <div className="bg-muted rounded-xl border border-dashed border-border p-5 text-center mb-4">
-                    <Package className="w-7 h-7 text-muted-foreground/30 mx-auto mb-2" />
-                    <p className="text-xs font-medium text-muted-foreground">Nenhum preço especial configurado.</p>
-                    <p className="text-[11px] text-muted-foreground/70 mt-0.5">
-                      Todos os produtos usam preço padrão do catálogo.
-                    </p>
-                  </div>
-                ) : (
-                  <div className="space-y-1.5 mb-4">
-                    {priceListItems.map(item => {
-                      const product = getItemProduct(item)
-                      return (
-                        <div
-                          key={item.id}
-                          className="flex items-center gap-2.5 bg-background rounded-xl border border-border p-2.5 group"
-                        >
-                          {product?.main_image ? (
-                            <img
-                              src={product.main_image}
-                              alt=""
-                              className="w-9 h-9 rounded-lg object-cover flex-shrink-0"
-                            />
-                          ) : (
-                            <div className="w-9 h-9 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
-                              <Package className="w-4 h-4 text-muted-foreground" />
-                            </div>
-                          )}
-                          <div className="flex-1 min-w-0">
-                            <p className="text-[13px] font-medium text-foreground truncate">
-                              {product?.name ?? '—'}
-                            </p>
-                            <p className="text-[11px] text-muted-foreground">
-                              Padrão: R$ {fmt(product?.price ?? 0)}
-                            </p>
-                          </div>
-
-                          {editingItemId === item.id ? (
-                            <div className="flex items-center gap-1.5 flex-shrink-0">
-                              <input
-                                type="text"
-                                value={editItemPrice}
-                                onChange={e => setEditItemPrice(e.target.value)}
-                                className="w-24 px-2 py-1 text-sm text-right border border-border bg-background text-foreground rounded-lg focus:outline-none focus:ring-2 focus:ring-ring font-mono"
-                                placeholder="0,00"
-                                autoFocus
-                                onKeyDown={e => {
-                                  if (e.key === 'Enter') handleSaveEditItem(item)
-                                  if (e.key === 'Escape') { setEditingItemId(null); setEditItemPrice('') }
-                                }}
-                              />
-                              <button
-                                onClick={() => handleSaveEditItem(item)}
-                                disabled={upsertItemMutation.isPending}
-                                className="p-1.5 rounded-lg btn-action transition-colors"
-                              >
-                                {upsertItemMutation.isPending ? (
-                                  <Loader className="w-3.5 h-3.5 animate-spin" />
-                                ) : (
-                                  <Check className="w-3.5 h-3.5" />
-                                )}
-                              </button>
-                              <button
-                                onClick={() => { setEditingItemId(null); setEditItemPrice('') }}
-                                className="p-1.5 rounded-lg hover:bg-accent text-muted-foreground transition-colors"
-                              >
-                                <X className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
-                          ) : (
-                            <div className="flex items-center gap-1.5 flex-shrink-0">
-                              <span className="text-sm font-bold text-foreground font-mono">
-                                R$ {fmt(item.price)}
-                              </span>
-                              <button
-                                onClick={() => {
-                                  setEditingItemId(item.id)
-                                  setEditItemPrice(String(item.price).replace('.', ','))
-                                }}
-                                className="p-1.5 rounded-lg hover:bg-accent text-muted-foreground opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-all"
-                                title="Editar preço"
-                              >
-                                <Edit2 className="w-3.5 h-3.5" />
-                              </button>
-                              <button
-                                onClick={() => setRemoveItemId(item.id)}
-                                className="p-1.5 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-all"
-                                title="Remover"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      )
-                    })}
-                  </div>
-                )}
-
-                {/* Add Item Form */}
-                <div className="bg-muted rounded-xl border border-border p-3.5">
-                  <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest mb-3">
-                    Adicionar produto
-                  </p>
-                  <div className="relative mb-2">
-                    <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-                    <input
-                      type="text"
-                      value={productSearch}
-                      onChange={e => setProductSearch(e.target.value)}
-                      placeholder="Filtrar produtos..."
-                      className="w-full pl-8 pr-3 py-1.5 text-sm rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                    />
-                  </div>
-                  <StyledSelect
-                    value={addProductId}
-                    onChange={(v) => {
-                      setAddProductId(v)
-                      const prod = allProducts.find(p => p.id === v)
-                      if (prod) setAddPrice(String(prod.price).replace('.', ','))
-                      else setAddPrice('')
-                    }}
-                    options={filteredAvailableProducts.map(p => ({ value: p.id, label: `${p.name} — R$ ${fmt(p.price)}` }))}
-                    emptyLabel="Selecionar produto..."
-                    placeholder="Selecionar produto..."
-                    className="h-8 rounded-lg mb-2"
-                  />
-
-                  {availableProducts.length === 0 && allProducts.length > 0 && (
-                    <p className="text-[11px] text-muted-foreground text-center mb-2">
-                      Todos os produtos ativos já estão nesta lista.
-                    </p>
-                  )}
-
-                  <div className="flex gap-2">
-                    <div className="flex-1 relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground pointer-events-none">
-                        R$
-                      </span>
-                      <input
-                        type="text"
-                        value={addPrice}
-                        onChange={e => setAddPrice(e.target.value)}
-                        placeholder="0,00"
-                        onKeyDown={e => { if (e.key === 'Enter') handleAddItem() }}
-                        className="w-full pl-9 pr-3 py-1.5 text-sm rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring font-mono"
-                      />
-                    </div>
-                    <button
-                      onClick={handleAddItem}
-                      disabled={!addProductId || !addPrice || upsertItemMutation.isPending}
-                      className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg btn-action text-sm font-medium disabled:opacity-40 transition-colors"
-                    >
-                      {upsertItemMutation.isPending ? (
-                        <Loader className="w-4 h-4 animate-spin" />
+                {/* ── Configuração ── */}
+                <div className="px-5 py-4 border-b border-border">
+                  <div className="flex items-center justify-between gap-2 mb-3">
+                    <h3 className={sectionTitle}>Configuração</h3>
+                    <div className="flex items-center gap-1.5">
+                      {!editingInfo ? (
+                        <Button variant="secondary" size="xs" onClick={() => startEditInfo(currentList)}>
+                          <Edit2 />
+                          Editar
+                        </Button>
                       ) : (
-                        <Plus className="w-4 h-4" />
+                        <Button variant="ghost" size="xs" onClick={() => setEditingInfo(false)}>
+                          Cancelar
+                        </Button>
                       )}
-                      Adicionar
-                    </button>
-                  </div>
-                </div>
-
-                {/* Apply by category */}
-                <div className="bg-muted rounded-xl border border-border p-3.5 mt-3">
-                  <div className="flex items-center gap-1.5 mb-3">
-                    <Layers className="w-3.5 h-3.5 text-muted-foreground" />
-                    <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest">
-                      Aplicar por categoria
-                    </p>
-                  </div>
-                  <p className="text-[11px] text-muted-foreground mb-3">
-                    Define o mesmo preço para todos os produtos ativos de uma categoria de uma vez.
-                  </p>
-                  <StyledSelect
-                    value={applyCatId}
-                    onChange={setApplyCatId}
-                    options={categories.map(c => ({ value: c.id, label: c.name }))}
-                    emptyLabel="Selecionar categoria..."
-                    placeholder="Selecionar categoria..."
-                    className="h-8 rounded-lg mb-2"
-                  />
-                  <div className="flex gap-2">
-                    <div className="flex-1 relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground pointer-events-none">
-                        R$
-                      </span>
-                      <input
-                        type="text"
-                        value={applyCatPrice}
-                        onChange={e => setApplyCatPrice(e.target.value)}
-                        placeholder="0,00"
-                        onKeyDown={e => { if (e.key === 'Enter') handleApplyCategory() }}
-                        className="w-full pl-9 pr-3 py-1.5 text-sm rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring font-mono"
-                      />
-                    </div>
-                    <button
-                      onClick={handleApplyCategory}
-                      disabled={!applyCatId || !applyCatPrice || applyCategoryMutation.isPending}
-                      className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg btn-action text-sm font-medium disabled:opacity-40 transition-colors"
-                    >
-                      {applyCategoryMutation.isPending ? (
-                        <Loader className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <Check className="w-4 h-4" />
-                      )}
-                      Aplicar
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {/* ── Section: Parceiros Vinculados ── */}
-              <div className="px-5 py-4 border-b border-border">
-                <h3 className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest mb-3.5">
-                  Parceiros vinculados ({linkedPartners.length})
-                </h3>
-
-                {linkedPartners.length === 0 ? (
-                  <div className="bg-muted rounded-xl border border-dashed border-border p-5 text-center">
-                    <Users className="w-7 h-7 text-muted-foreground/30 mx-auto mb-2" />
-                    <p className="text-xs font-medium text-muted-foreground">Nenhum parceiro usa esta tabela.</p>
-                    <p className="text-[11px] text-muted-foreground/70 mt-1">
-                      Para vincular, acesse{' '}
-                      <a href="/admin/clientes" className="text-foreground underline underline-offset-2">
-                        Clientes
-                      </a>{' '}
-                      e selecione a tabela na ficha do parceiro.
-                    </p>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    {linkedPartners.map(partner => (
-                      <div
-                        key={partner.id}
-                        className="flex items-center gap-3 bg-muted rounded-xl border border-border px-3.5 py-2.5"
+                      <Button
+                        variant="secondary"
+                        size="xs"
+                        onClick={() => handleToggleActive(currentList)}
+                        disabled={updateListMutation.isPending}
+                        className={currentList.is_active ? 'text-danger hover:text-danger' : 'text-success hover:text-success'}
                       >
-                        <div className="w-8 h-8 rounded-lg bg-muted-foreground/20 flex items-center justify-center flex-shrink-0 text-xs font-bold text-foreground">
-                          {(partner.full_name ?? 'A').slice(0, 2).toUpperCase()}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-[13px] font-medium text-foreground truncate">
-                            {partner.full_name ?? '—'}
-                          </p>
-                          {partner.phone && (
-                            <p className="text-[11px] text-muted-foreground">{partner.phone}</p>
-                          )}
-                        </div>
-                        {partner.customer_segment && (
-                          <span
-                            className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md ring-1 ring-inset flex-shrink-0 ${
-                              partner.customer_segment === 'network_partner'
-                                ? 'bg-brand-subtle text-brand-strong ring-brand-border'
-                                : 'bg-teal-100 text-teal-700 ring-teal-200 dark:bg-teal-900/30 dark:text-teal-400 dark:ring-teal-700/40'
-                            }`}
-                          >
-                            {partner.customer_segment === 'network_partner' ? 'Parceiro' : 'Atacado'}
-                          </span>
+                        {updateListMutation.isPending && togglingId === currentList.id ? (
+                          <Loader className="animate-spin" />
+                        ) : (
+                          <Power />
                         )}
+                        {currentList.is_active ? 'Desativar' : 'Ativar'}
+                      </Button>
+                    </div>
+                  </div>
+
+                  {editingInfo ? (
+                    <div className="space-y-3">
+                      <div>
+                        <Label htmlFor="pl-name" className="field-label">Nome *</Label>
+                        <Input
+                          id="pl-name"
+                          type="text"
+                          value={infoForm.name}
+                          onChange={e => setInfoForm(p => ({ ...p, name: e.target.value }))}
+                          autoFocus
+                        />
                       </div>
-                    ))}
-                    <p className="text-[11px] text-muted-foreground text-center pt-1">
-                      Vincule mais parceiros em{' '}
-                      <a href="/admin/clientes" className="text-foreground underline underline-offset-2">
-                        Clientes
-                      </a>
-                      .
+                      <div>
+                        <Label htmlFor="pl-desc" className="field-label">Descrição</Label>
+                        <Input
+                          id="pl-desc"
+                          type="text"
+                          value={infoForm.description}
+                          onChange={e => setInfoForm(p => ({ ...p, description: e.target.value }))}
+                          placeholder="Opcional"
+                        />
+                      </div>
+                      <Button
+                        onClick={handleSaveInfo}
+                        disabled={!infoForm.name.trim() || updateListMutation.isPending}
+                      >
+                        <Check />
+                        Salvar alterações
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="space-y-1.5">
+                      <div className="flex items-center gap-2">
+                        <Tag className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                        <span className="text-[13.5px] font-medium text-foreground">{currentList.name}</span>
+                      </div>
+                      {currentList.description && (
+                        <p className="text-[12px] text-muted-foreground pl-5">{currentList.description}</p>
+                      )}
+                      {!currentList.is_active && (
+                        <div className="mt-2 bg-surface border border-border rounded-md px-3 py-2">
+                          <p className="text-[12px] text-muted-foreground">
+                            Tabela inativa: parceiros vinculados recebem o preço padrão do catálogo.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* ── Itens de preço ── */}
+                <div className="px-5 py-4 border-b border-border">
+                  <h3 className={`${sectionTitle} mb-3`}>
+                    Itens de preço <span className="text-muted-foreground font-normal tabular-nums">({priceListItems.length})</span>
+                  </h3>
+
+                  {priceListItems.length === 0 ? (
+                    <div className="rounded-lg border border-dashed border-border mb-4">
+                      <EmptyState
+                        icon={Package}
+                        title="Nenhum preço especial"
+                        description="Todos os produtos usam o preço padrão do catálogo."
+                        className="py-6"
+                      />
+                    </div>
+                  ) : (
+                    <div className="rounded-lg border border-border divide-y divide-border mb-4">
+                      {priceListItems.map(item => {
+                        const product = getItemProduct(item)
+                        return (
+                          <div
+                            key={item.id}
+                            className="flex items-center gap-2.5 p-2.5 group"
+                          >
+                            {product?.main_image ? (
+                              <img
+                                src={product.main_image}
+                                alt=""
+                                className="w-9 h-9 rounded-md object-cover shrink-0 border border-border"
+                              />
+                            ) : (
+                              <div className="w-9 h-9 rounded-md bg-muted flex items-center justify-center shrink-0">
+                                <Package className="w-4 h-4 text-muted-foreground" />
+                              </div>
+                            )}
+                            <div className="flex-1 min-w-0">
+                              <p className="text-[13px] font-medium text-foreground truncate">
+                                {product?.name ?? '—'}
+                              </p>
+                              <p className="text-[12px] text-muted-foreground tabular-nums">
+                                Padrão: R$ {fmt(product?.price ?? 0)}
+                              </p>
+                            </div>
+
+                            {editingItemId === item.id ? (
+                              <div className="flex items-center gap-1 shrink-0">
+                                <Input
+                                  type="text"
+                                  inputMode="decimal"
+                                  value={editItemPrice}
+                                  onChange={e => setEditItemPrice(e.target.value)}
+                                  className="w-24 h-8 text-right font-mono tabular-nums"
+                                  placeholder="0,00"
+                                  autoFocus
+                                  aria-label="Novo preço"
+                                  onKeyDown={e => {
+                                    if (e.key === 'Enter') handleSaveEditItem(item)
+                                    if (e.key === 'Escape') { setEditingItemId(null); setEditItemPrice('') }
+                                  }}
+                                />
+                                <Button
+                                  size="icon-sm"
+                                  onClick={() => handleSaveEditItem(item)}
+                                  disabled={upsertItemMutation.isPending}
+                                  aria-label="Salvar preço"
+                                >
+                                  {upsertItemMutation.isPending ? <Loader className="animate-spin" /> : <Check />}
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon-sm"
+                                  onClick={() => { setEditingItemId(null); setEditItemPrice('') }}
+                                  aria-label="Cancelar edição"
+                                >
+                                  <X />
+                                </Button>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-0.5 shrink-0">
+                                <span className="text-[13.5px] font-semibold text-foreground tabular-nums mr-1">
+                                  R$ {fmt(item.price)}
+                                </span>
+                                <Button
+                                  variant="ghost"
+                                  size="icon-sm"
+                                  onClick={() => {
+                                    setEditingItemId(item.id)
+                                    setEditItemPrice(String(item.price).replace('.', ','))
+                                  }}
+                                  className="lg:opacity-0 lg:group-hover:opacity-100 focus-visible:opacity-100"
+                                  title="Editar preço"
+                                  aria-label="Editar preço"
+                                >
+                                  <Edit2 />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon-sm"
+                                  onClick={() => setRemoveItemId(item.id)}
+                                  className="hover:text-danger hover:bg-danger-subtle lg:opacity-0 lg:group-hover:opacity-100 focus-visible:opacity-100"
+                                  title="Remover"
+                                  aria-label="Remover preço especial"
+                                >
+                                  <Trash2 />
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+
+                  {/* Adicionar produto */}
+                  <div className="bg-surface rounded-lg border border-border p-3.5 space-y-2">
+                    <p className="text-[13px] font-medium text-foreground">Adicionar produto</p>
+                    <div className="relative">
+                      <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-ink-400 pointer-events-none" />
+                      <Input
+                        type="text"
+                        value={productSearch}
+                        onChange={e => setProductSearch(e.target.value)}
+                        placeholder="Filtrar produtos…"
+                        className="pl-8 bg-card"
+                      />
+                    </div>
+                    <StyledSelect
+                      value={addProductId}
+                      onChange={(v) => {
+                        setAddProductId(v)
+                        const prod = allProducts.find(p => p.id === v)
+                        if (prod) setAddPrice(String(prod.price).replace('.', ','))
+                        else setAddPrice('')
+                      }}
+                      options={filteredAvailableProducts.map(p => ({ value: p.id, label: `${p.name} — R$ ${fmt(p.price)}` }))}
+                      emptyLabel="Selecionar produto…"
+                      placeholder="Selecionar produto…"
+                    />
+
+                    {availableProducts.length === 0 && allProducts.length > 0 && (
+                      <p className="text-[12px] text-muted-foreground text-center">
+                        Todos os produtos ativos já estão nesta tabela.
+                      </p>
+                    )}
+
+                    <div className="flex gap-2">
+                      <div className="flex-1 relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[13px] text-muted-foreground pointer-events-none">
+                          R$
+                        </span>
+                        <Input
+                          type="text"
+                          inputMode="decimal"
+                          value={addPrice}
+                          onChange={e => setAddPrice(e.target.value)}
+                          placeholder="0,00"
+                          aria-label="Preço especial"
+                          onKeyDown={e => { if (e.key === 'Enter') handleAddItem() }}
+                          className={`${moneyInput} bg-card`}
+                        />
+                      </div>
+                      <Button
+                        onClick={handleAddItem}
+                        disabled={!addProductId || !addPrice || upsertItemMutation.isPending}
+                      >
+                        {upsertItemMutation.isPending ? <Loader className="animate-spin" /> : <Plus />}
+                        Adicionar
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Aplicar por categoria */}
+                  <div className="bg-surface rounded-lg border border-border p-3.5 mt-3 space-y-2">
+                    <div className="flex items-center gap-1.5">
+                      <Layers className="w-3.5 h-3.5 text-muted-foreground" />
+                      <p className="text-[13px] font-medium text-foreground">Aplicar por categoria</p>
+                    </div>
+                    <p className="text-[12px] text-muted-foreground">
+                      Define o mesmo preço para todos os produtos ativos de uma categoria de uma vez.
+                    </p>
+                    <StyledSelect
+                      value={applyCatId}
+                      onChange={setApplyCatId}
+                      options={categories.map(c => ({ value: c.id, label: c.name }))}
+                      emptyLabel="Selecionar categoria…"
+                      placeholder="Selecionar categoria…"
+                    />
+                    <div className="flex gap-2">
+                      <div className="flex-1 relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[13px] text-muted-foreground pointer-events-none">
+                          R$
+                        </span>
+                        <Input
+                          type="text"
+                          inputMode="decimal"
+                          value={applyCatPrice}
+                          onChange={e => setApplyCatPrice(e.target.value)}
+                          placeholder="0,00"
+                          aria-label="Preço para a categoria"
+                          onKeyDown={e => { if (e.key === 'Enter') handleApplyCategory() }}
+                          className={`${moneyInput} bg-card`}
+                        />
+                      </div>
+                      <Button
+                        variant="secondary"
+                        onClick={handleApplyCategory}
+                        disabled={!applyCatId || !applyCatPrice || applyCategoryMutation.isPending}
+                      >
+                        {applyCategoryMutation.isPending ? <Loader className="animate-spin" /> : <Check />}
+                        Aplicar
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* ── Parceiros vinculados ── */}
+                <div className="px-5 py-4 border-b border-border">
+                  <h3 className={`${sectionTitle} mb-3`}>
+                    Parceiros vinculados <span className="text-muted-foreground font-normal tabular-nums">({linkedPartners.length})</span>
+                  </h3>
+
+                  {linkedPartners.length === 0 ? (
+                    <div className="rounded-lg border border-dashed border-border">
+                      <EmptyState
+                        icon={Users}
+                        title="Nenhum parceiro usa esta tabela"
+                        description={
+                          <>
+                            Para vincular, acesse{' '}
+                            <a href="/admin/clientes" className="text-foreground underline underline-offset-2">Clientes</a>{' '}
+                            e selecione a tabela na ficha do parceiro.
+                          </>
+                        }
+                        className="py-6"
+                      />
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <div className="rounded-lg border border-border divide-y divide-border">
+                        {linkedPartners.map(partner => (
+                          <div
+                            key={partner.id}
+                            className="flex items-center gap-3 px-3 py-2.5"
+                          >
+                            <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center shrink-0 text-[12px] font-semibold text-ink-600">
+                              {(partner.full_name ?? 'A').slice(0, 2).toUpperCase()}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-[13px] font-medium text-foreground truncate">
+                                {partner.full_name ?? '—'}
+                              </p>
+                              {partner.phone && (
+                                <p className="text-[12px] text-muted-foreground">{partner.phone}</p>
+                              )}
+                            </div>
+                            {partner.customer_segment && (
+                              partner.customer_segment === 'network_partner' ? (
+                                <Badge variant="brand" className="shrink-0">Parceiro</Badge>
+                              ) : (
+                                <Badge className="shrink-0 border-teal-200 bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400 dark:border-teal-700/40">
+                                  Atacado
+                                </Badge>
+                              )
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                      <p className="text-[12px] text-muted-foreground text-center pt-1">
+                        Vincule mais parceiros em{' '}
+                        <a href="/admin/clientes" className="text-foreground underline underline-offset-2">
+                          Clientes
+                        </a>
+                        .
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {/* ── Ações ── */}
+                <div className="px-5 py-4">
+                  <h3 className={`${sectionTitle} mb-3`}>Ações</h3>
+                  <div className="space-y-2">
+                    {currentList.archived_at ? (
+                      <Button
+                        variant="secondary"
+                        onClick={() => restoreListMutation.mutate(currentList.id)}
+                        disabled={restoreListMutation.isPending}
+                        className="w-full"
+                      >
+                        {restoreListMutation.isPending ? <Loader className="animate-spin" /> : <ArchiveRestore />}
+                        Restaurar tabela
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="secondary"
+                        onClick={() => setArchiveConfirmId(currentList.id)}
+                        className="w-full"
+                      >
+                        <Archive />
+                        Arquivar tabela
+                      </Button>
+                    )}
+                    {linkedPartners.length === 0 && (
+                      <Button
+                        variant="secondary"
+                        onClick={() => setDeleteConfirmId(currentList.id)}
+                        className="w-full text-danger hover:text-danger hover:bg-danger-subtle"
+                      >
+                        <Trash2 />
+                        Excluir permanentemente
+                      </Button>
+                    )}
+                    {linkedPartners.length > 0 && (
+                      <p className="text-[12px] text-muted-foreground text-center pt-1">
+                        Desvincule os {linkedPartners.length} parceiro{linkedPartners.length > 1 ? 's' : ''} para habilitar a exclusão permanente.
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+        </SheetContent>
+      </Sheet>
+
+      {/* ── Nova tabela ── */}
+      <Dialog
+        open={creatingList}
+        onOpenChange={(open) => { if (!open) { setCreatingList(false); setCreateForm({ name: '', description: '' }) } }}
+      >
+        <DialogContent className="max-w-md w-[calc(100%-2rem)]">
+          <DialogHeader className="text-left">
+            <DialogTitle className="text-[16px]">Nova tabela de preço</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="new-pl-name" className="field-label">Nome *</Label>
+              <Input
+                id="new-pl-name"
+                type="text"
+                value={createForm.name}
+                onChange={e => setCreateForm(p => ({ ...p, name: e.target.value }))}
+                placeholder="Ex: Atacado Nível 1"
+                autoFocus
+                onKeyDown={e => {
+                  if (e.key === 'Enter' && createForm.name.trim()) createListMutation.mutate(createForm)
+                }}
+              />
+            </div>
+            <div>
+              <Label htmlFor="new-pl-desc" className="field-label">Descrição</Label>
+              <Input
+                id="new-pl-desc"
+                type="text"
+                value={createForm.description}
+                onChange={e => setCreateForm(p => ({ ...p, description: e.target.value }))}
+                placeholder="Opcional"
+              />
+            </div>
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              variant="secondary"
+              onClick={() => { setCreatingList(false); setCreateForm({ name: '', description: '' }) }}
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={() => createListMutation.mutate(createForm)}
+              disabled={!createForm.name.trim() || createListMutation.isPending}
+            >
+              {createListMutation.isPending ? 'Criando…' : 'Criar tabela'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Remover item ── */}
+      <Dialog open={!!removeItemId} onOpenChange={(open) => { if (!open) setRemoveItemId(null) }}>
+        <DialogContent className="max-w-sm w-[calc(100%-2rem)]">
+          <DialogHeader className="text-left">
+            <DialogTitle className="text-[16px]">Remover preço especial?</DialogTitle>
+            <DialogDescription>
+              O produto volta a usar o preço padrão do catálogo para os parceiros desta tabela.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="secondary" onClick={() => setRemoveItemId(null)}>
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => removeItemId && removeItemMutation.mutate(removeItemId)}
+              disabled={removeItemMutation.isPending}
+            >
+              {removeItemMutation.isPending ? 'Removendo…' : 'Remover preço'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Arquivar ── */}
+      <Dialog open={!!archiveConfirmId} onOpenChange={(open) => { if (!open) setArchiveConfirmId(null) }}>
+        <DialogContent className="max-w-sm w-[calc(100%-2rem)]">
+          {archiveConfirmId && (() => {
+            const list = priceLists.find(l => l.id === archiveConfirmId)
+            const partners = list && selectedListId === archiveConfirmId ? linkedPartners : []
+            return (
+              <>
+                <DialogHeader className="text-left">
+                  <DialogTitle className="text-[16px]">Arquivar tabela?</DialogTitle>
+                  {partners.length === 0 && (
+                    <DialogDescription>
+                      A tabela fica inativa e some da lista. Você pode restaurá-la a qualquer momento.
+                    </DialogDescription>
+                  )}
+                </DialogHeader>
+                {partners.length > 0 && (
+                  <div className="flex items-start gap-2 bg-warning-subtle border border-warning-border rounded-md px-3 py-2.5">
+                    <AlertTriangle className="w-4 h-4 text-warning shrink-0 mt-0.5" />
+                    <p className="text-[13px] text-warning">
+                      <strong className="font-semibold">{partners.length} parceiro{partners.length > 1 ? 's' : ''}</strong> perderão os preços especiais e passarão a ver o preço de catálogo.
                     </p>
                   </div>
                 )}
-              </div>
-              {/* ── Section: Ações ── */}
-              <div className="px-5 py-4">
-                <h3 className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest mb-3">
-                  Ações
-                </h3>
-                <div className="space-y-2">
-                  {currentList.archived_at ? (
-                    <button
-                      onClick={() => restoreListMutation.mutate(currentList.id)}
-                      disabled={restoreListMutation.isPending}
-                      className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-success-border bg-success-subtle text-success text-sm font-semibold hover:bg-success-subtle transition-colors disabled:opacity-60"
-                    >
-                      {restoreListMutation.isPending ? <Loader className="w-4 h-4 animate-spin" /> : <ArchiveRestore className="w-4 h-4" />}
-                      Restaurar tabela
-                    </button>
-                  ) : (
-                    <button
-                      onClick={() => setArchiveConfirmId(currentList.id)}
-                      className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-border bg-card text-foreground text-sm font-semibold hover:bg-surface-alt transition-colors"
-                    >
-                      <Archive className="w-4 h-4" />
-                      Arquivar tabela
-                    </button>
-                  )}
-                  {linkedPartners.length === 0 && (
-                    <button
-                      onClick={() => setDeleteConfirmId(currentList.id)}
-                      className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-danger-border bg-danger-subtle text-danger text-sm font-semibold hover:bg-danger-subtle transition-colors"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                      Excluir permanentemente
-                    </button>
-                  )}
-                  {linkedPartners.length > 0 && (
-                    <p className="text-[11px] text-muted-foreground text-center pt-1">
-                      Desvincule os {linkedPartners.length} parceiro{linkedPartners.length > 1 ? 's' : ''} para habilitar a exclusão permanente.
-                    </p>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        </>
-      )}
+                <DialogFooter className="gap-2 sm:gap-0">
+                  <Button variant="secondary" onClick={() => setArchiveConfirmId(null)}>
+                    Cancelar
+                  </Button>
+                  <Button
+                    onClick={() => archiveListMutation.mutate(archiveConfirmId)}
+                    disabled={archiveListMutation.isPending}
+                  >
+                    {archiveListMutation.isPending ? 'Arquivando…' : 'Arquivar tabela'}
+                  </Button>
+                </DialogFooter>
+              </>
+            )
+          })()}
+        </DialogContent>
+      </Dialog>
 
-      {/* ── Create Modal ── */}
-      {creatingList && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div
-            className="absolute inset-0 bg-foreground/40 backdrop-blur-sm"
-            onClick={() => { setCreatingList(false); setCreateForm({ name: '', description: '' }) }}
-          />
-          <div className="relative bg-card rounded-2xl shadow-2xl p-6 w-full max-w-md border border-border">
-            <h2 className="text-xl font-bold text-foreground mb-4">Nova Tabela de Preço</h2>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1">Nome *</label>
-                <input
-                  type="text"
-                  value={createForm.name}
-                  onChange={e => setCreateForm(p => ({ ...p, name: e.target.value }))}
-                  className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                  placeholder="Ex: Atacado Nível 1"
-                  autoFocus
-                  onKeyDown={e => {
-                    if (e.key === 'Enter' && createForm.name.trim()) createListMutation.mutate(createForm)
-                  }}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1">Descrição</label>
-                <input
-                  type="text"
-                  value={createForm.description}
-                  onChange={e => setCreateForm(p => ({ ...p, description: e.target.value }))}
-                  className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                  placeholder="Opcional"
-                />
-              </div>
-            </div>
-            <div className="flex gap-3 mt-6">
-              <button
-                onClick={() => createListMutation.mutate(createForm)}
-                disabled={!createForm.name.trim() || createListMutation.isPending}
-                className="flex-1 px-4 py-2.5 rounded-lg btn-action font-medium disabled:opacity-50 transition-colors"
-              >
-                {createListMutation.isPending ? 'Criando...' : 'Criar Tabela'}
-              </button>
-              <button
-                onClick={() => { setCreatingList(false); setCreateForm({ name: '', description: '' }) }}
-                className="flex-1 px-4 py-2.5 rounded-lg border border-border bg-card text-foreground font-medium hover:bg-accent transition-colors"
-              >
-                Cancelar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── Remove Item Confirmation ── */}
-      {removeItemId && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-          <div
-            className="absolute inset-0 bg-foreground/40 backdrop-blur-sm"
-            onClick={() => setRemoveItemId(null)}
-          />
-          <div className="relative bg-card rounded-2xl shadow-2xl border border-border p-6 w-full max-w-sm">
-            <h2 className="text-lg font-bold text-foreground mb-2">Remover preço especial?</h2>
-            <p className="text-sm text-muted-foreground mb-6">
-              O produto voltará a usar o preço padrão do catálogo para parceiros desta tabela.
-            </p>
-            <div className="flex gap-3">
-              <button
-                onClick={() => removeItemMutation.mutate(removeItemId)}
-                disabled={removeItemMutation.isPending}
-                className="flex-1 px-4 py-2.5 rounded-lg bg-danger-solid text-white font-medium hover:bg-danger-solid/90 disabled:opacity-70 transition-colors"
-              >
-                {removeItemMutation.isPending ? 'Removendo...' : 'Remover'}
-              </button>
-              <button
-                onClick={() => setRemoveItemId(null)}
-                className="flex-1 px-4 py-2.5 rounded-lg border border-border bg-card text-foreground font-medium hover:bg-accent transition-colors"
-              >
-                Cancelar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── Archive Confirmation ── */}
-      {archiveConfirmId && (() => {
-        const list = priceLists.find(l => l.id === archiveConfirmId)
-        const partners = list && selectedListId === archiveConfirmId ? linkedPartners : []
-        return (
-          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-            <div className="absolute inset-0 bg-foreground/40 backdrop-blur-sm" onClick={() => setArchiveConfirmId(null)} />
-            <div className="relative bg-card rounded-2xl shadow-2xl border border-border p-6 w-full max-w-sm">
-              <div className="w-12 h-12 rounded-full bg-warning-subtle flex items-center justify-center mx-auto mb-4">
-                <Archive className="w-6 h-6 text-warning" />
-              </div>
-              <h2 className="text-lg font-bold text-foreground mb-2 text-center">Arquivar tabela?</h2>
-              {partners.length > 0 ? (
-                <div className="flex items-start gap-2 bg-warning-subtle border border-warning-border rounded-xl px-3 py-2.5 mb-5">
-                  <AlertTriangle className="w-4 h-4 text-warning shrink-0 mt-0.5" />
-                  <p className="text-sm text-warning">
-                    <strong>{partners.length} parceiro{partners.length > 1 ? 's' : ''}</strong> perderão os preços especiais e passarão a ver o preço de catálogo.
-                  </p>
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground mb-5 text-center">
-                  A tabela ficará inativa e invisível. Você pode restaurá-la a qualquer momento.
-                </p>
-              )}
-              <div className="flex gap-3">
-                <button
-                  onClick={() => archiveListMutation.mutate(archiveConfirmId)}
-                  disabled={archiveListMutation.isPending}
-                  className="flex-1 px-4 py-2.5 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 disabled:opacity-70 transition-colors"
-                >
-                  {archiveListMutation.isPending ? 'Arquivando...' : 'Arquivar'}
-                </button>
-                <button
-                  onClick={() => setArchiveConfirmId(null)}
-                  className="flex-1 px-4 py-2.5 rounded-lg border border-border bg-card text-foreground font-medium hover:bg-accent transition-colors"
-                >
-                  Cancelar
-                </button>
-              </div>
-            </div>
-          </div>
-        )
-      })()}
-
-      {/* ── Delete Confirmation ── */}
-      {deleteConfirmId && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-foreground/40 backdrop-blur-sm" onClick={() => setDeleteConfirmId(null)} />
-          <div className="relative bg-card rounded-2xl shadow-2xl border border-border p-6 w-full max-w-sm">
-            <div className="w-12 h-12 rounded-full bg-danger-subtle flex items-center justify-center mx-auto mb-4">
-              <Trash2 className="w-6 h-6 text-danger" />
-            </div>
-            <h2 className="text-lg font-bold text-foreground mb-2 text-center">Excluir permanentemente?</h2>
-            <p className="text-sm text-muted-foreground mb-5 text-center">
-              Todos os preços configurados serão apagados. Esta ação <strong>não pode ser desfeita</strong>.
-            </p>
-            <div className="flex gap-3">
-              <button
-                onClick={() => deleteListMutation.mutate(deleteConfirmId)}
-                disabled={deleteListMutation.isPending}
-                className="flex-1 px-4 py-2.5 rounded-lg bg-danger-solid text-white font-medium hover:bg-danger-solid/90 disabled:opacity-70 transition-colors"
-              >
-                {deleteListMutation.isPending ? 'Excluindo...' : 'Excluir'}
-              </button>
-              <button
-                onClick={() => setDeleteConfirmId(null)}
-                className="flex-1 px-4 py-2.5 rounded-lg border border-border bg-card text-foreground font-medium hover:bg-accent transition-colors"
-              >
-                Cancelar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* ── Excluir ── */}
+      <Dialog open={!!deleteConfirmId} onOpenChange={(open) => { if (!open) setDeleteConfirmId(null) }}>
+        <DialogContent className="max-w-sm w-[calc(100%-2rem)]">
+          <DialogHeader className="text-left">
+            <DialogTitle className="text-[16px]">Excluir permanentemente?</DialogTitle>
+            <DialogDescription>
+              Todos os preços configurados serão apagados. Esta ação não pode ser desfeita.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="secondary" onClick={() => setDeleteConfirmId(null)}>
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => deleteConfirmId && deleteListMutation.mutate(deleteConfirmId)}
+              disabled={deleteListMutation.isPending}
+            >
+              {deleteListMutation.isPending ? 'Excluindo…' : 'Excluir tabela'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AdminLayout>
   )
 }

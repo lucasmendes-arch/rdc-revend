@@ -1,12 +1,15 @@
 import { useState, useMemo, Fragment } from 'react'
 import { Navigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Loader, ChevronDown, ChevronRight, ClipboardList, Trash2, RotateCcw } from 'lucide-react'
+import { ChevronDown, ChevronRight, ClipboardList, Trash2, RotateCcw } from 'lucide-react'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import EstoqueLayout from '@/components/estoque/EstoqueLayout'
 import StyledSelect from '@/components/ui/styled-select'
+import { AdminPage, Panel, EmptyState, PageLoading, Toolbar } from '@/components/admin/ui/AdminPage'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 
 interface StockCountRow {
   id: string
@@ -51,37 +54,39 @@ function ItemsExpansion({ stockCountId }: { stockCountId: string }) {
   })
 
   if (isLoading) {
-    return <tr><td colSpan={8} className="px-4 py-3 text-center"><Loader className="w-4 h-4 animate-spin text-muted-foreground mx-auto" /></td></tr>
+    return <tr><td colSpan={8}><PageLoading className="py-3" /></td></tr>
   }
 
   const withValue = items.filter((i) => i.closed_boxes > 0 || i.loose_units > 0)
 
   return (
-    <tr>
-      <td colSpan={8} className="px-4 py-3 bg-surface-alt">
+    <tr className="hover:!bg-transparent">
+      <td colSpan={8} className="!p-0 bg-surface">
         {withValue.length === 0 ? (
-          <p className="text-xs text-muted-foreground">Nenhum item preenchido nesta contagem.</p>
+          <p className="px-4 py-3 text-[12.5px] text-muted-foreground">Nenhum item preenchido nesta contagem.</p>
         ) : (
-          <table className="w-full text-xs">
-            <thead>
-              <tr className="text-left text-muted-foreground">
-                <th className="pb-1.5 font-semibold">Produto</th>
-                <th className="pb-1.5 font-semibold text-center">Caixas</th>
-                <th className="pb-1.5 font-semibold text-center">Soltas</th>
-                <th className="pb-1.5 font-semibold text-center">Total</th>
-              </tr>
-            </thead>
-            <tbody>
-              {withValue.map((item) => (
-                <tr key={item.id} className="border-t border-border/60">
-                  <td className="py-1.5 font-medium text-foreground">{item.catalog_products?.name || 'Produto'}</td>
-                  <td className="py-1.5 text-center">{item.closed_boxes}</td>
-                  <td className="py-1.5 text-center">{item.loose_units}</td>
-                  <td className="py-1.5 text-center font-bold">{item.total_units ?? '—'}</td>
+          <div className="px-3 sm:px-10 py-2">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Produto</th>
+                  <th className="!text-right">Caixas</th>
+                  <th className="!text-right">Soltas</th>
+                  <th className="!text-right">Total</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {withValue.map((item) => (
+                  <tr key={item.id}>
+                    <td className="font-medium text-foreground">{item.catalog_products?.name || 'Produto'}</td>
+                    <td className="text-right">{item.closed_boxes}</td>
+                    <td className="text-right">{item.loose_units}</td>
+                    <td className="text-right font-semibold">{item.total_units ?? '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </td>
     </tr>
@@ -193,108 +198,111 @@ export default function EstoqueHistorico() {
 
   return (
     <EstoqueLayout>
-      <div className="bg-card rounded-2xl border border-border shadow-card p-5 space-y-3">
-        <h1 className="text-lg font-bold text-foreground">Histórico de contagens</h1>
-        <div className="flex flex-wrap gap-2">
-          <StyledSelect
-            variant="inline"
-            value={storeFilter}
-            onChange={setStoreFilter}
-            options={stores.map((s) => ({ value: s.id, label: s.name }))}
-            emptyLabel="Todas as lojas"
-            placeholder="Todas as lojas"
-            className="h-9 bg-card"
-          />
-          <StyledSelect
-            variant="inline"
-            value={statusFilter}
-            onChange={setStatusFilter}
-            options={[{ value: 'draft', label: 'Rascunho' }, { value: 'confirmed', label: 'Confirmada' }]}
-            emptyLabel="Todos os status"
-            placeholder="Todos os status"
-            className="h-9 bg-card"
-          />
-        </div>
-      </div>
-
-      <div className="bg-card rounded-2xl border border-border shadow-card overflow-hidden">
-        {countsLoading ? (
-          <div className="text-center py-10"><Loader className="w-6 h-6 animate-spin text-gold-text mx-auto" /></div>
-        ) : filtered.length === 0 ? (
-          <div className="text-center py-10">
-            <ClipboardList className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
-            <p className="text-muted-foreground text-sm">Nenhuma contagem encontrada.</p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-border bg-surface-alt">
-                  <th className="w-8"></th>
-                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-foreground">Loja</th>
-                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-foreground">Parceiro</th>
-                  <th className="px-4 py-2.5 text-center text-xs font-semibold text-foreground">Status</th>
-                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-foreground">Criada em</th>
-                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-foreground">Confirmada em</th>
-                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-foreground">Última atualização</th>
-                  <th className="w-10"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((count) => (
-                  <Fragment key={count.id}>
-                    <tr
-                      onClick={() => setExpandedId(expandedId === count.id ? null : count.id)}
-                      className="border-b border-border last:border-b-0 hover:bg-surface-alt/80 cursor-pointer transition-colors"
-                    >
-                      <td className="px-2 text-center text-muted-foreground">
-                        {expandedId === count.id ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-                      </td>
-                      <td className="px-4 py-2.5 text-sm font-medium text-foreground">{storeNameById.get(count.store_id) || '—'}</td>
-                      <td className="px-4 py-2.5 text-sm text-muted-foreground">
-                        {count.employee_name || (count.employee_id ? employeeNameById.get(count.employee_id) : null) || '—'}
-                      </td>
-                      <td className="px-4 py-2.5 text-center">
-                        <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-semibold ${
-                          count.status === 'confirmed' ? 'bg-success-subtle text-success' : 'bg-surface-alt text-muted-foreground'
-                        }`}>
-                          {count.status === 'confirmed' ? 'Confirmada' : 'Rascunho'}
-                        </span>
-                      </td>
-                      <td className="px-4 py-2.5 text-sm text-muted-foreground">{new Date(count.created_at).toLocaleString('pt-BR')}</td>
-                      <td className="px-4 py-2.5 text-sm text-muted-foreground">{count.confirmed_at ? new Date(count.confirmed_at).toLocaleString('pt-BR') : '—'}</td>
-                      <td className="px-4 py-2.5 text-sm text-muted-foreground">{new Date(count.last_activity_at).toLocaleString('pt-BR')}</td>
-                      <td className="px-2 text-center">
-                        <div className="flex items-center justify-center gap-2">
-                          {count.status === 'confirmed' && (
-                            <button
-                              onClick={(e) => { e.stopPropagation(); handleReopen(count) }}
-                              disabled={reopenCount.isPending}
-                              className="text-muted-foreground hover:text-foreground disabled:opacity-40 transition-colors"
-                              title="Reabrir contagem"
+      <AdminPage
+        title="Histórico de contagens"
+        description="Últimas 200 contagens de todas as lojas"
+        toolbar={
+          <Toolbar>
+            <StyledSelect
+              variant="inline"
+              value={storeFilter}
+              onChange={setStoreFilter}
+              options={stores.map((s) => ({ value: s.id, label: s.name }))}
+              emptyLabel="Todas as lojas"
+              placeholder="Todas as lojas"
+              className="h-9"
+            />
+            <StyledSelect
+              variant="inline"
+              value={statusFilter}
+              onChange={setStatusFilter}
+              options={[{ value: 'draft', label: 'Rascunho' }, { value: 'confirmed', label: 'Confirmada' }]}
+              emptyLabel="Todos os status"
+              placeholder="Todos os status"
+              className="h-9"
+            />
+          </Toolbar>
+        }
+      >
+        <Panel flush>
+          {countsLoading ? (
+            <PageLoading />
+          ) : filtered.length === 0 ? (
+            <EmptyState icon={ClipboardList} title="Nenhuma contagem encontrada" description="Ajuste os filtros de loja e status." />
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th className="w-8" aria-label="Expandir"></th>
+                    <th>Loja</th>
+                    <th>Parceiro</th>
+                    <th className="!text-center">Status</th>
+                    <th>Criada em</th>
+                    <th>Confirmada em</th>
+                    <th>Última atualização</th>
+                    <th className="w-20" aria-label="Ações"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map((count) => (
+                    <Fragment key={count.id}>
+                      <tr
+                        onClick={() => setExpandedId(expandedId === count.id ? null : count.id)}
+                        className="cursor-pointer"
+                      >
+                        <td className="!px-2 text-center text-ink-400">
+                          {expandedId === count.id ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                        </td>
+                        <td className="font-medium text-foreground whitespace-nowrap">{storeNameById.get(count.store_id) || '—'}</td>
+                        <td className="text-muted-foreground">
+                          {count.employee_name || (count.employee_id ? employeeNameById.get(count.employee_id) : null) || '—'}
+                        </td>
+                        <td className="text-center">
+                          <Badge variant={count.status === 'confirmed' ? 'success' : 'neutral'}>
+                            {count.status === 'confirmed' ? 'Confirmada' : 'Rascunho'}
+                          </Badge>
+                        </td>
+                        <td className="text-muted-foreground whitespace-nowrap">{new Date(count.created_at).toLocaleString('pt-BR')}</td>
+                        <td className="text-muted-foreground whitespace-nowrap">{count.confirmed_at ? new Date(count.confirmed_at).toLocaleString('pt-BR') : '—'}</td>
+                        <td className="text-muted-foreground whitespace-nowrap">{new Date(count.last_activity_at).toLocaleString('pt-BR')}</td>
+                        <td className="!px-2">
+                          <div className="flex items-center justify-end gap-0.5">
+                            {count.status === 'confirmed' && (
+                              <Button
+                                variant="ghost"
+                                size="icon-sm"
+                                onClick={(e) => { e.stopPropagation(); handleReopen(count) }}
+                                disabled={reopenCount.isPending}
+                                title="Reabrir contagem"
+                                aria-label="Reabrir contagem"
+                              >
+                                <RotateCcw />
+                              </Button>
+                            )}
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              onClick={(e) => { e.stopPropagation(); handleDelete(count) }}
+                              disabled={deleteCount.isPending}
+                              title="Excluir contagem"
+                              aria-label="Excluir contagem"
+                              className="hover:text-danger"
                             >
-                              <RotateCcw className="w-4 h-4" />
-                            </button>
-                          )}
-                          <button
-                            onClick={(e) => { e.stopPropagation(); handleDelete(count) }}
-                            disabled={deleteCount.isPending}
-                            className="text-muted-foreground hover:text-danger disabled:opacity-40 transition-colors"
-                            title="Excluir contagem"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                    {expandedId === count.id && <ItemsExpansion stockCountId={count.id} />}
-                  </Fragment>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+                              <Trash2 />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                      {expandedId === count.id && <ItemsExpansion stockCountId={count.id} />}
+                    </Fragment>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </Panel>
+      </AdminPage>
     </EstoqueLayout>
   )
 }

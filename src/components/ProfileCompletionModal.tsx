@@ -3,6 +3,10 @@ import { X, FileText, MapPin, CheckCircle2, Loader } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { DocumentType, ProfileData, BR_STATES, applyDocMask } from '@/utils/profile'
 import StyledSelect from '@/components/ui/styled-select'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
+import { PageLoading, Segmented } from '@/components/admin/ui/AdminPage'
 
 interface Props {
   userId: string
@@ -91,109 +95,90 @@ export function ProfileCompletionModal({ userId, onClose, onComplete }: Props) {
   const needsLocation = !profile?.address_city || !profile?.address_state
   const hasAnythingToFill = needsDocument || needsLocation
 
-  if (!hasAnythingToFill && !loading) {
-    // Profile already complete — don't show
-    onComplete()
-    return null
-  }
+  // Perfil já completo: avisa o pai fora do render (chamar setState do pai
+  // durante o render gerava o aviso "Cannot update a component while rendering").
+  const alreadyComplete = !hasAnythingToFill && !loading
+  useEffect(() => {
+    if (alreadyComplete) onComplete()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [alreadyComplete])
+
+  if (alreadyComplete) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
-      {/* Overlay */}
-      <div
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-        onClick={onClose}
-      />
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" role="dialog" aria-modal="true" aria-labelledby="profile-completion-title">
+      <div className="absolute inset-0 bg-ink-950/45 backdrop-blur-[2px]" onClick={onClose} />
 
-      {/* Modal */}
-      <div className="relative bg-card w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl shadow-2xl overflow-hidden animate-in slide-in-from-bottom-4 sm:zoom-in-95 duration-300">
-
-        {/* Header */}
+      <div className="relative bg-popover border border-border w-full sm:max-w-md rounded-t-xl sm:rounded-xl shadow-xl overflow-hidden animate-in fade-in zoom-in-[0.98] duration-150">
         <div className="px-5 pt-5 pb-4 border-b border-border">
           <div className="flex items-start justify-between gap-3">
-            <div>
-              <span className="inline-block text-[10px] font-bold uppercase tracking-widest text-brand-strong bg-brand-subtle px-2 py-0.5 rounded-full mb-2">
-                Perfil incompleto
-              </span>
-              <h2 className="text-[15px] font-semibold text-foreground tracking-tight leading-tight">
+            <div className="min-w-0">
+              <Badge variant="brand" className="mb-2">Perfil incompleto</Badge>
+              <h2 id="profile-completion-title" className="text-[16px] font-semibold text-foreground tracking-tight leading-tight">
                 Falta pouco para finalizar seu cadastro
               </h2>
-              <p className="text-sm text-muted-foreground mt-1">
-                Com essas informações, nossa equipe pode te atender mais rápido no WhatsApp.
+              <p className="text-[13px] text-muted-foreground mt-1">
+                Com essas informações, nossa equipe atende você mais rápido no WhatsApp.
               </p>
             </div>
-            <button
-              onClick={onClose}
-              className="flex-shrink-0 w-8 h-8 rounded-full hover:bg-surface-alt flex items-center justify-center text-muted-foreground transition-colors mt-0.5"
-            >
-              <X className="w-4 h-4" />
-            </button>
+            <Button variant="ghost" size="icon-sm" onClick={onClose} aria-label="Fechar" className="shrink-0 -mr-1.5 -mt-1">
+              <X />
+            </Button>
           </div>
         </div>
 
-        {/* Content */}
         <div className="px-5 py-4 space-y-4">
           {loading ? (
-            <div className="flex items-center justify-center py-6">
-              <Loader className="w-5 h-5 animate-spin text-muted-foreground" />
-            </div>
+            <PageLoading label="Carregando…" className="py-6" />
           ) : (
             <>
               {error && (
-                <p className="text-sm text-danger bg-danger-subtle px-3 py-2 rounded-lg">{error}</p>
+                <p role="alert" className="text-[13px] text-danger bg-danger-subtle border border-danger-border px-3 py-2 rounded-md">{error}</p>
               )}
 
-              {/* Document */}
               {needsDocument && (
                 <div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <FileText className="w-4 h-4 text-muted-foreground" />
-                    <label className="text-sm font-semibold text-foreground">CPF ou CNPJ</label>
-                  </div>
-                  {/* Type toggle */}
-                  <div className="flex p-1 bg-surface rounded-xl border border-border mb-2">
-                    <button
-                      type="button"
-                      onClick={() => handleDocTypeToggle('CPF')}
-                      className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all ${docType === 'CPF' ? 'bg-card text-foreground shadow-sm border border-border' : 'text-muted-foreground'}`}
-                    >
-                      CPF (Pessoa Física)
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleDocTypeToggle('CNPJ')}
-                      className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all ${docType === 'CNPJ' ? 'bg-card text-foreground shadow-sm border border-border' : 'text-muted-foreground'}`}
-                    >
-                      CNPJ (Empresa)
-                    </button>
-                  </div>
-                  <input
+                  <label htmlFor="pc-document" className="field-label flex items-center gap-1.5">
+                    <FileText className="w-3.5 h-3.5 text-ink-400" />
+                    CPF ou CNPJ
+                  </label>
+                  <Segmented<DocumentType>
+                    className="w-full mb-2 [&>button]:flex-1 [&>button]:justify-center"
+                    value={docType}
+                    onChange={handleDocTypeToggle}
+                    items={[
+                      { key: 'CPF', label: 'CPF (pessoa física)' },
+                      { key: 'CNPJ', label: 'CNPJ (empresa)' },
+                    ]}
+                  />
+                  <Input
+                    id="pc-document"
                     type="text"
                     name="document"
+                    inputMode="numeric"
                     value={formData.document}
                     onChange={handleChange}
                     maxLength={docType === 'CPF' ? 14 : 18}
                     placeholder={docType === 'CPF' ? '000.000.000-00' : '00.000.000/0000-00'}
-                    className="w-full px-4 py-2.5 rounded-xl border border-input bg-surface focus:outline-none focus:ring-2 focus:ring-ring transition-all text-sm font-mono"
+                    className="mono"
                   />
                 </div>
               )}
 
-              {/* Location */}
               {needsLocation && (
                 <div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <MapPin className="w-4 h-4 text-muted-foreground" />
-                    <label className="text-sm font-semibold text-foreground">Cidade e Estado</label>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <input
+                  <label htmlFor="pc-city" className="field-label flex items-center gap-1.5">
+                    <MapPin className="w-3.5 h-3.5 text-ink-400" />
+                    Cidade e estado
+                  </label>
+                  <div className="grid grid-cols-[1fr_96px] gap-2">
+                    <Input
+                      id="pc-city"
                       type="text"
                       name="address_city"
                       value={formData.address_city}
                       onChange={handleChange}
                       placeholder="Sua cidade"
-                      className="w-full px-3 py-2.5 rounded-xl border border-input bg-surface focus:outline-none focus:ring-2 focus:ring-ring transition-all text-sm"
                     />
                     <StyledSelect
                       value={formData.address_state}
@@ -201,7 +186,6 @@ export function ProfileCompletionModal({ userId, onClose, onComplete }: Props) {
                       options={BR_STATES.map(s => ({ value: s, label: s }))}
                       emptyLabel="UF"
                       placeholder="UF"
-                      className="h-[42px] rounded-xl bg-surface"
                     />
                   </div>
                 </div>
@@ -210,28 +194,23 @@ export function ProfileCompletionModal({ userId, onClose, onComplete }: Props) {
           )}
         </div>
 
-        {/* Footer */}
-        <div className="px-5 pb-5 flex flex-col gap-2">
-          <button
-            onClick={handleSave}
-            disabled={saving || loading}
-            className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold btn-gold disabled:opacity-70 transition-all"
-          >
+        <div className="px-5 pt-1 pb-[max(1.25rem,env(safe-area-inset-bottom))] flex flex-col-reverse sm:flex-row gap-2">
+          <Button variant="secondary" className="sm:flex-1" onClick={onClose}>
+            Completar depois
+          </Button>
+          <Button className="sm:flex-1" onClick={handleSave} disabled={saving || loading}>
             {saving ? (
-              <Loader className="w-4 h-4 animate-spin" />
+              <>
+                <Loader className="animate-spin" />
+                Salvando…
+              </>
             ) : (
               <>
-                <CheckCircle2 className="w-4 h-4" />
+                <CheckCircle2 />
                 Completar perfil
               </>
             )}
-          </button>
-          <button
-            onClick={onClose}
-            className="w-full py-2.5 text-sm text-muted-foreground hover:text-foreground transition-colors font-medium"
-          >
-            Completar depois
-          </button>
+          </Button>
         </div>
       </div>
     </div>

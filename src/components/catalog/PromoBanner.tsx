@@ -31,7 +31,7 @@ export default function PromoBanner({ onClick }: PromoBannerProps) {
                         Margem maior por item no fechamento do kit.
                     </p>
                 </div>
-                <ArrowRight className="w-4 h-4 text-ink-300 shrink-0 transition-transform group-hover:translate-x-0.5" />
+                <ArrowRight className="w-4 h-4 text-ink-300 shrink-0" />
             </button>
         </div>
     )

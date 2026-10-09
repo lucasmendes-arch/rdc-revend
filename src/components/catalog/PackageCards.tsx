@@ -5,6 +5,8 @@ import { Link, useNavigate } from 'react-router-dom'
 import { PACKAGES, selectProductsForPackage } from '@/config/packages'
 import { useCart } from '@/contexts/CartContext'
 import type { PublicProduct } from '@/hooks/useCatalogProducts'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 
 interface PackageCardsProps {
   products: PublicProduct[]
@@ -70,20 +72,20 @@ export default function PackageCards({ products, isGuest = false, isPartner = fa
     setAddedPkgId(pkgId)
     setTimeout(() => setAddedPkgId(null), 1200)
 
-    toast.success(`${addedCount} produtos adicionados ao carrinho!`, {
+    toast.success(`${addedCount} produtos adicionados ao pedido`, {
       action: {
-        label: 'Ver Pedido',
+        label: 'Ver pedido',
         onClick: () => navigate('/checkout'),
       },
     })
   }
 
   return (
-    <div className="mb-4">
+    <div>
       <div
         ref={scrollRef}
         onScroll={handleScroll}
-        className="flex gap-4 sm:gap-6 overflow-x-auto snap-x snap-mandatory scroll-smooth px-4 sm:px-4 lg:px-8 pt-4 pb-4 sm:pt-6 sm:pb-6 scrollbar-none w-full"
+        className="flex gap-3 sm:gap-4 overflow-x-auto snap-x snap-mandatory scroll-smooth px-4 sm:px-0 scroll-pl-4 sm:scroll-pl-0 pt-4 pb-3 scrollbar-none w-full"
       >
         {packageSelections.map(({ pkg, selected }) => {
           const pkgTotal = selected.reduce((sum, item) => {
@@ -91,44 +93,41 @@ export default function PackageCards({ products, isGuest = false, isPartner = fa
             const finalPrice = isPartner && item.product.partner_price ? item.product.partner_price : item.product.price;
             return sum + (finalPrice * item.qty);
           }, 0);
-          const totalItems = selected.reduce((sum, item) => sum + item.qty, 0);
           const multiplierValue = parseFloat(pkg.multiplier.replace('x', ''));
           const dynamicRevenue = pkgTotal * multiplierValue;
+          const added = addedPkgId === pkg.id;
 
           return (
             <div
               key={pkg.id}
               onClick={() => setDetailsPkgId(pkg.id)}
-              className={`flex-shrink-0 w-[270px] sm:w-[300px] lg:w-[260px] xl:w-[280px] snap-start rounded-lg border p-4 sm:p-5 flex flex-col transition-all cursor-pointer ${pkg.highlight
-                ? 'border-ink-300 bg-muted shadow-md relative'
-                : 'border-border bg-card shadow-xs'
+              className={`relative flex-shrink-0 w-[272px] sm:w-[280px] snap-start rounded-lg border bg-card shadow-xs p-4 sm:p-5 flex flex-col cursor-pointer transition-colors ${pkg.highlight
+                ? 'border-brand ring-1 ring-brand'
+                : 'border-border hover:border-ink-300'
                 }`}
             >
               {pkg.highlight && (
-                <span className="absolute -top-2.5 left-4 px-2 py-0.5 rounded-full text-[10px] font-medium bg-primary text-primary-foreground whitespace-nowrap z-10">
-                  Mais Popular
-                </span>
+                <Badge variant="solid" className="absolute -top-2.5 left-4 z-10">Mais popular</Badge>
               )}
 
-              <div className="flex flex-col mb-2 sm:mb-2 mt-1">
-                <h3 className="font-extrabold text-[18px] sm:text-[17px] text-foreground leading-tight">{pkg.name}</h3>
-                <p className="text-[13px] sm:text-xs text-muted-foreground mt-0.5 leading-snug">{pkg.description}</p>
+              <div className="mb-3">
+                <h3 className="text-[15px] font-semibold text-foreground tracking-tight leading-tight">{pkg.name}</h3>
+                <p className="text-[13px] text-muted-foreground mt-1 leading-snug">{pkg.description}</p>
               </div>
 
-              {/* Price pill */}
-              <div className="mt-1 mb-3">
+              <div className="mb-3">
                 {isGuest ? (
-                  <div className="flex items-center gap-1.5">
-                    <Lock className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                    <span className="text-sm text-muted-foreground font-medium">Ver preço ao cadastrar</span>
+                  <div className="flex items-center gap-1.5 text-[13px] text-muted-foreground">
+                    <Lock className="w-4 h-4 flex-shrink-0" />
+                    Preço ao cadastrar
                   </div>
                 ) : (
-                  <span className="text-[22px] sm:text-2xl font-semibold gradient-gold-text">
-                    R$ {pkgTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                    {isPartner && (
-                      <span className="ml-2 text-[10px] bg-muted text-ink-600 px-1.5 py-0.5 rounded uppercase align-middle">Atacado</span>
-                    )}
-                  </span>
+                  <div className="flex items-baseline gap-2 flex-wrap">
+                    <span className="font-title text-[24px] font-semibold text-foreground numeric leading-none">
+                      R$ {pkgTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    </span>
+                    {isPartner && <Badge variant="neutral">Atacado</Badge>}
+                  </div>
                 )}
               </div>
 
@@ -156,20 +155,20 @@ export default function PackageCards({ products, isGuest = false, isPartner = fa
                 const remaining = pkg.displayProductCount - displayImages.length;
 
                 return (
-                  <div className="flex items-center mt-2 mb-4 sm:mb-6">
-                    <div className="flex -space-x-5 sm:-space-x-4">
+                  <div className="flex items-center mb-4">
+                    <div className="flex -space-x-3">
                       {displayImages.map((imgUrl, i) => (
                         <div
                           key={i}
-                          className="w-14 h-14 sm:w-10 sm:h-10 shrink-0 rounded-full border-2 border-white bg-card overflow-hidden shadow-sm relative hover:scale-110 transition-transform"
+                          className="w-11 h-11 shrink-0 rounded-full border-2 border-card bg-surface overflow-hidden relative"
                           style={{ zIndex: i }}
                         >
-                          <img src={imgUrl} alt="Produto" loading="lazy" className="w-full h-full object-cover" />
+                          <img src={imgUrl} alt="" loading="lazy" className="w-full h-full object-cover" />
                         </div>
                       ))}
                       {remaining > 0 && (
                         <div
-                          className="w-14 h-14 sm:w-10 sm:h-10 shrink-0 rounded-full border-2 border-white bg-surface-alt text-muted-foreground flex items-center justify-center text-sm sm:text-xs font-bold shadow-sm relative"
+                          className="w-11 h-11 shrink-0 rounded-full border-2 border-card bg-muted text-ink-600 flex items-center justify-center text-[12px] font-medium numeric relative"
                           style={{ zIndex: 10 }}
                         >
                           +{remaining}
@@ -181,66 +180,44 @@ export default function PackageCards({ products, isGuest = false, isPartner = fa
               })()}
 
               {!isGuest && (
-                <div className="space-y-1 text-[12px] sm:text-xs text-muted-foreground mb-3">
-                  <div className="flex items-center gap-1.5 text-success font-semibold leading-tight">
-                    <TrendingUp className="w-4 h-4 sm:w-3.5 sm:h-3.5 shrink-0" />
-                    <span className="text-[13px] sm:text-[12px]">
-                      Potencial de retorno estimado*{' '}
-                      <span className="whitespace-nowrap">R$ {dynamicRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
-                    </span>
-                  </div>
-                </div>
+                <p className="flex items-start gap-1.5 text-[12px] text-success leading-snug mb-4">
+                  <TrendingUp className="w-3.5 h-3.5 shrink-0 mt-px" />
+                  <span>
+                    Retorno estimado* <span className="font-semibold numeric whitespace-nowrap">R$ {dynamicRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                  </span>
+                </p>
               )}
 
-              {isGuest ? (
-                <Link
-                  to="/cadastro"
-                  onClick={(e) => e.stopPropagation()}
-                  className={`w-full flex items-center justify-center gap-2 py-3 sm:py-2.5 rounded-xl text-sm sm:text-xs font-bold transition-all tracking-wide mt-2 ${pkg.highlight
-                    ? 'btn-primary'
-                    : 'border border-gold-border text-gold-text hover:bg-gold hover:text-white'
-                  }`}
-                >
-                  Cadastre-se para comprar
-                </Link>
-              ) : (
-                <div className="flex flex-col gap-2 mt-2">
-                  <button
+              <div className="mt-auto flex flex-col gap-1">
+                {isGuest ? (
+                  <Button asChild variant={pkg.highlight ? 'default' : 'secondary'} className="w-full">
+                    <Link to="/cadastro" onClick={(e) => e.stopPropagation()}>Criar conta para comprar</Link>
+                  </Button>
+                ) : (
+                  <Button
+                    variant={pkg.highlight ? 'default' : 'secondary'}
+                    className={`w-full ${added ? 'bg-success-subtle text-success border-success-border hover:bg-success-subtle' : ''}`}
                     onClick={(e) => { e.stopPropagation(); handleSelectPackage(pkg.id) }}
-                    className={`w-full h-10 sm:h-11 flex items-center justify-center gap-2 rounded-xl text-sm font-semibold transition-all tracking-wide uppercase shadow-sm ${addedPkgId === pkg.id
-                      ? 'bg-success-solid text-white'
-                      : pkg.highlight
-                        ? 'btn-primary'
-                        : 'bg-success-solid hover:bg-success-solid/90 text-white'
-                      }`}
                   >
-                    {addedPkgId === pkg.id ? (
-                      <>
-                        <Check className="w-4 h-4" />
-                        Adicionado!
-                      </>
-                    ) : (
-                      <>
-                        <ShoppingCart className="w-4 h-4" />
-                        Adicionar Pacote
-                      </>
-                    )}
-                  </button>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); setDetailsPkgId(pkg.id) }}
-                    className="w-full flex items-center justify-center py-2 text-xs font-bold text-muted-foreground hover:text-foreground underline decoration-ink-300 transition-colors uppercase"
-                  >
-                    Ver composição do kit ({pkg.displayProductCount} itens)
-                  </button>
-                </div>
-              )}
+                    {added ? <><Check /> Adicionado</> : <><ShoppingCart /> Adicionar kit</>}
+                  </Button>
+                )}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="w-full text-ink-500"
+                  onClick={(e) => { e.stopPropagation(); setDetailsPkgId(pkg.id) }}
+                >
+                  Ver composição ({pkg.displayProductCount} itens)
+                </Button>
+              </div>
             </div>
           )
         })}
       </div>
 
-      {/* Dots */}
-      <div className="flex items-center justify-center gap-1.5 mt-2" aria-hidden="true">
+      {/* Dots — só no mobile */}
+      <div className="flex sm:hidden items-center justify-center gap-1.5 mt-1" aria-hidden="true">
         {PACKAGES.map((_, i) => (
           <div
             key={i}
@@ -252,100 +229,93 @@ export default function PackageCards({ products, isGuest = false, isPartner = fa
         ))}
       </div>
 
-      <div className="mt-4 sm:mt-6 px-4 sm:px-0 text-[10px] sm:text-xs text-muted-foreground leading-relaxed text-center max-w-3xl mx-auto">
+      <p className="mt-3 px-4 sm:px-0 text-[12px] text-muted-foreground leading-relaxed max-w-3xl">
         * Valores estimados com base em preços médios de revenda praticados no mercado. Resultados podem variar conforme localidade, clientela e dedicação do revendedor. Não constitui garantia de lucro.
-      </div>
+      </p>
 
       {detailsPkgId !== null && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center sm:p-4" role="dialog" aria-modal="true">
           <div className="absolute inset-0 bg-ink-950/45 backdrop-blur-[2px]" onClick={() => setDetailsPkgId(null)} />
-          <div className="relative bg-popover rounded-xl shadow-xl w-full max-w-lg max-h-[85vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+          <div className="relative bg-popover border border-border rounded-t-xl sm:rounded-xl shadow-xl w-full sm:max-w-lg max-h-[85vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-[0.98] duration-150">
             {(() => {
               const entry = packageSelections.find(e => e.pkg.id === detailsPkgId)
               if (!entry) return null
-              const totalItems = entry.selected.reduce((sum, item) => sum + item.qty, 0)
 
               return (
                 <>
-                  <div className="flex items-center justify-between p-4 sm:p-5 border-b border-border bg-surface">
-                    <div>
-                      <h3 className="font-bold text-lg text-foreground">Kit {entry.pkg.name}</h3>
-                      <p className="text-sm text-muted-foreground">{entry.pkg.displayProductCount} Produtos Inclusos</p>
+                  <div className="flex items-start justify-between gap-3 px-4 sm:px-5 py-4 border-b border-border">
+                    <div className="min-w-0">
+                      <h3 className="text-[16px] font-semibold text-foreground tracking-tight">Kit {entry.pkg.name}</h3>
+                      <p className="text-[13px] text-muted-foreground mt-0.5">{entry.pkg.displayProductCount} produtos inclusos</p>
                     </div>
-                    <button onClick={() => setDetailsPkgId(null)} className="p-2 text-muted-foreground hover:bg-surface-alt rounded-full transition-colors">
-                      <X className="w-5 h-5" />
-                    </button>
+                    <Button variant="ghost" size="icon-sm" onClick={() => setDetailsPkgId(null)} aria-label="Fechar">
+                      <X />
+                    </Button>
                   </div>
-                  <div className="p-4 sm:p-5 overflow-y-auto flex-1 bg-card">
-                    <table className="w-full text-sm text-left">
-                      <thead className="text-[11px] uppercase tracking-wider text-muted-foreground border-b border-border bg-surface-alt font-bold">
+                  <div className="overflow-y-auto flex-1">
+                    <table className="data-table">
+                      <thead>
                         <tr>
-                          <th className="py-2.5 px-3 rounded-tl-lg">Produto</th>
-                          <th className="py-2.5 px-3 text-center">Und.</th>
-                          {!isGuest && <th className="py-2.5 px-3 text-right">Preço</th>}
-                          {!isGuest && <th className="py-2.5 px-3 text-right rounded-tr-lg">Total</th>}
-                          {isGuest && <th className="py-2.5 px-3 text-right rounded-tr-lg" />}
+                          <th>Produto</th>
+                          <th className="!text-right">Qtd.</th>
+                          {!isGuest && <th className="!text-right hidden sm:table-cell">Preço</th>}
+                          {!isGuest && <th className="!text-right">Total</th>}
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-border">
+                      <tbody>
                         {entry.selected.map((item, idx) => (
-                          <tr key={idx} className="hover:bg-surface/50 transition-colors">
-                            <td className="py-3 px-3 font-medium text-foreground text-xs">{item.product.id === 'not_found' ? `${item.originalName} (Sem estoque)` : item.product.name}</td>
-                            <td className="py-3 px-3 text-center text-muted-foreground text-xs">{item.qty}x</td>
+                          <tr key={idx}>
+                            <td className="text-foreground">
+                              {item.product.id === 'not_found'
+                                ? <span className="text-muted-foreground">{item.originalName} (sem estoque)</span>
+                                : item.product.name}
+                            </td>
+                            <td className="text-right text-muted-foreground whitespace-nowrap">{item.qty}x</td>
                             {!isGuest && (
-                              <td className="py-3 px-3 text-right text-muted-foreground text-xs tabular-nums">
+                              <td className="text-right text-muted-foreground whitespace-nowrap hidden sm:table-cell">
                                 R$ {(isPartner && item.product.partner_price ? item.product.partner_price : item.product.price).toFixed(2)}
                               </td>
                             )}
                             {!isGuest && (
-                              <td className="py-3 px-3 text-right font-semibold text-foreground text-xs tabular-nums opacity-90">
-                                {item.product.id === 'not_found' ? '-' : `R$ ${((isPartner && item.product.partner_price ? item.product.partner_price : item.product.price) * item.qty).toFixed(2)}`}
+                              <td className="text-right font-medium text-foreground whitespace-nowrap">
+                                {item.product.id === 'not_found' ? '—' : `R$ ${((isPartner && item.product.partner_price ? item.product.partner_price : item.product.price) * item.qty).toFixed(2)}`}
                               </td>
                             )}
                           </tr>
                         ))}
                       </tbody>
-                      {!isGuest && (
-                        <tfoot className="border-t-2 border-border font-bold text-foreground">
-                          <tr>
-                            <td colSpan={3} className="py-3 px-3 text-right">Total do Pacote</td>
-                            <td className="py-3 px-3 text-right text-base text-gold-text">
-                              R$ {entry.selected.reduce((sum, item) => {
-                                if (item.product.id === 'not_found') return sum;
-                                const price = isPartner && item.product.partner_price ? item.product.partner_price : item.product.price;
-                                return sum + (price * item.qty);
-                              }, 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                            </td>
-                          </tr>
-                        </tfoot>
-                      )}
                     </table>
                   </div>
-                  <div className="p-4 sm:p-5 border-t border-border bg-surface flex justify-end gap-3">
-                    <button
-                      onClick={() => setDetailsPkgId(null)}
-                      className="px-4 py-2 text-sm font-semibold text-muted-foreground hover:text-foreground hover:bg-surface-alt rounded-lg transition-colors"
-                    >
+                  {!isGuest && (
+                    <div className="flex items-baseline justify-between px-4 sm:px-5 py-3 border-t border-border bg-surface">
+                      <span className="text-[14px] font-semibold text-foreground">Total do kit</span>
+                      <span className="font-title text-[20px] font-semibold text-foreground numeric">
+                        R$ {entry.selected.reduce((sum, item) => {
+                          if (item.product.id === 'not_found') return sum;
+                          const price = isPartner && item.product.partner_price ? item.product.partner_price : item.product.price;
+                          return sum + (price * item.qty);
+                        }, 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      </span>
+                    </div>
+                  )}
+                  <div className="px-4 sm:px-5 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))] border-t border-border flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
+                    <Button variant="secondary" onClick={() => setDetailsPkgId(null)}>
                       {isGuest ? 'Fechar' : 'Cancelar'}
-                    </button>
+                    </Button>
                     {isGuest ? (
-                      <Link
-                        to="/cadastro"
-                        className="w-full sm:w-auto px-6 py-2.5 btn-primary font-bold rounded-lg shadow-sm transition-transform flex items-center justify-center gap-2"
-                      >
-                        Criar conta grátis para comprar
-                      </Link>
+                      <Button asChild>
+                        <Link to="/cadastro">Criar conta grátis para comprar</Link>
+                      </Button>
                     ) : (
-                      <button
+                      <Button
                         onClick={() => {
                           handleSelectPackage(entry.pkg.id);
                           setDetailsPkgId(null);
                         }}
-                        className="w-full sm:w-auto px-6 py-2.5 btn-primary font-bold rounded-lg shadow-sm transition-transform flex items-center justify-center gap-2"
                       >
-                        <ShoppingCart className="w-4 h-4" />
-                        Adicionar {entry.pkg.name}
-                      </button>
+                        <ShoppingCart />
+                        Adicionar kit {entry.pkg.name}
+                      </Button>
                     )}
                   </div>
                 </>

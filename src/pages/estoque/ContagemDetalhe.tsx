@@ -4,7 +4,11 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Loader, Search, AlertTriangle, ChevronDown, ChevronUp, Minus, Plus, PackageCheck, CheckCircle2, CircleSlash, ClipboardList } from 'lucide-react'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
-import EstoqueLayout from '@/components/estoque/EstoqueLayout'
+import EstoqueLayout, { useEstoqueStickyTop } from '@/components/estoque/EstoqueLayout'
+import { AdminPage, Panel, EmptyState, PageLoading } from '@/components/admin/ui/AdminPage'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
 import { getCategoryColor } from '@/lib/stockCategoryColors'
 import { naturalCompare } from '@/lib/naturalSort'
 import StyledSelect from '@/components/ui/styled-select'
@@ -318,6 +322,7 @@ export default function EstoqueContagemDetalhe() {
   const [search, setSearch] = useState('')
   const [collapsedMap, setCollapsedMap] = useState<Record<string, boolean>>({})
   const sectionRefs = useRef<Record<string, HTMLElement | null>>({})
+  const stickyTop = useEstoqueStickyTop()
 
   const { data: stockCount, isLoading: countLoading } = useQuery<StockCount | null>({
     queryKey: ['stock-count-by-id', id],

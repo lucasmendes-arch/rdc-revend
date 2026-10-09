@@ -1,11 +1,16 @@
 import { useState, useEffect } from 'react';
-import { Megaphone, Save, Plus, Trash2, Tag, Hash, Percent, RefreshCw, Power, PowerOff, DollarSign } from 'lucide-react';
+import { Save, Plus, Trash2, Tag, Hash, Percent, RefreshCw, Power, PowerOff } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { DateField } from '@/components/ui/date-field';
 import type { StoreSettings, Coupon } from '@/types/marketing';
 import StyledSelect from '@/components/ui/styled-select';
+import { AdminPage, Panel, EmptyState } from '@/components/admin/ui/AdminPage';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
 
 const Marketing = () => {
   const [loading, setLoading] = useState(true);
@@ -72,7 +77,7 @@ const Marketing = () => {
         .upsert({ id: 1, min_cart_value: val });
       
       if (error) throw error;
-      toast.success('Configurações atualizadas!');
+      toast.success('Configuração salva');
       fetchData();
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Erro desconhecido';
@@ -101,7 +106,7 @@ const Marketing = () => {
 
       if (error) throw error;
       
-      toast.success('Cupom criado com sucesso!');
+      toast.success('Cupom criado');
       setNewCoupon({ code: '', discount_type: 'percent', discount_value: '', usage_limit: '', expires_at: '' });
       await fetchData(); // Force re-fetch to update list
     } catch (error: unknown) {
@@ -145,257 +150,230 @@ const Marketing = () => {
     }
   };
 
+  // expires_at pode vir como data pura (YYYY-MM-DD): sem o horário, o Date
+  // interpreta em UTC e mostra o dia anterior no fuso de Brasília.
+  const formatExpiry = (v: string) =>
+    new Date(v.length === 10 ? `${v}T00:00:00` : v).toLocaleDateString('pt-BR');
+
+  const inputIconClass = 'absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-400 pointer-events-none';
+
   return (
     <AdminLayout>
-      <div className="p-4 sm:p-6 lg:p-8 max-w-6xl mx-auto space-y-8">
-        <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-              <Megaphone className="w-6 h-6 text-muted-foreground" />
-              Marketing e Promoções
-            </h1>
-            <p className="text-muted-foreground">Gerencie cupons e regras de negócio da loja.</p>
-          </div>
-          <button 
-            onClick={fetchData}
-            className="p-2 rounded-lg bg-surface hover:bg-surface-alt transition-colors"
-          >
-            <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
-          </button>
-        </header>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* SESSÃO A: Configurações da Loja */}
-          <section className="lg:col-span-1 space-y-6">
-            <div className="bg-card rounded-2xl border border-border shadow-sm p-6">
-              <h2 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
-                <DollarSign className="w-5 h-5 text-muted-foreground" />
-                Configurações de Pedido
-              </h2>
-              
+      <AdminPage
+        title="Marketing"
+        description="Cupons e regras de pedido da loja"
+        width="default"
+        actions={
+          <Button variant="secondary" size="icon" onClick={fetchData} aria-label="Atualizar dados">
+            <RefreshCw className={loading ? 'animate-spin' : ''} />
+          </Button>
+        }
+      >
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
+          {/* Configurações da loja */}
+          <section className="lg:col-span-1 space-y-4">
+            <Panel title="Configurações de pedido">
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-muted-foreground mb-1.5">
-                    Valor Mínimo do Pedido (Atacado)
-                  </label>
+                  <label className="field-label" htmlFor="min-cart-value">Valor mínimo do pedido (atacado)</label>
                   <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm font-bold">R$</span>
-                    <input
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-[13px] pointer-events-none">R$</span>
+                    <Input
+                      id="min-cart-value"
                       type="number"
                       step="0.01"
                       value={minCartValue}
                       onChange={(e) => setMinCartValue(e.target.value)}
-                      className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-input focus:ring-2 focus:ring-ring focus:outline-none bg-surface-alt/50 font-bold text-lg"
+                      className="pl-9 tabular-nums"
                       placeholder="500.00"
                     />
                   </div>
-                  <p className="text-[10px] text-muted-foreground mt-2 px-1">
-                    Clientes não conseguirão finalizar pedidos abaixo deste valor no catálogo.
+                  <p className="text-[12px] text-muted-foreground mt-1.5">
+                    Clientes não conseguem finalizar pedidos abaixo deste valor no catálogo.
                   </p>
                 </div>
 
-                <button
+                <Button
+                  variant="secondary"
+                  className="w-full"
                   onClick={handleUpdateSettings}
                   disabled={savingSettings || loading}
-                  className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-foreground text-white font-bold hover:bg-foreground/90 transition-all disabled:opacity-50"
                 >
-                  {savingSettings ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                  Salvar Configuração
-                </button>
+                  {savingSettings ? <RefreshCw className="animate-spin" /> : <Save />}
+                  Salvar configuração
+                </Button>
               </div>
-            </div>
+            </Panel>
 
-            <div className="bg-surface rounded-2xl border border-border p-6">
-              <h3 className="text-sm font-bold text-foreground mb-2">Dica de Marketing</h3>
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                Valoradores mínimos de pedido são excelentes para garantir a rentabilidade em operações de atacado. Experimente baixar o valor mínimo durante feriados para aumentar o volume de pedidos.
+            <div className="rounded-lg border border-border bg-surface p-4 sm:p-5">
+              <h3 className="text-[14px] font-semibold text-foreground mb-1">Dica</h3>
+              <p className="text-[13px] text-muted-foreground leading-relaxed">
+                Valores mínimos de pedido ajudam a garantir a rentabilidade no atacado. Experimente baixar o mínimo em feriados para aumentar o volume de pedidos.
               </p>
             </div>
           </section>
 
-          {/* SESSÃO B: Gestão de Cupons */}
-          <section className="lg:col-span-2 space-y-6">
-            {/* Create Coupon Form */}
-            <div className="bg-card rounded-2xl border border-border shadow-sm p-6">
-              <h2 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
-                <Plus className="w-5 h-5 text-muted-foreground" />
-                Criar Novo Cupom
-              </h2>
-
+          {/* Cupons */}
+          <section className="lg:col-span-2 space-y-4">
+            <Panel title="Novo cupom">
               <form onSubmit={handleCreateCoupon} className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="sm:col-span-2">
-                  <label className="block text-xs font-bold text-muted-foreground uppercase mb-1">Código do Cupom</label>
+                  <label className="field-label">Código do cupom</label>
                   <div className="relative">
-                    <Tag className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                    <input
+                    <Tag className={inputIconClass} />
+                    <Input
                       type="text"
                       value={newCoupon.code}
                       onChange={(e) => setNewCoupon(prev => ({ ...prev, code: e.target.value.toUpperCase() }))}
                       placeholder="EX: BEMVINDO10"
-                      className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-input text-sm focus:ring-2 focus:ring-ring focus:outline-none font-mono uppercase"
+                      className="pl-9 font-mono uppercase"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-muted-foreground uppercase mb-1">Tipo</label>
+                  <label className="field-label">Tipo</label>
                   <StyledSelect
                     value={newCoupon.discount_type}
                     onChange={(v) => setNewCoupon(prev => ({ ...prev, discount_type: v as 'fixed' | 'percent' | 'free_shipping' | 'shipping_percent' }))}
                     options={[
                       { value: 'percent', label: 'Porcentagem (%)' },
-                      { value: 'fixed', label: 'Valor Fixo (R$)' },
-                      { value: 'free_shipping', label: 'Frete Grátis' },
-                      { value: 'shipping_percent', label: '% Desconto Frete' },
+                      { value: 'fixed', label: 'Valor fixo (R$)' },
+                      { value: 'free_shipping', label: 'Frete grátis' },
+                      { value: 'shipping_percent', label: '% de desconto no frete' },
                     ]}
-                    className="h-[42px] rounded-xl bg-card"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-muted-foreground uppercase mb-1">Valor</label>
+                  <label className="field-label">Valor</label>
                   <div className="relative">
                     {(newCoupon.discount_type === 'percent' || newCoupon.discount_type === 'shipping_percent') ? (
-                      <Percent className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                      <Percent className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-400 pointer-events-none" />
                     ) : (
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-xs font-bold">R$</span>
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-[13px] pointer-events-none">R$</span>
                     )}
-                    <input
+                    <Input
                       type="number"
                       value={newCoupon.discount_type === 'free_shipping' ? '0' : newCoupon.discount_value}
                       disabled={newCoupon.discount_type === 'free_shipping'}
                       onChange={(e) => setNewCoupon(prev => ({ ...prev, discount_value: e.target.value }))}
                       placeholder={newCoupon.discount_type === 'shipping_percent' ? '50' : '10'}
-                      className={`w-full ${newCoupon.discount_type === 'fixed' ? 'pl-9' : 'pr-10'} py-2.5 rounded-xl border border-input text-sm focus:ring-2 focus:ring-ring focus:outline-none disabled:bg-surface-alt disabled:cursor-not-allowed`}
+                      className={`tabular-nums ${(newCoupon.discount_type === 'percent' || newCoupon.discount_type === 'shipping_percent') ? 'pr-9' : 'pl-9'}`}
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-muted-foreground uppercase mb-1">Validade (Opcional)</label>
+                  <label className="field-label">Validade (opcional)</label>
                   <DateField
                     value={newCoupon.expires_at || null}
                     onChange={(v) => setNewCoupon(prev => ({ ...prev, expires_at: v ?? '' }))}
                     min={new Date().toISOString().slice(0, 10)}
                     placeholder="Sem validade"
-                    className="w-full flex items-center gap-2 px-4 py-2.5 rounded-xl border border-input bg-background text-foreground text-sm hover:bg-surface-alt transition-colors"
+                    className="w-full h-9 flex items-center gap-2 px-3 rounded-md border border-input bg-background text-foreground text-[13.5px] hover:border-ink-300 transition-colors"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-muted-foreground uppercase mb-1">Limite de Usos</label>
+                  <label className="field-label">Limite de usos</label>
                   <div className="relative">
-                    <Hash className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                    <input
+                    <Hash className={inputIconClass} />
+                    <Input
                       type="number"
                       value={newCoupon.usage_limit}
                       onChange={(e) => setNewCoupon(prev => ({ ...prev, usage_limit: e.target.value }))}
                       placeholder="Ilimitado"
-                      className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-input text-sm focus:ring-2 focus:ring-ring focus:outline-none"
+                      className="pl-9 tabular-nums"
                     />
                   </div>
                 </div>
 
                 <div className="sm:col-span-2 flex items-end">
-                  <button
-                    type="submit"
-                    disabled={creatingCoupon}
-                    className="w-full py-2.5 rounded-xl bg-primary text-primary-foreground font-bold hover:bg-primary/90 transition-all shadow-sm flex items-center justify-center gap-2 disabled:opacity-50"
-                  >
-                    {creatingCoupon ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-                    CRIAR CUPOM
-                  </button>
+                  <Button type="submit" disabled={creatingCoupon} className="w-full">
+                    {creatingCoupon ? <RefreshCw className="animate-spin" /> : <Plus />}
+                    Criar cupom
+                  </Button>
                 </div>
               </form>
-            </div>
+            </Panel>
 
-            {/* Coupons List */}
-            <div className="bg-card rounded-2xl border border-border shadow-sm overflow-hidden">
-              <div className="p-6 border-b border-border">
-                <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
-                  <Tag className="w-5 h-5 text-muted-foreground" />
-                  Cupons Ativos
-                </h2>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="w-full text-left">
-                  <thead className="bg-surface-alt/50 text-[10px] uppercase font-bold text-muted-foreground">
-                    <tr>
-                      <th className="px-6 py-3">Código</th>
-                      <th className="px-6 py-3">Desconto</th>
-                      <th className="px-6 py-3">Usos</th>
-                      <th className="px-6 py-3">Expira em</th>
-                      <th className="px-6 py-3">Status</th>
-                      <th className="px-6 py-3 text-right">Ações</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border">
-                    {coupons.length === 0 ? (
-                      <tr>
-                        <td colSpan={6} className="px-6 py-12 text-center text-muted-foreground">
-                          Nenhum cupom cadastrado ainda.
-                        </td>
-                      </tr>
-                    ) : (
-                      coupons.map((coupon) => (
-                        <tr key={coupon.id} className={`hover:bg-surface/30 transition-colors ${!coupon.is_active ? 'opacity-50 grayscale-[0.5]' : ''}`}>
-                          <td className="px-6 py-4">
-                            <span className="px-2 py-1 rounded bg-surface-alt text-foreground font-mono font-bold text-xs uppercase border border-border">
-                              {coupon.code}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4">
-                            <span className="font-bold text-foreground">
-                              {coupon.discount_type === 'fixed' ? `R$ ${coupon.discount_value.toFixed(2)}` :
-                               coupon.discount_type === 'percent' ? `${coupon.discount_value}%` :
-                               coupon.discount_type === 'shipping_percent' ? `${coupon.discount_value}% Frete` : 'Frete Grátis'}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4">
-                            <div className="flex flex-col">
-                              <span className="text-sm font-medium text-foreground">{coupon.used_count}</span>
-                              {coupon.usage_limit && (
-                                <span className="text-[10px] text-muted-foreground">limite: {coupon.usage_limit}</span>
-                              )}
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 text-sm text-muted-foreground">
-                            {coupon.expires_at ? new Date(coupon.expires_at).toLocaleDateString() : 'Nunca'}
-                          </td>
-                          <td className="px-6 py-4">
-                            <button 
-                              onClick={() => toggleCouponStatus(coupon.id, coupon.is_active)}
-                              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold transition-all ${
-                                coupon.is_active 
-                                ? 'bg-success-subtle text-success hover:bg-danger-subtle hover:text-danger' 
-                                : 'bg-danger-subtle text-danger hover:bg-success-subtle hover:text-success'
-                              }`}
-                            >
-                              {coupon.is_active ? (
-                                <><Power className="w-3 h-3" /> ATIVO</>
-                              ) : (
-                                <><PowerOff className="w-3 h-3" /> INATIVO</>
-                              )}
-                            </button>
-                          </td>
-                          <td className="px-6 py-4 text-right">
-                            <button 
-                              onClick={() => deleteCoupon(coupon.id)}
-                              className="p-2 text-muted-foreground hover:text-danger transition-colors"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+            <Panel title="Cupons" flush className="overflow-hidden">
+              {coupons.length === 0 ? (
+                <EmptyState
+                  icon={Tag}
+                  title="Nenhum cupom cadastrado"
+                  description="Crie o primeiro cupom no formulário acima."
+                />
+              ) : (
+                <Table className="min-w-[620px]">
+                  <TableHeader>
+                    <TableRow className="hover:bg-transparent">
+                      <TableHead>Código</TableHead>
+                      <TableHead>Desconto</TableHead>
+                      <TableHead className="text-right">Usos</TableHead>
+                      <TableHead>Expira em</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Ações</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {coupons.map((coupon) => (
+                      <TableRow key={coupon.id} className={!coupon.is_active ? 'text-muted-foreground' : ''}>
+                        <TableCell>
+                          <span className="px-1.5 py-0.5 rounded-sm bg-muted text-foreground font-mono font-medium text-[12px] uppercase border border-border">
+                            {coupon.code}
+                          </span>
+                        </TableCell>
+                        <TableCell className="font-medium text-foreground whitespace-nowrap">
+                          {coupon.discount_type === 'fixed' ? `R$ ${coupon.discount_value.toFixed(2)}` :
+                           coupon.discount_type === 'percent' ? `${coupon.discount_value}%` :
+                           coupon.discount_type === 'shipping_percent' ? `${coupon.discount_value}% no frete` : 'Frete grátis'}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex flex-col items-end">
+                            <span className="font-medium text-foreground">{coupon.used_count}</span>
+                            {coupon.usage_limit && (
+                              <span className="text-[12px] text-muted-foreground">de {coupon.usage_limit}</span>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-muted-foreground whitespace-nowrap">
+                          {coupon.expires_at ? formatExpiry(coupon.expires_at) : 'Nunca'}
+                        </TableCell>
+                        <TableCell>
+                          <button
+                            type="button"
+                            onClick={() => toggleCouponStatus(coupon.id, coupon.is_active)}
+                            title={coupon.is_active ? 'Clique para desativar' : 'Clique para ativar'}
+                            className="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                          >
+                            <Badge variant={coupon.is_active ? 'success' : 'neutral'} className="cursor-pointer">
+                              {coupon.is_active ? <Power className="w-3 h-3" /> : <PowerOff className="w-3 h-3" />}
+                              {coupon.is_active ? 'Ativo' : 'Inativo'}
+                            </Badge>
+                          </button>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            onClick={() => deleteCoupon(coupon.id)}
+                            aria-label="Excluir cupom"
+                            className="text-ink-500 hover:text-danger hover:bg-danger-subtle"
+                          >
+                            <Trash2 />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </Panel>
           </section>
         </div>
-      </div>
+      </AdminPage>
     </AdminLayout>
   );
 };

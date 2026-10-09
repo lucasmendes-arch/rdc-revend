@@ -1,10 +1,14 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { Loader, Users, Store as StoreIcon, Plus, X } from 'lucide-react'
+import { Users, Plus, X } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { formatPhone } from '@/lib/phone'
 import AdminLayout from '@/components/admin/AdminLayout'
+import { AdminPage, PageTabs, Toolbar, Panel, EmptyState, PageLoading } from '@/components/admin/ui/AdminPage'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
 import StyledSelect from '@/components/ui/styled-select'
 import { DateField } from '@/components/ui/date-field'
 import ProcessoDetailModal from '@/components/dp/ProcessoDetailModal'
@@ -56,13 +60,16 @@ function AvatarBubble({ name, photoUrl }: { name: string; photoUrl: string | nul
           className="w-full h-full object-cover"
         />
       ) : (
-        <span className="text-[10px] font-bold text-muted-foreground">{initials(name)}</span>
+        <span className="text-[11px] font-semibold text-muted-foreground">{initials(name)}</span>
       )}
     </div>
   )
 }
 
 const todayISO = () => new Date().toISOString().slice(0, 10)
+
+// Sentinela da aba "Todas as unidades" (storeId vazio no estado).
+const ALL_STORES = '__all__'
 
 const EMPTY_CREATE_FORM = {
   name: '',
@@ -184,17 +191,35 @@ export default function DpParceiros() {
     registerEmployee.mutate()
   }
 
+  const storeTabs = [
+    { key: ALL_STORES, label: 'Todas as unidades' },
+    ...stores.map((s) => ({ key: s.id, label: s.name })),
+  ]
+
   return (
     <AdminLayout>
-      <div className="bg-card border-b border-border sticky top-0 z-30">
-        <div className="px-4 sm:px-6 py-4 flex items-center justify-between gap-4 flex-wrap">
-          <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-foreground">Parceiros</h1>
-            <p className="text-sm text-muted-foreground mt-1">Parceiros ativos (já efetivados)</p>
-          </div>
-          <div className="flex items-center gap-2 flex-wrap">
+      <AdminPage
+        title="Parceiros"
+        description="Parceiros ativos (já efetivados)"
+        actions={
+          <Button onClick={openCreate} aria-label="Cadastrar parceiro">
+            <Plus />
+            <span className="hidden sm:inline">Cadastrar parceiro</span>
+          </Button>
+        }
+        // Mesma aba de unidades de src/pages/rh/Candidatos.tsx e
+        // src/pages/dp/Contratacao.tsx.
+        tabs={
+          <PageTabs
+            items={storeTabs}
+            value={storeId || ALL_STORES}
+            onChange={(k) => setStoreId(k === ALL_STORES ? '' : k)}
+          />
+        }
+        toolbar={
+          <Toolbar>
             <StyledSelect
-              variant="inline"
+              className="w-full sm:w-56"
               value={employmentType}
               onChange={(v) => setEmploymentType(v as EmploymentType | '')}
               options={(Object.keys(EMPLOYMENT_TYPE_LABELS) as EmploymentType[]).map((tv) => ({ value: tv, label: EMPLOYMENT_TYPE_LABELS[tv] }))}
@@ -202,117 +227,72 @@ export default function DpParceiros() {
               placeholder="Todos os vínculos"
               searchable={false}
             />
-            <button
-              onClick={openCreate}
-              className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg btn-action text-sm font-medium transition-colors"
-            >
-              <Plus className="w-4 h-4" />
-              <span className="hidden sm:inline">Cadastrar parceiro</span>
-            </button>
-          </div>
-        </div>
-        {/* Mesma aba de unidades de src/pages/rh/Candidatos.tsx e
-            src/pages/dp/Contratacao.tsx — substitui o dropdown de unidade. */}
-        <div className="px-4 sm:px-6 flex gap-1 border-t border-border overflow-x-auto scrollbar-none">
-          <button onClick={() => setStoreId('')}
-            className={`flex items-center gap-1.5 px-3 py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
-              storeId === ''
-                ? 'border-gold text-foreground'
-                : 'border-transparent text-muted-foreground hover:text-foreground'
-            }`}>
-            <StoreIcon className="w-4 h-4" />Todas as unidades
-          </button>
-          {stores.map((s) => (
-            <button key={s.id} onClick={() => setStoreId(s.id)}
-              className={`flex items-center gap-1.5 px-3 py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
-                storeId === s.id
-                  ? 'border-gold text-foreground'
-                  : 'border-transparent text-muted-foreground hover:text-foreground'
-              }`}>
-              {s.name}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="px-4 sm:px-6 py-8">
+          </Toolbar>
+        }
+      >
         {isLoading ? (
-          <div className="text-center py-16">
-            <Loader className="w-8 h-8 animate-spin text-gold-text mx-auto mb-4" />
-            <p className="text-muted-foreground">Carregando parceiros...</p>
-          </div>
+          <PageLoading label="Carregando parceiros…" />
         ) : parceiros.length === 0 ? (
-          <div className="text-center py-16">
-            <Users className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
-            <p className="text-muted-foreground font-medium">Nenhum parceiro ativo encontrado.</p>
-            <p className="text-sm text-muted-foreground mt-1">
-              Parceiros aparecem aqui assim que efetivados no kanban de Contratação, ou cadastre direto quem já está ativo.
-            </p>
-          </div>
+          <Panel>
+            <EmptyState
+              icon={Users}
+              title="Nenhum parceiro ativo encontrado"
+              description="Parceiros aparecem aqui assim que efetivados no kanban de Contratação, ou cadastre direto quem já está ativo."
+              action={<Button variant="secondary" onClick={openCreate}><Plus />Cadastrar parceiro</Button>}
+            />
+          </Panel>
         ) : (
-          <div className="bg-card rounded-xl border border-border shadow-[var(--shadow-card)] overflow-hidden">
+          <Panel flush className="overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="w-full">
+              <table className="data-table">
                 <thead>
-                  <tr className="border-b border-border bg-muted/50">
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-foreground">Nome</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-foreground">Cargo</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-foreground hidden sm:table-cell">Unidade</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-foreground hidden md:table-cell">Vínculo</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-foreground hidden lg:table-cell">Efetivado em</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-foreground hidden lg:table-cell">Fim Experiência</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-foreground hidden xl:table-cell">Última Atualização</th>
+                  <tr>
+                    <th>Nome</th>
+                    <th>Cargo</th>
+                    <th className="hidden sm:table-cell">Unidade</th>
+                    <th className="hidden md:table-cell">Vínculo</th>
+                    <th className="hidden lg:table-cell">Efetivado em</th>
+                    <th className="hidden lg:table-cell">Fim da experiência</th>
+                    <th className="hidden xl:table-cell">Última atualização</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {parceiros.map((p, index) => (
-                    <tr
-                      key={p.id}
-                      onClick={() => setDetailProcesso(p)}
-                      className={`border-b border-border/40 last:border-0 cursor-pointer hover:bg-surface-alt transition-colors ${index % 2 === 0 ? '' : 'bg-muted/30'}`}
-                    >
-                      <td className="px-4 py-3 text-sm font-medium text-foreground">
-                        <div className="flex items-center gap-2.5">
+                  {parceiros.map((p) => (
+                    <tr key={p.id} onClick={() => setDetailProcesso(p)} className="cursor-pointer">
+                      <td>
+                        <div className="flex items-center gap-2.5 min-w-0">
                           <AvatarBubble name={p.candidates?.name || '?'} photoUrl={p.candidates?.photo_url} />
-                          <span>{p.candidates?.name || 'Candidato removido'}</span>
+                          <span className="font-medium text-foreground truncate">{p.candidates?.name || 'Candidato removido'}</span>
                           {isExperienceTagActive(p) ? (
-                            <span
-                              className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-info-subtle text-info shrink-0"
-                              title="Período de experiência em andamento"
-                            >
+                            <Badge variant="info" className="shrink-0" title="Período de experiência em andamento">
                               {getExperienceInfo(p)?.label}
-                            </span>
+                            </Badge>
                           ) : (
-                            <span
-                              className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-success-subtle text-success shrink-0"
-                              title="Período de experiência concluído"
-                            >
+                            <Badge variant="success" className="shrink-0" title="Período de experiência concluído">
                               Ativo
-                            </span>
+                            </Badge>
                           )}
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-sm text-muted-foreground">{p.role_title}</td>
-                      <td className="px-4 py-3 text-sm text-muted-foreground hidden sm:table-cell">{p.stores?.name || '—'}</td>
-                      <td className="px-4 py-3 text-sm text-muted-foreground hidden md:table-cell">
-                        {EMPLOYMENT_TYPE_LABELS[p.employment_type]}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-muted-foreground hidden lg:table-cell">{formatDateBR(p.activated_at)}</td>
-                      <td className="px-4 py-3 text-sm text-muted-foreground hidden lg:table-cell">
+                      <td className="text-muted-foreground">{p.role_title}</td>
+                      <td className="text-muted-foreground hidden sm:table-cell">{p.stores?.name || '—'}</td>
+                      <td className="text-muted-foreground hidden md:table-cell">{EMPLOYMENT_TYPE_LABELS[p.employment_type]}</td>
+                      <td className="text-muted-foreground hidden lg:table-cell">{formatDateBR(p.activated_at)}</td>
+                      <td className="text-muted-foreground hidden lg:table-cell">
                         {(() => {
                           const info = getExperienceInfo(p)
                           return info ? info.endDate.toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : '—'
                         })()}
                       </td>
-                      <td className="px-4 py-3 text-sm text-muted-foreground hidden xl:table-cell">{formatDateTimeBR(p.updated_at)}</td>
+                      <td className="text-muted-foreground hidden xl:table-cell">{formatDateTimeBR(p.updated_at)}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-          </div>
+          </Panel>
         )}
-      </div>
+      </AdminPage>
 
       {detailProcesso && (
         <ProcessoDetailModal
@@ -337,24 +317,22 @@ export default function DpParceiros() {
       )}
 
       {confirmEncerrar && confirmEncerrar.employment_type !== 'mei' && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-foreground/40 backdrop-blur-sm" onClick={() => setConfirmEncerrar(null)} />
-          <div className="relative bg-card rounded-2xl shadow-2xl border border-border p-6 w-full max-w-sm">
-            <h2 className="text-lg font-bold text-foreground mb-1">Encerrar vínculo?</h2>
-            <p className="text-sm text-muted-foreground mb-5">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="dp-encerrar-vinculo-title">
+          <div className="absolute inset-0 bg-ink-950/45 backdrop-blur-[2px] animate-in fade-in-0" onClick={() => setConfirmEncerrar(null)} />
+          <div className="relative w-full max-w-sm rounded-xl border border-border bg-popover p-5 shadow-xl animate-in fade-in-0 zoom-in-[0.98] duration-150">
+            <h2 id="dp-encerrar-vinculo-title" className="text-[16px] font-semibold leading-tight tracking-tight text-foreground">Encerrar vínculo?</h2>
+            <p className="mt-1.5 text-[13px] text-muted-foreground">
               {confirmEncerrar.candidates?.name} sai da lista de parceiros ativos. O registro é mantido, não é apagado.
             </p>
-            <div className="flex gap-3">
-              <button
+            <div className="mt-5 flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
+              <Button variant="secondary" onClick={() => setConfirmEncerrar(null)}>Cancelar</Button>
+              <Button
+                variant="destructive"
                 onClick={() => updateStage.mutate(confirmEncerrar.id)}
                 disabled={updateStage.isPending}
-                className="flex-1 px-4 py-2.5 rounded-lg bg-danger-solid text-white font-medium hover:bg-danger-solid/90 transition-colors disabled:opacity-70"
               >
-                {updateStage.isPending ? 'Encerrando...' : 'Encerrar'}
-              </button>
-              <button onClick={() => setConfirmEncerrar(null)} className="flex-1 px-4 py-2.5 rounded-lg border border-border bg-card text-foreground font-medium hover:bg-accent">
-                Cancelar
-              </button>
+                {updateStage.isPending ? 'Encerrando…' : 'Encerrar vínculo'}
+              </Button>
             </div>
           </div>
         </div>
@@ -362,66 +340,65 @@ export default function DpParceiros() {
 
       {/* Modal: cadastro retroativo de colaborador já ativo (sem passar pelo RH) */}
       {createOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-foreground/40 backdrop-blur-sm" onClick={closeCreate} />
-          <div className="relative bg-card rounded-2xl shadow-2xl border border-border p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-5">
-              <h2 className="text-xl font-bold text-foreground">Cadastrar parceiro</h2>
-              <button onClick={closeCreate} className="p-1.5 rounded-lg hover:bg-surface-alt text-muted-foreground">
-                <X className="w-4 h-4" />
-              </button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="dp-cadastrar-title">
+          <div className="absolute inset-0 bg-ink-950/45 backdrop-blur-[2px] animate-in fade-in-0" onClick={closeCreate} />
+          <div className="relative w-full max-w-md max-h-[90vh] overflow-y-auto rounded-xl border border-border bg-popover p-5 shadow-xl animate-in fade-in-0 zoom-in-[0.98] duration-150">
+            <div className="pr-8">
+              <h2 id="dp-cadastrar-title" className="text-[16px] font-semibold leading-tight tracking-tight text-foreground">Cadastrar parceiro</h2>
+              <p className="mt-1.5 text-[13px] text-muted-foreground">
+                Para quem já está ativo na empresa e nunca passou pelo funil de recrutamento do RH. Entra direto como parceiro efetivado.
+              </p>
             </div>
-            <p className="text-xs text-muted-foreground mb-4">
-              Para quem já está ativo na empresa e nunca passou pelo funil de recrutamento do RH. Entra direto como parceiro efetivado.
-            </p>
+            <Button variant="ghost" size="icon-sm" onClick={closeCreate} aria-label="Fechar" className="absolute right-3 top-3">
+              <X />
+            </Button>
 
-            <div className="space-y-4">
+            <div className="mt-5 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-foreground mb-1">Nome *</label>
-                <input
-                  type="text"
+                <label className="field-label" htmlFor="dp-create-name">Nome <span className="text-danger">*</span></label>
+                <Input
+                  id="dp-create-name"
                   value={createForm.name}
                   onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })}
-                  className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-foreground mb-1">WhatsApp *</label>
-                  <input
+                  <label className="field-label" htmlFor="dp-create-whatsapp">WhatsApp <span className="text-danger">*</span></label>
+                  <Input
+                    id="dp-create-whatsapp"
                     type="tel"
                     inputMode="numeric"
                     maxLength={15}
                     value={createForm.whatsapp}
                     onChange={(e) => setCreateForm({ ...createForm, whatsapp: formatPhone(e.target.value) })}
                     placeholder="(27) 99999-9999"
-                    className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-foreground mb-1">Cargo *</label>
+                  <label className="field-label">Cargo <span className="text-danger">*</span></label>
                   <StyledSelect
                     value={createForm.role_title}
                     onChange={(v) => setCreateForm({ ...createForm, role_title: v })}
                     options={jobRoles.map((r) => ({ value: r.title, label: r.title }))}
-                    placeholder="Selecione..."
+                    placeholder="Selecionar"
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-foreground mb-1">Unidade *</label>
+                  <label className="field-label">Unidade <span className="text-danger">*</span></label>
                   <StyledSelect
                     value={createForm.store_id}
                     onChange={(v) => setCreateForm({ ...createForm, store_id: v })}
                     options={stores.map((s) => ({ value: s.id, label: s.name }))}
-                    placeholder="Selecione..."
+                    placeholder="Selecionar"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-foreground mb-1">Tipo de vínculo *</label>
+                  <label className="field-label">Tipo de vínculo <span className="text-danger">*</span></label>
                   <StyledSelect
                     value={createForm.employment_type}
                     onChange={(v) => setCreateForm({ ...createForm, employment_type: v as EmploymentType })}
@@ -432,7 +409,7 @@ export default function DpParceiros() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-foreground mb-1">Efetivado desde</label>
+                <label className="field-label">Efetivado desde</label>
                 <DateField
                   value={createForm.activated_at}
                   onChange={(v) => setCreateForm({ ...createForm, activated_at: v || todayISO() })}
@@ -440,17 +417,11 @@ export default function DpParceiros() {
               </div>
             </div>
 
-            <div className="flex gap-3 mt-6">
-              <button
-                onClick={handleCreateSave}
-                disabled={registerEmployee.isPending}
-                className="flex-1 px-4 py-2.5 rounded-lg btn-action font-medium disabled:opacity-70 transition-colors"
-              >
-                {registerEmployee.isPending ? 'Salvando...' : 'Cadastrar'}
-              </button>
-              <button onClick={closeCreate} className="flex-1 px-4 py-2.5 rounded-lg border border-border bg-card text-foreground font-medium hover:bg-accent">
-                Cancelar
-              </button>
+            <div className="mt-6 flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
+              <Button variant="secondary" onClick={closeCreate}>Cancelar</Button>
+              <Button onClick={handleCreateSave} disabled={registerEmployee.isPending}>
+                {registerEmployee.isPending ? 'Salvando…' : 'Cadastrar parceiro'}
+              </Button>
             </div>
           </div>
         </div>

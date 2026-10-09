@@ -1,14 +1,21 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowRight, CheckCircle, Loader, ShoppingCart } from 'lucide-react';
+import { AlertCircle, ArrowRight, Check, CheckCircle } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useTrackConversion } from '@/lib/hooks/useFacebookConversion';
-import { getOrderStatus, toneClasses } from '@/lib/design/orderStatus';
+import { getOrderStatus } from '@/lib/design/orderStatus';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { EmptyState, PageLoading } from '@/components/admin/ui/AdminPage';
+import { PortalPage, PortalSection, PortalTopBar } from '@/components/portal/PortalPage';
 
 interface Order {
   id: string;
   status: 'recebido' | 'aguardando_pagamento' | 'pago' | 'separacao' | 'enviado' | 'entregue' | 'concluido' | 'cancelado' | 'expirado';
   total: number;
+  subtotal?: number | null;
+  shipping?: number | null;
+  discount_amount?: number | null;
   customer_name: string;
   customer_whatsapp: string;
   customer_email: string;
@@ -106,35 +113,40 @@ const PedidoSucesso = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-surface-alt flex items-center justify-center">
-        <div className="text-center">
-          <Loader className="w-8 h-8 animate-spin text-gold-text mx-auto mb-4" />
-          <p className="text-muted-foreground">Carregando pedido...</p>
-        </div>
+      <div className="min-h-screen bg-background">
+        <PortalTopBar backTo="/meus-pedidos" backLabel="Meus pedidos" />
+        <PageLoading label="Carregando pedido…" className="py-24" />
       </div>
     );
   }
 
   if (error || !order) {
     return (
-      <div className="min-h-screen bg-surface-alt flex items-center justify-center p-4">
-        <div className="bg-card rounded-lg p-8 text-center max-w-md">
-          <p className="text-danger font-medium mb-4">{error || 'Pedido não encontrado'}</p>
-          <button
-            onClick={() => navigate('/catalogo')}
-            className="inline-flex items-center gap-2 px-6 py-2.5 rounded-lg btn-gold font-medium"
-          >
-            Voltar ao Catálogo
-            <ArrowRight className="w-4 h-4" />
-          </button>
+      <div className="min-h-screen bg-background">
+        <PortalTopBar backTo="/catalogo" backLabel="Catálogo" />
+        <div className="mx-auto max-w-md px-4 py-16">
+          <div className="surface-card shadow-xs">
+            <EmptyState
+              icon={AlertCircle}
+              title="Não foi possível abrir este pedido"
+              description={`${error || 'Pedido não encontrado'}. Confira em Meus pedidos ou volte ao catálogo.`}
+              action={
+                <div className="flex flex-col-reverse sm:flex-row gap-2">
+                  <Button variant="secondary" onClick={() => navigate('/meus-pedidos')}>Meus pedidos</Button>
+                  <Button onClick={() => navigate('/catalogo')}>
+                    Voltar ao catálogo
+                    <ArrowRight />
+                  </Button>
+                </div>
+              }
+            />
+          </div>
         </div>
       </div>
     );
   }
 
   const statusMeta = getOrderStatus(order.status);
-  const statusTone = toneClasses(statusMeta.tone);
-  const statusInfo = { label: statusMeta.label, color: `${statusTone.bg} ${statusTone.text}`, bgColor: statusTone.panel };
   const orderNumber = order.id.slice(0, 8).toUpperCase();
   const orderDate = new Date(order.created_at).toLocaleDateString('pt-BR', {
     day: '2-digit',
@@ -144,162 +156,155 @@ const PedidoSucesso = () => {
     minute: '2-digit',
   });
 
+  // Exibição do resumo a partir das colunas gravadas no pedido (não recalcula).
+  // Pedido legado sem `subtotal` cai no total.
+  const subtotal = order.subtotal ?? order.total;
+  const shipping = order.shipping ?? 0;
+  const discount = order.discount_amount ?? 0;
+  const isPickup = order.delivery_method === 'pickup';
+  const pickupUnitName =
+    order.pickup_unit_slug === 'linhares' ? 'Linhares'
+      : order.pickup_unit_slug === 'serra' ? 'Serra'
+        : order.pickup_unit_slug === 'teixeira' ? 'Teixeira'
+          : order.pickup_unit_slug;
+
+  const steps = [
+    { label: 'Pedido recebido', desc: 'Recebemos o seu pedido', done: true },
+    { label: 'Em separação', desc: 'Preparamos os produtos', done: false },
+    { label: isPickup ? 'Pronto para retirada' : 'Enviado', desc: isPickup ? 'Avisamos quando puder retirar' : 'Seu pedido a caminho', done: false },
+  ];
+
   return (
-    <div className="min-h-screen bg-surface-alt">
-      <div className="container mx-auto px-4 sm:px-6 py-8">
-        {/* Success Banner */}
-        <div className="mb-8">
-          <div className="bg-card rounded-lg p-8 text-center shadow-card">
-            <div className="flex justify-center mb-4">
-              <CheckCircle className="w-16 h-16 text-success" />
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-foreground mb-2">
-              Pedido Confirmado!
-            </h1>
-            <p className="text-muted-foreground mb-4">
-              Obrigado pela sua compra. Seu pedido foi recebido com sucesso.
-            </p>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <div>
-                <p className="text-xs text-muted-foreground mb-1">Número do Pedido</p>
-                <p className="text-2xl font-bold text-foreground"># {orderNumber}</p>
-              </div>
-              <div className="h-12 w-px bg-border hidden sm:block" />
-              <div>
-                <p className="text-xs text-muted-foreground mb-1">Status</p>
-                <div className={`inline-block px-4 py-1.5 rounded-full text-sm font-semibold ${statusInfo.color}`}>
-                  {statusInfo.label}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+    <div className="min-h-screen bg-background">
+      <PortalTopBar backTo="/meus-pedidos" backLabel="Meus pedidos" />
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Order Details */}
-          <div className="lg:col-span-2">
-            <div className="bg-card rounded-lg p-6 shadow-card">
-              <h2 className="text-xl font-bold text-foreground mb-6 flex items-center gap-2">
-                <ShoppingCart className="w-5 h-5 text-gold-text" />
-                Itens do Pedido
-              </h2>
-
-              <div className="space-y-3 mb-6 pb-6 border-b border-border">
-                {order.order_items.map((item) => (
-                  <div key={item.id} className="flex items-center justify-between gap-4">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-foreground truncate">{item.product_name_snapshot}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {item.qty}x · R$ {item.unit_price_snapshot.toFixed(2)}
-                      </p>
-                    </div>
-                    <p className="text-sm font-semibold text-foreground whitespace-nowrap">
-                      R$ {item.line_total.toFixed(2)}
+      <PortalPage
+        width="narrow"
+        title={
+          <span className="flex items-center gap-3">
+            <span className="w-9 h-9 rounded-full bg-success-subtle border border-success-border flex items-center justify-center shrink-0">
+              <CheckCircle className="w-5 h-5 text-success" />
+            </span>
+            Pedido confirmado
+          </span>
+        }
+        subtitle={
+          <>
+            Obrigado pela compra. Seu pedido <span className="mono text-foreground">#{orderNumber}</span> foi recebido em{' '}
+            <span className="numeric">{orderDate}</span>.
+          </>
+        }
+        badge={<Badge variant={statusMeta.tone} dot>{statusMeta.label}</Badge>}
+        actions={
+          <>
+            <Button onClick={() => navigate('/meus-pedidos')}>
+              Ver meus pedidos
+              <ArrowRight />
+            </Button>
+            <Button variant="secondary" onClick={() => navigate('/catalogo')}>
+              Continuar comprando
+            </Button>
+          </>
+        }
+      >
+        <PortalSection title="Itens do pedido">
+          <div className="surface-card shadow-xs p-4 sm:p-5">
+            <div className="space-y-3 pb-4 border-b border-border">
+              {order.order_items.map((item) => (
+                <div key={item.id} className="flex items-center justify-between gap-4">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[13px] font-medium text-foreground truncate">{item.product_name_snapshot}</p>
+                    <p className="text-[12px] text-muted-foreground numeric">
+                      {item.qty}x · R$ {item.unit_price_snapshot.toFixed(2)}
                     </p>
                   </div>
-                ))}
-              </div>
-
-              <div className="space-y-2 mb-6">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Subtotal</span>
-                  <span className="font-medium text-foreground">R$ {order.total.toFixed(2)}</span>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Frete</span>
-                  <span className="font-medium text-foreground">Grátis</span>
-                </div>
-                <div className="flex items-center justify-between text-lg font-bold pt-3 border-t border-border">
-                  <span className="text-foreground">Total</span>
-                  <span className="gradient-gold-text">R$ {order.total.toFixed(2)}</span>
-                </div>
-              </div>
-
-              <div className={`rounded-xl p-4 ${statusInfo.bgColor}`}>
-                <p className="text-sm font-medium text-foreground mb-2">Dados do Cliente</p>
-                <div className="space-y-1.5 text-sm text-foreground">
-                  <p>
-                    <span className="text-muted-foreground">Nome:</span> {order.customer_name}
-                  </p>
-                  <p>
-                    <span className="text-muted-foreground">WhatsApp:</span> {order.customer_whatsapp}
-                  </p>
-                  <p>
-                    <span className="text-muted-foreground">E-mail:</span> {order.customer_email}
-                  </p>
-                  <p>
-                    <span className="text-muted-foreground">Data do Pedido:</span> {orderDate}
+                  <p className="text-[13px] font-medium text-foreground whitespace-nowrap numeric">
+                    R$ {item.line_total.toFixed(2)}
                   </p>
                 </div>
-
-                {order.delivery_method === 'pickup' && (
-                  <div className="mt-4 pt-4 border-t border-border/10">
-                    <p className="text-sm font-medium text-foreground mb-1">Local de Retirada</p>
-                    <p className="text-[13px] font-medium text-foreground mb-1">Unidade {order.pickup_unit_slug === 'linhares' ? 'Linhares' : order.pickup_unit_slug === 'serra' ? 'Serra' : order.pickup_unit_slug === 'teixeira' ? 'Teixeira' : order.pickup_unit_slug}</p>
-                    <p className="text-xs text-muted-foreground">{order.pickup_unit_address}</p>
-                  </div>
-                )}
-              </div>
+              ))}
             </div>
-          </div>
 
-          {/* Sidebar CTA */}
-          <div className="lg:col-span-1">
-            <div className="bg-card rounded-lg p-6 shadow-card sticky top-24">
-              <h3 className="font-bold text-foreground mb-4">Próximos Passos</h3>
-
-              <div className="space-y-3 mb-6">
-                <div className="flex gap-3">
-                  <div className="flex-shrink-0 w-8 h-8 rounded-full bg-success-subtle flex items-center justify-center">
-                    <span className="text-success font-bold text-sm">✓</span>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-foreground">Pedido Confirmado</p>
-                    <p className="text-xs text-muted-foreground">Recebemos sua compra</p>
-                  </div>
-                </div>
-
-                <div className="flex gap-3">
-                  <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gold-light flex items-center justify-center">
-                    <span className="text-gold-text font-bold text-sm">2</span>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-foreground">Em Separação</p>
-                    <p className="text-xs text-muted-foreground">Estamos preparando seu pedido</p>
-                  </div>
-                </div>
-
-                <div className="flex gap-3">
-                  <div className="flex-shrink-0 w-8 h-8 rounded-full bg-surface-alt flex items-center justify-center">
-                    <span className="text-muted-foreground font-bold text-sm">3</span>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-foreground">Enviado</p>
-                    <p className="text-xs text-muted-foreground">Seu pedido está a caminho</p>
-                  </div>
-                </div>
+            <dl className="pt-4 space-y-2 text-[13px]">
+              <div className="flex items-center justify-between">
+                <dt className="text-muted-foreground">Subtotal</dt>
+                <dd className="text-foreground numeric">R$ {subtotal.toFixed(2)}</dd>
               </div>
-
-              <div className="space-y-2">
-                <button
-                  onClick={() => navigate('/meus-pedidos')}
-                  className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg font-semibold text-sm btn-gold"
-                >
-                  Ver Meus Pedidos
-                  <ArrowRight className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={() => navigate('/catalogo')}
-                  className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg font-semibold text-sm border border-border bg-card text-foreground hover:bg-surface-alt transition-colors"
-                >
-                  Continuar Comprando
-                  <ArrowRight className="w-4 h-4" />
-                </button>
+              <div className="flex items-center justify-between">
+                <dt className="text-muted-foreground">{isPickup ? 'Retirada' : 'Frete'}</dt>
+                <dd className="text-foreground numeric">
+                  {shipping > 0 ? `R$ ${shipping.toFixed(2)}` : <span className="text-success">Grátis</span>}
+                </dd>
               </div>
-            </div>
+              {discount > 0 && (
+                <div className="flex items-center justify-between text-success">
+                  <dt>Desconto</dt>
+                  <dd className="numeric">− R$ {discount.toFixed(2)}</dd>
+                </div>
+              )}
+              <div className="flex items-baseline justify-between pt-3 border-t border-border">
+                <dt className="text-[14px] font-semibold text-foreground">Total</dt>
+                <dd className="font-title text-[24px] font-semibold text-foreground numeric leading-none">
+                  R$ {order.total.toFixed(2)}
+                </dd>
+              </div>
+            </dl>
           </div>
-        </div>
-      </div>
+        </PortalSection>
+
+        <PortalSection title="Dados do pedido">
+          <div className="surface-card shadow-xs p-4 sm:p-5">
+            <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 text-[13px]">
+              <div>
+                <dt className="text-[12px] text-muted-foreground">Nome</dt>
+                <dd className="text-foreground mt-0.5 break-words">{order.customer_name}</dd>
+              </div>
+              <div>
+                <dt className="text-[12px] text-muted-foreground">WhatsApp</dt>
+                <dd className="text-foreground mt-0.5 numeric">{order.customer_whatsapp}</dd>
+              </div>
+              <div>
+                <dt className="text-[12px] text-muted-foreground">E-mail</dt>
+                <dd className="text-foreground mt-0.5 break-all">{order.customer_email}</dd>
+              </div>
+              <div>
+                <dt className="text-[12px] text-muted-foreground">Entrega</dt>
+                <dd className="text-foreground mt-0.5">
+                  {isPickup ? `Retirada na unidade ${pickupUnitName}` : 'Envio para o endereço cadastrado'}
+                </dd>
+              </div>
+              {isPickup && order.pickup_unit_address && (
+                <div className="sm:col-span-2">
+                  <dt className="text-[12px] text-muted-foreground">Endereço de retirada</dt>
+                  <dd className="text-foreground mt-0.5">{order.pickup_unit_address}</dd>
+                </div>
+              )}
+            </dl>
+          </div>
+        </PortalSection>
+
+        <PortalSection title="Próximos passos">
+          <ol className="surface-card shadow-xs p-4 sm:p-5 space-y-3.5">
+            {steps.map((s, i) => (
+              <li key={s.label} className="flex gap-3">
+                <span
+                  className={`w-6 h-6 rounded-full flex items-center justify-center text-[12px] font-medium numeric shrink-0 ${
+                    s.done
+                      ? 'bg-success-subtle text-success border border-success-border'
+                      : 'bg-background text-ink-400 border border-border'
+                  }`}
+                >
+                  {s.done ? <Check className="w-3.5 h-3.5" /> : i + 1}
+                </span>
+                <div className="min-w-0">
+                  <p className="text-[13px] font-medium text-foreground leading-6">{s.label}</p>
+                  <p className="text-[12px] text-muted-foreground">{s.desc}</p>
+                </div>
+              </li>
+            ))}
+          </ol>
+        </PortalSection>
+      </PortalPage>
     </div>
   );
 };

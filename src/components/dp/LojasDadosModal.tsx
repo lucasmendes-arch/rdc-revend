@@ -4,6 +4,9 @@ import { toast } from 'sonner'
 import { X } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useEscapeToClose } from '@/hooks/useEscapeToClose'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { PageLoading } from '@/components/admin/ui/AdminPage'
 
 interface StoreLegalData {
   id: string
@@ -81,85 +84,72 @@ function StoreRow({ store }: { store: StoreLegalData }) {
   })
 
   return (
-    <div className="border border-border rounded-lg p-3 space-y-2">
-      <p className="text-sm font-semibold text-foreground">{store.name}</p>
-      <div className="grid grid-cols-2 gap-2">
+    <section className="rounded-lg border border-border bg-card p-4 space-y-3">
+      <h3 className="text-[14px] font-semibold text-foreground">{store.name}</h3>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
-          <label className="block text-[11px] text-muted-foreground mb-1">Razão social</label>
-          <input type="text" value={legalName} onChange={(e) => setLegalName(e.target.value)}
-            className="w-full px-2.5 py-1.5 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
+          <label className="field-label">Razão social</label>
+          <Input type="text" value={legalName} onChange={(e) => setLegalName(e.target.value)} />
         </div>
         <div>
-          <label className="block text-[11px] text-muted-foreground mb-1">CNPJ</label>
-          <input type="text" value={cnpj} onChange={(e) => setCnpj(e.target.value)}
-            className="w-full px-2.5 py-1.5 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
+          <label className="field-label">CNPJ</label>
+          <Input type="text" value={cnpj} onChange={(e) => setCnpj(e.target.value)} />
         </div>
         <div>
           {/* Compõe o fecho dos contratos ("Linhares/ES, Data: ..."). Não é
               fixo no código porque Teixeira de Freitas é BA. */}
-          <label className="block text-[11px] text-muted-foreground mb-1">UF</label>
-          <input type="text" value={uf} onChange={(e) => setUf(e.target.value.replace(/[^a-zA-Z]/g, '').toUpperCase().slice(0, 2))}
-            placeholder="ES" maxLength={2}
-            className="w-full px-2.5 py-1.5 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
+          <label className="field-label">UF</label>
+          <Input type="text" value={uf} onChange={(e) => setUf(e.target.value.replace(/[^a-zA-Z]/g, '').toUpperCase().slice(0, 2))}
+            placeholder="ES" maxLength={2} />
         </div>
-        <div className="col-span-2">
-          <label className="block text-[11px] text-muted-foreground mb-1">Endereço</label>
-          <input type="text" value={address} onChange={(e) => setAddress(e.target.value)}
-            className="w-full px-2.5 py-1.5 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
+        <div className="sm:col-span-2">
+          <label className="field-label">Endereço</label>
+          <Input type="text" value={address} onChange={(e) => setAddress(e.target.value)} />
         </div>
         <div>
-          <label className="block text-[11px] text-muted-foreground mb-1">E-mail da unidade</label>
-          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)}
-            className="w-full px-2.5 py-1.5 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
+          <label className="field-label">E-mail da unidade</label>
+          <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
         </div>
         <div>
-          <label className="block text-[11px] text-muted-foreground mb-1">Telefone / WhatsApp</label>
-          <input type="text" value={phone} onChange={(e) => setPhone(e.target.value)}
-            placeholder="27999999999"
-            className="w-full px-2.5 py-1.5 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
+          <label className="field-label">Telefone / WhatsApp</label>
+          <Input type="text" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="27999999999" />
         </div>
-        <div className="col-span-2">
-          <label className="block text-[11px] text-muted-foreground mb-1">Link do Google Maps</label>
-          <input type="text" value={mapsLink} onChange={(e) => setMapsLink(e.target.value)}
-            placeholder="https://maps.app.goo.gl/..."
-            className="w-full px-2.5 py-1.5 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
+        <div className="sm:col-span-2">
+          <label className="field-label">Link do Google Maps</label>
+          <Input type="text" value={mapsLink} onChange={(e) => setMapsLink(e.target.value)} placeholder="https://maps.app.goo.gl/..." />
         </div>
 
         {/* Quem assina pelo salão no Contrato de Profissional Parceiro — a
             qualificação do representante ("brasileira, solteira, empresária")
             continua fixa no template, só os dados variáveis vêm daqui. */}
-        <div className="col-span-2 pt-1">
-          <p className="text-[11px] font-semibold text-muted-foreground uppercase">Representante legal</p>
+        <div className="sm:col-span-2 pt-1">
+          <p className="text-[13px] font-semibold text-foreground">Representante legal</p>
         </div>
         <div>
-          <label className="block text-[11px] text-muted-foreground mb-1">Nome</label>
-          <input type="text" value={repName} onChange={(e) => setRepName(e.target.value)}
-            className="w-full px-2.5 py-1.5 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
+          <label className="field-label">Nome</label>
+          <Input type="text" value={repName} onChange={(e) => setRepName(e.target.value)} />
         </div>
         <div>
-          <label className="block text-[11px] text-muted-foreground mb-1">CPF</label>
-          <input type="text" value={repCpf} onChange={(e) => setRepCpf(e.target.value)}
-            className="w-full px-2.5 py-1.5 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
+          <label className="field-label">CPF</label>
+          <Input type="text" value={repCpf} onChange={(e) => setRepCpf(e.target.value)} />
         </div>
         <div>
-          <label className="block text-[11px] text-muted-foreground mb-1">RG</label>
-          <input type="text" value={repRg} onChange={(e) => setRepRg(e.target.value)}
-            className="w-full px-2.5 py-1.5 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
+          <label className="field-label">RG</label>
+          <Input type="text" value={repRg} onChange={(e) => setRepRg(e.target.value)} />
         </div>
-        <div className="col-span-2">
-          <label className="block text-[11px] text-muted-foreground mb-1">Endereço residencial</label>
-          <input type="text" value={repAddress} onChange={(e) => setRepAddress(e.target.value)}
-            className="w-full px-2.5 py-1.5 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
+        <div className="sm:col-span-2">
+          <label className="field-label">Endereço residencial</label>
+          <Input type="text" value={repAddress} onChange={(e) => setRepAddress(e.target.value)} />
         </div>
       </div>
-      <button
-        onClick={() => save.mutate()}
-        disabled={save.isPending}
-        className="px-3 py-1.5 rounded-lg border border-border text-xs font-medium hover:bg-surface-alt disabled:opacity-70"
-      >
-        {save.isPending ? 'Salvando...' : 'Salvar'}
-      </button>
-    </div>
+      {/* Um "Salvar" por loja: cada unidade é um registro próprio em
+          `stores`, e o toast diz qual foi salva. */}
+      <div className="flex justify-end">
+        <Button variant="secondary" size="sm" onClick={() => save.mutate()} disabled={save.isPending}>
+          {save.isPending ? 'Salvando…' : `Salvar ${store.name}`}
+        </Button>
+      </div>
+    </section>
   )
 }
 
@@ -193,26 +183,28 @@ export default function LojasDadosModal({ onClose }: { onClose: () => void }) {
   })
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-foreground/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-card rounded-2xl shadow-2xl border border-border p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
-        <div className="flex items-start justify-between mb-4">
-          <div>
-            <h2 className="text-lg font-bold text-foreground">Dados das lojas</h2>
-            <p className="text-xs text-muted-foreground">Razão social, CNPJ, endereço, contato e representante legal vão nos contratos gerados; o link do Maps vai nas mensagens de automação do RH.</p>
-          </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-surface-alt text-muted-foreground shrink-0">
-            <X className="w-4 h-4" />
-          </button>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="dp-lojas-title">
+      <div className="absolute inset-0 bg-ink-950/45 backdrop-blur-[2px] animate-in fade-in-0" onClick={onClose} />
+      <div className="relative w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-xl border border-border bg-popover p-5 shadow-xl animate-in fade-in-0 zoom-in-[0.98] duration-150">
+        <div className="pr-8">
+          <h2 id="dp-lojas-title" className="text-[16px] font-semibold leading-tight tracking-tight text-foreground">Dados das lojas</h2>
+          <p className="mt-1.5 text-[13px] text-muted-foreground">
+            Razão social, CNPJ, endereço, contato e representante legal vão nos contratos gerados; o link do Maps vai nas mensagens de automação do RH.
+          </p>
         </div>
+        <Button variant="ghost" size="icon-sm" onClick={onClose} aria-label="Fechar" className="absolute right-3 top-3">
+          <X />
+        </Button>
 
-        {isLoading ? (
-          <p className="text-sm text-muted-foreground py-4">Carregando...</p>
-        ) : (
-          <div className="space-y-3">
-            {stores.map((s) => <StoreRow key={s.id} store={s} />)}
-          </div>
-        )}
+        <div className="mt-5">
+          {isLoading ? (
+            <PageLoading className="py-8" />
+          ) : (
+            <div className="space-y-3">
+              {stores.map((s) => <StoreRow key={s.id} store={s} />)}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )

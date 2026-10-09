@@ -1,5 +1,7 @@
 import { useRef, useState } from 'react';
-import { X, Download, MessageCircle, Loader, Package } from 'lucide-react';
+import { Download, MessageCircle, Loader, Package } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
 import html2canvas from 'html2canvas';
 import logoUrl from '@/assets/logo-rei-dos-cachos.png';
 
@@ -90,25 +92,19 @@ const SalesOrderModal = ({ data, onClose }: Props) => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-foreground/40 backdrop-blur-sm">
-      <div className="bg-card rounded-2xl w-full max-w-md shadow-2xl border border-border flex flex-col max-h-[90vh]">
+    <Dialog open onOpenChange={(open) => { if (!open) onClose(); }}>
+      <DialogContent className="max-w-md w-[calc(100%-2rem)] p-0 gap-0 flex flex-col max-h-[90vh]">
         {/* Modal header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-border shrink-0">
-          <h2 className="font-bold text-foreground text-sm">Pedido de Venda</h2>
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
+        <DialogHeader className="px-5 pr-12 py-4 border-b border-border shrink-0 text-left">
+          <DialogTitle className="text-[16px]">Pedido de venda</DialogTitle>
+        </DialogHeader>
 
         {/* Document preview */}
-        <div className="flex-1 overflow-y-auto p-4">
+        <div className="flex-1 overflow-y-auto p-3 sm:p-4">
           <div
             ref={docRef}
-            className="bg-card text-foreground rounded-xl overflow-hidden"
-            style={{ fontFamily: 'system-ui, sans-serif', minWidth: 320 }}
+            className="bg-card text-foreground rounded-lg border border-border overflow-hidden"
+            style={{ fontFamily: 'system-ui, sans-serif', minWidth: 300 }}
           >
             {/* Dark header */}
             <div className="bg-[#1a1a1a] px-6 pt-6 pb-4 text-center">
@@ -118,21 +114,21 @@ const SalesOrderModal = ({ data, onClose }: Props) => {
                 className="h-10 mx-auto mb-2 object-contain"
                 crossOrigin="anonymous"
               />
-              <p className="text-[#c9a84c] text-[10px] font-bold tracking-widest uppercase mt-1">
+              <p className="text-brand text-[12px] font-medium mt-1">
                 Proposta de Venda
               </p>
             </div>
 
             {/* Gold accent line */}
-            <div className="h-1 bg-gradient-to-r from-[#c9a84c] via-[#f0d080] to-[#c9a84c]" />
+            <div className="h-1 bg-brand" />
 
             {/* Date + client */}
             <div className="px-5 py-4 border-b border-dashed border-border flex items-start justify-between gap-3">
               <div>
                 {data.customer_name && (
                   <>
-                    <p className="text-[9px] text-ink-400 uppercase tracking-wide mb-0.5">Para</p>
-                    <p className="text-[13px] font-bold text-foreground leading-tight">{data.customer_name}</p>
+                    <p className="text-[11px] text-ink-500 mb-0.5">Para</p>
+                    <p className="text-[13px] font-semibold text-foreground leading-tight">{data.customer_name}</p>
                     {data.customer_phone && (
                       <p className="text-[10px] text-ink-400 mt-0.5">{data.customer_phone}</p>
                     )}
@@ -140,21 +136,21 @@ const SalesOrderModal = ({ data, onClose }: Props) => {
                 )}
               </div>
               <div className="text-right shrink-0">
-                <p className="text-[9px] text-ink-400 uppercase tracking-wide mb-0.5">Data</p>
+                <p className="text-[11px] text-ink-500 mb-0.5">Data</p>
                 <p className="text-[11px] font-semibold text-ink-700">{today}</p>
                 {data.order_number && (
-                  <p className="text-[9px] text-ink-400 mt-0.5">#{data.order_number}</p>
+                  <p className="text-[10px] text-ink-400 mt-0.5 font-mono">#{data.order_number}</p>
                 )}
               </div>
             </div>
 
             {/* Items */}
             <div className="px-5 py-4 border-b border-dashed border-border">
-              <p className="text-[9px] text-ink-400 uppercase tracking-wide mb-3">Produtos</p>
+              <p className="text-[11px] text-ink-500 mb-3">Produtos</p>
               <div className="space-y-3">
                 {data.items.map((item, idx) => (
                   <div key={idx} className="flex items-center gap-3">
-                    <div className="w-14 h-14 rounded-xl overflow-hidden shrink-0 bg-surface border border-border">
+                    <div className="w-14 h-14 rounded-lg overflow-hidden shrink-0 bg-surface border border-border">
                       {item.main_image ? (
                         <img
                           src={item.main_image}
@@ -176,7 +172,7 @@ const SalesOrderModal = ({ data, onClose }: Props) => {
                         {item.quantity}x · R$ {item.unit_price.toFixed(2)}
                       </p>
                     </div>
-                    <p className="text-[13px] font-bold text-foreground whitespace-nowrap shrink-0">
+                    <p className="text-[13px] font-semibold text-foreground whitespace-nowrap shrink-0 tabular-nums">
                       R$ {item.line_total.toFixed(2)}
                     </p>
                   </div>
@@ -196,23 +192,23 @@ const SalesOrderModal = ({ data, onClose }: Props) => {
                   <span className="font-medium text-success">− R$ {discount.toFixed(2)}</span>
                 </div>
               )}
-              <div className="flex items-center justify-between text-[15px] font-extrabold pt-2 border-t border-border">
+              <div className="flex items-center justify-between text-[15px] font-semibold pt-2 border-t border-border tabular-nums">
                 <span className="text-foreground">Total</span>
-                <span className="text-[#c9a84c]">R$ {data.total.toFixed(2)}</span>
+                <span className="text-brand-strong">R$ {data.total.toFixed(2)}</span>
               </div>
             </div>
 
             {/* Notes */}
             {data.notes && (
               <div className="px-5 pb-4 border-t border-dashed border-border pt-3">
-                <p className="text-[9px] text-ink-400 uppercase tracking-wide mb-1">Observações</p>
+                <p className="text-[11px] text-ink-500 mb-1">Observações</p>
                 <p className="text-[11px] text-ink-700 leading-relaxed">{data.notes}</p>
               </div>
             )}
 
             {/* Footer */}
-            <div className="bg-[#f9f6f0] px-5 py-4 text-center">
-              <p className="text-[10px] font-bold text-[#c9a84c] uppercase tracking-widest">
+            <div className="bg-brand-subtle px-5 py-4 text-center">
+              <p className="text-[12px] font-medium text-brand-strong">
                 Confira e confirme seu pedido
               </p>
               <p className="text-[9px] text-ink-400 mt-0.5">reidoscachos.com.br</p>
@@ -221,28 +217,25 @@ const SalesOrderModal = ({ data, onClose }: Props) => {
         </div>
 
         {/* Actions */}
-        <div className="px-4 py-4 border-t border-border flex gap-2.5 shrink-0">
-          <button
-            onClick={handleDownload}
-            disabled={capturing}
-            className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-muted hover:bg-muted/80 text-foreground text-sm font-semibold transition-colors disabled:opacity-60"
-          >
-            {capturing ? <Loader className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+        <div className="px-4 py-3 border-t border-border flex gap-2 shrink-0">
+          <Button variant="secondary" onClick={handleDownload} disabled={capturing} className="flex-1">
+            {capturing ? <Loader className="animate-spin" /> : <Download />}
             Baixar imagem
-          </button>
+          </Button>
           {data.customer_phone && (
-            <button
+            /* Verde WhatsApp: exceção de marca documentada (design-tokens §8) */
+            <Button
               onClick={handleWhatsApp}
               disabled={capturing}
-              className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-green-600 hover:bg-green-700 text-white text-sm font-semibold transition-colors disabled:opacity-60"
+              className="flex-1 bg-green-600 hover:bg-green-700 text-white"
             >
-              {capturing ? <Loader className="w-4 h-4 animate-spin" /> : <MessageCircle className="w-4 h-4" />}
-              Enviar WhatsApp
-            </button>
+              {capturing ? <Loader className="animate-spin" /> : <MessageCircle />}
+              Enviar pelo WhatsApp
+            </Button>
           )}
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 };
 

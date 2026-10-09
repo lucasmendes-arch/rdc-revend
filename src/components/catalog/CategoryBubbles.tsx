@@ -48,12 +48,15 @@ export default function CategoryBubbles({ categories, activeCategories, onToggle
 
     if (categories.length === 0) return null
 
+    // Pills de filtro do sistema (h-8, rounded-md, ativo em brand-subtle).
+    // Eram bolhas de 56px com rótulo embaixo: ~95px de altura presos no topo
+    // da tela do celular.
     return (
         <div className="w-full sm:hidden">
             <div
                 ref={scrollRef}
                 onScroll={handleScroll}
-                className="flex gap-2 overflow-x-auto snap-x snap-mandatory scroll-smooth px-4 scroll-pl-4 pb-2 scrollbar-none"
+                className="flex gap-1.5 overflow-x-auto scroll-smooth px-4 scroll-pl-4 pb-1.5 scrollbar-none"
             >
                 {categories.map((cat) => {
                     const isActive = activeCategories.includes(cat.id)
@@ -61,40 +64,20 @@ export default function CategoryBubbles({ categories, activeCategories, onToggle
                     return (
                         <button
                             key={cat.id}
+                            type="button"
                             onClick={() => onToggleCategory(cat.id)}
-                            className="flex-shrink-0 flex flex-col items-center gap-2 w-[72px] snap-start group"
+                            aria-pressed={isActive}
+                            className={`flex-shrink-0 inline-flex items-center gap-1.5 h-8 px-3 rounded-md border text-[13px] font-medium whitespace-nowrap transition-colors ${isActive
+                                ? 'bg-brand-subtle border-brand-border text-brand-strong'
+                                : 'bg-card border-border text-ink-600 hover:border-ink-300 hover:text-foreground'
+                                }`}
                         >
-                            <div
-                                className={`w-14 h-14 rounded-full flex items-center justify-center transition-all ${isActive
-                                    ? 'bg-primary text-primary-foreground'
-                                    : 'bg-card border border-border text-gold hover:border-gold-border-sm'
-                                    }`}
-                            >
-                                <Icon className="w-6 h-6" />
-                            </div>
-                            <span
-                                className={`text-[11px] text-center leading-tight ${isActive ? 'font-bold text-foreground' : 'font-medium text-muted-foreground'
-                                    }`}
-                            >
-                                {cat.name}
-                            </span>
+                            <Icon className={`w-3.5 h-3.5 ${isActive ? '' : 'text-ink-400'}`} />
+                            {cat.name}
                         </button>
                     )
                 })}
                 <div className="flex-shrink-0 w-2" aria-hidden="true" />
-            </div>
-
-            {/* Dots */}
-            <div className="flex items-center justify-center gap-1.5 mt-2" aria-hidden="true">
-                {categories.map((_, i) => (
-                    <div
-                        key={i}
-                        className={`rounded-full transition-all ${i === activeIndex
-                            ? 'w-4 h-1.5 bg-foreground'
-                            : 'w-1.5 h-1.5 bg-border'
-                            }`}
-                    />
-                ))}
             </div>
         </div>
     )

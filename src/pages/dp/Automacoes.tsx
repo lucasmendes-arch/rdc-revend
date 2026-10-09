@@ -10,34 +10,34 @@
 import { Link } from 'react-router-dom'
 import { ExternalLink } from 'lucide-react'
 import AdminLayout from '@/components/admin/AdminLayout'
+import { AdminPage } from '@/components/admin/ui/AdminPage'
+import { Button } from '@/components/ui/button'
 import AutomationsPanel from '@/components/automations/AutomationsPanel'
 import { PROCESS_AUTOMATION_CONFIG } from '@/components/automations/entities'
 
 export default function DpAutomacoes() {
   return (
     <AdminLayout>
-      <div className="bg-card border-b border-border sticky top-0 z-30">
-        <div className="px-4 sm:px-6 py-4 flex items-center justify-between gap-4 flex-wrap">
-          <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-foreground">Automações da Contratação</h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              Regras que rodam sozinhas quando um processo muda de etapa, chega numa data ou fica parado
-            </p>
-          </div>
-          <Link
-            to="/admin/rh/automacoes"
-            className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border text-sm font-medium hover:bg-surface-alt transition-colors"
-            title="Modelos de mensagem, variáveis e credenciais de envio ficam na tela de RH"
-          >
-            <ExternalLink className="w-4 h-4" />
-            <span className="hidden sm:inline">Modelos e variáveis</span>
-          </Link>
-        </div>
-      </div>
-
-      <div className="px-4 sm:px-6 py-6 max-w-3xl mx-auto">
+      <AdminPage
+        title="Automações da contratação"
+        description="Regras que rodam sozinhas quando um processo muda de etapa, chega numa data ou fica parado"
+        back={{ to: '/admin/dp/contratacao', label: 'Contratação' }}
+        width="narrow"
+        actions={
+          <Button variant="secondary" asChild>
+            <Link
+              to="/admin/rh/automacoes"
+              title="Modelos de mensagem, variáveis e credenciais de envio ficam na tela de RH"
+              aria-label="Modelos e variáveis"
+            >
+              <ExternalLink />
+              <span className="hidden sm:inline">Modelos e variáveis</span>
+            </Link>
+          </Button>
+        }
+      >
         <AutomationsPanel config={PROCESS_AUTOMATION_CONFIG} />
-      </div>
+      </AdminPage>
     </AdminLayout>
   )
 }

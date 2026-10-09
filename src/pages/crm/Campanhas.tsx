@@ -2,14 +2,20 @@ import { useEffect, useRef, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useLocation, useNavigate } from 'react-router-dom'
 import {
-  Plus, Loader, Megaphone, X, ListChecks, PowerOff, Settings2, Ban, ChevronRight, MessageCircle,
+  Plus, Loader, Megaphone, ListChecks, PowerOff, Settings2, Ban, ChevronRight, MessageCircle,
 } from 'lucide-react'
 import { toast } from 'sonner'
 
 import AdminLayout from '@/components/admin/AdminLayout'
-import { AdminHeader } from '@/components/admin/ui/AdminHeader'
+import { AdminPage, EmptyState, PageLoading, Panel, StatCard } from '@/components/admin/ui/AdminPage'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import StyledSelect from '@/components/ui/styled-select'
+import { cn } from '@/lib/utils'
 import { supabase } from '@/lib/supabase'
 import {
   MESSAGE_VARIABLES, describeFilters, fmtPhone, renderMessage, searchClients, useCrmUnits,
@@ -50,13 +56,13 @@ interface Settings {
   dispatch_enabled: boolean
 }
 
-const CAMPAIGN_STATUS: Record<CampaignStatus, { label: string; cls: string }> = {
-  rascunho:  { label: 'Rascunho',  cls: 'bg-muted text-ink-600 border-border' },
-  pronta:    { label: 'Lista pronta', cls: 'bg-info-subtle text-info border-info-border' },
-  enviando:  { label: 'Enviando',  cls: 'bg-warning-subtle text-warning border-warning-border' },
-  pausada:   { label: 'Pausada',   cls: 'bg-muted text-ink-600 border-border' },
-  concluida: { label: 'Concluída', cls: 'bg-success-subtle text-success border-success-border' },
-  cancelada: { label: 'Cancelada', cls: 'bg-danger-subtle text-danger border-danger-border' },
+const CAMPAIGN_STATUS: Record<CampaignStatus, { label: string; variant: 'neutral' | 'info' | 'warning' | 'success' | 'danger' }> = {
+  rascunho:  { label: 'Rascunho',     variant: 'neutral' },
+  pronta:    { label: 'Lista pronta', variant: 'info' },
+  enviando:  { label: 'Enviando',     variant: 'warning' },
+  pausada:   { label: 'Pausada',      variant: 'neutral' },
+  concluida: { label: 'Concluída',    variant: 'success' },
+  cancelada: { label: 'Cancelada',    variant: 'danger' },
 }
 
 const EXCLUDED_LABEL: Record<string, string> = {
@@ -75,7 +81,7 @@ const HALF_HOURS = Array.from({ length: 48 }, (_, i) =>
 
 function CampaignBadge({ status }: { status: CampaignStatus }) {
   const m = CAMPAIGN_STATUS[status]
-  return <span className={`inline-flex items-center h-5 px-2 rounded-full border text-[11px] font-medium ${m.cls}`}>{m.label}</span>
+  return <Badge variant={m.variant} className="whitespace-nowrap">{m.label}</Badge>
 }
 
 function useSettings() {
@@ -97,20 +103,46 @@ function rulesText(s: Settings) {
 // ── Aviso fixo: disparo desligado ────────────────────────────────────────────
 function DispatchOffBanner({ settings, onEdit }: { settings?: Settings; onEdit: () => void }) {
   return (
-    <div className="surface-card p-4 flex items-start gap-3">
-      <span className="w-8 h-8 rounded-md bg-muted flex items-center justify-center shrink-0">
-        <PowerOff className="w-4 h-4 text-ink-500" />
-      </span>
-      <div className="flex-1 min-w-0">
-        <p className="text-[13px] font-semibold text-foreground">Disparo automático ainda não está ativo</p>
-        <p className="text-[12px] text-muted-foreground mt-0.5">
-          Aqui você monta campanhas e gera a lista de quem receberia. Nenhuma mensagem é enviada.
-          Quando o disparo for ligado, ele sai pelo WhatsApp de cada unidade com estas regras:
-        </p>
-        {settings && <p className="text-[12px] text-foreground mt-1.5">{rulesText(settings)}</p>}
+    <Panel>
+      <div className="flex flex-col sm:flex-row sm:items-start gap-3">
+        <div className="flex-1 min-w-0">
+          <p className="text-[14px] font-semibold text-foreground flex items-center gap-2">
+            <PowerOff className="w-4 h-4 text-ink-400 shrink-0" />
+            Disparo automático ainda não está ativo
+          </p>
+          <p className="text-[13px] text-muted-foreground mt-1">
+            Aqui você monta campanhas e gera a lista de quem receberia. Nenhuma mensagem é enviada.
+            Quando o disparo for ligado, ele sai pelo WhatsApp de cada unidade com estas regras:
+          </p>
+          {settings && <p className="text-[13px] text-foreground mt-1.5">{rulesText(settings)}</p>}
+        </div>
+        <Button variant="secondary" size="sm" onClick={onEdit} className="self-start shrink-0">
+          <Settings2 /> Regras de envio
+        </Button>
       </div>
-      <Button variant="outline" size="sm" onClick={onEdit}><Settings2 className="w-3.5 h-3.5" /> Regras</Button>
-    </div>
+    </Panel>
+  )
+}
+
+// ── Modal genérico sobre o Dialog do sistema ─────────────────────────────────
+function Modal({ title, onClose, children, footer, wide }: {
+  title: string; onClose: () => void; children: React.ReactNode; footer?: React.ReactNode; wide?: boolean
+}) {
+  return (
+    <Dialog open onOpenChange={o => { if (!o) onClose() }}>
+      <DialogContent
+        className={cn('w-[calc(100%-2rem)] max-h-[90vh] p-0 gap-0 flex flex-col overflow-hidden', wide ? 'max-w-3xl' : 'max-w-lg')}
+      >
+        <div className="px-5 min-h-14 py-4 shrink-0 border-b border-border flex items-center pr-12">
+          <DialogTitle className="truncate">{title}</DialogTitle>
+          <DialogDescription className="sr-only">{title}</DialogDescription>
+        </div>
+        <div className="flex-1 min-h-0 overflow-y-auto p-5">{children}</div>
+        {footer && (
+          <div className="px-5 py-3.5 shrink-0 border-t border-border flex flex-wrap items-center justify-end gap-2">{footer}</div>
+        )}
+      </DialogContent>
+    </Dialog>
   )
 }
 
@@ -135,73 +167,50 @@ function SettingsDialog({ settings, onClose }: { settings: Settings; onClose: ()
     onClose()
   }
 
-  const input = 'w-full h-9 px-3 rounded-md border border-input bg-background text-base md:text-sm text-foreground hover:border-ink-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring numeric'
-
   return (
     <Modal title="Regras de envio" onClose={onClose} footer={
       <>
-        <Button variant="outline" onClick={onClose}>Cancelar</Button>
-        <Button onClick={save} disabled={saving}>{saving && <Loader className="w-4 h-4 animate-spin" />} Salvar alterações</Button>
+        <Button variant="secondary" onClick={onClose}>Cancelar</Button>
+        <Button onClick={save} disabled={saving}>{saving && <Loader className="animate-spin" />} Salvar alterações</Button>
       </>
     }>
-      <div className="space-y-4">
+      <div className="space-y-5">
         <div>
-          <span className="block text-[12px] font-medium text-ink-600 mb-1.5">Dias de envio</span>
+          <span className="field-label">Dias de envio</span>
           <div className="flex flex-wrap gap-1.5">
             {[1, 2, 3, 4, 5, 6, 7].map(d => {
               const on = form.send_weekdays.includes(d)
               return (
                 <button key={d} type="button" aria-pressed={on}
                   onClick={() => set('send_weekdays', on ? form.send_weekdays.filter(x => x !== d) : [...form.send_weekdays, d])}
-                  className={`h-8 w-11 rounded-md text-[12px] font-medium transition-colors ${on ? 'bg-brand-subtle text-brand-strong ring-1 ring-inset ring-brand-border' : 'border border-border text-ink-600 hover:bg-muted'}`}
+                  className={cn(
+                    'h-8 w-11 rounded-md border text-[13px] font-medium transition-colors',
+                    on ? 'bg-brand-subtle border-brand-border text-brand-strong' : 'border-border bg-card text-ink-600 hover:bg-muted',
+                  )}
                 >{WEEKDAYS[d]}</button>
               )
             })}
           </div>
         </div>
-        <div className="grid grid-cols-2 gap-3">
-          <label className="block"><span className="block text-[12px] font-medium text-ink-600 mb-1">Começa às</span>
+        <div className="grid grid-cols-1 min-[420px]:grid-cols-2 gap-x-3 gap-y-4">
+          <label className="block min-w-0"><span className="field-label">Começa às</span>
             <StyledSelect value={form.window_start.slice(0, 5)} onChange={v => set('window_start', v)} options={HALF_HOURS} /></label>
-          <label className="block"><span className="block text-[12px] font-medium text-ink-600 mb-1">Termina às</span>
+          <label className="block min-w-0"><span className="field-label">Termina às</span>
             <StyledSelect value={form.window_end.slice(0, 5)} onChange={v => set('window_end', v)} options={HALF_HOURS} /></label>
-          <label className="block"><span className="block text-[12px] font-medium text-ink-600 mb-1">Máximo por número por dia</span>
-            <input type="number" min={1} value={form.daily_cap_per_number} onChange={e => set('daily_cap_per_number', Number(e.target.value))} className={input} /></label>
-          <label className="block"><span className="block text-[12px] font-medium text-ink-600 mb-1">Mesma cliente no máximo a cada (dias)</span>
-            <input type="number" min={0} value={form.cooldown_days} onChange={e => set('cooldown_days', Number(e.target.value))} className={input} /></label>
-          <label className="block"><span className="block text-[12px] font-medium text-ink-600 mb-1">Intervalo mínimo entre mensagens (min)</span>
-            <input type="number" min={1} value={Math.round(form.min_interval_seconds / 60)} onChange={e => set('min_interval_seconds', Number(e.target.value) * 60)} className={input} /></label>
-          <label className="block"><span className="block text-[12px] font-medium text-ink-600 mb-1">Intervalo máximo entre mensagens (min)</span>
-            <input type="number" min={1} value={Math.round(form.max_interval_seconds / 60)} onChange={e => set('max_interval_seconds', Number(e.target.value) * 60)} className={input} /></label>
+          <label className="block min-w-0"><span className="field-label">Máximo por número por dia</span>
+            <Input type="number" min={1} value={form.daily_cap_per_number} onChange={e => set('daily_cap_per_number', Number(e.target.value))} className="tabular-nums" /></label>
+          <label className="block min-w-0"><span className="field-label">Mesma cliente a cada (dias)</span>
+            <Input type="number" min={0} value={form.cooldown_days} onChange={e => set('cooldown_days', Number(e.target.value))} className="tabular-nums" /></label>
+          <label className="block min-w-0"><span className="field-label">Intervalo mínimo (min)</span>
+            <Input type="number" min={1} value={Math.round(form.min_interval_seconds / 60)} onChange={e => set('min_interval_seconds', Number(e.target.value) * 60)} className="tabular-nums" /></label>
+          <label className="block min-w-0"><span className="field-label">Intervalo máximo (min)</span>
+            <Input type="number" min={1} value={Math.round(form.max_interval_seconds / 60)} onChange={e => set('max_interval_seconds', Number(e.target.value) * 60)} className="tabular-nums" /></label>
         </div>
         <p className="text-[12px] text-muted-foreground">
-          O WhatsApp usado é o de cada unidade (cadastrado na integração da loja). O envio continua desligado.
+          Os intervalos são entre uma mensagem e a próxima. O WhatsApp usado é o de cada unidade (cadastrado na integração da loja). O envio continua desligado.
         </p>
       </div>
     </Modal>
-  )
-}
-
-// ── Modal genérico (padrão do design: overlay com blur, entrada em fade) ─────
-function Modal({ title, onClose, children, footer, wide }: {
-  title: string; onClose: () => void; children: React.ReactNode; footer?: React.ReactNode; wide?: boolean
-}) {
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [onClose])
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-ink-950/45 backdrop-blur-[2px]" onClick={onClose} aria-hidden />
-      <div role="dialog" aria-label={title} className={`relative w-full ${wide ? 'max-w-3xl' : 'max-w-lg'} max-h-[90vh] bg-card rounded-xl border border-border shadow-2xl flex flex-col animate-in fade-in zoom-in-[0.98] duration-150`}>
-        <div className="px-5 py-4 border-b border-border flex items-center justify-between">
-          <h2 className="text-[15px] font-semibold tracking-tight text-foreground">{title}</h2>
-          <Button variant="ghost" size="icon-sm" onClick={onClose} aria-label="Fechar"><X className="w-4 h-4" /></Button>
-        </div>
-        <div className="flex-1 overflow-y-auto p-5">{children}</div>
-        {footer && <div className="px-5 py-3.5 border-t border-border flex justify-end gap-2">{footer}</div>}
-      </div>
-    </div>
   )
 }
 
@@ -264,58 +273,58 @@ function CampaignEditor({ initial, segments, units, onClose, onSaved }: {
   return (
     <Modal wide title={initial.id ? 'Editar campanha' : 'Nova campanha'} onClose={onClose} footer={
       <>
-        <Button variant="outline" onClick={onClose}>Cancelar</Button>
-        <Button onClick={save} disabled={saving}>{saving && <Loader className="w-4 h-4 animate-spin" />} Salvar campanha</Button>
+        <Button variant="secondary" onClick={onClose}>Cancelar</Button>
+        <Button onClick={save} disabled={saving}>{saving && <Loader className="animate-spin" />} Salvar campanha</Button>
       </>
     }>
       <div className="grid md:grid-cols-[1fr_260px] gap-5">
-        <div className="space-y-4">
+        <div className="space-y-5 min-w-0">
           <label className="block">
-            <span className="block text-[12px] font-medium text-ink-600 mb-1">Nome da campanha</span>
-            <input value={name} onChange={e => setName(e.target.value)} placeholder="Ex.: Reativação outubro — Linhares"
-              className="w-full h-9 px-3 rounded-md border border-input bg-background text-base md:text-sm text-foreground hover:border-ink-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
+            <span className="field-label">Nome da campanha</span>
+            <Input value={name} onChange={e => setName(e.target.value)} placeholder="Ex.: Reativação outubro — Linhares" />
           </label>
-          <div className="grid grid-cols-2 gap-3">
-            <label className="block">
-              <span className="block text-[12px] font-medium text-ink-600 mb-1">Unidade que envia</span>
-              <StyledSelect value={storeId} onChange={setStoreId} options={units.map(u => ({ value: u.store_id, label: u.name }))} />
-            </label>
-            <label className="block">
-              <span className="block text-[12px] font-medium text-ink-600 mb-1">Público</span>
-              <StyledSelect value={segmentId} onChange={setSegmentId} searchable options={segments.map(s => ({ value: s.id, label: s.name }))} />
-            </label>
+          <div>
+            <div className="grid grid-cols-1 min-[420px]:grid-cols-2 gap-3">
+              <label className="block min-w-0">
+                <span className="field-label">Unidade que envia</span>
+                <StyledSelect value={storeId} onChange={setStoreId} options={units.map(u => ({ value: u.store_id, label: u.name }))} />
+              </label>
+              <label className="block min-w-0">
+                <span className="field-label">Segmento</span>
+                <StyledSelect value={segmentId} onChange={setSegmentId} searchable options={segments.map(s => ({ value: s.id, label: s.name }))} />
+              </label>
+            </div>
+            {segment && <p className="text-[12px] text-muted-foreground mt-1.5">{describeFilters(segment.filters, units)}</p>}
           </div>
-          {segment && <p className="text-[12px] text-muted-foreground -mt-2">{describeFilters(segment.filters, units)}</p>}
 
           <div>
-            <span className="block text-[12px] font-medium text-ink-600 mb-1">Mensagem</span>
-            <textarea ref={textRef} value={message} onChange={e => setMessage(e.target.value)} rows={6}
-              className="w-full px-3 py-2 rounded-md border border-input bg-background text-base md:text-sm text-foreground hover:border-ink-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
+            <span className="field-label">Mensagem</span>
+            <Textarea ref={textRef} value={message} onChange={e => setMessage(e.target.value)} rows={6} />
             <div className="flex flex-wrap gap-1.5 mt-2">
               {MESSAGE_VARIABLES.map(v => (
-                <button key={v.key} type="button" onClick={() => insertVar(v.key)}
-                  className="h-7 px-2 rounded-md border border-border text-[11px] text-ink-600 hover:bg-muted transition-colors">
-                  + {v.label}
-                </button>
+                <Button key={v.key} type="button" variant="secondary" size="xs" onClick={() => insertVar(v.key)}>
+                  <Plus /> {v.label}
+                </Button>
               ))}
             </div>
           </div>
         </div>
 
-        <div className="space-y-3">
+        <div className="space-y-3 min-w-0">
           <div className="rounded-lg border border-border bg-surface p-4">
-            <p className="text-[12px] font-medium text-ink-600">Quem entraria hoje</p>
-            <p className="text-[26px] font-semibold tracking-tight text-foreground numeric mt-1 flex items-center gap-2">
+            <p className="text-[12px] font-medium text-muted-foreground">Quem entraria hoje</p>
+            <p className="font-title text-[26px] font-semibold leading-tight text-foreground tabular-nums mt-1 flex items-center gap-2">
               {(sample?.total ?? 0).toLocaleString('pt-BR')}
               {isFetching && <Loader className="w-3.5 h-3.5 animate-spin text-ink-300" />}
             </p>
-            <p className="text-[11px] text-muted-foreground">com WhatsApp, antes das travas de envio</p>
+            <p className="text-[12px] text-muted-foreground">Com WhatsApp, antes das travas de envio</p>
           </div>
           <div className="rounded-lg border border-border p-4">
-            <p className="text-[12px] font-medium text-ink-600 mb-2 flex items-center gap-1.5">
-              <MessageCircle className="w-3.5 h-3.5" /> Como chega {preview ? `para ${preview.name.split(' ')[0]}` : ''}
+            <p className="text-[12px] font-medium text-muted-foreground mb-2 flex items-center gap-1.5">
+              <MessageCircle className="w-3.5 h-3.5" /> Como chega{preview ? ` para ${preview.name.split(' ')[0]}` : ''}
             </p>
-            <p className="text-[13px] text-foreground whitespace-pre-wrap rounded-lg bg-success-subtle border border-success-border px-3 py-2">
+            {/* Bolha verde: exceção de marca do WhatsApp (design-tokens §8). */}
+            <p className="text-[13px] text-foreground whitespace-pre-wrap break-words rounded-lg bg-success-subtle border border-success-border px-3 py-2">
               {renderMessage(message, preview ?? { store_name: units.find(u => u.store_id === storeId)?.name, days_since_last_visit: 60 })}
             </p>
           </div>
@@ -355,7 +364,8 @@ function CampaignDetail({ campaign, units, onClose, onEdit }: {
   async function cancel() {
     if (!window.confirm('Cancelar esta campanha? A lista fica guardada, mas ela não poderá ser enviada.')) return
     const { error } = await supabase.from('salon_campaigns').update({ status: 'cancelada', updated_at: new Date().toISOString() }).eq('id', campaign.id)
-    if (error) return toast.error(error.message)
+    if (error) return toast.error(`Não foi possível cancelar: ${error.message}`)
+    toast.success('Campanha cancelada')
     qc.invalidateQueries({ queryKey: ['crm-campaigns'] })
     onClose()
   }
@@ -365,64 +375,60 @@ function CampaignDetail({ campaign, units, onClose, onEdit }: {
   const excluded = Object.entries(campaign.excluded ?? {}).filter(([, n]) => n > 0)
 
   return (
-    <Modal wide title={campaign.name} onClose={onClose} footer={
+    <Modal wide title={campaign.name} onClose={onClose} footer={editable ? (
       <>
-        {editable && <Button variant="ghost" onClick={cancel} className="mr-auto text-danger"><Ban className="w-4 h-4" /> Cancelar campanha</Button>}
-        {editable && <Button variant="outline" onClick={onEdit}>Editar</Button>}
-        {editable && (
-          <Button onClick={buildList} disabled={building}>
-            {building ? <Loader className="w-4 h-4 animate-spin" /> : <ListChecks className="w-4 h-4" />}
-            {campaign.list_built_at ? 'Refazer lista' : 'Gerar lista'}
-          </Button>
-        )}
+        <Button variant="ghost" onClick={cancel} className="sm:mr-auto text-danger hover:text-danger hover:bg-danger-subtle">
+          <Ban /> Cancelar campanha
+        </Button>
+        <Button variant="secondary" onClick={onEdit}>Editar</Button>
+        <Button onClick={buildList} disabled={building}>
+          {building ? <Loader className="animate-spin" /> : <ListChecks />}
+          {campaign.list_built_at ? 'Refazer lista' : 'Gerar lista'}
+        </Button>
       </>
-    }>
+    ) : undefined}>
       <div className="space-y-4">
-        <div className="flex flex-wrap items-center gap-2 text-[12px] text-muted-foreground">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[12.5px] text-muted-foreground">
           <CampaignBadge status={campaign.status} />
           <span>Sai pelo WhatsApp de {unitName}</span>
           <span>· {describeFilters(campaign.filters, units)}</span>
         </div>
 
         <div className="rounded-lg border border-border p-4">
-          <p className="text-[12px] font-medium text-ink-600 mb-1.5">Mensagem</p>
-          <p className="text-[13px] text-foreground whitespace-pre-wrap">{campaign.message}</p>
+          <p className="text-[12px] font-medium text-muted-foreground mb-1.5">Mensagem</p>
+          <p className="text-[13px] text-foreground whitespace-pre-wrap break-words">{campaign.message}</p>
         </div>
 
         {!campaign.list_built_at ? (
-          <div className="rounded-lg border border-dashed border-border p-6 text-center">
-            <p className="text-[13px] text-foreground font-medium">A lista ainda não foi gerada</p>
-            <p className="text-[12px] text-muted-foreground mt-1">
-              "Gerar lista" congela quem receberia a mensagem agora, já aplicando as travas de envio.
-            </p>
+          <div className="rounded-lg border border-dashed border-border">
+            <EmptyState
+              icon={ListChecks}
+              title="A lista ainda não foi gerada"
+              description="“Gerar lista” congela quem receberia a mensagem agora, já aplicando as travas de envio."
+              className="py-8"
+            />
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-              <div className="rounded-lg border border-border p-3">
-                <p className="text-[11px] text-muted-foreground">Na lista</p>
-                <p className="text-[20px] font-semibold text-foreground numeric">{campaign.recipients_count.toLocaleString('pt-BR')}</p>
-              </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <StatCard label="Na lista" value={campaign.recipients_count.toLocaleString('pt-BR')} />
               {excluded.map(([k, n]) => (
-                <div key={k} className="rounded-lg border border-border p-3">
-                  <p className="text-[11px] text-muted-foreground">Fora: {EXCLUDED_LABEL[k] ?? k}</p>
-                  <p className="text-[20px] font-semibold text-ink-500 numeric">{n.toLocaleString('pt-BR')}</p>
-                </div>
+                <StatCard key={k} label={`Fora: ${EXCLUDED_LABEL[k] ?? k}`} value={n.toLocaleString('pt-BR')} />
               ))}
             </div>
-            <p className="text-[11px] text-muted-foreground">
+            <p className="text-[12px] text-muted-foreground">
               Lista gerada em {new Date(campaign.list_built_at).toLocaleString('pt-BR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}.
               {campaign.recipients_count > 300 ? ' Mostrando as primeiras 300.' : ''}
             </p>
             {isLoading ? (
-              <div className="flex justify-center py-8"><Loader className="w-5 h-5 animate-spin text-ink-300" /></div>
+              <PageLoading className="py-8" />
             ) : (
               <ul className="divide-y divide-border rounded-lg border border-border">
                 {recipients.map(r => (
-                  <li key={r.id} className="px-3.5 py-2.5">
+                  <li key={r.id} className="px-3.5 py-2.5 min-w-0">
                     <p className="text-[13px] text-foreground flex items-center justify-between gap-2">
                       <span className="truncate">{r.name}</span>
-                      <span className="text-[12px] text-muted-foreground numeric shrink-0">{fmtPhone(r.whatsapp)}</span>
+                      <span className="text-[12px] text-muted-foreground tabular-nums shrink-0">{fmtPhone(r.whatsapp)}</span>
                     </p>
                     <p className="text-[12px] text-muted-foreground mt-0.5 line-clamp-2">{r.message}</p>
                   </li>
@@ -449,7 +455,7 @@ export default function CrmCampanhas() {
   const [openId, setOpenId] = useState<string | null>(null)
   const [showSettings, setShowSettings] = useState(false)
 
-  // "Criar campanha" na tela de Segmentos chega com o público escolhido.
+  // "Nova campanha" na tela de Segmentos chega com o público escolhido.
   useEffect(() => {
     const segId = (location.state as { segmentId?: string } | null)?.segmentId
     if (segId && segments.length) {
@@ -468,75 +474,74 @@ export default function CrmCampanhas() {
   })
 
   const open = campaigns.find(c => c.id === openId) ?? null
+  const canCreate = units.length > 0 && segments.length > 0
 
   return (
     <AdminLayout>
-      <div className="bg-card border-b border-border sticky top-0 z-30">
-        <AdminHeader
-          title="Campanhas"
-          subtitle="Mensagens de WhatsApp para um público do CRM, enviadas pela própria unidade."
-          actionNode={
-            <Button size="sm" onClick={() => setEditor({})} disabled={!units.length || !segments.length}>
-              <Plus className="w-3.5 h-3.5" /> Nova campanha
-            </Button>
-          }
-        />
-      </div>
+      <AdminPage
+        title="Campanhas"
+        description="Mensagens de WhatsApp para um segmento de clientes, enviadas pela própria unidade."
+        actions={
+          <Button onClick={() => setEditor({})} disabled={!canCreate}>
+            <Plus /> Nova campanha
+          </Button>
+        }
+      >
+        <div className="space-y-4">
+          <DispatchOffBanner settings={settings} onEdit={() => setShowSettings(true)} />
 
-      <div className="px-4 sm:px-6 lg:px-8 py-5 space-y-4">
-        <DispatchOffBanner settings={settings} onEdit={() => setShowSettings(true)} />
-
-        {isLoading ? (
-          <div className="flex justify-center py-24"><Loader className="w-7 h-7 animate-spin text-ink-300" /></div>
-        ) : campaigns.length === 0 ? (
-          <div className="surface-card flex flex-col items-center justify-center py-20 px-4 text-center">
-            <Megaphone className="w-8 h-8 text-ink-300 mb-3" />
-            <p className="text-[16px] font-semibold text-foreground">Nenhuma campanha ainda</p>
-            <p className="text-sm text-muted-foreground mt-1 max-w-sm">
-              Escolha um público (ex.: Sumidas), a unidade e a mensagem. Dá para gerar a lista e conferir antes de qualquer envio.
-            </p>
-            <Button size="sm" className="mt-4" onClick={() => setEditor({})}><Plus className="w-3.5 h-3.5" /> Nova campanha</Button>
-          </div>
-        ) : (
-          <div className="surface-card overflow-hidden">
-            <table className="w-full">
-              <thead className="border-b border-border">
-                <tr className="text-[11px] uppercase tracking-wide text-muted-foreground">
-                  <th className="pl-5 pr-3 h-9 text-left font-medium">Campanha</th>
-                  <th className="px-3 h-9 text-left font-medium hidden md:table-cell">Unidade</th>
-                  <th className="px-3 h-9 text-left font-medium">Situação</th>
-                  <th className="px-3 h-9 text-right font-medium">Na lista</th>
-                  <th className="px-3 h-9 text-left font-medium hidden md:table-cell">Criada</th>
-                  <th className="w-10" aria-hidden />
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {campaigns.map(c => (
-                  <tr key={c.id} onClick={() => setOpenId(c.id)} className="group cursor-pointer hover:bg-muted/60 transition-colors">
-                    <td className="pl-5 pr-3 py-2.5">
-                      <p className="text-[13px] font-semibold text-foreground">{c.name}</p>
-                      <p className="text-[12px] text-muted-foreground truncate max-w-[340px]">
-                        {segments.find(s => s.id === c.segment_id)?.name ?? describeFilters(c.filters, units)}
-                      </p>
-                    </td>
-                    <td className="px-3 py-2.5 text-[13px] text-ink-600 hidden md:table-cell">{units.find(u => u.store_id === c.store_id)?.name}</td>
-                    <td className="px-3 py-2.5"><CampaignBadge status={c.status} /></td>
-                    <td className="px-3 py-2.5 text-right text-[13px] font-semibold text-foreground numeric">
-                      {c.list_built_at ? c.recipients_count.toLocaleString('pt-BR') : '—'}
-                    </td>
-                    <td className="px-3 py-2.5 text-[12px] text-muted-foreground hidden md:table-cell">
-                      {new Date(c.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
-                    </td>
-                    <td className="pr-4 py-2.5 text-right">
-                      <ChevronRight className="w-4 h-4 text-ink-300 group-hover:text-brand-strong inline-block transition-colors" />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+          {isLoading ? (
+            <PageLoading label="Carregando campanhas…" />
+          ) : campaigns.length === 0 ? (
+            <Panel flush>
+              <EmptyState
+                icon={Megaphone}
+                title="Nenhuma campanha ainda"
+                description="Escolha um segmento (ex.: Sumidas), a unidade e a mensagem. Dá para gerar a lista e conferir antes de qualquer envio."
+                action={<Button onClick={() => setEditor({})} disabled={!canCreate}><Plus /> Nova campanha</Button>}
+              />
+            </Panel>
+          ) : (
+            <Panel flush className="overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow className="hover:bg-transparent">
+                    <TableHead className="pl-4 sm:pl-5">Campanha</TableHead>
+                    <TableHead className="hidden md:table-cell">Unidade</TableHead>
+                    <TableHead>Situação</TableHead>
+                    <TableHead className="text-right">Na lista</TableHead>
+                    <TableHead className="hidden md:table-cell">Criada em</TableHead>
+                    <TableHead className="w-10 hidden sm:table-cell"><span className="sr-only">Abrir</span></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {campaigns.map(c => (
+                    <TableRow key={c.id} onClick={() => setOpenId(c.id)} className="group cursor-pointer hover:bg-muted/60">
+                      <TableCell className="pl-4 sm:pl-5 max-w-0 w-full">
+                        <p className="text-[13px] font-medium text-foreground truncate">{c.name}</p>
+                        <p className="text-[12px] text-muted-foreground truncate">
+                          {segments.find(s => s.id === c.segment_id)?.name ?? describeFilters(c.filters, units)}
+                        </p>
+                      </TableCell>
+                      <TableCell className="text-ink-600 hidden md:table-cell whitespace-nowrap">{units.find(u => u.store_id === c.store_id)?.name}</TableCell>
+                      <TableCell><CampaignBadge status={c.status} /></TableCell>
+                      <TableCell className="text-right font-medium text-foreground tabular-nums">
+                        {c.list_built_at ? c.recipients_count.toLocaleString('pt-BR') : '—'}
+                      </TableCell>
+                      <TableCell className="text-[12px] text-muted-foreground hidden md:table-cell whitespace-nowrap tabular-nums">
+                        {new Date(c.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
+                      </TableCell>
+                      <TableCell className="pr-4 text-right hidden sm:table-cell">
+                        <ChevronRight className="w-4 h-4 text-ink-300 group-hover:text-ink-500 inline-block transition-colors" />
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </Panel>
+          )}
+        </div>
+      </AdminPage>
 
       {editor && (
         <CampaignEditor

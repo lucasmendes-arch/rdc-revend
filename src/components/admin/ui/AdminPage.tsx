@@ -310,6 +310,8 @@ interface StatCardProps {
   value: React.ReactNode
   /** Linha de contexto abaixo do valor (variação, comparação). */
   hint?: React.ReactNode
+  /** Deixa o hint quebrar linha (comparação longa no mobile). */
+  wrapHint?: boolean
   icon?: LucideIcon
   /** Tom do ícone/realce. `brand` só para o indicador principal da tela. */
   tone?: 'neutral' | 'brand' | 'success' | 'warning' | 'danger' | 'info'
@@ -332,7 +334,7 @@ const TONE_ICON: Record<NonNullable<StatCardProps['tone']>, string> = {
  * KPI: rótulo 12.5px em sentence case, valor em Bricolage 24px.
  * Sem caixa-alta com tracking, sem ícone em quadradinho colorido.
  */
-export function StatCard({ label, value, hint, icon: Icon, tone = 'neutral', onClick, active, className }: StatCardProps) {
+export function StatCard({ label, value, hint, wrapHint, icon: Icon, tone = 'neutral', onClick, active, className }: StatCardProps) {
   const Comp = onClick ? 'button' : 'div'
   return (
     <Comp
@@ -353,7 +355,7 @@ export function StatCard({ label, value, hint, icon: Icon, tone = 'neutral', onC
       <div className="font-title mt-1.5 text-[22px] sm:text-[24px] leading-none font-semibold text-foreground tabular-nums truncate">
         {value}
       </div>
-      {hint && <div className="mt-1.5 text-[12px] text-muted-foreground truncate">{hint}</div>}
+      {hint && <div className={cn('mt-1.5 text-[12px] text-muted-foreground', !wrapHint && 'truncate')}>{hint}</div>}
     </Comp>
   )
 }

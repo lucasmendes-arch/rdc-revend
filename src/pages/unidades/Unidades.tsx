@@ -1,22 +1,31 @@
 import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import {
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts'
 import {
   DollarSign, Receipt, TrendingUp, Users, Scissors, Package, CalendarDays,
-  UserX, Loader, ArrowUpRight, ArrowDownRight, Minus, AlertTriangle, CreditCard,
+  UserX, ArrowUpRight, ArrowDownRight, Minus, AlertTriangle, CreditCard,
   BadgePercent, Repeat,
 } from 'lucide-react'
 
-import { useAdminTheme } from '@/contexts/AdminThemeContext'
 import { supabase } from '@/lib/supabase'
 import AdminLayout from '@/components/admin/AdminLayout'
-import { AdminHeader } from '@/components/admin/ui/AdminHeader'
+import { AdminPage, Toolbar, Panel, StatCard, StatGrid, PageLoading } from '@/components/admin/ui/AdminPage'
 import { AdminPeriodFilter } from '@/components/admin/ui/AdminPeriodFilter'
 import { ADMIN_DEFAULT_PERIOD_PRESETS } from '@/components/admin/ui/presets'
-import { AdminSummaryCard } from '@/components/admin/ui/AdminSummaryCard'
 import StyledSelect from '@/components/ui/styled-select'
+
+// Cores do gráfico vêm dos tokens (trocam sozinhas no dark mode).
+const CHART = {
+  line: 'hsl(var(--brand))',
+  grid: 'hsl(var(--border))',
+  tick: 'hsl(var(--muted-foreground))',
+  cursor: 'hsl(var(--ink-300))',
+}
+
+const CARD = 'rounded-lg border border-border bg-card p-4 sm:p-5 shadow-xs'
+const CARD_TITLE = 'text-[14px] font-semibold text-foreground tracking-tight inline-flex items-center gap-1.5'
 
 // Dados do Trinks. Fontes: relatórios exportados e importados
 // (scripts/trinks-import.ts) e, daqui para frente, o webhook oficial. O sync
@@ -179,33 +188,21 @@ function computeBounds(preset: string, customFrom: string, customTo: string, dat
   }
 }
 
-function Delta({ current, previous, label }: { current: number; previous: number; label: string }) {
-  if (!previous) return <span className="text-muted-foreground">sem base para comparar</span>
+function Delta({ current, previous, label }: { current: number; previous: number; label?: string }) {
+  if (!previous) return <span className="text-muted-foreground">Sem base para comparar</span>
   const pct = ((current - previous) / previous) * 100
   const flat = Math.abs(pct) < 0.5
   const Icon = flat ? Minus : pct > 0 ? ArrowUpRight : ArrowDownRight
   const color = flat ? 'text-muted-foreground' : pct > 0 ? 'text-success' : 'text-danger'
   return (
-    <span className={`inline-flex items-center gap-0.5 ${color}`}>
+    <span className={`inline-flex items-center gap-0.5 font-medium tabular-nums ${color}`}>
       <Icon className="w-3 h-3" />
-      {Math.abs(pct).toFixed(1)}% {label}
+      {Math.abs(pct).toFixed(1)}%{label ? ` ${label}` : ''}
     </span>
   )
 }
 
 export default function Unidades() {
-  const { isDark } = useAdminTheme()
-
-  const ch = {
-    grid: isDark ? 'hsl(279,18%,19%)' : '#F1EDF5',
-    axis: isDark ? 'hsl(279,18%,22%)' : '#E8E3ED',
-    tick: isDark ? '#64748b' : '#9ca3af',
-    prevLine: isDark ? 'hsl(278,14%,34%)' : '#D2CCD8',
-    tooltipBg: isDark ? 'hsl(280,21%,14%)' : '#ffffff',
-    tooltipBorder: isDark ? 'hsl(279,18%,22%)' : '#E8E3ED',
-    tooltipText: isDark ? 'hsl(214,18%,88%)' : '#111827',
-  }
-
   const [activePreset, setActivePreset] = useState('month')
   const [customFrom, setCustomFrom] = useState('')
   const [customTo, setCustomTo] = useState('')
@@ -421,46 +418,46 @@ export default function Unidades() {
 
   return (
     <AdminLayout>
-      <AdminHeader
+      <AdminPage
         title="Unidades"
-        subtitle={
+        description={
           <span className={`inline-flex items-center gap-1.5 ${lagging.length ? 'text-danger' : ''}`}>
             {lagging.length > 0 && <AlertTriangle className="w-3 h-3" />}
             Dados do Trinks · {coverageLabel}
           </span>
         }
-        actionNode={
-          <StyledSelect
-            variant="inline"
-            value={storeFilter}
-            onChange={setStoreFilter}
-            options={[
-              { value: 'all', label: 'Todas as unidades' },
-              ...units.map(u => ({ value: u.store_id, label: u.stores?.name ?? u.display_name })),
-            ]}
-          />
+        toolbar={
+          <Toolbar className="justify-between">
+            <AdminPeriodFilter
+              presets={ADMIN_DEFAULT_PERIOD_PRESETS}
+              activePreset={activePreset}
+              onPresetChange={setActivePreset}
+              customDateFrom={customFrom}
+              customDateTo={customTo}
+              onCustomDateFromChange={setCustomFrom}
+              onCustomDateToChange={setCustomTo}
+              className="w-full sm:w-auto min-w-0"
+            />
+            <StyledSelect
+              variant="inline"
+              value={storeFilter}
+              onChange={setStoreFilter}
+              options={[
+                { value: 'all', label: 'Todas as unidades' },
+                ...units.map(u => ({ value: u.store_id, label: u.stores?.name ?? u.display_name })),
+              ]}
+              className="bg-card text-[13px]"
+            />
+          </Toolbar>
         }
-      />
-
-      <AdminPeriodFilter
-        presets={ADMIN_DEFAULT_PERIOD_PRESETS}
-        activePreset={activePreset}
-        onPresetChange={setActivePreset}
-        customDateFrom={customFrom}
-        customDateTo={customTo}
-        onCustomDateFromChange={setCustomFrom}
-        onCustomDateToChange={setCustomTo}
-      />
-
-      <div className="px-4 sm:px-6 lg:px-8 pb-10 space-y-4">
+      >
+      <div className="space-y-4">
         {isLoading ? (
-          <div className="flex items-center justify-center py-20 text-muted-foreground">
-            <Loader className="w-5 h-5 animate-spin mr-2" /> Carregando dados das unidades…
-          </div>
+          <PageLoading label="Carregando dados das unidades…" />
         ) : (
           <>
             {lagging.length > 0 && (
-              <div className="flex items-start gap-2 rounded-xl border border-danger-border bg-danger-subtle px-4 py-3 text-xs text-foreground">
+              <div className="flex items-start gap-2 rounded-lg border border-danger-border bg-danger-subtle px-4 py-3 text-[13px] text-foreground">
                 <AlertTriangle className="w-4 h-4 text-danger shrink-0 mt-0.5" />
                 <div>
                   <span className="font-semibold">Período incompleto.</span>{' '}
@@ -478,76 +475,88 @@ export default function Unidades() {
             )}
 
             {/* KPIs */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-              <AdminSummaryCard
-                icon={DollarSign} iconColor="text-gold"
-                label="Faturamento" value={fmtBRL(gross)}
-                subtitle={<Delta current={cmpGross} previous={prevGross} label={bounds.compareLabel} />}
-              />
-              <AdminSummaryCard
-                icon={Receipt} label="Comandas" value={tickets.toLocaleString('pt-BR')}
-                subtitle={<Delta current={cmpTickets} previous={prevTickets} label={bounds.compareLabel} />}
-              />
-              <AdminSummaryCard
-                icon={TrendingUp} label="Ticket médio" value={fmtBRLCents(avgTicket)}
-                subtitle={<Delta current={cmpAvgTicket} previous={prevAvgTicket} label={bounds.compareLabel} />}
-              />
-              <AdminSummaryCard
-                icon={Users} label="Clientes novos"
-                value={sum(current, 'new_customers').toLocaleString('pt-BR')}
-                subtitle={<Delta current={sum(currentCmp, 'new_customers')} previous={sum(previous, 'new_customers')} label={bounds.compareLabel} />}
-              />
+            <div className="space-y-2">
+              <StatGrid>
+                <StatCard
+                  icon={DollarSign} tone="brand"
+                  label="Faturamento" value={fmtBRL(gross)}
+                  hint={<Delta current={cmpGross} previous={prevGross} />}
+                />
+                <StatCard
+                  icon={Receipt} label="Comandas" value={tickets.toLocaleString('pt-BR')}
+                  hint={<Delta current={cmpTickets} previous={prevTickets} />}
+                />
+                <StatCard
+                  icon={TrendingUp} label="Ticket médio" value={fmtBRLCents(avgTicket)}
+                  hint={<Delta current={cmpAvgTicket} previous={prevAvgTicket} />}
+                />
+                <StatCard
+                  icon={Users} label="Clientes novos"
+                  value={sum(current, 'new_customers').toLocaleString('pt-BR')}
+                  hint={<Delta current={sum(currentCmp, 'new_customers')} previous={sum(previous, 'new_customers')} />}
+                />
+              </StatGrid>
+              <p className="text-[12px] text-muted-foreground">Variações {bounds.compareLabel}.</p>
             </div>
 
             {/* Faturamento por dia */}
-            <div className="bg-card rounded-xl border border-border p-4 shadow-sm">
-              <h2 className="text-sm font-semibold text-foreground mb-3">Faturamento por dia</h2>
+            <Panel title="Faturamento por dia">
               {chartData.length === 0 ? (
-                <p className="text-xs text-muted-foreground py-10 text-center">
-                  Nenhum dado sincronizado neste período.
+                <p className="text-[13px] text-muted-foreground py-10 text-center">
+                  Nenhum dado importado neste período.
                 </p>
               ) : (
-                <ResponsiveContainer width="100%" height={260}>
-                  <LineChart data={chartData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke={ch.grid} />
-                    <XAxis dataKey="date" stroke={ch.axis} tick={{ fill: ch.tick, fontSize: 11 }} />
-                    <YAxis
-                      stroke={ch.axis} tick={{ fill: ch.tick, fontSize: 11 }}
-                      tickFormatter={v => (v >= 1000 ? `${(v / 1000).toFixed(0)}k` : String(v))}
-                    />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: ch.tooltipBg,
-                        border: `1px solid ${ch.tooltipBorder}`,
-                        borderRadius: 8,
-                        color: ch.tooltipText,
-                        fontSize: 12,
-                      }}
-                      formatter={(v: number) => fmtBRLCents(v)}
-                    />
-                    <Legend wrapperStyle={{ fontSize: 11 }} />
-                    <Line
-                      type="monotone" dataKey="Faturamento"
-                      stroke="#FF9A1A" strokeWidth={2} dot={false}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
+                <div className="h-56 sm:h-64">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={chartData} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
+                      <CartesianGrid vertical={false} stroke={CHART.grid} />
+                      <XAxis
+                        dataKey="date" tick={{ fill: CHART.tick, fontSize: 11 }}
+                        axisLine={{ stroke: CHART.grid }} tickLine={false} interval="preserveStartEnd"
+                      />
+                      <YAxis
+                        tick={{ fill: CHART.tick, fontSize: 11 }} axisLine={false} tickLine={false} width={44}
+                        tickFormatter={v => (v >= 1000 ? `${(v / 1000).toFixed(0)}k` : String(v))}
+                      />
+                      <Tooltip
+                        cursor={{ stroke: CHART.cursor, strokeWidth: 1 }}
+                        contentStyle={{
+                          backgroundColor: 'hsl(var(--popover))',
+                          border: '1px solid hsl(var(--border))',
+                          borderRadius: 8,
+                          boxShadow: 'var(--shadow-md)',
+                          color: 'hsl(var(--popover-foreground))',
+                          fontSize: 12,
+                          padding: '8px 10px',
+                        }}
+                        labelStyle={{ color: 'hsl(var(--muted-foreground))', marginBottom: 2 }}
+                        itemStyle={{ color: 'hsl(var(--foreground))', padding: 0, fontVariantNumeric: 'tabular-nums' }}
+                        formatter={(v: number) => fmtBRLCents(v)}
+                      />
+                      <Line
+                        type="monotone" dataKey="Faturamento"
+                        stroke={CHART.line} strokeWidth={2} dot={false}
+                        activeDot={{ r: 4, fill: CHART.line, stroke: 'hsl(var(--card))', strokeWidth: 2 }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
               )}
-            </div>
+            </Panel>
 
             {/* Serviços x Produtos */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-              <div className="bg-card rounded-xl border border-border p-4 shadow-sm">
-                <h2 className="text-sm font-semibold text-foreground mb-3">Serviços × Produtos</h2>
+              <div className={CARD}>
+                <h2 className={`${CARD_TITLE} mb-3`}>Serviços × Produtos</h2>
                 {splitTotal === 0 ? (
-                  <p className="text-xs text-muted-foreground">Sem receita no período.</p>
+                  <p className="text-[13px] text-muted-foreground">Sem receita no período.</p>
                 ) : (
                   <>
-                    <div className="flex h-2.5 rounded-full overflow-hidden mb-3">
-                      <div className="bg-gold" style={{ width: `${(servicesTotal / splitTotal) * 100}%` }} />
+                    <div className="flex h-2 gap-0.5 rounded-full overflow-hidden mb-3">
+                      <div className="bg-brand" style={{ width: `${(servicesTotal / splitTotal) * 100}%` }} />
                       <div className="bg-ink-400" style={{ width: `${(productsTotal / splitTotal) * 100}%` }} />
                     </div>
-                    <div className="space-y-1.5 text-xs">
+                    <div className="space-y-1.5 text-[13px]">
                       <div className="flex items-center justify-between">
                         <span className="inline-flex items-center gap-1.5 text-muted-foreground">
                           <Scissors className="w-3.5 h-3.5" /> Serviços
@@ -568,7 +577,7 @@ export default function Unidades() {
                   </>
                 )}
 
-                <div className="mt-4 pt-3 border-t border-border grid grid-cols-2 gap-3 text-xs">
+                <div className="mt-4 pt-3 border-t border-border grid grid-cols-2 gap-3 text-[13px]">
                   <div>
                     <div className="text-muted-foreground inline-flex items-center gap-1.5">
                       <CalendarDays className="w-3.5 h-3.5" /> Agendamentos
@@ -603,7 +612,7 @@ export default function Unidades() {
                   <DiscountsCard discounts={breakdown.discounts} />
                   <ClientsCard clients={breakdown.clients} />
                 </div>
-                <p className="text-[11px] text-muted-foreground">
+                <p className="text-[12px] text-muted-foreground">
                   Base: {breakdown.coverage.transactions.toLocaleString('pt-BR')} fechamentos importados
                   ({fmtDay(breakdown.coverage.first_day)} a {fmtDay(breakdown.coverage.last_day)}).
                   {' '}Unidades sem relatório importado não entram nestes três quadros.
@@ -612,39 +621,39 @@ export default function Unidades() {
             )}
 
             {/* Profissionais */}
-            <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
-              <h2 className="text-sm font-semibold text-foreground px-4 py-3 border-b border-border">
+            <div className="rounded-lg border border-border bg-card shadow-xs overflow-hidden">
+              <h2 className="text-[14px] font-semibold text-foreground tracking-tight px-4 sm:px-5 h-12 flex items-center border-b border-border">
                 Produção por profissional
               </h2>
               {profRanking.length === 0 ? (
-                <p className="text-xs text-muted-foreground p-4">
+                <p className="text-[13px] text-muted-foreground p-4 sm:p-5">
                   Sem dados de produção por profissional no período — vem do relatório de Comissões do Trinks.
                 </p>
               ) : (
                 <div className="overflow-x-auto">
-                  <table className="w-full text-xs">
+                  <table className="data-table min-w-[600px]">
                     <thead>
-                      <tr className="text-muted-foreground border-b border-border">
-                        <th className="text-left font-medium px-4 py-2">Profissional</th>
-                        <th className="text-right font-medium px-4 py-2">Atendimentos</th>
-                        <th className="text-right font-medium px-4 py-2">Serviços</th>
-                        <th className="text-right font-medium px-4 py-2">Faturamento</th>
-                        <th className="text-right font-medium px-4 py-2">Ticket médio</th>
-                        <th className="text-right font-medium px-4 py-2">Comissão</th>
+                      <tr>
+                        <th>Profissional</th>
+                        <th className="text-right">Atendimentos</th>
+                        <th className="text-right">Serviços</th>
+                        <th className="text-right">Faturamento</th>
+                        <th className="text-right">Ticket médio</th>
+                        <th className="text-right">Comissão</th>
                       </tr>
                     </thead>
                     <tbody>
                       {profRanking.map(p => (
-                        <tr key={p.name} className="border-b border-border last:border-0">
+                        <tr key={p.name}>
                           {/* O Trinks prefixa a ordem da agenda no nome ("2 Yasmin"). */}
-                          <td className="px-4 py-2 text-foreground font-medium">{p.name.replace(/^\d+\s+/, '')}</td>
-                          <td className="px-4 py-2 text-right text-muted-foreground">{p.count}</td>
-                          <td className="px-4 py-2 text-right text-muted-foreground">{p.services}</td>
-                          <td className="px-4 py-2 text-right text-foreground font-semibold">{fmtBRLCents(p.revenue)}</td>
-                          <td className="px-4 py-2 text-right text-muted-foreground">
+                          <td className="text-foreground font-medium">{p.name.replace(/^\d+\s+/, '')}</td>
+                          <td className="text-right text-muted-foreground">{p.count}</td>
+                          <td className="text-right text-muted-foreground">{p.services}</td>
+                          <td className="text-right text-foreground font-semibold">{fmtBRLCents(p.revenue)}</td>
+                          <td className="text-right text-muted-foreground">
                             {p.count ? fmtBRLCents(p.revenue / p.count) : '—'}
                           </td>
-                          <td className="px-4 py-2 text-right text-muted-foreground">{fmtBRLCents(p.commission)}</td>
+                          <td className="text-right text-muted-foreground">{fmtBRLCents(p.commission)}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -655,20 +664,20 @@ export default function Unidades() {
 
             {/* Comparativo entre unidades */}
             {storeFilter === 'all' && (
-              <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
-                <h2 className="text-sm font-semibold text-foreground px-4 py-3 border-b border-border">
+              <div className="rounded-lg border border-border bg-card shadow-xs overflow-hidden">
+                <h2 className="text-[14px] font-semibold text-foreground tracking-tight px-4 sm:px-5 h-12 flex items-center border-b border-border">
                   Comparativo entre unidades
                 </h2>
                 <div className="overflow-x-auto">
-                  <table className="w-full text-xs">
+                  <table className="data-table min-w-[600px]">
                     <thead>
-                      <tr className="text-muted-foreground border-b border-border">
-                        <th className="text-left font-medium px-4 py-2">Unidade</th>
-                        <th className="text-right font-medium px-4 py-2">Faturamento</th>
-                        <th className="text-right font-medium px-4 py-2">Comandas</th>
-                        <th className="text-right font-medium px-4 py-2">Ticket médio</th>
-                        <th className="text-right font-medium px-4 py-2">Clientes novos</th>
-                        <th className="text-right font-medium px-4 py-2">Dados até</th>
+                      <tr>
+                        <th>Unidade</th>
+                        <th className="text-right">Faturamento</th>
+                        <th className="text-right">Comandas</th>
+                        <th className="text-right">Ticket médio</th>
+                        <th className="text-right">Clientes novos</th>
+                        <th className="text-right">Dados até</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -677,19 +686,19 @@ export default function Unidades() {
                         const g = sum(rows, 'gross_revenue')
                         const t = sum(rows, 'tickets_count')
                         return (
-                          <tr key={u.store_id} className="border-b border-border last:border-0">
-                            <td className="px-4 py-2 text-foreground font-medium">
+                          <tr key={u.store_id}>
+                            <td className="text-foreground font-medium">
                               {unitName[u.store_id] ?? u.display_name}
                             </td>
-                            <td className="px-4 py-2 text-right text-foreground font-semibold">{fmtBRLCents(g)}</td>
-                            <td className="px-4 py-2 text-right text-muted-foreground">{t}</td>
-                            <td className="px-4 py-2 text-right text-muted-foreground">
+                            <td className="text-right text-foreground font-semibold">{fmtBRLCents(g)}</td>
+                            <td className="text-right text-muted-foreground">{t}</td>
+                            <td className="text-right text-muted-foreground">
                               {t ? fmtBRLCents(g / t) : '—'}
                             </td>
-                            <td className="px-4 py-2 text-right text-muted-foreground">
+                            <td className="text-right text-muted-foreground">
                               {sum(rows, 'new_customers')}
                             </td>
-                            <td className={`px-4 py-2 text-right ${lagging.some(l => l.name === (unitName[u.store_id] ?? u.display_name)) ? 'text-danger font-medium' : 'text-muted-foreground'}`}>
+                            <td className={`text-right ${lagging.some(l => l.name === (unitName[u.store_id] ?? u.display_name)) ? 'text-danger font-medium' : 'text-muted-foreground'}`}>
                               {fmtDay(freshByStore[u.store_id]?.last_revenue_day ?? null)}
                             </td>
                           </tr>
@@ -703,6 +712,7 @@ export default function Unidades() {
           </>
         )}
       </div>
+      </AdminPage>
     </AdminLayout>
   )
 }
@@ -716,24 +726,24 @@ function RankCard({
 }) {
   const max = rows[0]?.revenue ?? 0
   return (
-    <div className="bg-card rounded-xl border border-border p-4 shadow-sm">
-      <h2 className="text-sm font-semibold text-foreground mb-3 inline-flex items-center gap-1.5">
+    <div className={CARD}>
+      <h2 className={`${CARD_TITLE} mb-3`}>
         <Icon className="w-4 h-4 text-muted-foreground" /> {title}
       </h2>
       {rows.length === 0 ? (
-        <p className="text-xs text-muted-foreground">Sem dados no período.</p>
+        <p className="text-[13px] text-muted-foreground">Sem dados no período.</p>
       ) : (
         <ul className="space-y-2">
           {rows.map(r => (
             <li key={r.name}>
-              <div className="flex items-baseline justify-between gap-2 text-xs mb-0.5">
+              <div className="flex items-baseline justify-between gap-2 text-[13px] mb-0.5">
                 <span className="text-foreground line-clamp-1">{r.name}</span>
                 <span className="text-muted-foreground shrink-0">
                   {r.qty.toLocaleString('pt-BR')}× · <span className="font-semibold text-foreground">{fmtBRL(r.revenue)}</span>
                 </span>
               </div>
-              <div className="h-1 rounded-full bg-muted overflow-hidden">
-                <div className="h-full bg-gold" style={{ width: `${max ? (r.revenue / max) * 100 : 0}%` }} />
+              <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+                <div className="h-full bg-brand" style={{ width: `${max ? (r.revenue / max) * 100 : 0}%` }} />
               </div>
             </li>
           ))}
@@ -754,27 +764,27 @@ function PaymentsCard({ payments }: { payments: Breakdown['payments'] }) {
   ].filter(r => r.value > 0).sort((a, b) => b.value - a.value)
   const total = rows.reduce((a, r) => a + r.value, 0)
   return (
-    <div className="bg-card rounded-xl border border-border p-4 shadow-sm">
-      <h2 className="text-sm font-semibold text-foreground mb-3 inline-flex items-center gap-1.5">
+    <div className={CARD}>
+      <h2 className={`${CARD_TITLE} mb-3`}>
         <CreditCard className="w-4 h-4 text-muted-foreground" /> Formas de pagamento
       </h2>
       <ul className="space-y-2">
         {rows.map(r => (
           <li key={r.label}>
-            <div className="flex items-baseline justify-between gap-2 text-xs mb-0.5">
+            <div className="flex items-baseline justify-between gap-2 text-[13px] mb-0.5">
               <span className="text-foreground">{r.label}</span>
               <span className="text-muted-foreground shrink-0">
                 {total ? ((r.value / total) * 100).toFixed(0) : 0}% · <span className="font-semibold text-foreground">{fmtBRL(r.value)}</span>
               </span>
             </div>
-            <div className="h-1 rounded-full bg-muted overflow-hidden">
-              <div className="h-full bg-gold" style={{ width: `${total ? (r.value / total) * 100 : 0}%` }} />
+            <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+              <div className="h-full bg-brand" style={{ width: `${total ? (r.value / total) * 100 : 0}%` }} />
             </div>
           </li>
         ))}
       </ul>
       {Number(payments.tips) > 0 && (
-        <p className="text-[11px] text-muted-foreground mt-3">Gorjetas: {fmtBRLCents(Number(payments.tips))}</p>
+        <p className="text-[12px] text-muted-foreground mt-3">Gorjetas: {fmtBRLCents(Number(payments.tips))}</p>
       )}
     </div>
   )
@@ -784,17 +794,17 @@ function DiscountsCard({ discounts }: { discounts: Breakdown['discounts'] }) {
   const total = discounts.reduce((a, d) => a + Number(d.total), 0)
   const uses = discounts.reduce((a, d) => a + Number(d.uses), 0)
   return (
-    <div className="bg-card rounded-xl border border-border p-4 shadow-sm">
-      <h2 className="text-sm font-semibold text-foreground mb-1 inline-flex items-center gap-1.5">
+    <div className={CARD}>
+      <h2 className={`${CARD_TITLE} mb-1`}>
         <BadgePercent className="w-4 h-4 text-muted-foreground" /> Descontos concedidos
       </h2>
-      <p className="text-xs text-muted-foreground mb-3">
+      <p className="text-[13px] text-muted-foreground mb-3">
         <span className="font-semibold text-foreground">{fmtBRL(total)}</span> em {uses.toLocaleString('pt-BR')} comandas
       </p>
       {discounts.length === 0 ? (
-        <p className="text-xs text-muted-foreground">Nenhum desconto no período.</p>
+        <p className="text-[13px] text-muted-foreground">Nenhum desconto no período.</p>
       ) : (
-        <ul className="space-y-1.5 text-xs">
+        <ul className="space-y-1.5 text-[13px]">
           {discounts.slice(0, 6).map(d => (
             <li key={d.reason} className="flex items-baseline justify-between gap-2">
               <span className="text-foreground line-clamp-1">{d.reason}</span>
@@ -814,19 +824,19 @@ function ClientsCard({ clients }: { clients: Breakdown['clients'] }) {
   const returning = Number(clients.returning)
   const firstTime = Number(clients.first_time)
   return (
-    <div className="bg-card rounded-xl border border-border p-4 shadow-sm">
-      <h2 className="text-sm font-semibold text-foreground mb-3 inline-flex items-center gap-1.5">
+    <div className={CARD}>
+      <h2 className={`${CARD_TITLE} mb-3`}>
         <Repeat className="w-4 h-4 text-muted-foreground" /> Clientes atendidos
       </h2>
-      <div className="text-2xl font-bold text-foreground leading-none">{unique.toLocaleString('pt-BR')}</div>
-      <p className="text-[11px] text-muted-foreground mt-1">clientes diferentes com comanda paga</p>
+      <div className="font-title text-[24px] font-semibold text-foreground leading-none tabular-nums">{unique.toLocaleString('pt-BR')}</div>
+      <p className="text-[12px] text-muted-foreground mt-1">Clientes diferentes com comanda paga</p>
       {unique > 0 && (
         <>
-          <div className="flex h-2.5 rounded-full overflow-hidden mt-3 mb-2">
-            <div className="bg-gold" style={{ width: `${(returning / unique) * 100}%` }} />
+          <div className="flex h-2 gap-0.5 rounded-full overflow-hidden mt-3 mb-2">
+            <div className="bg-brand" style={{ width: `${(returning / unique) * 100}%` }} />
             <div className="bg-ink-400" style={{ width: `${(firstTime / unique) * 100}%` }} />
           </div>
-          <div className="space-y-1 text-xs">
+          <div className="space-y-1 text-[13px]">
             <div className="flex justify-between">
               <span className="text-muted-foreground">Voltaram (já tinham comprado)</span>
               <span className="font-semibold text-foreground">{returning} ({((returning / unique) * 100).toFixed(0)}%)</span>

@@ -1,4 +1,7 @@
 import { Component, type ReactNode } from 'react'
+import { RotateCw } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import logo from '@/assets/logo-rei-dos-cachos.png'
 
 interface Props {
   children: ReactNode
@@ -50,19 +53,25 @@ export class ErrorBoundary extends Component<Props, State> {
 
   render() {
     if (this.state.hasError) {
+      // Fica FORA do Router (envolve o BrowserRouter no App), então nada de
+      // <Link>: navegação por <a href>. Mesmo shell das telas de entrada.
       return (
-        <div className="min-h-screen flex items-center justify-center bg-surface-alt p-6">
-          <div className="bg-card rounded-2xl shadow-card p-8 max-w-md text-center">
-            <h1 className="text-xl font-bold text-foreground mb-2">Algo deu errado</h1>
-            <p className="text-sm text-muted-foreground mb-6">
-              Ocorreu um erro inesperado. Tente recarregar a pagina.
+        <div className="min-h-screen bg-background bg-ambient flex items-center justify-center px-4 py-12">
+          <div className="w-full max-w-[420px] text-center">
+            <img src={logo} alt="Rei dos Cachos" className="h-14 w-auto mx-auto mb-10" />
+            <h1 className="text-[26px] leading-tight text-foreground">Algo deu errado</h1>
+            <p className="text-[14px] text-muted-foreground mt-2">
+              Ocorreu um erro inesperado nesta tela. Recarregue a página; se continuar, volte ao início e tente de novo.
             </p>
-            <button
-              onClick={() => window.location.reload()}
-              className="px-6 py-2.5 rounded-lg btn-gold font-medium"
-            >
-              Recarregar
-            </button>
+            <div className="mt-8 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-center gap-2">
+              <Button asChild variant="secondary" size="lg">
+                <a href="/">Ir para o início</a>
+              </Button>
+              <Button size="lg" onClick={() => window.location.reload()}>
+                <RotateCw />
+                Recarregar
+              </Button>
+            </div>
           </div>
         </div>
       )

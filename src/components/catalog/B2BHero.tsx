@@ -1,4 +1,5 @@
 import { ArrowDown, CreditCard, ShoppingBag, MessageCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 interface B2BHeroProps {
   onScrollToKits: () => void;
@@ -27,11 +28,11 @@ const FACTS = [
 export default function B2BHero({ onScrollToKits, onScrollToProducts }: B2BHeroProps) {
   return (
     <div className="w-full bg-background bg-ambient border-b border-border">
-      <div className="container mx-auto max-w-6xl px-4 sm:px-6 py-10 sm:py-14">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 py-10 sm:py-14">
         <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-8">
 
           <div className="min-w-0">
-                        <h1 className="text-[30px] sm:text-[40px] leading-[1.1] text-foreground max-w-xl">
+            <h1 className="text-[30px] sm:text-[40px] leading-[1.1] text-foreground max-w-xl">
               Catálogo exclusivo para revenda
             </h1>
             <p className="text-[15px] text-muted-foreground mt-3 leading-relaxed max-w-xl">
@@ -40,20 +41,14 @@ export default function B2BHero({ onScrollToKits, onScrollToProducts }: B2BHeroP
             </p>
 
             <div className="flex flex-col sm:flex-row gap-2.5 mt-7">
-              <button
-                onClick={onScrollToKits}
-                className="h-10 px-4 rounded-md btn-primary text-[14px] flex items-center justify-center gap-1.5"
-              >
-                <ShoppingBag className="w-3.5 h-3.5" />
+              <Button size="lg" onClick={onScrollToKits}>
+                <ShoppingBag />
                 Ver kits mais vendidos
-              </button>
-              <button
-                onClick={onScrollToProducts}
-                className="h-10 px-4 rounded-md btn-secondary text-[14px] flex items-center justify-center gap-1.5"
-              >
+              </Button>
+              <Button size="lg" variant="secondary" onClick={onScrollToProducts}>
                 Explorar catálogo
-                <ArrowDown className="w-3.5 h-3.5" />
-              </button>
+                <ArrowDown />
+              </Button>
             </div>
           </div>
 
@@ -61,7 +56,7 @@ export default function B2BHero({ onScrollToKits, onScrollToProducts }: B2BHeroP
           <dl className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-1 gap-x-8 gap-y-3 shrink-0">
             {FACTS.map(({ icon: Icon, label, value }) => (
               <div key={label} className="flex items-center gap-2.5">
-                <span className="w-8 h-8 rounded-md bg-brand-subtle ring-1 ring-inset ring-brand-border flex items-center justify-center shrink-0"><Icon className="w-4 h-4 text-brand-strong" /></span>
+                <Icon className="w-4 h-4 text-brand-strong shrink-0" aria-hidden />
                 <div className="min-w-0">
                   <dt className="text-[12px] text-muted-foreground leading-none">{label}</dt>
                   <dd className="text-[14px] font-medium text-foreground leading-none mt-1.5 numeric">{value}</dd>

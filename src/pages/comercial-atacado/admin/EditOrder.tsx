@@ -6,10 +6,14 @@ import { useAuth } from '@/contexts/AuthContext'
 import { toast } from 'sonner'
 import AdminLayout from '@/components/admin/AdminLayout'
 import StyledSelect from '@/components/ui/styled-select'
+import { AdminPage, Panel, EmptyState, PageLoading } from '@/components/admin/ui/AdminPage'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import { getOrderStatus, toneClasses } from '@/lib/design/orderStatus'
 import {
-  Loader, ArrowLeft, Plus, Trash2, Search, Save,
-  UserCheck, AlertTriangle,
+  Loader, Plus, Trash2, Search, Save,
+  AlertTriangle,
 } from 'lucide-react'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -47,15 +51,8 @@ const STATUS_OPTIONS = [
   'enviado', 'entregue', 'concluido', 'cancelado', 'expirado',
 ] as const
 
-const STATUS_LABELS: Record<string, string> = {
-  recebido: 'Recebido', aguardando_pagamento: 'Aguardando Pagamento',
-  pago: 'Pago', separacao: 'Em Separação', enviado: 'Enviado',
-  entregue: 'Entregue', concluido: 'Concluído', cancelado: 'Cancelado',
-  expirado: 'Expirado',
-}
-
 const PAYMENT_OPTIONS = ['PIX', 'Boleto', 'Dinheiro', 'Cartão de Crédito', 'pay_on_delivery']
-const PAYMENT_LABELS: Record<string, string> = { pay_on_delivery: 'Pagar na Entrega' }
+const PAYMENT_LABELS: Record<string, string> = { pay_on_delivery: 'Pagar na entrega' }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
@@ -201,17 +198,21 @@ export default function EditOrder() {
 
   // ─── Guards ───────────────────────────────────────────────────────────────
 
+  const back = { to: '/admin/pedidos', label: 'Pedidos' }
+
   if (!canEdit) {
     return (
       <AdminLayout>
-        <div className="flex flex-col items-center justify-center py-32 gap-4">
-          <AlertTriangle className="w-10 h-10 text-danger" />
-          <p className="text-foreground font-semibold">Sem permissão para editar pedidos.</p>
-          <p className="text-sm text-muted-foreground">Solicite ao administrador que habilite <code>can_edit_orders</code> no seu perfil.</p>
-          <button onClick={() => navigate('/admin/pedidos')} className="btn-action px-4 py-2 rounded-xl text-sm font-semibold">
-            Voltar
-          </button>
-        </div>
+        <AdminPage title="Editar pedido" back={back} width="narrow">
+          <Panel>
+            <EmptyState
+              icon={AlertTriangle}
+              title="Sem permissão para editar pedidos"
+              description={<>Peça ao administrador para habilitar <code className="font-mono text-[12px]">can_edit_orders</code> no seu perfil.</>}
+              action={<Button variant="secondary" onClick={() => navigate('/admin/pedidos')}>Voltar para pedidos</Button>}
+            />
+          </Panel>
+        </AdminPage>
       </AdminLayout>
     )
   }
@@ -219,9 +220,9 @@ export default function EditOrder() {
   if (loadingOrder) {
     return (
       <AdminLayout>
-        <div className="flex items-center justify-center py-32">
-          <Loader className="w-7 h-7 animate-spin text-muted-foreground" />
-        </div>
+        <AdminPage title="Editar pedido" back={back} width="narrow">
+          <PageLoading label="Carregando pedido…" />
+        </AdminPage>
       </AdminLayout>
     )
   }
@@ -229,246 +230,238 @@ export default function EditOrder() {
   if (!order) {
     return (
       <AdminLayout>
-        <div className="flex flex-col items-center justify-center py-32 gap-3">
-          <p className="text-foreground font-semibold">Pedido não encontrado.</p>
-          <button onClick={() => navigate('/admin/pedidos')} className="btn-action px-4 py-2 rounded-xl text-sm font-semibold">
-            Voltar
-          </button>
-        </div>
+        <AdminPage title="Editar pedido" back={back} width="narrow">
+          <Panel>
+            <EmptyState
+              icon={AlertTriangle}
+              title="Pedido não encontrado"
+              description="O pedido pode ter sido excluído. Volte para a lista e tente de novo."
+              action={<Button variant="secondary" onClick={() => navigate('/admin/pedidos')}>Voltar para pedidos</Button>}
+            />
+          </Panel>
+        </AdminPage>
       </AdminLayout>
     )
   }
 
   const orderNumber = order.id.slice(0, 8).toUpperCase()
+  const brl = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 
   return (
     <AdminLayout>
-      {/* Header */}
-      <div className="bg-card border-b border-border sticky top-0 z-30 px-4 sm:px-6 lg:px-8 py-4 flex items-center gap-3">
-        <button
-          onClick={() => navigate('/admin/pedidos')}
-          className="p-2 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4" />
-        </button>
-        <div className="flex-1">
-          <h1 className="text-base font-bold text-foreground">Editar Pedido #{orderNumber}</h1>
-          <p className="text-xs text-muted-foreground">{order.customer_name}</p>
-        </div>
-        <button
-          onClick={() => saveMutation.mutate()}
-          disabled={saveMutation.isPending || items.length === 0}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-success-solid hover:bg-success-solid/90 text-white text-sm font-bold transition-colors disabled:opacity-60"
-        >
-          {saveMutation.isPending ? <Loader className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-          Salvar
-        </button>
-      </div>
+      <AdminPage
+        title={<>Editar pedido <span className="font-mono text-[0.8em] text-muted-foreground">#{orderNumber}</span></>}
+        description={order.customer_name}
+        back={back}
+        width="narrow"
+      >
+        <div className="space-y-6">
 
-      <div className="px-4 sm:px-6 lg:px-8 py-6 max-w-3xl mx-auto space-y-6">
-
-        {/* ─── Itens ───────────────────────────────────────────────────── */}
-        <section className="bg-card border border-border rounded-2xl overflow-hidden">
-          <div className="px-5 py-4 border-b border-border flex items-center justify-between">
-            <h2 className="font-bold text-sm text-foreground">Itens do pedido</h2>
-            <button
-              onClick={() => setShowProductSearch(v => !v)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-muted hover:bg-muted/80 text-xs font-semibold text-foreground transition-colors"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              Adicionar produto
-            </button>
-          </div>
-
-          {/* Product search */}
-          {showProductSearch && (
-            <div className="px-5 py-3 border-b border-border bg-muted/30">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <input
-                  type="text"
-                  placeholder="Buscar produto pelo nome..."
-                  value={productSearch}
-                  onChange={e => setProductSearch(e.target.value)}
-                  autoFocus
-                  className="w-full pl-9 pr-4 py-2 rounded-xl border border-border bg-card text-sm focus:outline-none focus:ring-2 focus:ring-ring/40"
-                />
-              </div>
-              {products.length > 0 && (
-                <div className="mt-2 space-y-1">
-                  {products.map(p => (
-                    <button
-                      key={p.id}
-                      onClick={() => addProduct(p)}
-                      className="w-full flex items-center justify-between px-3 py-2 rounded-lg hover:bg-card text-left transition-colors"
-                    >
-                      <span className="text-sm font-medium text-foreground">{p.name}</span>
-                      <span className="text-xs text-muted-foreground">R$ {p.price.toFixed(2)}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-              {productSearch.length > 1 && products.length === 0 && (
-                <p className="text-xs text-muted-foreground mt-2 px-1">Nenhum produto encontrado.</p>
-              )}
-            </div>
-          )}
-
-          {/* Items list */}
-          <div className="divide-y divide-border">
-            {items.length === 0 && (
-              <p className="px-5 py-8 text-sm text-center text-muted-foreground">Nenhum item. Adicione pelo menos um produto.</p>
-            )}
-            {items.map((item, idx) => (
-              <div key={idx} className="px-5 py-3 flex items-center gap-3">
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-foreground truncate">{item.product_name}</p>
-                </div>
-                {/* qty */}
-                <div className="flex items-center gap-1 shrink-0">
-                  <button
-                    onClick={() => updateItem(idx, 'qty', Math.max(1, item.qty - 1))}
-                    className="w-6 h-6 rounded-md bg-muted hover:bg-muted/80 text-foreground text-sm font-bold flex items-center justify-center"
-                  >−</button>
-                  <input
-                    type="number"
-                    min={1}
-                    value={item.qty}
-                    onChange={e => updateItem(idx, 'qty', Math.max(1, parseInt(e.target.value) || 1))}
-                    className="w-10 text-center text-sm font-semibold bg-card border border-border rounded-md py-0.5 focus:outline-none focus:ring-1 focus:ring-ring/40"
+          {/* ─── Itens ───────────────────────────────────────────────────── */}
+          <Panel
+            flush
+            title="Itens do pedido"
+            actions={
+              <Button variant="secondary" size="sm" onClick={() => setShowProductSearch(v => !v)} aria-expanded={showProductSearch}>
+                <Plus />
+                Adicionar produto
+              </Button>
+            }
+          >
+            {/* Busca de produto */}
+            {showProductSearch && (
+              <div className="px-4 sm:px-5 py-3 border-b border-border bg-surface">
+                <div className="relative">
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-400 pointer-events-none" />
+                  <Input
+                    type="text"
+                    placeholder="Buscar produto pelo nome…"
+                    value={productSearch}
+                    onChange={e => setProductSearch(e.target.value)}
+                    autoFocus
+                    className="pl-8 bg-card"
                   />
-                  <button
-                    onClick={() => updateItem(idx, 'qty', item.qty + 1)}
-                    className="w-6 h-6 rounded-md bg-muted hover:bg-muted/80 text-foreground text-sm font-bold flex items-center justify-center"
-                  >+</button>
                 </div>
-                {/* unit price */}
-                <div className="shrink-0">
-                  <div className="flex items-center gap-1 border border-border rounded-lg px-2 py-1 bg-card">
-                    <span className="text-xs text-muted-foreground">R$</span>
-                    <input
+                {products.length > 0 && (
+                  <div className="mt-2 space-y-0.5">
+                    {products.map(p => (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onClick={() => addProduct(p)}
+                        className="w-full flex items-center justify-between gap-3 px-3 py-2 rounded-md hover:bg-card text-left transition-colors"
+                      >
+                        <span className="text-[13px] font-medium text-foreground truncate">{p.name}</span>
+                        <span className="text-[12px] text-muted-foreground tabular-nums shrink-0">{brl(p.price)}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {productSearch.length > 1 && products.length === 0 && (
+                  <p className="text-[12px] text-muted-foreground mt-2 px-1">Nenhum produto encontrado.</p>
+                )}
+              </div>
+            )}
+
+            {/* Lista de itens */}
+            <div className="divide-y divide-border">
+              {items.length === 0 && (
+                <EmptyState
+                  title="Nenhum item"
+                  description="Adicione pelo menos um produto para salvar o pedido."
+                  className="py-8"
+                />
+              )}
+              {items.map((item, idx) => (
+                <div key={idx} className="px-4 sm:px-5 py-3 flex flex-wrap items-center gap-x-3 gap-y-2">
+                  <p className="basis-full sm:basis-0 sm:flex-1 min-w-0 text-[13.5px] font-medium text-foreground truncate">{item.product_name}</p>
+                  {/* qtd */}
+                  <div className="flex items-center gap-1 shrink-0">
+                    <Button
+                      variant="secondary"
+                      size="icon-sm"
+                      className="h-7 w-7"
+                      onClick={() => updateItem(idx, 'qty', Math.max(1, item.qty - 1))}
+                      aria-label="Diminuir quantidade"
+                    >−</Button>
+                    <Input
+                      type="number"
+                      min={1}
+                      value={item.qty}
+                      onChange={e => updateItem(idx, 'qty', Math.max(1, parseInt(e.target.value) || 1))}
+                      aria-label="Quantidade"
+                      className="w-12 h-7 px-1 text-center tabular-nums"
+                    />
+                    <Button
+                      variant="secondary"
+                      size="icon-sm"
+                      className="h-7 w-7"
+                      onClick={() => updateItem(idx, 'qty', item.qty + 1)}
+                      aria-label="Aumentar quantidade"
+                    >+</Button>
+                  </div>
+                  {/* preço unitário */}
+                  <div className="relative shrink-0">
+                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[12px] text-muted-foreground pointer-events-none">R$</span>
+                    <Input
                       type="number"
                       min={0}
                       step={0.01}
                       value={item.unit_price}
                       onChange={e => updateItem(idx, 'unit_price', parseFloat(e.target.value) || 0)}
-                      className="w-16 text-sm font-semibold bg-transparent focus:outline-none"
+                      aria-label="Preço unitário"
+                      className="w-24 h-7 pl-7 pr-2 tabular-nums"
                     />
                   </div>
+                  {/* total da linha */}
+                  <span className="ml-auto sm:ml-0 text-[13.5px] font-semibold text-foreground w-24 text-right shrink-0 tabular-nums">
+                    {brl(item.qty * item.unit_price)}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={() => removeItem(idx)}
+                    className="h-7 w-7 shrink-0 hover:text-danger hover:bg-danger-subtle"
+                    aria-label="Remover item"
+                    title="Remover item"
+                  >
+                    <Trash2 />
+                  </Button>
                 </div>
-                {/* line total */}
-                <span className="text-sm font-bold text-foreground w-20 text-right shrink-0">
-                  R$ {(item.qty * item.unit_price).toFixed(2)}
-                </span>
-                <button
-                  onClick={() => removeItem(idx)}
-                  className="text-muted-foreground/50 hover:text-danger hover:bg-danger-subtle p-1.5 rounded-md transition-colors shrink-0"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
 
-          {/* Totals footer */}
-          {items.length > 0 && (
-            <div className="px-5 py-4 border-t border-border bg-muted/20 space-y-2">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Subtotal</span>
-                <span className="font-medium">R$ {subtotal.toFixed(2)}</span>
+            {/* Totais */}
+            {items.length > 0 && (
+              <div className="px-4 sm:px-5 py-4 border-t border-border bg-surface space-y-2 text-[13px] tabular-nums rounded-b-lg">
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Subtotal</span>
+                  <span className="font-medium text-foreground">{brl(subtotal)}</span>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <label htmlFor="edit-order-discount" className="text-muted-foreground">Desconto (R$)</label>
+                  <Input
+                    id="edit-order-discount"
+                    type="number"
+                    min={0}
+                    step={0.01}
+                    value={discount}
+                    onChange={e => setDiscount(parseFloat(e.target.value) || 0)}
+                    className="w-28 h-8 text-right tabular-nums bg-card"
+                  />
+                </div>
+                <div className="flex items-center justify-between text-[15px] font-semibold pt-2 border-t border-border">
+                  <span className="text-foreground">Total</span>
+                  <span className="text-foreground">{brl(total)}</span>
+                </div>
               </div>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Desconto (R$)</span>
-                <input
-                  type="number"
-                  min={0}
-                  step={0.01}
-                  value={discount}
-                  onChange={e => setDiscount(parseFloat(e.target.value) || 0)}
-                  className="w-24 text-right text-sm font-medium bg-card border border-border rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-ring/40"
+            )}
+          </Panel>
+
+          {/* ─── Detalhes ────────────────────────────────────────────────── */}
+          <Panel title="Detalhes do pedido">
+            <div className="space-y-4">
+              <div>
+                <span className="field-label">Status</span>
+                <StyledSelect
+                  value={status}
+                  onChange={setStatus}
+                  options={STATUS_OPTIONS.map(s => ({ value: s, label: getOrderStatus(s).label, dotClassName: toneClasses(getOrderStatus(s).tone).dot }))}
+                  searchable={false}
                 />
               </div>
-              <div className="flex items-center justify-between text-base font-bold pt-2 border-t border-border">
-                <span>Total</span>
-                <span className="text-success">R$ {total.toFixed(2)}</span>
+
+              <div>
+                <span className="field-label">Vendedor</span>
+                <StyledSelect
+                  value={sellerId}
+                  onChange={setSellerId}
+                  options={sellers.map(s => ({ value: s.id, label: `${s.name}${s.code ? ` (${s.code})` : ''}` }))}
+                  emptyLabel="Sem vendedor"
+                  placeholder="Sem vendedor"
+                />
+              </div>
+
+              <div>
+                <span className="field-label">Forma de pagamento</span>
+                <StyledSelect
+                  value={paymentMethod}
+                  onChange={setPaymentMethod}
+                  options={PAYMENT_OPTIONS.map(p => ({ value: p, label: PAYMENT_LABELS[p] ?? p }))}
+                  emptyLabel="Não informado"
+                  placeholder="Não informado"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="edit-order-notes" className="field-label">Observações</label>
+                <Textarea
+                  id="edit-order-notes"
+                  value={notes}
+                  onChange={e => setNotes(e.target.value)}
+                  rows={3}
+                  className="resize-none"
+                  placeholder="Anotações internas sobre o pedido…"
+                />
               </div>
             </div>
-          )}
-        </section>
+          </Panel>
 
-        {/* ─── Detalhes ────────────────────────────────────────────────── */}
-        <section className="bg-card border border-border rounded-2xl overflow-hidden">
-          <div className="px-5 py-4 border-b border-border">
-            <h2 className="font-bold text-sm text-foreground">Detalhes do pedido</h2>
+          {/* Barra de ação do rodapé (única ação primária da tela) */}
+          <div className="sticky bottom-0 z-10 -mx-4 sm:mx-0 px-4 sm:px-0 py-3 bg-background/95 backdrop-blur-sm border-t border-border flex justify-end gap-2">
+            <Button variant="secondary" onClick={() => navigate('/admin/pedidos')}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={() => saveMutation.mutate()}
+              disabled={saveMutation.isPending || items.length === 0}
+            >
+              {saveMutation.isPending ? <Loader className="animate-spin" /> : <Save />}
+              Salvar alterações
+            </Button>
           </div>
-          <div className="px-5 py-4 space-y-4">
-
-            {/* Status */}
-            <div>
-              <label className="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wide">Status</label>
-              <StyledSelect
-                value={status}
-                onChange={setStatus}
-                options={STATUS_OPTIONS.map(s => ({ value: s, label: STATUS_LABELS[s], dotClassName: toneClasses(getOrderStatus(s).tone).dot }))}
-                searchable={false}
-                className="rounded-xl bg-card font-medium"
-              />
-            </div>
-
-            {/* Vendedor */}
-            <div>
-              <label className="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wide flex items-center gap-1">
-                <UserCheck className="w-3.5 h-3.5" /> Vendedor
-              </label>
-              <StyledSelect
-                value={sellerId}
-                onChange={setSellerId}
-                options={sellers.map(s => ({ value: s.id, label: `${s.name}${s.code ? ` (${s.code})` : ''}` }))}
-                emptyLabel="Sem vendedor"
-                placeholder="Sem vendedor"
-                className="rounded-xl bg-card font-medium"
-              />
-            </div>
-
-            {/* Forma de pagamento */}
-            <div>
-              <label className="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wide">Forma de pagamento</label>
-              <StyledSelect
-                value={paymentMethod}
-                onChange={setPaymentMethod}
-                options={PAYMENT_OPTIONS.map(p => ({ value: p, label: PAYMENT_LABELS[p] ?? p }))}
-                emptyLabel="Não informado"
-                placeholder="Não informado"
-                className="rounded-xl bg-card font-medium"
-              />
-            </div>
-
-            {/* Observações */}
-            <div>
-              <label className="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wide">Observações</label>
-              <textarea
-                value={notes}
-                onChange={e => setNotes(e.target.value)}
-                rows={3}
-                className="w-full px-3 py-2 rounded-xl border border-border bg-card text-sm resize-none focus:outline-none focus:ring-2 focus:ring-ring/40"
-                placeholder="Anotações internas sobre o pedido..."
-              />
-            </div>
-          </div>
-        </section>
-
-        {/* Save button (bottom) */}
-        <div className="flex justify-end pb-8">
-          <button
-            onClick={() => saveMutation.mutate()}
-            disabled={saveMutation.isPending || items.length === 0}
-            className="flex items-center gap-2 px-6 py-3 rounded-xl bg-success-solid hover:bg-success-solid/90 text-white text-sm font-bold transition-colors disabled:opacity-60"
-          >
-            {saveMutation.isPending ? <Loader className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-            Salvar alterações
-          </button>
         </div>
-      </div>
+      </AdminPage>
     </AdminLayout>
   )
 }

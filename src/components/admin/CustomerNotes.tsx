@@ -2,7 +2,9 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { toast } from 'sonner'
-import { StickyNote, Plus, Edit2, Trash2, Check, X, Loader } from 'lucide-react'
+import { StickyNote, Plus, Edit2, Trash2, Check, Loader } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Textarea } from '@/components/ui/textarea'
 
 interface CustomerNote {
   id: string
@@ -89,121 +91,115 @@ export function CustomerNotes({ userId }: CustomerNotesProps) {
     setEditContent(note.content)
   }
 
-  const inputCls = 'w-full px-3 py-2 text-sm rounded-lg border border-border bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/40 resize-none'
-
   return (
     <div className="px-5 py-4 border-b border-border">
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest">
-          Notas Internas {notes.length > 0 && <span className="normal-case font-semibold opacity-60">({notes.length})</span>}
+      <div className="flex items-center justify-between gap-2 mb-3">
+        <h3 className="text-[14px] font-semibold text-foreground tracking-tight">
+          Notas internas {notes.length > 0 && <span className="font-normal text-muted-foreground tabular-nums">({notes.length})</span>}
         </h3>
         {!adding && (
-          <button
-            onClick={() => setAdding(true)}
-            className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium text-muted-foreground hover:bg-accent border border-border transition-colors"
-          >
-            <Plus className="w-3 h-3" />
+          <Button variant="secondary" size="xs" onClick={() => setAdding(true)}>
+            <Plus />
             Adicionar
-          </button>
+          </Button>
         )}
       </div>
 
       {adding && (
         <div className="mb-3 space-y-2">
-          <textarea
+          <Textarea
             value={newContent}
             onChange={e => setNewContent(e.target.value)}
-            placeholder="Escreva uma observação interna..."
+            placeholder="Escreva uma observação interna…"
             rows={3}
-            className={inputCls}
+            className="resize-none"
             autoFocus
           />
-          <div className="flex gap-2">
-            <button
+          <div className="flex justify-end gap-2">
+            <Button variant="secondary" size="sm" onClick={() => { setAdding(false); setNewContent('') }}>
+              Cancelar
+            </Button>
+            <Button
+              size="sm"
               onClick={() => createMutation.mutate(newContent)}
               disabled={createMutation.isPending || !newContent.trim()}
-              className="btn-action flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg"
             >
-              {createMutation.isPending ? <Loader className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
-              Salvar
-            </button>
-            <button
-              onClick={() => { setAdding(false); setNewContent('') }}
-              className="flex items-center gap-1 px-3 py-1.5 text-xs text-muted-foreground hover:bg-accent rounded-lg border border-border transition-colors"
-            >
-              <X className="w-3.5 h-3.5" />
-              Cancelar
-            </button>
+              {createMutation.isPending ? <Loader className="animate-spin" /> : <Check />}
+              Salvar nota
+            </Button>
           </div>
         </div>
       )}
 
       {isLoading ? (
-        <div className="flex items-center gap-2 py-3">
-          <Loader className="w-4 h-4 animate-spin text-muted-foreground/40" />
-          <span className="text-xs text-muted-foreground">Carregando notas...</span>
+        <div className="flex items-center gap-2 py-3 text-[13px] text-muted-foreground">
+          <Loader className="w-4 h-4 animate-spin text-ink-400" />
+          Carregando notas…
         </div>
       ) : notes.length === 0 && !adding ? (
-        <div className="flex items-center gap-2.5 bg-muted/50 rounded-lg p-3 ring-1 ring-inset ring-border">
-          <StickyNote className="w-4 h-4 text-muted-foreground/40 flex-shrink-0" />
-          <p className="text-xs text-muted-foreground italic">Nenhuma nota registrada</p>
+        <div className="flex items-center gap-2.5 bg-surface rounded-md p-3 border border-border">
+          <StickyNote className="w-4 h-4 text-ink-400 shrink-0" />
+          <p className="text-[13px] text-muted-foreground">Nenhuma nota registrada</p>
         </div>
       ) : (
-        <div className="space-y-2.5">
+        <div className="space-y-2">
           {notes.map(note => (
-            <div key={note.id} className="bg-muted/50 rounded-xl border border-border/80 p-3">
+            <div key={note.id} className="bg-surface rounded-md border border-border p-3">
               {editingId === note.id ? (
                 <div className="space-y-2">
-                  <textarea
+                  <Textarea
                     value={editContent}
                     onChange={e => setEditContent(e.target.value)}
                     rows={3}
-                    className={inputCls}
+                    className="resize-none bg-card"
                     autoFocus
                   />
-                  <div className="flex gap-2">
-                    <button
+                  <div className="flex justify-end gap-2">
+                    <Button variant="secondary" size="xs" onClick={() => setEditingId(null)}>
+                      Cancelar
+                    </Button>
+                    <Button
+                      size="xs"
                       onClick={() => updateMutation.mutate({ id: note.id, content: editContent })}
                       disabled={updateMutation.isPending || !editContent.trim()}
-                      className="btn-action flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded-lg"
                     >
-                      {updateMutation.isPending ? <Loader className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
+                      {updateMutation.isPending ? <Loader className="animate-spin" /> : <Check />}
                       Salvar
-                    </button>
-                    <button
-                      onClick={() => setEditingId(null)}
-                      className="px-2.5 py-1 text-xs text-muted-foreground hover:bg-accent rounded-lg border border-border transition-colors"
-                    >
-                      Cancelar
-                    </button>
+                    </Button>
                   </div>
                 </div>
               ) : (
                 <>
-                  <p className="text-sm text-foreground leading-snug whitespace-pre-wrap">{note.content}</p>
-                  <div className="flex items-center justify-between mt-2">
-                    <p className="text-[10px] text-muted-foreground">
+                  <p className="text-[13px] text-foreground leading-snug whitespace-pre-wrap">{note.content}</p>
+                  <div className="flex items-center justify-between gap-2 mt-2">
+                    <p className="text-[12px] text-muted-foreground">
                       {note.created_by_name || 'Admin'} · {new Date(note.created_at).toLocaleDateString('pt-BR', {
                         day: '2-digit', month: 'short', year: 'numeric',
                       })}
                       {note.updated_at !== note.created_at && ' (editada)'}
                     </p>
-                    <div className="flex gap-1">
-                      <button
+                    <div className="flex gap-0.5 -mr-1">
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        className="h-7 w-7"
                         onClick={() => startEdit(note)}
-                        className="p-1 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
                         title="Editar nota"
+                        aria-label="Editar nota"
                       >
-                        <Edit2 className="w-3 h-3" />
-                      </button>
-                      <button
+                        <Edit2 />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        className="h-7 w-7 hover:text-danger hover:bg-danger-subtle"
                         onClick={() => deleteMutation.mutate(note.id)}
                         disabled={deleteMutation.isPending}
-                        className="p-1 rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
                         title="Excluir nota"
+                        aria-label="Excluir nota"
                       >
-                        <Trash2 className="w-3 h-3" />
-                      </button>
+                        <Trash2 />
+                      </Button>
                     </div>
                   </div>
                 </>

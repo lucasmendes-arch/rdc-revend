@@ -54,7 +54,7 @@ export default function ConditionValueInput({ condition, config, inputClass, onC
               // Tingido com a cor da própria etapa (mesma convenção do kanban
               // no dark mode) em vez de uma segunda paleta só pra chip.
               style={on ? { backgroundColor: `${opt.color}1A`, color: opt.color, borderColor: opt.color } : undefined}
-              className={`px-2 py-0.5 rounded-full text-[11px] font-semibold border transition-colors ${
+              className={`px-2 py-0.5 rounded-full text-[12px] font-medium border transition-colors ${
                 on ? '' : 'border-border text-muted-foreground hover:text-foreground'
               }`}
             >
@@ -80,7 +80,7 @@ export default function ConditionValueInput({ condition, config, inputClass, onC
         {single && !known && (
           // Regra antiga gravada com valor inválido: sem este aviso o seletor
           // aparece vazio e a condição continua sem casar com nada.
-          <p className="text-[11px] text-danger mt-1">
+          <p className="text-[12px] text-danger mt-1">
             Valor gravado (“{single}”) não é uma etapa válida — esta condição nunca dispara. Escolha uma etapa acima.
           </p>
         )}

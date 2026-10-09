@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { Navigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Loader, Search, Package, Plus, Tags, Target as TargetIcon, ChevronUp, ChevronDown, Pencil, Trash2, ImagePlus, Copy, ArrowRight } from 'lucide-react'
+import { Loader, Package, Plus, Tags, Target as TargetIcon, ChevronUp, ChevronDown, Pencil, Trash2, ImagePlus, Copy, ArrowRight } from 'lucide-react'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 import { useImageUpload } from '@/hooks/useImageUpload'
@@ -11,6 +11,11 @@ import { STOCK_CATEGORY_PALETTE, getCategoryColor } from '@/lib/stockCategoryCol
 import { naturalCompare } from '@/lib/naturalSort'
 import { sortByStoreOrder } from '@/lib/storeOrder'
 import StyledSelect from '@/components/ui/styled-select'
+import { AdminPage, PageTabs, Panel, PageLoading, SearchInput, Toolbar } from '@/components/admin/ui/AdminPage'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 
 interface Product {
   id: string
@@ -101,15 +106,15 @@ function ClassificationRow({ product, categories, onSave, onDelete }: { product:
   }
 
   return (
-    <tr className="border-b border-border last:border-b-0">
-      <td className="px-4 py-2.5 text-sm">
+    <tr>
+      <td>
         <div className="flex items-center gap-2.5">
           {product.stock_only ? (
             <>
               <button
                 onClick={() => fileInputRef.current?.click()}
                 disabled={uploadingPhoto}
-                className="relative w-8 h-8 rounded-lg overflow-hidden shrink-0 bg-surface-alt border border-border hover:ring-2 hover:ring-ink-300 transition-shadow"
+                className="relative w-9 h-9 rounded-md overflow-hidden shrink-0 bg-muted border border-border hover:border-ink-300 transition-colors"
                 title={product.main_image ? 'Trocar foto' : 'Adicionar foto'}
               >
                 {uploadingPhoto ? (
@@ -133,7 +138,7 @@ function ClassificationRow({ product, categories, onSave, onDelete }: { product:
               />
             </>
           ) : (
-            <div className="w-8 h-8 rounded-lg overflow-hidden shrink-0 bg-surface-alt border border-border">
+            <div className="w-9 h-9 rounded-md overflow-hidden shrink-0 bg-muted border border-border">
               {product.main_image ? (
                 <img src={product.main_image} alt="" className="w-full h-full object-cover" />
               ) : (
@@ -153,7 +158,7 @@ function ClassificationRow({ product, categories, onSave, onDelete }: { product:
                   if (e.key === 'Enter') commitName()
                   if (e.key === 'Escape') { setName(product.name); setEditingName(false) }
                 }}
-                className="w-full max-w-[220px] h-7 rounded-lg border border-input text-sm bg-card px-2 focus:outline-none focus:ring-2 focus:ring-ring"
+                className="w-full max-w-[220px] h-8 rounded-md border border-input text-[13px] bg-card text-foreground px-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               />
             ) : (
               <span
@@ -174,14 +179,14 @@ function ClassificationRow({ product, categories, onSave, onDelete }: { product:
               </span>
             )}
             {product.stock_only ? (
-              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-info-subtle text-info uppercase">Só contagem</span>
+              <Badge variant="info" className="mt-0.5">Só contagem</Badge>
             ) : (
-              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-info-subtle text-info uppercase">Catálogo atacado</span>
+              <Badge variant="neutral" className="mt-0.5">Catálogo atacado</Badge>
             )}
           </div>
         </div>
       </td>
-      <td className="px-4 py-2.5 text-center">
+      <td className="text-center">
         <input
           type="number"
           min={1}
@@ -192,10 +197,10 @@ function ClassificationRow({ product, categories, onSave, onDelete }: { product:
             setUnitsPerBox(val ?? '')
             scheduleSave({ units_per_box: val })
           }}
-          className="w-20 h-8 rounded-lg border border-input text-center text-sm bg-card focus:outline-none focus:ring-2 focus:ring-ring"
+          className="w-20 h-8 rounded-md border border-input text-center text-[13px] tabular-nums bg-card text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         />
       </td>
-      <td className="px-4 py-2.5 text-center">
+      <td className="text-center">
         <StyledSelect
           value={packageType}
           onChange={(v) => {
@@ -213,10 +218,10 @@ function ClassificationRow({ product, categories, onSave, onDelete }: { product:
           emptyLabel="—"
           placeholder="—"
           searchable={false}
-          className="w-auto h-8 rounded-lg bg-card px-1.5"
+          className="w-auto h-8 bg-card px-2 mx-auto"
         />
       </td>
-      <td className="px-4 py-2.5 text-center">
+      <td className="text-center">
         <StyledSelect
           value={stockCategory}
           onChange={(v) => {
@@ -242,19 +247,22 @@ function ClassificationRow({ product, categories, onSave, onDelete }: { product:
                 })()
               : undefined
           }
-          className="w-36 h-8 rounded-lg bg-card px-1.5 font-medium"
+          className="w-36 h-8 bg-card px-2 font-medium mx-auto"
         />
       </td>
       <td className="w-6">{dirty && <Loader className="w-3.5 h-3.5 animate-spin text-muted-foreground" />}</td>
-      <td className="w-10 px-2 text-center">
+      <td className="w-12 !px-2 text-center">
         {product.stock_only && (
-          <button
+          <Button
+            variant="ghost"
+            size="icon-sm"
             onClick={() => onDelete(product)}
-            className="text-muted-foreground hover:text-danger transition-colors"
+            className="hover:text-danger"
             title="Excluir item"
+            aria-label="Excluir item"
           >
-            <Trash2 className="w-3.5 h-3.5" />
-          </button>
+            <Trash2 />
+          </Button>
         )}
       </td>
     </tr>
@@ -301,8 +309,8 @@ function TargetCell({
             setDirty(false)
           }, 800)
         }}
-        className={`w-16 h-8 rounded-lg border border-input text-center text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-ring ${
-          dimZero && qty === 0 ? 'bg-surface-alt text-muted-foreground opacity-50' : 'bg-card'
+        className={`w-16 h-8 rounded-md border border-input text-center text-[13px] font-semibold tabular-nums text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+          dimZero && qty === 0 ? 'bg-muted text-muted-foreground opacity-50' : 'bg-card'
         }`}
       />
       {dirty && <Loader className="w-3 h-3 animate-spin text-muted-foreground shrink-0" />}
@@ -353,7 +361,7 @@ function CategoryChip({
 
   return (
     <div className="flex flex-col gap-1">
-      <div className="flex items-center gap-0.5 rounded-lg pl-1 pr-1 py-1" style={{ backgroundColor: color.bg }}>
+      <div className="flex items-center gap-0.5 rounded-md pl-1 pr-1 py-1" style={{ backgroundColor: color.bg }}>
         <button
           onClick={() => setShowPicker((v) => !v)}
           className="w-4 h-4 rounded-full border border-black/10 shrink-0 ml-0.5"
@@ -371,12 +379,12 @@ function CategoryChip({
               if (e.key === 'Enter') commitName()
               if (e.key === 'Escape') { setName(category.name); setEditing(false) }
             }}
-            className="w-28 h-5 mx-1 rounded border-0 text-xs font-medium bg-white/80 px-1.5 focus:outline-none focus:ring-2 focus:ring-ring"
+            className="w-28 h-6 mx-1 rounded-sm border-0 text-[12.5px] font-medium bg-card/80 px-1.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             style={{ color: color.text }}
           />
         ) : (
           <span
-            className="text-xs font-medium mx-1.5 cursor-pointer"
+            className="text-[12.5px] font-medium mx-1.5 cursor-pointer"
             style={{ color: color.text }}
             onClick={() => setEditing(true)}
             title="Clique para renomear"
@@ -387,7 +395,7 @@ function CategoryChip({
         <button
           onClick={() => onReorder('up')}
           disabled={isFirst || isPending}
-          className="w-5 h-5 rounded flex items-center justify-center hover:bg-white/50 disabled:opacity-25 disabled:cursor-not-allowed transition-colors"
+          className="w-5 h-5 rounded flex items-center justify-center hover:bg-card/50 disabled:opacity-25 disabled:cursor-not-allowed transition-colors"
           style={{ color: color.text }}
           title="Mover pra cima"
         >
@@ -396,7 +404,7 @@ function CategoryChip({
         <button
           onClick={() => onReorder('down')}
           disabled={isLast || isPending}
-          className="w-5 h-5 rounded flex items-center justify-center hover:bg-white/50 disabled:opacity-25 disabled:cursor-not-allowed transition-colors"
+          className="w-5 h-5 rounded flex items-center justify-center hover:bg-card/50 disabled:opacity-25 disabled:cursor-not-allowed transition-colors"
           style={{ color: color.text }}
           title="Mover pra baixo"
         >
@@ -404,7 +412,7 @@ function CategoryChip({
         </button>
       </div>
       {showPicker && (
-        <div className="flex flex-wrap gap-1 bg-card border border-border rounded-lg p-1.5 shadow-md max-w-[160px]">
+        <div className="flex flex-wrap gap-1 bg-card border border-border rounded-md p-1.5 shadow-md max-w-[160px]">
           {STOCK_CATEGORY_PALETTE.map((c, i) => (
             <button
               key={i}
@@ -727,15 +735,17 @@ export default function EstoqueConfig() {
     copyTargets.mutate({ fromStoreId: from.id, toStoreId: to.id })
   }
 
-  if (role !== 'admin' && role !== 'administrativo') {
-    return <Navigate to="/estoque/contagem" replace />
-  }
-
+  // useMemo ANTES do early return: hook depois de `return <Navigate>` violava
+  // a regra dos hooks (ordem de hooks muda se o role mudar entre renders).
   const categoryOrderByName = useMemo(() => {
     const map = new Map<string, number>()
     categories.forEach((c) => map.set(c.name, c.sort_order))
     return map
   }, [categories])
+
+  if (role !== 'admin' && role !== 'administrativo') {
+    return <Navigate to="/estoque/contagem" replace />
+  }
 
   const filteredProducts = products
     .filter((p) => !search.trim() || p.name.toLowerCase().includes(search.toLowerCase()))
@@ -749,244 +759,225 @@ export default function EstoqueConfig() {
 
   return (
     <EstoqueLayout>
-      <div className="bg-card rounded-2xl border border-border shadow-card overflow-hidden">
-        <div className="p-5 space-y-3 border-b border-border">
-          <h1 className="text-lg font-bold text-foreground">Configurações do módulo de Estoque</h1>
-          <p className="text-xs text-muted-foreground">
-            Kits (compostos por outros produtos) não aparecem aqui nem na contagem — conte os componentes separadamente.
-          </p>
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Buscar produto…"
-              className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-input text-sm bg-card focus:ring-2 focus:ring-ring focus:outline-none"
-            />
-          </div>
-        </div>
-        <div className="flex gap-1 px-3 pt-1">
-          {TABS.map((tab) => (
-            <button
-              key={tab.key}
-              onClick={() => setActiveTab(tab.key)}
-              className={`flex items-center gap-1.5 px-3 py-2.5 text-sm font-medium border-b-2 transition-colors ${
-                activeTab === tab.key
-                  ? 'border-foreground text-foreground'
-                  : 'border-transparent text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              <tab.icon className="w-4 h-4" />{tab.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {activeTab === 'classificacao' && (
-        <section className="space-y-2">
-          <div className="flex items-center justify-end flex-wrap gap-1.5 px-1">
-            <input
-              type="text"
-              value={newCategoryName}
-              onChange={(e) => setNewCategoryName(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') handleCreateCategory() }}
-              placeholder="Nova categoria (ex: Óleo)"
-              className="h-9 w-48 rounded-lg border border-input text-sm bg-card px-2.5 focus:outline-none focus:ring-2 focus:ring-ring"
-            />
-            <button
-              onClick={handleCreateCategory}
-              disabled={!newCategoryName.trim() || createCategory.isPending}
-              className="flex items-center gap-1 px-3 h-9 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              <Plus className="w-3.5 h-3.5" /> Categoria
-            </button>
-            <button
-              onClick={() => setShowNewItemForm((v) => !v)}
-              className="flex items-center gap-1 px-3 h-9 rounded-lg btn-gold text-xs font-semibold transition-colors"
-            >
-              <Plus className="w-3.5 h-3.5" /> Item só contagem
-            </button>
-          </div>
-
-          {categories.length > 0 && (
-            <div className="bg-card rounded-2xl border border-border shadow-card p-3">
-              <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide px-1 mb-2">
-                Ordem das categorias — clique no nome para renomear (contagem e classificação seguem esta ordem)
-              </p>
-              <div className="flex flex-wrap items-start gap-1.5">
-                {categories.map((cat, index) => (
-                  <CategoryChip
-                    key={cat.id}
-                    category={cat}
-                    isFirst={index === 0}
-                    isLast={index === categories.length - 1}
-                    isPending={reorderCategory.isPending}
-                    onReorder={(direction) => reorderCategory.mutate({ category: cat, direction })}
-                    onColorChange={(colorIndex) => setCategoryColor.mutate({ id: cat.id, colorIndex })}
-                    onRename={(newName) => renameCategory.mutate({ category: cat, newName })}
-                  />
-                ))}
-              </div>
+      <AdminPage
+        title="Configurações do estoque"
+        description="Kits (compostos por outros produtos) não aparecem aqui nem na contagem — conte os componentes separadamente."
+        tabs={
+          <PageTabs
+            items={TABS.map((t) => ({ key: t.key, label: t.label, icon: t.icon }))}
+            value={activeTab}
+            onChange={(k) => setActiveTab(k)}
+          />
+        }
+        toolbar={
+          <Toolbar>
+            <SearchInput value={search} onChange={setSearch} placeholder="Buscar produto…" className="sm:w-80" />
+          </Toolbar>
+        }
+      >
+        {activeTab === 'classificacao' && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-end flex-wrap gap-2">
+              <Input
+                type="text"
+                value={newCategoryName}
+                onChange={(e) => setNewCategoryName(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleCreateCategory() }}
+                placeholder="Nova categoria (ex: Óleo)"
+                aria-label="Nome da nova categoria"
+                className="w-full sm:w-52"
+              />
+              <Button
+                variant="secondary"
+                onClick={handleCreateCategory}
+                disabled={!newCategoryName.trim() || createCategory.isPending}
+              >
+                <Plus /> Categoria
+              </Button>
+              <Button onClick={() => setShowNewItemForm((v) => !v)}>
+                <Plus /> Item só contagem
+              </Button>
             </div>
-          )}
 
-          {showNewItemForm && (
-            <div className="bg-card rounded-2xl border border-info-border shadow-card p-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <p className="text-xs font-semibold text-info">Novos itens — só pra contagem (não entram no catálogo de venda)</p>
-                <button onClick={() => setShowNewItemForm(false)} className="text-xs text-muted-foreground hover:text-foreground">Cancelar</button>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-4 gap-2.5">
-                <textarea
-                  value={newItem.name}
-                  onChange={(e) => setNewItem({ ...newItem, name: e.target.value })}
-                  placeholder={'Um nome por linha — cole uma lista pra criar vários de uma vez:\nDetergente 5L\nPapel toalha\nÁlcool 70%'}
-                  rows={4}
-                  className="sm:col-span-2 rounded-lg border border-input text-sm bg-card px-2.5 py-2 focus:outline-none focus:ring-2 focus:ring-ring resize-y"
-                />
-                <StyledSelect
-                  value={newItem.stock_category}
-                  onChange={(v) => setNewItem({ ...newItem, stock_category: v })}
-                  options={categories.map((c) => ({ value: c.name, label: c.name, dotColor: getCategoryColor(c.color_index).bg }))}
-                  emptyLabel="Sem categoria"
-                  placeholder="Sem categoria"
-                  className="w-auto rounded-lg bg-card px-2"
-                />
-                <StyledSelect
-                  value={newItem.package_type}
-                  onChange={(v) => setNewItem({ ...newItem, package_type: v, ...(v === 'UND' ? { units_per_box: '1' } : {}) })}
-                  options={PACKAGE_OPTIONS}
-                  emptyLabel="Embalagem"
-                  placeholder="Embalagem"
-                  searchable={false}
-                  className="w-auto rounded-lg bg-card px-2"
-                />
-              </div>
-              <div className="flex items-center gap-2.5">
-                <input
-                  type="number"
-                  min={1}
-                  value={newItem.units_per_box}
-                  onChange={(e) => setNewItem({ ...newItem, units_per_box: e.target.value })}
-                  placeholder="Itens/caixa (opcional)"
-                  className="w-40 h-9 rounded-lg border border-input text-sm bg-card px-2.5 focus:outline-none focus:ring-2 focus:ring-ring"
-                />
-                <button
-                  onClick={handleCreateStockOnlyItem}
-                  disabled={parsedNewItemNames.length === 0 || createStockOnlyItem.isPending}
-                  className="flex items-center gap-1.5 px-4 h-9 rounded-lg btn-gold text-xs font-bold disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {createStockOnlyItem.isPending ? <Loader className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
-                  {parsedNewItemNames.length > 1 ? `Criar ${parsedNewItemNames.length} itens` : 'Criar item'}
-                </button>
-                {parsedNewItemNames.length > 1 && (
-                  <span className="text-[11px] text-muted-foreground">Categoria e embalagem valem pra todos — dá pra ajustar item a item depois, na tabela.</span>
-                )}
-              </div>
+            {categories.length > 0 && (
+              <Panel
+                title="Ordem das categorias"
+                description="Clique no nome para renomear — contagem e classificação seguem esta ordem"
+              >
+                <div className="flex flex-wrap items-start gap-1.5">
+                  {categories.map((cat, index) => (
+                    <CategoryChip
+                      key={cat.id}
+                      category={cat}
+                      isFirst={index === 0}
+                      isLast={index === categories.length - 1}
+                      isPending={reorderCategory.isPending}
+                      onReorder={(direction) => reorderCategory.mutate({ category: cat, direction })}
+                      onColorChange={(colorIndex) => setCategoryColor.mutate({ id: cat.id, colorIndex })}
+                      onRename={(newName) => renameCategory.mutate({ category: cat, newName })}
+                    />
+                  ))}
+                </div>
+              </Panel>
+            )}
+
+            {showNewItemForm && (
+              <Panel
+                title="Novos itens só para contagem"
+                description="Não entram no catálogo de venda"
+                actions={<Button variant="ghost" size="sm" onClick={() => setShowNewItemForm(false)}>Cancelar</Button>}
+              >
+                <div className="space-y-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-4 gap-2.5">
+                    <Textarea
+                      value={newItem.name}
+                      onChange={(e) => setNewItem({ ...newItem, name: e.target.value })}
+                      placeholder={'Um nome por linha — cole uma lista pra criar vários de uma vez:\nDetergente 5L\nPapel toalha\nÁlcool 70%'}
+                      rows={4}
+                      aria-label="Nomes dos itens"
+                      className="sm:col-span-2 resize-y"
+                    />
+                    <StyledSelect
+                      value={newItem.stock_category}
+                      onChange={(v) => setNewItem({ ...newItem, stock_category: v })}
+                      options={categories.map((c) => ({ value: c.name, label: c.name, dotColor: getCategoryColor(c.color_index).bg }))}
+                      emptyLabel="Sem categoria"
+                      placeholder="Sem categoria"
+                    />
+                    <StyledSelect
+                      value={newItem.package_type}
+                      onChange={(v) => setNewItem({ ...newItem, package_type: v, ...(v === 'UND' ? { units_per_box: '1' } : {}) })}
+                      options={PACKAGE_OPTIONS}
+                      emptyLabel="Embalagem"
+                      placeholder="Embalagem"
+                      searchable={false}
+                    />
+                  </div>
+                  <div className="flex items-center flex-wrap gap-2.5">
+                    <Input
+                      type="number"
+                      min={1}
+                      value={newItem.units_per_box}
+                      onChange={(e) => setNewItem({ ...newItem, units_per_box: e.target.value })}
+                      placeholder="Itens/caixa (opcional)"
+                      aria-label="Itens por caixa"
+                      className="w-44"
+                    />
+                    <Button
+                      onClick={handleCreateStockOnlyItem}
+                      disabled={parsedNewItemNames.length === 0 || createStockOnlyItem.isPending}
+                    >
+                      {createStockOnlyItem.isPending ? <Loader className="animate-spin" /> : <Plus />}
+                      {parsedNewItemNames.length > 1 ? `Criar ${parsedNewItemNames.length} itens` : 'Criar item'}
+                    </Button>
+                    {parsedNewItemNames.length > 1 && (
+                      <span className="text-[12px] text-muted-foreground">Categoria e embalagem valem pra todos — dá pra ajustar item a item depois, na tabela.</span>
+                    )}
+                  </div>
+                </div>
+              </Panel>
+            )}
+
+            <Panel flush>
+              {productsLoading ? (
+                <PageLoading />
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="data-table">
+                    <thead>
+                      <tr>
+                        <th>Produto</th>
+                        <th className="!text-center">Itens/caixa</th>
+                        <th className="!text-center">Embalagem</th>
+                        <th className="!text-center">Categoria de estoque</th>
+                        <th className="w-6" aria-label="Salvando"></th>
+                        <th className="w-12" aria-label="Ações"></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredProducts.map((p) => (
+                        <ClassificationRow key={p.id} product={p} categories={categories} onSave={handleSaveProduct} onDelete={handleDeleteProduct} />
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </Panel>
+          </div>
+        )}
+
+        {activeTab === 'metas' && (
+          <div className="space-y-4">
+            <p className="text-[13px] text-muted-foreground max-w-prose">
+              Cada loja tem seu próprio porte — defina a meta ideal (em unidades) por loja, lado a lado.
+              Nas lojas satélite, meta vazia/0 = a loja não trabalha com o produto (ele não aparece na contagem dela) e contagem abaixo da meta gera pedido de reposição enviado pela central.
+              A central conta o catálogo inteiro, independente de meta — lá, a meta é o ponto mínimo de estoque: contagem abaixo dela sinaliza "comprar do fornecedor" na revisão da contagem, sem gerar pedido interno.
+            </p>
+            <div className="flex items-center flex-wrap gap-2">
+              <span className="text-[13px] font-medium text-foreground flex items-center gap-1.5"><Copy className="w-4 h-4 text-ink-400" /> Copiar metas</span>
+              <StyledSelect
+                variant="inline"
+                value={copyFromStore}
+                onChange={setCopyFromStore}
+                options={stores.map((s) => ({ value: s.id, label: s.name }))}
+                placeholder="Loja de origem"
+              />
+              <ArrowRight className="w-4 h-4 text-ink-400" />
+              <StyledSelect
+                variant="inline"
+                value={copyToStore}
+                onChange={setCopyToStore}
+                options={stores.filter((s) => s.id !== copyFromStore).map((s) => ({ value: s.id, label: s.name }))}
+                placeholder="Loja de destino"
+              />
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={handleCopyTargets}
+                disabled={!copyFromStore || !copyToStore || copyFromStore === copyToStore || copyTargets.isPending}
+              >
+                {copyTargets.isPending ? <Loader className="animate-spin" /> : <Copy />}
+                Copiar
+              </Button>
             </div>
-          )}
-
-          <div className="bg-card rounded-2xl border border-border shadow-card overflow-hidden">
-            {productsLoading ? (
-              <div className="text-center py-10"><Loader className="w-6 h-6 animate-spin text-gold-text mx-auto" /></div>
-            ) : (
+            <Panel flush>
               <div className="overflow-x-auto">
-                <table className="w-full">
+                <table className="data-table">
                   <thead>
-                    <tr className="border-b border-border bg-surface-alt">
-                      <th className="px-4 py-2.5 text-left text-xs font-semibold text-foreground">Produto</th>
-                      <th className="px-4 py-2.5 text-center text-xs font-semibold text-foreground">Itens/caixa</th>
-                      <th className="px-4 py-2.5 text-center text-xs font-semibold text-foreground">Embalagem</th>
-                      <th className="px-4 py-2.5 text-center text-xs font-semibold text-foreground">Categoria de estoque</th>
-                      <th className="w-6"></th>
-                      <th className="w-10"></th>
+                    <tr>
+                      <th className="sticky left-0 z-10">Produto</th>
+                      {stores.map((s) => (
+                        <th key={s.id} className="!text-center whitespace-nowrap">
+                          {s.name}
+                          {s.type === 'central' && <span className="block text-[11.5px] font-normal text-muted-foreground">central — conta tudo</span>}
+                        </th>
+                      ))}
                     </tr>
                   </thead>
                   <tbody>
                     {filteredProducts.map((p) => (
-                      <ClassificationRow key={p.id} product={p} categories={categories} onSave={handleSaveProduct} onDelete={handleDeleteProduct} />
+                      <tr key={p.id}>
+                        <td className="font-medium text-foreground sticky left-0 z-10 bg-card whitespace-nowrap">{p.name}</td>
+                        {stores.map((s) => (
+                          <td key={s.id} className="!px-2">
+                            <TargetCell
+                              productId={p.id}
+                              storeId={s.id}
+                              target={targetsByProductStore.get(`${p.id}:${s.id}`)}
+                              dimZero={s.type === 'satellite'}
+                              onSave={handleSaveTarget}
+                            />
+                          </td>
+                        ))}
+                      </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
-            )}
+            </Panel>
           </div>
-        </section>
-      )}
-
-      {activeTab === 'metas' && (
-        <section className="space-y-2 pb-8">
-          <p className="text-xs text-muted-foreground px-1">
-            Cada loja tem seu próprio porte — defina a meta ideal (em unidades) por loja, lado a lado.
-            Nas lojas satélite, meta vazia/0 = a loja não trabalha com o produto (ele não aparece na contagem dela) e contagem abaixo da meta gera pedido de reposição enviado pela central.
-            A central conta o catálogo inteiro, independente de meta — lá, a meta é o ponto mínimo de estoque: contagem abaixo dela sinaliza "comprar do fornecedor" na revisão da contagem, sem gerar pedido interno.
-          </p>
-          <div className="flex items-center flex-wrap gap-1.5 px-1">
-            <span className="text-xs font-semibold text-foreground flex items-center gap-1"><Copy className="w-3.5 h-3.5" /> Copiar metas:</span>
-            <StyledSelect
-              variant="xs"
-              value={copyFromStore}
-              onChange={setCopyFromStore}
-              options={stores.map((s) => ({ value: s.id, label: s.name }))}
-              placeholder="Loja de origem"
-              className="h-8 rounded-lg bg-card px-1.5"
-            />
-            <ArrowRight className="w-3.5 h-3.5 text-muted-foreground" />
-            <StyledSelect
-              variant="xs"
-              value={copyToStore}
-              onChange={setCopyToStore}
-              options={stores.filter((s) => s.id !== copyFromStore).map((s) => ({ value: s.id, label: s.name }))}
-              placeholder="Loja de destino"
-              className="h-8 rounded-lg bg-card px-1.5"
-            />
-            <button
-              onClick={handleCopyTargets}
-              disabled={!copyFromStore || !copyToStore || copyFromStore === copyToStore || copyTargets.isPending}
-              className="flex items-center gap-1 px-3 h-8 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              {copyTargets.isPending ? <Loader className="w-3.5 h-3.5 animate-spin" /> : <Copy className="w-3.5 h-3.5" />}
-              Copiar
-            </button>
-          </div>
-          <div className="bg-card rounded-2xl border border-border shadow-card overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-border bg-surface-alt">
-                    <th className="px-4 py-2.5 text-left text-xs font-semibold text-foreground sticky left-0 bg-surface-alt">Produto</th>
-                    {stores.map((s) => (
-                      <th key={s.id} className="px-4 py-2.5 text-center text-xs font-semibold text-foreground whitespace-nowrap">
-                        {s.name}
-                        {s.type === 'central' && <span className="block text-[9px] font-medium text-muted-foreground normal-case">central — conta tudo</span>}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredProducts.map((p, index) => (
-                    <tr key={p.id} className={`border-b border-border last:border-b-0 ${index % 2 === 0 ? '' : 'bg-surface-alt/50'}`}>
-                      <td className="px-4 py-2.5 text-sm font-medium text-foreground sticky left-0 bg-inherit whitespace-nowrap">{p.name}</td>
-                      {stores.map((s) => (
-                        <td key={s.id} className="px-2 py-2.5">
-                          <TargetCell
-                            productId={p.id}
-                            storeId={s.id}
-                            target={targetsByProductStore.get(`${p.id}:${s.id}`)}
-                            dimZero={s.type === 'satellite'}
-                            onSave={handleSaveTarget}
-                          />
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </section>
-      )}
+        )}
+      </AdminPage>
     </EstoqueLayout>
   )
 }

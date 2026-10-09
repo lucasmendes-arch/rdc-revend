@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
 
 import { useTrackConversion } from '@/lib/hooks/useFacebookConversion';
 
@@ -80,10 +81,10 @@ export function CadastroAtacado({ onSubmit }: CadastroAtacadoProps) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 rounded-2xl border border-border bg-card p-6 shadow-card">
+    <form onSubmit={handleSubmit} className="space-y-4 rounded-lg border border-border bg-card p-4 sm:p-5 shadow-xs">
       <div>
-        <h2 className="text-lg font-semibold text-foreground tracking-tight">Cadastro Atacado</h2>
-        <p className="text-sm text-muted-foreground">
+        <h2 className="text-[15px] font-semibold text-foreground tracking-tight">Cadastro atacado</h2>
+        <p className="text-[13px] text-muted-foreground">
           Exemplo de uso do hook <code>useTrackConversion</code> após um cadastro concluído.
         </p>
       </div>
@@ -93,7 +94,7 @@ export function CadastroAtacado({ onSubmit }: CadastroAtacadoProps) {
         value={formData.name}
         onChange={(event) => handleChange('name', event.target.value)}
         placeholder="Nome completo"
-        className="w-full rounded-xl border border-input px-4 py-2.5"
+        className="flex h-9 w-full rounded-md border border-input bg-background px-3 text-base md:text-sm text-foreground placeholder:text-ink-400 hover:border-ink-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
       />
 
       <input
@@ -102,7 +103,7 @@ export function CadastroAtacado({ onSubmit }: CadastroAtacadoProps) {
         value={formData.email}
         onChange={(event) => handleChange('email', event.target.value)}
         placeholder="E-mail"
-        className="w-full rounded-xl border border-input px-4 py-2.5"
+        className="flex h-9 w-full rounded-md border border-input bg-background px-3 text-base md:text-sm text-foreground placeholder:text-ink-400 hover:border-ink-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
       />
 
       <input
@@ -110,7 +111,7 @@ export function CadastroAtacado({ onSubmit }: CadastroAtacadoProps) {
         value={formData.phone}
         onChange={(event) => handleChange('phone', event.target.value)}
         placeholder="WhatsApp"
-        className="w-full rounded-xl border border-input px-4 py-2.5"
+        className="flex h-9 w-full rounded-md border border-input bg-background px-3 text-base md:text-sm text-foreground placeholder:text-ink-400 hover:border-ink-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
       />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -118,26 +119,27 @@ export function CadastroAtacado({ onSubmit }: CadastroAtacadoProps) {
           value={formData.city}
           onChange={(event) => handleChange('city', event.target.value)}
           placeholder="Cidade"
-          className="w-full rounded-xl border border-input px-4 py-2.5"
+          className="flex h-9 w-full rounded-md border border-input bg-background px-3 text-base md:text-sm text-foreground placeholder:text-ink-400 hover:border-ink-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
         />
 
         <input
           value={formData.state}
           onChange={(event) => handleChange('state', event.target.value)}
           placeholder="Estado"
-          className="w-full rounded-xl border border-input px-4 py-2.5"
+          className="flex h-9 w-full rounded-md border border-input bg-background px-3 text-base md:text-sm text-foreground placeholder:text-ink-400 hover:border-ink-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
         />
       </div>
 
-      <button
+      <Button
         type="submit"
         disabled={loading}
-        className="w-full rounded-xl bg-primary px-4 py-3 font-bold text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-70"
+        size="lg"
+        className="w-full"
       >
         {loading ? 'Enviando...' : 'Cadastrar e rastrear Lead'}
-      </button>
+      </Button>
 
-      {message ? <p className="text-sm text-muted-foreground">{message}</p> : null}
+      {message ? <p className="text-[13px] text-muted-foreground">{message}</p> : null}
     </form>
   );
 }

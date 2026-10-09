@@ -6,6 +6,8 @@ import { supabase } from '@/lib/supabase'
 import { useEscapeToClose } from '@/hooks/useEscapeToClose'
 import { DateField } from '@/components/ui/date-field'
 import StyledSelect from '@/components/ui/styled-select'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import {
   REQUIRED_CONTRACT_DATA_FIELDS, CONTRACT_DATA_FIELD_LABELS, meiLegalName,
   type ContractDataField,
@@ -169,34 +171,38 @@ export default function DistratarParceiroModal({ processo, onConfirmEncerrar, on
 
   function label(field: ContractDataField, optional?: boolean) {
     return (
-      <label className="block text-[11px] text-muted-foreground mb-1">
+      <label className="field-label">
         {CONTRACT_DATA_FIELD_LABELS[field]}
         {optional ? null : <span className="text-danger"> *</span>}
       </label>
     )
   }
 
-  const inputClass = 'w-full px-2.5 py-1.5 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring'
-
+  // z-50 (não z-[60]): os dropdowns/calendários do StyledSelect e do
+  // DateField são portados pro <body> com z-50 — num modal z-[60] eles
+  // abriam POR TRÁS do modal. Abre por cima do card de detalhe (também z-50)
+  // por vir depois no DOM.
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-foreground/40 backdrop-blur-sm" onClick={() => !busy && onClose()} />
-      <div className="relative bg-card rounded-2xl shadow-2xl border border-border p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
-        <div className="flex items-start justify-between mb-1">
-          <h2 className="text-lg font-bold text-foreground">Encerrar vínculo de {processo.candidates?.name}</h2>
-          <button onClick={onClose} disabled={busy} className="p-1.5 rounded-lg hover:bg-surface-alt text-muted-foreground shrink-0 disabled:opacity-50">
-            <X className="w-4 h-4" />
-          </button>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="dp-distrato-title">
+      <div className="absolute inset-0 bg-ink-950/45 backdrop-blur-[2px] animate-in fade-in-0" onClick={() => !busy && onClose()} />
+      <div className="relative w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-xl border border-border bg-popover p-5 shadow-xl animate-in fade-in-0 zoom-in-[0.98] duration-150">
+        <div className="pr-8">
+          <h2 id="dp-distrato-title" className="text-[16px] font-semibold leading-tight tracking-tight text-foreground">
+            Encerrar vínculo de {processo.candidates?.name}
+          </h2>
+          <p className="mt-1.5 text-[13px] text-muted-foreground">
+            O distrato do contrato de parceria é gerado ao confirmar, e o parceiro sai da lista de ativos. O registro é mantido, não é apagado.
+          </p>
         </div>
-        <p className="text-xs text-muted-foreground mb-4">
-          O distrato do contrato de parceria é gerado ao confirmar, e o parceiro sai da lista de ativos. O registro é mantido, não é apagado.
-        </p>
+        <Button variant="ghost" size="icon-sm" onClick={onClose} disabled={busy} aria-label="Fechar" className="absolute right-3 top-3">
+          <X />
+        </Button>
 
-        <div className="rounded-xl border border-border bg-surface-alt p-3 space-y-3 mb-4">
+        <div className="mt-5 rounded-lg border border-border bg-surface p-4 space-y-4">
           <div>
-            <label className="block text-[11px] text-muted-foreground mb-1">Modelo base do distrato</label>
+            <label className="field-label">Modelo base do distrato</label>
             {templatesError ? (
-              <p className="text-[11px] text-danger">
+              <p className="text-[12px] text-danger">
                 Não foi possível carregar os modelos: {templatesError instanceof Error ? templatesError.message : 'erro desconhecido'}
               </p>
             ) : (
@@ -204,85 +210,88 @@ export default function DistratarParceiroModal({ processo, onConfirmEncerrar, on
                 value={templateId}
                 onChange={setTemplateId}
                 options={(templates?.templates ?? []).map((t) => ({ value: t.id, label: t.name }))}
-                placeholder={loadingTemplates ? 'Carregando modelos...' : 'Selecionar'}
+                placeholder={loadingTemplates ? 'Carregando modelos…' : 'Selecionar'}
                 disabled={loadingTemplates || busy}
               />
             )}
-            <p className="text-[10px] text-muted-foreground mt-1">
-              Os modelos são os documentos da pasta de distratos no Drive — para adicionar outro, basta colocá-lo lá.
+            <p className="text-[12px] text-muted-foreground mt-1.5">
+              Os modelos são os documentos da pasta de distratos no Drive. Para adicionar outro, basta colocá-lo lá.
             </p>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-[11px] text-muted-foreground mb-1">
-                Data do distrato <span className="text-danger">*</span>
-              </label>
-              <DateField value={termStart || null} onChange={(v) => setTermStart(v ?? '')} placeholder="Selecionar" />
+          <div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="field-label">
+                  Data do distrato <span className="text-danger">*</span>
+                </label>
+                <DateField value={termStart || null} onChange={(v) => setTermStart(v ?? '')} placeholder="Selecionar" />
+              </div>
+              <div>
+                <label className="field-label">
+                  Data do contrato de parceria <span className="text-danger">*</span>
+                </label>
+                <DateField value={contractDate || null} onChange={(v) => setContractDate(v ?? '')} placeholder="Selecionar" />
+              </div>
             </div>
-            <div>
-              <label className="block text-[11px] text-muted-foreground mb-1">
-                Data do contrato de parceria <span className="text-danger">*</span>
-              </label>
-              <DateField value={contractDate || null} onChange={(v) => setContractDate(v ?? '')} placeholder="Selecionar" />
-            </div>
+            <p className="text-[12px] text-muted-foreground mt-1.5">
+              {!dateFilled
+                ? 'Buscando a data do contrato de parceria…'
+                : parceria
+                  ? 'A data do contrato veio do contrato de parceria gerado aqui. Corrija se o assinado for outro.'
+                  : 'Sem contrato de parceria gerado no sistema: a data sugerida é a da efetivação. Confira antes de gerar.'}
+            </p>
           </div>
-          <p className="text-[10px] text-muted-foreground -mt-1">
-            {!dateFilled
-              ? 'Buscando a data do contrato de parceria...'
-              : parceria
-                ? 'A data do contrato veio do contrato de parceria gerado aqui — corrija se o assinado for outro.'
-                : 'Sem contrato de parceria gerado no sistema: a data sugerida é a da efetivação. Confira antes de gerar.'}
-          </p>
         </div>
 
-        <p className="text-xs font-semibold text-muted-foreground uppercase mb-2">Dados do parceiro</p>
-        <div className="grid grid-cols-2 gap-3 mb-4">
+        <h3 className="mt-5 mb-3 text-[14px] font-semibold text-foreground">Dados do parceiro</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             {label('cpf')}
-            <input value={form.cpf} onChange={(e) => setForm({ ...form, cpf: e.target.value.replace(/\D/g, '').slice(0, 11) })}
-              inputMode="numeric" placeholder="Somente números" className={inputClass} />
+            <Input value={form.cpf} onChange={(e) => setForm({ ...form, cpf: e.target.value.replace(/\D/g, '').slice(0, 11) })}
+              inputMode="numeric" placeholder="Somente números" />
           </div>
           <div>
             {label('cnpj')}
-            <input value={form.cnpj} onChange={(e) => setForm({ ...form, cnpj: e.target.value.replace(/\D/g, '').slice(0, 14) })}
-              inputMode="numeric" placeholder="Somente números" className={inputClass} />
+            <Input value={form.cnpj} onChange={(e) => setForm({ ...form, cnpj: e.target.value.replace(/\D/g, '').slice(0, 14) })}
+              inputMode="numeric" placeholder="Somente números" />
           </div>
-          <div className="col-span-2">
+          <div className="sm:col-span-2">
             {label('legal_name', true)}
-            <input value={form.legal_name} onChange={(e) => setForm({ ...form, legal_name: e.target.value })}
-              placeholder={meiLegalName(form.cnpj, processo.candidates?.name ?? '')} className={inputClass} />
+            <Input value={form.legal_name} onChange={(e) => setForm({ ...form, legal_name: e.target.value })}
+              placeholder={meiLegalName(form.cnpj, processo.candidates?.name ?? '')} />
           </div>
-          <div className="col-span-2">
+          <div className="sm:col-span-2">
             {label('address')}
-            <input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })}
-              placeholder="Rua, número, bairro, cidade" className={inputClass} />
+            <Input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })}
+              placeholder="Rua, número, bairro, cidade" />
           </div>
         </div>
 
         {missingFields.length > 0 && (
-          <p className="text-[11px] text-warning mb-3">
+          <p className="mt-3 text-[12px] text-warning">
             Faltam: {missingFields.map((f) => CONTRACT_DATA_FIELD_LABELS[f]).join(', ')}.
           </p>
         )}
 
-        <div className="flex gap-3">
-          <button
+        <div className="mt-6 flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
+          <Button
+            variant="secondary"
+            onClick={() => encerrarSemGerar.mutate()}
+            disabled={busy}
+            title="Encerra o vínculo sem gerar o distrato"
+          >
+            Só encerrar
+          </Button>
+          <Button
+            variant="destructive"
             onClick={() => confirmar.mutate()}
             disabled={busy || missingFields.length > 0 || !termStart || !contractDate || !templateId}
             title={missingFields.length > 0 ? 'Preencha os dados obrigatórios' : undefined}
-            className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-danger-solid text-white font-medium hover:bg-danger-solid/90 disabled:opacity-50 transition-colors"
           >
-            <FileSignature className="w-4 h-4" />
-            {confirmar.isPending ? 'Gerando distrato...' : 'Encerrar e gerar distrato'}
-          </button>
-          <button
-            onClick={() => encerrarSemGerar.mutate()}
-            disabled={busy}
-            className="px-4 py-2.5 rounded-lg border border-border bg-card text-foreground text-sm font-medium hover:bg-accent disabled:opacity-50"
-          >
-            Só encerrar
-          </button>
+            <FileSignature />
+            {confirmar.isPending ? 'Gerando distrato…' : 'Encerrar e gerar distrato'}
+          </Button>
         </div>
       </div>
     </div>

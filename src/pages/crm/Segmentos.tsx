@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Loader, Users, Megaphone, Pencil, Trash2, Copy, X, Lock } from 'lucide-react'
+import { Plus, Loader, Users, Megaphone, Pencil, Trash2, Copy, Lock, Filter } from 'lucide-react'
 import { toast } from 'sonner'
 
 import AdminLayout from '@/components/admin/AdminLayout'
-import { AdminHeader } from '@/components/admin/ui/AdminHeader'
+import { AdminPage, EmptyState, PageLoading, Panel } from '@/components/admin/ui/AdminPage'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import { supabase } from '@/lib/supabase'
 import {
   FilterForm, StatusBadge, brl, cleanFilters, describeFilters, searchClients, useCrmUnits,
@@ -43,13 +45,13 @@ function SegmentCount({ filters }: { filters: CrmFilters }) {
     queryKey: ['crm-segment-count', filters],
     queryFn: () => searchClients(filters, 'last_visit_desc', 1, 0),
   })
-  if (isLoading) return <Loader className="w-4 h-4 animate-spin text-ink-300" />
+  if (isLoading) return <Loader className="w-4 h-4 animate-spin text-ink-300 shrink-0" />
   return (
-    <span className="text-right">
-      <span className="block text-[22px] font-semibold tracking-tight leading-none text-foreground numeric">
+    <span className="text-right shrink-0">
+      <span className="block font-title text-[22px] font-semibold leading-none text-foreground tabular-nums">
         {(data?.total ?? 0).toLocaleString('pt-BR')}
       </span>
-      <span className="block text-[11px] text-muted-foreground mt-1 numeric">
+      <span className="block text-[12px] text-muted-foreground mt-1 tabular-nums whitespace-nowrap">
         {(data?.with_whatsapp ?? 0).toLocaleString('pt-BR')} com WhatsApp
       </span>
     </span>
@@ -93,74 +95,64 @@ function SegmentEditor({ initial, units, onClose }: {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-ink-950/45 backdrop-blur-[2px]" onClick={onClose} aria-hidden />
-      <div role="dialog" aria-label="Segmento" className="relative w-full max-w-3xl max-h-[90vh] bg-card rounded-xl border border-border shadow-2xl flex flex-col animate-in fade-in zoom-in-[0.98] duration-150">
-        <div className="px-5 py-4 border-b border-border flex items-center justify-between">
-          <h2 className="text-[15px] font-semibold tracking-tight text-foreground">
-            {initial?.id ? 'Editar segmento' : 'Novo segmento'}
-          </h2>
-          <Button variant="ghost" size="icon-sm" onClick={onClose} aria-label="Fechar"><X className="w-4 h-4" /></Button>
+    <Dialog open onOpenChange={o => { if (!o) onClose() }}>
+      <DialogContent className="w-[calc(100%-2rem)] max-w-3xl max-h-[90vh] p-0 gap-0 flex flex-col overflow-hidden">
+        <div className="px-5 h-14 shrink-0 border-b border-border flex items-center pr-12">
+          <DialogTitle>{initial?.id ? 'Editar segmento' : 'Novo segmento'}</DialogTitle>
+          <DialogDescription className="sr-only">Nome, descrição e filtros do público.</DialogDescription>
         </div>
 
-        <div className="flex-1 overflow-y-auto grid md:grid-cols-[1fr_280px]">
-          <div className="p-5 space-y-4 md:border-r border-border">
+        <div className="flex-1 min-h-0 overflow-y-auto grid md:grid-cols-[1fr_280px]">
+          <div className="p-5 space-y-5 md:border-r border-border">
             <label className="block">
-              <span className="block text-[12px] font-medium text-ink-600 mb-1">Nome</span>
-              <input
-                value={name}
-                onChange={e => setName(e.target.value)}
-                placeholder="Ex.: Hidratação sumidas Linhares"
-                className="w-full h-9 px-3 rounded-md border border-input bg-background text-base md:text-sm text-foreground hover:border-ink-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              />
+              <span className="field-label">Nome</span>
+              <Input value={name} onChange={e => setName(e.target.value)} placeholder="Ex.: Hidratação sumidas Linhares" />
             </label>
             <label className="block">
-              <span className="block text-[12px] font-medium text-ink-600 mb-1">Descrição (opcional)</span>
-              <input
-                value={description}
-                onChange={e => setDescription(e.target.value)}
-                className="w-full h-9 px-3 rounded-md border border-input bg-background text-base md:text-sm text-foreground hover:border-ink-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              />
+              <span className="field-label">Descrição <span className="font-normal text-muted-foreground">(opcional)</span></span>
+              <Input value={description} onChange={e => setDescription(e.target.value)} />
             </label>
             <FilterForm value={filters} onChange={setFilters} units={units} showStatus />
           </div>
 
-          <div className="p-5 bg-surface">
-            <p className="text-[12px] font-medium text-ink-600">Quem entra</p>
+          <div className="p-5 bg-surface border-t border-border md:border-t-0">
+            <p className="text-[12px] font-medium text-muted-foreground">Quem entra</p>
             <div className="flex items-baseline gap-2 mt-1">
-              <span className="text-[28px] font-semibold tracking-tight text-foreground numeric">
+              <span className="font-title text-[26px] font-semibold leading-tight text-foreground tabular-nums">
                 {(preview?.total ?? 0).toLocaleString('pt-BR')}
               </span>
               {isFetching && <Loader className="w-3.5 h-3.5 animate-spin text-ink-300" />}
             </div>
-            <p className="text-[11px] text-muted-foreground numeric">
+            <p className="text-[12px] text-muted-foreground tabular-nums">
               {(preview?.with_whatsapp ?? 0).toLocaleString('pt-BR')} com WhatsApp
             </p>
-            <p className="text-[12px] text-muted-foreground mt-3">{describeFilters(filters, units)}</p>
-            <ul className="mt-4 space-y-2">
-              {preview?.rows.map(c => (
-                <li key={`${c.store_id}:${c.client_key}`} className="text-[12px]">
-                  <span className="flex items-center justify-between gap-2">
-                    <span className="text-foreground truncate">{c.name}</span>
-                    <StatusBadge status={c.status} />
-                  </span>
-                  <span className="text-muted-foreground">
-                    {c.days_since_last_visit != null ? `${c.days_since_last_visit} dias sem vir · ` : ''}{brl(c.total_spent)}
-                  </span>
-                </li>
-              ))}
-            </ul>
+            <p className="text-[12px] text-ink-600 mt-3">{describeFilters(filters, units)}</p>
+            {!!preview?.rows.length && (
+              <ul className="mt-4 pt-3 border-t border-border space-y-2.5">
+                {preview.rows.map(c => (
+                  <li key={`${c.store_id}:${c.client_key}`} className="text-[12px] min-w-0">
+                    <span className="flex items-center justify-between gap-2">
+                      <span className="text-[13px] text-foreground truncate">{c.name}</span>
+                      <StatusBadge status={c.status} />
+                    </span>
+                    <span className="block text-muted-foreground tabular-nums">
+                      {c.days_since_last_visit != null ? `${c.days_since_last_visit} dias sem vir · ` : ''}{brl(c.total_spent)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
         </div>
 
-        <div className="px-5 py-3.5 border-t border-border flex justify-end gap-2">
-          <Button variant="outline" onClick={onClose}>Cancelar</Button>
+        <div className="px-5 py-3.5 shrink-0 border-t border-border flex justify-end gap-2">
+          <Button variant="secondary" onClick={onClose}>Cancelar</Button>
           <Button onClick={save} disabled={saving}>
-            {saving && <Loader className="w-4 h-4 animate-spin" />} Salvar segmento
+            {saving && <Loader className="animate-spin" />} Salvar segmento
           </Button>
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   )
 }
 
@@ -175,43 +167,49 @@ export default function CrmSegmentos() {
     if (!window.confirm(`Excluir o segmento "${s.name}"? Campanhas já criadas com ele continuam.`)) return
     const { error } = await supabase.from('salon_segments').delete().eq('id', s.id)
     if (error) return toast.error(`Não foi possível excluir: ${error.message}`)
+    toast.success('Segmento excluído')
     qc.invalidateQueries({ queryKey: ['crm-segments'] })
   }
 
   return (
     <AdminLayout>
-      <div className="bg-card border-b border-border sticky top-0 z-30">
-        <AdminHeader
-          title="Segmentos"
-          subtitle="Públicos para olhar de perto ou chamar de volta. Contagem ao vivo."
-          actionNode={<Button size="sm" onClick={() => setEditing(null)}><Plus className="w-3.5 h-3.5" /> Novo segmento</Button>}
-        />
-      </div>
-
-      <div className="px-4 sm:px-6 lg:px-8 py-5">
+      <AdminPage
+        title="Segmentos"
+        description="Públicos de clientes para acompanhar de perto ou chamar de volta. Contagem ao vivo."
+        actions={<Button onClick={() => setEditing(null)}><Plus /> Novo segmento</Button>}
+      >
         {isLoading ? (
-          <div className="flex justify-center py-24"><Loader className="w-7 h-7 animate-spin text-ink-300" /></div>
+          <PageLoading label="Carregando segmentos…" />
+        ) : segments.length === 0 ? (
+          <Panel flush>
+            <EmptyState
+              icon={Filter}
+              title="Nenhum segmento ainda"
+              description="Monte um público com os filtros de situação, visitas e gasto para usar em campanhas."
+              action={<Button onClick={() => setEditing(null)}><Plus /> Novo segmento</Button>}
+            />
+          </Panel>
         ) : (
-          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {segments.map(s => (
-              <div key={s.id} className="surface-card p-5 flex flex-col">
+              <div key={s.id} className="rounded-lg border border-border bg-card shadow-xs p-4 sm:p-5 flex flex-col min-w-0">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <h3 className="text-[15px] font-semibold tracking-tight text-foreground flex items-center gap-1.5">
-                      {s.name}
-                      {s.is_system && <Lock className="w-3 h-3 text-ink-400" aria-label="Segmento pronto" />}
+                    <h3 className="text-[14px] font-semibold tracking-tight text-foreground flex items-center gap-1.5">
+                      <span className="truncate">{s.name}</span>
+                      {s.is_system && <Lock className="w-3 h-3 text-ink-400 shrink-0" aria-label="Segmento pronto (não editável)" />}
                     </h3>
-                    {s.description && <p className="text-[12px] text-muted-foreground mt-1">{s.description}</p>}
+                    {s.description && <p className="text-[12.5px] text-muted-foreground mt-1">{s.description}</p>}
                   </div>
                   <SegmentCount filters={s.filters} />
                 </div>
-                <p className="text-[11px] text-ink-500 mt-3 flex-1">{describeFilters(s.filters, units)}</p>
+                <p className="text-[12px] text-ink-500 mt-3 flex-1">{describeFilters(s.filters, units)}</p>
                 <div className="flex flex-wrap items-center gap-1.5 mt-4 pt-3 border-t border-border">
-                  <Button variant="outline" size="xs" onClick={() => navigate('/admin/crm/clientes', { state: { filters: s.filters } })}>
+                  <Button variant="secondary" size="xs" onClick={() => navigate('/admin/crm/clientes', { state: { filters: s.filters } })}>
                     <Users /> Ver clientes
                   </Button>
-                  <Button variant="outline" size="xs" onClick={() => navigate('/admin/crm/campanhas', { state: { segmentId: s.id } })}>
-                    <Megaphone /> Criar campanha
+                  <Button variant="secondary" size="xs" onClick={() => navigate('/admin/crm/campanhas', { state: { segmentId: s.id } })}>
+                    <Megaphone /> Nova campanha
                   </Button>
                   <span className="ml-auto flex items-center gap-0.5">
                     {s.is_system ? (
@@ -220,8 +218,8 @@ export default function CrmSegmentos() {
                       </Button>
                     ) : (
                       <>
-                        <Button variant="ghost" size="icon-sm" onClick={() => setEditing(s)} aria-label="Editar"><Pencil className="w-3.5 h-3.5" /></Button>
-                        <Button variant="ghost" size="icon-sm" onClick={() => remove(s)} aria-label="Excluir"><Trash2 className="w-3.5 h-3.5" /></Button>
+                        <Button variant="ghost" size="icon-sm" onClick={() => setEditing(s)} aria-label="Editar segmento"><Pencil className="!size-3.5" /></Button>
+                        <Button variant="ghost" size="icon-sm" onClick={() => remove(s)} aria-label="Excluir segmento"><Trash2 className="!size-3.5" /></Button>
                       </>
                     )}
                   </span>
@@ -230,7 +228,7 @@ export default function CrmSegmentos() {
             ))}
           </div>
         )}
-      </div>
+      </AdminPage>
 
       {editing !== undefined && <SegmentEditor initial={editing} units={units} onClose={() => setEditing(undefined)} />}
     </AdminLayout>

@@ -32,7 +32,7 @@ const STEPS = [
 
 export default function HowItWorks() {
   return (
-    <div className="w-full surface-card p-5 sm:p-6 mb-8 mt-4">
+    <div className="w-full surface-card shadow-xs p-5 sm:p-6 mb-8 mt-4">
       <h2 className="eyebrow mb-5">Como funciona</h2>
       <ol className="grid grid-cols-1 md:grid-cols-3 gap-5 md:gap-8">
         {STEPS.map(({ id, icon: Icon, title, desc }) => (

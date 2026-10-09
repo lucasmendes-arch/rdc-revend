@@ -1,4 +1,5 @@
 import { MessageCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 /**
  * Convite para falar com um consultor.
@@ -16,7 +17,7 @@ export default function WhatsAppCTA() {
   const whatsappUrl = `https://wa.me/${phoneNumber}?text=${message}`;
 
   return (
-    <div className="w-full surface-card p-5 mb-8 mt-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="w-full surface-card shadow-xs p-5 mb-8 mt-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
       <div className="flex items-start gap-3 min-w-0">
         <div className="w-8 h-8 rounded-md bg-success-subtle border border-success-border flex items-center justify-center shrink-0">
           <MessageCircle className="w-4 h-4 text-success" />
@@ -32,15 +33,12 @@ export default function WhatsAppCTA() {
         </div>
       </div>
 
-      <a
-        href={whatsappUrl}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="shrink-0 h-9 px-3.5 rounded-md btn-secondary text-[13px] flex items-center justify-center gap-1.5"
-      >
-        <MessageCircle className="w-3.5 h-3.5 text-success" />
-        Falar com consultor
-      </a>
+      <Button asChild variant="secondary" className="shrink-0">
+        <a href={whatsappUrl} target="_blank" rel="noopener noreferrer">
+          <MessageCircle className="text-success" />
+          Falar com consultor
+        </a>
+      </Button>
     </div>
   );
 }

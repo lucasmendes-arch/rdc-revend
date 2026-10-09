@@ -6,7 +6,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { Loader, Plus, Pencil, Trash2, GripVertical, X, ShieldCheck } from 'lucide-react'
+import { Plus, Pencil, Trash2, GripVertical, X, ShieldCheck, Zap } from 'lucide-react'
 import {
   DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, type DragEndEvent,
 } from '@dnd-kit/core'
@@ -15,6 +15,8 @@ import { CSS } from '@dnd-kit/utilities'
 import { supabase } from '@/lib/supabase'
 import { useEscapeToClose } from '@/hooks/useEscapeToClose'
 import StyledSelect from '@/components/ui/styled-select'
+import { Button } from '@/components/ui/button'
+import { Panel, EmptyState, PageLoading } from '@/components/admin/ui/AdminPage'
 import ColorSelect from '@/components/rh/ColorSelect'
 import ConditionValueInput from './ConditionValueInput'
 import {
@@ -24,8 +26,9 @@ import {
   type WhatsappTemplate,
 } from './types'
 
-const inputClass = 'w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring'
-const labelClass = 'block text-xs font-semibold text-muted-foreground uppercase mb-1'
+const inputClass = 'flex h-9 w-full rounded-md border border-input bg-background px-3 text-base md:text-sm text-foreground placeholder:text-ink-400 hover:border-ink-300 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2'
+const textareaClass = 'flex w-full rounded-md border border-input bg-background px-3 py-2 text-base md:text-sm text-foreground placeholder:text-ink-400 hover:border-ink-300 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2'
+const labelClass = 'field-label'
 
 // Variáveis livres são globais (não têm entidade) — as duas telas leem a mesma
 // lista, então a query key também é uma só.
@@ -56,7 +59,7 @@ export function useWhatsappInstances() {
 export function PlaceholderHint({ fixedPlaceholders }: { fixedPlaceholders: string[] }) {
   const { data: variables = [] } = useAutomationVariables()
   return (
-    <p className="text-[11px] text-muted-foreground mt-1 break-words">
+    <p className="text-[12px] text-muted-foreground mt-1 break-words">
       Placeholders: {fixedPlaceholders.join(' ')}
       {variables.length > 0 && ` ${variables.map((v) => `{var.${v.key}}`).join(' ')}`}
     </p>
@@ -114,31 +117,31 @@ function AutomationCard({
   const accent = automation.trigger_stage ? config.stageAccent(automation.trigger_stage) : null
 
   return (
-    <div ref={setNodeRef} style={style} className={`bg-card rounded-xl border overflow-hidden ${expanded ? 'border-ring shadow-md' : 'border-border shadow-sm'}`}>
-      <div className="flex items-center gap-2 px-3 py-2.5 border-b border-border/60 bg-surface-alt/50">
+    <div ref={setNodeRef} style={style} className={`bg-card rounded-lg border overflow-hidden transition-colors ${expanded ? 'border-ink-300 ring-1 ring-ring/30' : 'border-border shadow-xs'}`}>
+      <div className="flex items-center gap-2 px-3 py-2 min-h-11 border-b border-border bg-surface">
         <button {...attributes} {...listeners} className="text-muted-foreground hover:text-foreground cursor-grab active:cursor-grabbing touch-none shrink-0" aria-label="Arrastar">
           <GripVertical className="w-4 h-4" />
         </button>
         <button className="flex-1 flex items-center gap-2 text-left min-w-0" onClick={onToggleExpand}>
-          <span className="font-medium text-sm text-foreground truncate">{automation.name}</span>
-          <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-surface-alt text-muted-foreground shrink-0">
+          <span className="font-medium text-[13px] text-foreground truncate">{automation.name}</span>
+          <span className="hidden sm:inline text-[11.5px] font-medium px-1.5 py-0.5 rounded-sm bg-muted text-ink-600 shrink-0">
             {config.triggerTypeLabels[automation.trigger_type] ?? automation.trigger_type}
           </span>
           {automation.trigger_stage && (
             // Etapa sempre com a cor dela (mesma paleta do kanban) — etapa que
             // não existe mais no banco cai no estilo neutro.
             <span
-              className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md shrink-0 truncate"
+              className="text-[11.5px] font-medium px-1.5 py-0.5 rounded-sm shrink-0 truncate"
               style={accent
                 ? { backgroundColor: `${accent}22`, color: accent }
-                : { backgroundColor: 'var(--surface-alt)', color: 'var(--muted-foreground)' }}
+                : { backgroundColor: 'hsl(var(--surface-alt))', color: 'hsl(var(--muted-foreground))' }}
             >
               {config.stageLabel(automation.trigger_stage)}
             </span>
           )}
           {automation.requires_confirmation && (
             <span
-              className="flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-warning-subtle text-warning shrink-0"
+              className="flex items-center gap-1 text-[11.5px] font-medium px-1.5 py-0.5 rounded-sm bg-warning-subtle text-warning shrink-0"
               title="Só executa depois de confirmação no kanban"
             >
               <ShieldCheck className="w-2.5 h-2.5" /> Confirmação
@@ -147,22 +150,22 @@ function AutomationCard({
         </button>
         <button
           onClick={onToggleActive}
-          className={`text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 ${automation.is_active ? 'bg-success-subtle text-success' : 'bg-muted text-muted-foreground'}`}
+          className={`text-[11px] font-medium px-2 py-0.5 rounded-full border shrink-0 ${automation.is_active ? 'border-success-border bg-success-subtle text-success' : 'border-border bg-muted text-ink-600'}`}
         >
           {automation.is_active ? 'Ativa' : 'Inativa'}
         </button>
-        <button onClick={onEdit} className="p-1.5 rounded-lg hover:bg-surface-alt text-muted-foreground hover:text-foreground shrink-0" title="Editar">
+        <Button variant="ghost" size="icon-sm" className="shrink-0" onClick={onEdit} title="Editar">
           <Pencil className="w-3.5 h-3.5" />
-        </button>
-        <button onClick={onDelete} className="p-1.5 rounded-lg hover:bg-danger-subtle text-muted-foreground hover:text-danger shrink-0" title="Excluir">
+        </Button>
+        <Button variant="ghost" size="icon-sm" className="shrink-0 hover:bg-danger-subtle hover:text-danger" onClick={onDelete} title="Excluir">
           <Trash2 className="w-3.5 h-3.5" />
-        </button>
+        </Button>
       </div>
 
       {expanded && (
         <div className="p-3">
           {actions.length === 0 ? (
-            <p className="text-xs text-muted-foreground text-center py-3">Nenhuma ação — clique em editar pra adicionar.</p>
+            <p className="text-[12.5px] text-muted-foreground text-center py-3">Nenhuma ação — clique em editar pra adicionar.</p>
           ) : (
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleActionDragEnd}>
               <SortableContext items={actions.map((a) => a.id)} strategy={verticalListSortingStrategy}>
@@ -185,7 +188,7 @@ function ActionRow({ action, index, config }: { action: AutomationAction; index:
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1 }
 
   return (
-    <li ref={setNodeRef} style={style} className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-surface-alt/60 text-xs">
+    <li ref={setNodeRef} style={style} className="flex items-center gap-2 px-2.5 h-8 rounded-md border border-border bg-surface text-[12.5px]">
       <button {...attributes} {...listeners} className="text-muted-foreground cursor-grab active:cursor-grabbing touch-none shrink-0">
         <GripVertical className="w-3 h-3" />
       </button>
@@ -247,7 +250,7 @@ function ActionConfigEditor({
           <input
             type="number" min={0} placeholder="dias" value={(config.days as number) ?? ''}
             onChange={(e) => onChange({ mode, days: Number(e.target.value) })}
-            className={`${inputClass} w-24`}
+            className={inputClass.replace('w-full', 'w-24 shrink-0')}
           />
         )}
       </div>
@@ -286,7 +289,7 @@ function ActionConfigEditor({
             emptyLabel="Instância da loja (padrão)"
             placeholder="Instância da loja (padrão)"
           />
-          <p className="text-[11px] text-muted-foreground mt-1">
+          <p className="text-[12px] text-muted-foreground mt-1">
             Sem escolher, usa a instância da loja do candidato — e, se ela não tiver, a global.
           </p>
         </div>
@@ -301,7 +304,7 @@ function ActionConfigEditor({
         onChange={(e) => onChange({ text: e.target.value })}
         rows={2}
         placeholder="Ex: avançou pra {new_stage}"
-        className={inputClass}
+        className={textareaClass}
       />
       <PlaceholderHint fixedPlaceholders={entityConfig.fixedPlaceholders} />
     </div>
@@ -464,9 +467,9 @@ function AutomationEditorModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-foreground/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-card rounded-2xl shadow-2xl border border-border p-6 w-full max-w-xl max-h-[90vh] overflow-y-auto">
-        <h2 className="text-xl font-bold text-foreground mb-5">{isEdit ? 'Editar automação' : 'Nova automação'}</h2>
+      <div className="absolute inset-0 bg-ink-950/45 backdrop-blur-[2px]" onClick={onClose} />
+      <div className="relative bg-popover rounded-xl shadow-xl border border-border p-5 w-full max-w-xl max-h-[90vh] overflow-y-auto">
+        <h2 className="text-[16px] font-semibold text-foreground mb-5">{isEdit ? 'Editar automação' : 'Nova automação'}</h2>
 
         <div className="space-y-4">
           <div>
@@ -478,7 +481,7 @@ function AutomationEditorModal({
             <input type="text" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className={inputClass} />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className={labelClass}>Gatilho</label>
               <StyledSelect
@@ -504,7 +507,7 @@ function AutomationEditorModal({
 
           {/* Config extra do gatilho (só existe onde a entidade declara) */}
           {triggerConfigFields.length > 0 && (
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {triggerConfigFields.map((field) => (
                 <div key={field.key}>
                   <label className={labelClass}>{field.label}</label>
@@ -525,7 +528,7 @@ function AutomationEditorModal({
                       placeholder={field.placeholder}
                     />
                   )}
-                  {field.help && <p className="text-[11px] text-muted-foreground mt-1">{field.help}</p>}
+                  {field.help && <p className="text-[12px] text-muted-foreground mt-1">{field.help}</p>}
                 </div>
               ))}
             </div>
@@ -534,7 +537,7 @@ function AutomationEditorModal({
           {/* Só faz sentido onde existe um kanban que intercepta o movimento —
               gatilho por data/prazo roda sem ninguém na tela. */}
           {config.supportsConfirmation && config.stageTriggerTypes.includes(form.trigger_type) && (
-            <label className="flex items-start gap-2.5 p-3 rounded-lg border border-border bg-surface-alt/40 cursor-pointer">
+            <label className="flex items-start gap-2.5 p-3 rounded-md border border-border bg-surface cursor-pointer">
               <input
                 type="checkbox"
                 checked={form.requires_confirmation}
@@ -542,10 +545,10 @@ function AutomationEditorModal({
                 className="mt-0.5 w-4 h-4 rounded border-border accent-ink-700 shrink-0"
               />
               <span className="min-w-0">
-                <span className="flex items-center gap-1.5 text-sm font-medium text-foreground">
+                <span className="flex items-center gap-1.5 text-[13px] font-medium text-foreground">
                   <ShieldCheck className="w-3.5 h-3.5 shrink-0" /> Pedir confirmação antes de executar
                 </span>
-                <span className="block text-[11px] text-muted-foreground mt-0.5">
+                <span className="block text-[12px] text-muted-foreground mt-0.5">
                   Ao mover o card pra esta etapa, o kanban mostra a mensagem já preenchida e só executa depois do "Confirmar".
                   Etapa mudada por qualquer outro caminho não dispara a automação — fica registrada como bloqueada no histórico.
                 </span>
@@ -555,8 +558,8 @@ function AutomationEditorModal({
 
           <div>
             <div className="flex items-center justify-between mb-1.5">
-              <label className={`${labelClass} mb-0`}>Condições (opcional, todas precisam bater)</label>
-              <button onClick={addCondition} className="text-xs font-semibold text-gold-text hover:underline flex items-center gap-1">
+              <label className="text-[13px] font-medium text-foreground">Condições (opcional, todas precisam bater)</label>
+              <button onClick={addCondition} className="h-7 px-2 -mr-2 rounded-md text-[12.5px] font-medium text-brand-strong hover:bg-brand-subtle flex items-center gap-1 transition-colors">
                 <Plus className="w-3 h-3" /> Adicionar
               </button>
             </div>
@@ -583,7 +586,7 @@ function AutomationEditorModal({
                     inputClass={inputClass}
                     onChange={(value) => updateCondition(i, { value })}
                   />
-                  <button onClick={() => removeCondition(i)} className="p-1.5 text-muted-foreground hover:text-danger shrink-0"><X className="w-4 h-4" /></button>
+                  <button onClick={() => removeCondition(i)} className="h-8 w-8 flex items-center justify-center rounded-md text-muted-foreground hover:text-danger hover:bg-danger-subtle shrink-0" aria-label="Remover"><X className="w-4 h-4" /></button>
                 </div>
               ))}
             </div>
@@ -591,23 +594,23 @@ function AutomationEditorModal({
 
           <div>
             <div className="flex items-center justify-between mb-1.5">
-              <label className={`${labelClass} mb-0`}>Ações (executadas em ordem)</label>
-              <button onClick={addAction} className="text-xs font-semibold text-gold-text hover:underline flex items-center gap-1">
+              <label className="text-[13px] font-medium text-foreground">Ações (executadas em ordem)</label>
+              <button onClick={addAction} className="h-7 px-2 -mr-2 rounded-md text-[12.5px] font-medium text-brand-strong hover:bg-brand-subtle flex items-center gap-1 transition-colors">
                 <Plus className="w-3 h-3" /> Adicionar ação
               </button>
             </div>
             <div className="space-y-2">
               {actions.map((a, i) => (
-                <div key={i} className="p-2.5 rounded-lg border border-border bg-surface-alt/40 space-y-2">
+                <div key={i} className="p-2.5 rounded-md border border-border bg-surface space-y-2">
                   <div className="flex gap-1.5 items-center">
-                    <span className="text-xs font-mono text-muted-foreground shrink-0">{i + 1}.</span>
+                    <span className="text-[12px] font-mono text-muted-foreground shrink-0">{i + 1}.</span>
                     <StyledSelect
                       value={a.action_type}
                       onChange={(v) => updateAction(i, { action_type: v, action_config: {} })}
                       options={Object.entries(config.actionTypeLabels).map(([value, label]) => ({ value, label }))}
                       className="flex-1"
                     />
-                    <button onClick={() => removeAction(i)} className="p-1.5 text-muted-foreground hover:text-danger shrink-0"><X className="w-4 h-4" /></button>
+                    <button onClick={() => removeAction(i)} className="h-8 w-8 flex items-center justify-center rounded-md text-muted-foreground hover:text-danger hover:bg-danger-subtle shrink-0" aria-label="Remover"><X className="w-4 h-4" /></button>
                   </div>
                   <ActionConfigEditor
                     actionType={a.action_type} config={a.action_config} entityConfig={config}
@@ -616,16 +619,16 @@ function AutomationEditorModal({
                   />
                 </div>
               ))}
-              {actions.length === 0 && <p className="text-xs text-muted-foreground text-center py-2">Nenhuma ação adicionada ainda.</p>}
+              {actions.length === 0 && <p className="text-[12.5px] text-muted-foreground text-center py-2">Nenhuma ação adicionada ainda.</p>}
             </div>
           </div>
         </div>
 
-        <div className="flex gap-3 mt-6">
-          <button onClick={handleSave} disabled={saveMutation.isPending} className="flex-1 px-4 py-2.5 rounded-lg btn-action font-medium disabled:opacity-70">
-            {saveMutation.isPending ? 'Salvando...' : 'Salvar'}
-          </button>
-          <button onClick={onClose} className="flex-1 px-4 py-2.5 rounded-lg border border-border bg-card text-foreground font-medium hover:bg-accent">Cancelar</button>
+        <div className="flex flex-row-reverse justify-start gap-2 mt-6">
+          <Button onClick={handleSave} disabled={saveMutation.isPending}>
+            {saveMutation.isPending ? 'Salvando…' : 'Salvar'}
+          </Button>
+          <Button variant="secondary" onClick={onClose}>Cancelar</Button>
         </div>
       </div>
     </div>
@@ -698,15 +701,15 @@ export default function AutomationsPanel({ config }: { config: AutomationEntityC
   return (
     <div>
       <div className="flex justify-end mb-4">
-        <button onClick={() => setEditing('new')} className="flex items-center gap-2 px-3 py-2 rounded-lg btn-action text-sm font-medium">
+        <Button onClick={() => setEditing('new')}>
           <Plus className="w-4 h-4" /> Nova automação
-        </button>
+        </Button>
       </div>
 
       {isLoading ? (
-        <div className="text-center py-12"><Loader className="w-6 h-6 animate-spin text-gold-text mx-auto" /></div>
+        <PageLoading />
       ) : automations.length === 0 ? (
-        <p className="text-sm text-muted-foreground text-center py-12">Nenhuma automação cadastrada ainda.</p>
+        <Panel><EmptyState icon={Zap} title="Nenhuma automação cadastrada" description="Crie uma regra para agir sozinha quando algo muda no funil." action={<Button onClick={() => setEditing('new')}><Plus />Nova automação</Button>} /></Panel>
       ) : (
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
           <SortableContext items={automations.map((a) => a.id)} strategy={verticalListSortingStrategy}>
@@ -732,15 +735,15 @@ export default function AutomationsPanel({ config }: { config: AutomationEntityC
 
       {deleteConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-foreground/40 backdrop-blur-sm" onClick={() => setDeleteConfirm(null)} />
-          <div className="relative bg-card border border-border rounded-2xl shadow-2xl p-6 w-full max-w-sm">
-            <h2 className="text-lg font-bold text-foreground mb-2">Excluir automação</h2>
-            <p className="text-sm text-muted-foreground mb-5">"{deleteConfirm.name}" será removida, junto com suas ações.</p>
-            <div className="flex gap-3">
-              <button onClick={() => deleteMutation.mutate(deleteConfirm.id)} disabled={deleteMutation.isPending} className="flex-1 px-4 py-2.5 rounded-lg bg-danger-solid hover:bg-danger-solid/90 text-white font-medium disabled:opacity-70">
-                {deleteMutation.isPending ? 'Excluindo...' : 'Excluir'}
-              </button>
-              <button onClick={() => setDeleteConfirm(null)} className="flex-1 px-4 py-2.5 rounded-lg border border-border bg-card text-foreground font-medium hover:bg-accent">Cancelar</button>
+          <div className="absolute inset-0 bg-ink-950/45 backdrop-blur-[2px]" onClick={() => setDeleteConfirm(null)} />
+          <div className="relative bg-popover border border-border rounded-xl shadow-xl p-5 w-full max-w-sm">
+            <h2 className="text-[16px] font-semibold text-foreground mb-2">Excluir automação</h2>
+            <p className="text-[13px] text-muted-foreground mb-5">"{deleteConfirm.name}" será removida, junto com suas ações.</p>
+            <div className="flex flex-row-reverse justify-start gap-2">
+              <Button variant="destructive" onClick={() => deleteMutation.mutate(deleteConfirm.id)} disabled={deleteMutation.isPending}>
+                {deleteMutation.isPending ? 'Excluindo…' : 'Excluir'}
+              </Button>
+              <Button variant="secondary" onClick={() => setDeleteConfirm(null)}>Cancelar</Button>
             </div>
           </div>
         </div>

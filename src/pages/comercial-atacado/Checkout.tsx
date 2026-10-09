@@ -1,14 +1,44 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, Check, Loader, ShoppingCart, MapPin, Minus, Plus, Zap, Store, Truck } from 'lucide-react';
+import { ArrowRight, Check, CreditCard, Loader, ShoppingCart, MapPin, Zap, Store, Truck } from 'lucide-react';
 import { useCart } from '@/contexts/CartContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { useTrackInitiateCheckout } from '@/hooks/useSessionTracking';
 import { isValidDocument } from '@/utils/validateDocument';
 import { toast } from 'sonner';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { PortalPage, PortalSection, PortalTopBar } from '@/components/portal/PortalPage';
 
 type Step = 1 | 2 | 3;
+
+// Unidades de retirada (mesmos textos de antes; só saiu a repetição do JSX).
+const PICKUP_UNITS = [
+  { slug: 'linhares', name: 'Rei dos Cachos (Linhares)', line1: 'Av. Gov. Carlos Lindemberg, 835', line2: 'Centro, Linhares - ES, 29900-203' },
+  { slug: 'serra', name: 'Rei dos Cachos (Serra)', line1: 'Av. Central, 1197 - Parque Res. Laranjeiras', line2: 'Serra - ES, 29165-130' },
+  { slug: 'teixeira', name: 'Rei dos Cachos (Teixeira de Freitas)', line1: 'Av. São Paulo, 151 - Bela Vista', line2: 'Teixeira de Freitas - BA, 45997-006' },
+];
+
+/**
+ * Barra de ação do checkout: no mobile gruda no rodapé com o total sempre
+ * visível — mesmo padrão nas três etapas. No desktop volta ao fluxo.
+ */
+function ActionBar({ total, totalLabel, children }: { total?: number; totalLabel?: string; children: React.ReactNode }) {
+  return (
+    <div className="sticky bottom-0 z-30 -mx-4 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] bg-background/95 backdrop-blur border-t border-border sm:static sm:mx-0 sm:px-0 sm:pt-0 sm:pb-0 sm:bg-transparent sm:backdrop-blur-none sm:border-0">
+      {total !== undefined && (
+        <div className="flex items-baseline justify-between mb-2.5 sm:hidden">
+          <span className="text-[13px] text-muted-foreground">{totalLabel}</span>
+          <span className="text-[17px] font-semibold text-foreground numeric">R$ {total.toFixed(2)}</span>
+        </div>
+      )}
+      {children}
+    </div>
+  );
+}
 
 interface ProfileData {
   full_name: string | null
@@ -372,630 +402,607 @@ const Checkout = () => {
     { num: 3, label: 'Pagamento' },
   ];
 
-  return (
-    <div className="min-h-screen bg-surface-alt">
-      {/* Header */}
-      <header className="bg-card border-b border-border sticky top-0 z-40">
-        <div className="container mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
-          <button
-            onClick={() => step === 1 ? navigate('/catalogo') : handleBack()}
-            className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            <span className="hidden sm:inline text-sm font-medium">{step === 1 ? 'Voltar' : 'Anterior'}</span>
-          </button>
-          <h1 className="text-lg font-bold text-foreground">Finalizar Pedido</h1>
-          <div className="w-8" />
-        </div>
-      </header>
+  const stepSubtitle =
+    step === 1 ? 'Confira os itens antes de seguir.'
+      : step === 2 ? 'Seus dados e como quer receber o pedido.'
+        : 'Escolha como prefere pagar.';
 
-      {/* Step Indicator */}
-      <div className="bg-card border-b border-border">
-        <div className="container mx-auto px-4 sm:px-6 py-3">
-          <div className="flex items-center justify-center gap-2 sm:gap-4">
+  // Visual de seleção do sistema: ouro chapado no contorno, fundo brand-subtle.
+  const choiceClass = (active: boolean) =>
+    `relative flex items-center gap-3 p-3.5 rounded-lg border text-left transition-colors ${
+      active
+        ? 'border-brand bg-brand-subtle ring-1 ring-brand'
+        : 'border-border bg-card hover:border-ink-300'
+    }`;
+  const choiceIconClass = (active: boolean) =>
+    `w-9 h-9 rounded-md border flex items-center justify-center shrink-0 ${
+      active ? 'border-brand-border bg-card text-brand-strong' : 'border-border bg-surface text-ink-500'
+    }`;
+
+  const CARD = 'surface-card shadow-xs p-4 sm:p-5';
+  const CARD_TITLE = 'text-[14px] font-semibold text-foreground tracking-tight';
+
+
+  return (
+    <div className="min-h-screen bg-background">
+      <PortalTopBar
+        onBack={() => (step === 1 ? navigate('/catalogo') : handleBack())}
+        backLabel={step === 1 ? 'Catálogo' : 'Etapa anterior'}
+      />
+
+      <PortalPage
+        width="compact"
+        ambient={false}
+        title="Finalizar pedido"
+        subtitle={stepSubtitle}
+        headerExtra={
+          <ol className="flex items-center gap-2" aria-label="Etapas do pedido">
             {steps.map((s, i) => (
-              <div key={s.num} className="flex items-center gap-2 sm:gap-4">
-                {i > 0 && <div className={`w-8 sm:w-12 h-0.5 ${step >= s.num ? 'bg-foreground' : 'bg-border'} transition-colors`} />}
-                <div className="flex items-center gap-1.5">
-                  {/* Concluído / atual / pendente — três estados, três pesos.
-                      O passo atual é o ink cheio; o concluído recua para a
-                      família success; o pendente é só hairline. */}
-                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-medium numeric transition-colors ${step > s.num ? 'bg-success-subtle text-success border border-success-border' :
-                    step === s.num ? 'bg-primary text-primary-foreground' :
-                      'bg-background text-ink-400 border border-border'
-                    }`}>
-                    {step > s.num ? <Check className="w-3.5 h-3.5" /> : s.num}
+              <li key={s.num} className="flex items-center gap-2 min-w-0">
+                {i > 0 && <span className={`w-6 sm:w-10 h-px ${step >= s.num ? 'bg-foreground' : 'bg-border'} transition-colors`} aria-hidden />}
+                {/* Concluído / atual / pendente — três estados, três pesos. */}
+                <span
+                  aria-current={step === s.num ? 'step' : undefined}
+                  className={`w-6 h-6 rounded-full flex items-center justify-center text-[12px] font-medium numeric transition-colors shrink-0 ${
+                    step > s.num ? 'bg-success-subtle text-success border border-success-border'
+                      : step === s.num ? 'bg-primary text-primary-foreground'
+                        : 'bg-background text-ink-400 border border-border'
+                  }`}
+                >
+                  {step > s.num ? <Check className="w-3.5 h-3.5" /> : s.num}
+                </span>
+                <span className={`text-[12px] font-medium truncate ${step === s.num ? 'text-foreground' : 'text-muted-foreground'}`}>
+                  {s.label}
+                </span>
+              </li>
+            ))}
+          </ol>
+        }
+      >
+        <PortalSection className="space-y-4">
+          {error && (
+            <div role="alert" className="p-3.5 rounded-lg bg-danger-subtle border border-danger-border text-danger text-[13px]">
+              {error}
+            </div>
+          )}
+
+          {/* ============================================================ */}
+          {/* STEP 1: ORDER SUMMARY */}
+          {/* ============================================================ */}
+          {step === 1 && (
+            <>
+              <div className={CARD}>
+                <div className="flex items-baseline justify-between mb-3">
+                  <h2 className={CARD_TITLE}>Itens do pedido</h2>
+                  <span className="text-[12px] text-muted-foreground numeric">{cartCount} {cartCount === 1 ? 'item' : 'itens'}</span>
+                </div>
+
+                <div className="divide-y divide-border">
+                  {cart.map(item => (
+                    <div key={item.id} className="flex items-center gap-3 py-2.5">
+                      {item.image ? (
+                        <img src={item.image} alt="" className="w-11 h-11 rounded-md object-cover border border-border flex-shrink-0" />
+                      ) : (
+                        <div className="w-11 h-11 rounded-md border border-border bg-surface flex items-center justify-center shrink-0">
+                          <ShoppingCart className="w-4 h-4 text-ink-400" />
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[13px] font-medium text-foreground line-clamp-2 leading-snug">{item.name}</p>
+                        <p className="text-[12px] text-muted-foreground numeric mt-0.5">{item.quantity}x R$ {item.price.toFixed(2)}</p>
+                      </div>
+                      <p className="text-[13px] font-semibold text-foreground whitespace-nowrap numeric">
+                        R$ {(item.price * item.quantity).toFixed(2)}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+
+                <dl className="border-t border-border pt-3 mt-1 space-y-2 text-[13px]">
+                  <div className="flex items-center justify-between">
+                    <dt className="text-muted-foreground">Subtotal dos itens</dt>
+                    <dd className="text-foreground numeric">R$ {cartTotal.toFixed(2)}</dd>
                   </div>
-                  <span className={`text-xs font-medium hidden sm:inline ${step === s.num ? 'text-foreground' : 'text-muted-foreground'}`}>
-                    {s.label}
+                  <div className="flex items-center justify-between">
+                    <dt className="text-muted-foreground">Frete</dt>
+                    <dd className="text-muted-foreground text-[12px]">Calculado na próxima etapa</dd>
+                  </div>
+                  {couponDiscount > 0 && couponType !== 'shipping_percent' && (
+                    <div className="flex items-center justify-between text-success font-medium">
+                      <dt>Desconto (cupom)</dt>
+                      <dd className="numeric">− R$ {couponDiscount.toFixed(2)}</dd>
+                    </div>
+                  )}
+                  {shippingDiscountAmount > 0 && (
+                    <div className="flex items-center justify-between text-success font-medium">
+                      <dt>Desconto no frete ({couponDiscount}%)</dt>
+                      <dd className="numeric">− R$ {shippingDiscountAmount.toFixed(2)}</dd>
+                    </div>
+                  )}
+                  <div className="flex items-baseline justify-between pt-3 border-t border-border">
+                    <dt className="text-[14px] font-semibold text-foreground">Subtotal</dt>
+                    <dd className="font-title text-[24px] font-semibold text-foreground numeric leading-none">
+                      R$ {(cartTotal - effectiveDiscount).toFixed(2)}
+                    </dd>
+                  </div>
+                </dl>
+
+                {cartTotal < minOrderValue && (
+                  <p className="mt-4 text-[12px] text-warning bg-warning-subtle border border-warning-border rounded-md py-2 px-3 numeric">
+                    Pedido mínimo de R$ {minOrderValue}. Faltam <strong className="font-semibold">R$ {(minOrderValue - cartTotal).toFixed(2)}</strong> — volte ao catálogo para completar.
+                  </p>
+                )}
+              </div>
+
+              <ActionBar total={cartTotal - effectiveDiscount} totalLabel="Subtotal">
+                <Button size="lg" className="w-full" onClick={handleNext} disabled={cartTotal < minOrderValue}>
+                  Continuar para entrega
+                  <ArrowRight />
+                </Button>
+              </ActionBar>
+            </>
+          )}
+
+          {/* ============================================================ */}
+          {/* STEP 2: DELIVERY */}
+          {/* ============================================================ */}
+          {step === 2 && (
+            <>
+              {/* Progressive profiling: só pede o que falta, ou tudo se editando */}
+              <div className={CARD}>
+                <div className="flex items-center justify-between gap-3 mb-4">
+                  <h2 className={CARD_TITLE}>Seus dados</h2>
+                  {profileLoaded && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="xs"
+                      onClick={() => setIsEditingProfile(!isEditingProfile)}
+                    >
+                      {isEditingProfile ? 'Concluir edição' : 'Editar dados'}
+                    </Button>
+                  )}
+                </div>
+
+                {!isEditingProfile && (!initialProfile.full_name || !initialProfile.document) && (
+                  <div className="mb-4 p-3 bg-surface border border-border rounded-md flex items-start gap-2.5">
+                    <Zap className="w-4 h-4 text-ink-500 mt-0.5 shrink-0" />
+                    <p className="text-[12px] text-ink-600 leading-relaxed">
+                      Precisamos de mais alguns dados para finalizar seu pedido com segurança.
+                    </p>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                  {(isEditingProfile || !initialProfile.full_name) && (
+                    <div>
+                      <label htmlFor="co-name" className="field-label">Nome completo</label>
+                      <Input id="co-name" type="text" name="customer_name" value={formData.customer_name} onChange={handleChange} required placeholder="Nome completo" autoComplete="name" />
+                    </div>
+                  )}
+
+                  {(isEditingProfile || !initialProfile.phone) && (
+                    <div>
+                      <label htmlFor="co-phone" className="field-label">WhatsApp</label>
+                      <Input id="co-phone" type="tel" name="customer_whatsapp" value={formData.customer_whatsapp} onChange={handleChange} required placeholder="11999999999" autoComplete="tel" inputMode="numeric" />
+                    </div>
+                  )}
+
+                  {(isEditingProfile || !user?.email) && (
+                    <div>
+                      <label htmlFor="co-email" className="field-label">E-mail</label>
+                      <Input id="co-email" type="email" name="customer_email" value={formData.customer_email} onChange={handleChange} required autoComplete="email" />
+                    </div>
+                  )}
+
+                  {(isEditingProfile || !initialProfile.document) && (
+                    <div>
+                      <label htmlFor="co-doc" className="field-label">CPF ou CNPJ</label>
+                      <Input id="co-doc" type="text" name="customer_document" value={formData.customer_document} onChange={handleChange} required placeholder="000.000.000-00" inputMode="numeric" />
+                    </div>
+                  )}
+
+                  {/* Resumo dos dados já preenchidos */}
+                  {!isEditingProfile && (
+                    <>
+                      {initialProfile.full_name && (
+                        <div className="px-3 py-2.5 bg-surface rounded-md border border-border min-w-0">
+                          <span className="block text-[12px] text-muted-foreground">Nome</span>
+                          <span className="block text-[13px] font-medium text-foreground truncate">{formData.customer_name}</span>
+                        </div>
+                      )}
+                      {initialProfile.phone && (
+                        <div className="px-3 py-2.5 bg-surface rounded-md border border-border min-w-0">
+                          <span className="block text-[12px] text-muted-foreground">WhatsApp</span>
+                          <span className="block text-[13px] font-medium text-foreground numeric truncate">{formData.customer_whatsapp}</span>
+                        </div>
+                      )}
+                      {user?.email && (
+                        <div className="px-3 py-2.5 bg-surface rounded-md border border-border min-w-0">
+                          <span className="block text-[12px] text-muted-foreground">E-mail</span>
+                          <span className="block text-[13px] font-medium text-foreground truncate">{formData.customer_email}</span>
+                        </div>
+                      )}
+                      {initialProfile.document && (
+                        <div className="px-3 py-2.5 bg-surface rounded-md border border-border min-w-0">
+                          <span className="block text-[12px] text-muted-foreground">Documento</span>
+                          <span className="block text-[13px] font-medium text-foreground numeric truncate">{formData.customer_document}</span>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Forma de entrega */}
+              <div className={CARD}>
+                <h2 className={`${CARD_TITLE} mb-3`}>Entrega</h2>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5" role="radiogroup" aria-label="Forma de entrega">
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={deliveryMethod === 'shipping'}
+                    onClick={() => setDeliveryMethod('shipping')}
+                    className={choiceClass(deliveryMethod === 'shipping')}
+                  >
+                    <span className={choiceIconClass(deliveryMethod === 'shipping')}>
+                      <MapPin className="w-4 h-4" />
+                    </span>
+                    <span className="flex-1 min-w-0">
+                      <span className="block text-[13px] font-semibold text-foreground">Receber em casa</span>
+                      <span className="block text-[12px] text-muted-foreground mt-0.5">
+                        {isNetworkPartner ? 'Transporte próprio da rede' : 'Entrega via transportadora'}
+                      </span>
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={deliveryMethod === 'pickup'}
+                    onClick={() => { setDeliveryMethod('pickup'); setPickupUnitSlug('linhares'); }}
+                    className={choiceClass(deliveryMethod === 'pickup')}
+                  >
+                    <span className={choiceIconClass(deliveryMethod === 'pickup')}>
+                      <Store className="w-4 h-4" />
+                    </span>
+                    <span className="flex-1 min-w-0">
+                      <span className="flex items-center gap-2">
+                        <span className="text-[13px] font-semibold text-foreground">Retirar na loja</span>
+                        <Badge variant="success">Grátis</Badge>
+                      </span>
+                      <span className="block text-[12px] text-muted-foreground mt-0.5">Unidades Rei dos Cachos</span>
+                    </span>
+                  </button>
+                </div>
+
+                {deliveryMethod === 'shipping' ? (
+                  <div className="mt-5 pt-4 border-t border-border">
+                    <h3 className="text-[13px] font-semibold text-foreground mb-3">Endereço de entrega</h3>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                      {(isEditingProfile || !initialProfile.address_cep) && (
+                        <div>
+                          <label htmlFor="co-cep" className="field-label">CEP</label>
+                          <Input id="co-cep" type="text" name="cep" required value={formData.cep} onChange={handleChange} placeholder="00000-000" inputMode="numeric" autoComplete="postal-code" />
+                        </div>
+                      )}
+                      {(isEditingProfile || !initialProfile.address_street) && (
+                        <div>
+                          <label htmlFor="co-street" className="field-label">Rua</label>
+                          <Input id="co-street" type="text" name="street" required value={formData.street} onChange={handleChange} placeholder="Av. Principal" autoComplete="address-line1" />
+                        </div>
+                      )}
+                      {(isEditingProfile || !initialProfile.address_number) && (
+                        <div>
+                          <label htmlFor="co-number" className="field-label">Número</label>
+                          <Input id="co-number" type="text" name="number" required value={formData.number} onChange={handleChange} placeholder="123" />
+                        </div>
+                      )}
+                      {(isEditingProfile || initialProfile.address_complement === undefined) && (
+                        <div>
+                          <label htmlFor="co-compl" className="field-label">
+                            Complemento <span className="font-normal text-muted-foreground">(opcional)</span>
+                          </label>
+                          <Input id="co-compl" type="text" name="complement" value={formData.complement} onChange={handleChange} placeholder="Apto 101" autoComplete="address-line2" />
+                        </div>
+                      )}
+                      {(isEditingProfile || !initialProfile.address_neighborhood) && (
+                        <div>
+                          <label htmlFor="co-neigh" className="field-label">Bairro</label>
+                          <Input id="co-neigh" type="text" name="neighborhood" required value={formData.neighborhood} onChange={handleChange} placeholder="Centro" />
+                        </div>
+                      )}
+                      {(isEditingProfile || !initialProfile.address_city || !initialProfile.address_state) && (
+                        <div className="flex gap-3">
+                          <div className="flex-1 min-w-0">
+                            <label htmlFor="co-city" className="field-label">Cidade</label>
+                            <Input id="co-city" type="text" name="city" required value={formData.city} onChange={handleChange} placeholder="São Paulo" autoComplete="address-level2" />
+                          </div>
+                          <div className="w-20">
+                            <label htmlFor="co-uf" className="field-label">UF</label>
+                            <Input id="co-uf" type="text" name="state" required maxLength={2} value={formData.state} onChange={handleChange} placeholder="SP" className="uppercase" autoComplete="address-level1" />
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Resumo do endereço já preenchido */}
+                      {!isEditingProfile && (
+                        <div className="sm:col-span-2">
+                          <div className="px-3 py-2.5 bg-surface rounded-md border border-border">
+                            {initialProfile.address_cep ? (
+                              <div className="flex items-start gap-2">
+                                <MapPin className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0 mt-0.5" />
+                                <span className="text-[13px] text-foreground">
+                                  {formData.street}, {formData.number} {formData.complement ? `(${formData.complement})` : ''} – {formData.neighborhood}, {formData.city}/{formData.state} · CEP {formData.cep}
+                                </span>
+                              </div>
+                            ) : (
+                              <span className="text-[12px] text-muted-foreground">Preencha o endereço nos campos acima.</span>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="mt-5 pt-4 border-t border-border">
+                    <h3 className="text-[13px] font-semibold text-foreground mb-3">Selecione a unidade</h3>
+                    <div className="space-y-2" role="radiogroup" aria-label="Unidade de retirada">
+                      {PICKUP_UNITS.map(unit => {
+                        const active = pickupUnitSlug === unit.slug;
+                        return (
+                          <label
+                            key={unit.slug}
+                            className={`relative flex items-start gap-3 p-3.5 rounded-lg border cursor-pointer transition-colors ${
+                              active ? 'border-brand bg-brand-subtle ring-1 ring-brand' : 'border-border bg-card hover:border-ink-300'
+                            }`}
+                          >
+                            <input
+                              type="radio"
+                              name="pickup_unit"
+                              className="sr-only"
+                              checked={active}
+                              onChange={() => setPickupUnitSlug(unit.slug)}
+                            />
+                            <span
+                              className={`mt-0.5 w-4 h-4 rounded-full border flex items-center justify-center shrink-0 transition-colors ${
+                                active ? 'border-brand-strong' : 'border-ink-300 bg-card'
+                              }`}
+                              aria-hidden
+                            >
+                              {active && <span className="w-2 h-2 rounded-full bg-brand-strong" />}
+                            </span>
+                            <span className="flex-1 min-w-0">
+                              <span className="block text-[13px] font-semibold text-foreground">{unit.name}</span>
+                              <span className="block text-[12px] text-muted-foreground mt-0.5 leading-relaxed">
+                                {unit.line1}<br />{unit.line2}
+                              </span>
+                            </span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Observações */}
+              <div className={CARD}>
+                <label htmlFor="co-notes" className="field-label">
+                  Observações <span className="font-normal text-muted-foreground">(opcional)</span>
+                </label>
+                <Textarea
+                  id="co-notes"
+                  name="notes"
+                  value={formData.notes}
+                  onChange={handleChange}
+                  rows={3}
+                  placeholder="Alguma observação para o pedido?"
+                />
+              </div>
+
+              {/* Cupom — oculto para parceiro da rede */}
+              {!isNetworkPartner && (
+                <div className={CARD}>
+                  <label htmlFor="co-coupon" className="field-label">Cupom de desconto</label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="co-coupon"
+                      type="text"
+                      value={couponCode}
+                      onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                      placeholder="Código do cupom"
+                      disabled={couponDiscount > 0 || isValidatingCoupon}
+                      className="flex-1 uppercase mono"
+                    />
+                    {couponDiscount > 0 ? (
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        className="text-danger"
+                        onClick={() => { setCouponDiscount(0); setCouponId(null); setCouponCode(''); setCouponType(null); }}
+                      >
+                        Remover
+                      </Button>
+                    ) : (
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        onClick={handleApplyCoupon}
+                        disabled={isValidatingCoupon || !couponCode.trim()}
+                      >
+                        {isValidatingCoupon ? <Loader className="animate-spin" /> : 'Aplicar'}
+                      </Button>
+                    )}
+                  </div>
+                  {couponDiscount > 0 && (
+                    <p className="mt-2 text-[12px] text-success font-medium flex items-center gap-1">
+                      <Check className="w-3.5 h-3.5" /> {couponType === 'free_shipping' ? 'Frete grátis aplicado.' : couponType === 'shipping_percent' ? `${couponDiscount}% de desconto no frete aplicado.` : `Desconto de R$ ${couponDiscount.toFixed(2)} aplicado.`}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Resumo do total */}
+              <div className={CARD}>
+                <h2 className={`${CARD_TITLE} mb-3`}>Resumo</h2>
+                <dl className="space-y-2 text-[13px]">
+                  <div className="flex items-center justify-between">
+                    <dt className="text-muted-foreground">Subtotal ({cartCount} {cartCount === 1 ? 'item' : 'itens'})</dt>
+                    <dd className="text-foreground numeric">R$ {cartTotal.toFixed(2)}</dd>
+                  </div>
+
+                  <div className="flex items-start justify-between gap-3">
+                    <dt className="text-muted-foreground">Frete</dt>
+                    <dd className="text-right numeric">
+                      {isNetworkPartner ? (
+                        <span className="text-success font-medium">Transporte próprio da rede</span>
+                      ) : deliveryMethod === 'pickup' ? (
+                        <span className="text-success font-medium">Retirada grátis</span>
+                      ) : !isAddressValid ? (
+                        <span className="text-muted-foreground text-[12px]">Preencha o endereço</span>
+                      ) : couponType === 'free_shipping' ? (
+                        <span className="flex flex-col items-end">
+                          <span className="text-muted-foreground line-through text-[12px]">R$ {shippingEstimate.toFixed(2)}</span>
+                          <span className="text-success font-medium">Grátis</span>
+                        </span>
+                      ) : couponType === 'shipping_percent' ? (
+                        <span className="flex flex-col items-end">
+                          <span className="text-muted-foreground line-through text-[12px]">R$ {shippingEstimate.toFixed(2)}</span>
+                          <span className="text-success font-medium">R$ {(shippingEstimate - shippingDiscountAmount).toFixed(2)}</span>
+                        </span>
+                      ) : (
+                        <span className="text-foreground">R$ {shippingEstimate.toFixed(2)}</span>
+                      )}
+                    </dd>
+                  </div>
+                  {deliveryMethod === 'shipping' && isAddressValid && !isNetworkPartner && (
+                    <p className="text-[12px] text-muted-foreground">
+                      Valor médio de cotação com as transportadoras parceiras.
+                    </p>
+                  )}
+
+                  {couponDiscount > 0 && couponType !== 'free_shipping' && couponType !== 'shipping_percent' && (
+                    <div className="flex items-center justify-between text-success font-medium">
+                      <dt>Desconto (cupom)</dt>
+                      <dd className="numeric">− R$ {couponDiscount.toFixed(2)}</dd>
+                    </div>
+                  )}
+                  {shippingDiscountAmount > 0 && (
+                    <div className="flex items-center justify-between text-success font-medium">
+                      <dt>Desconto no frete ({couponDiscount}%)</dt>
+                      <dd className="numeric">− R$ {shippingDiscountAmount.toFixed(2)}</dd>
+                    </div>
+                  )}
+
+                  <div className="flex items-baseline justify-between pt-3 border-t border-border">
+                    <dt className="text-[14px] font-semibold text-foreground">Total do pedido</dt>
+                    <dd className="font-title text-[24px] font-semibold text-foreground numeric leading-none">
+                      R$ {orderTotal.toFixed(2)}
+                    </dd>
+                  </div>
+                </dl>
+              </div>
+
+              <ActionBar total={orderTotal} totalLabel="Total do pedido">
+                <Button size="lg" className="w-full" onClick={handleNext}>
+                  Continuar para pagamento
+                  <ArrowRight />
+                </Button>
+              </ActionBar>
+            </>
+          )}
+
+          {/* ============================================================ */}
+          {/* STEP 3: PAYMENT */}
+          {/* ============================================================ */}
+          {step === 3 && (
+            <>
+              <div className={CARD}>
+                <h2 className={`${CARD_TITLE} mb-3`}>Forma de pagamento</h2>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5" role="radiogroup" aria-label="Forma de pagamento">
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={paymentMethod === 'pix'}
+                    onClick={() => { setPaymentMethod('pix'); setInstallments(1); }}
+                    className={choiceClass(paymentMethod === 'pix')}
+                  >
+                    <span className={choiceIconClass(paymentMethod === 'pix')}>
+                      <Zap className="w-4 h-4" />
+                    </span>
+                    <span className="text-[13px] font-semibold text-foreground">Pix</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={paymentMethod === 'credit'}
+                    onClick={() => setPaymentMethod('credit')}
+                    className={choiceClass(paymentMethod === 'credit')}
+                  >
+                    <span className={choiceIconClass(paymentMethod === 'credit')}>
+                      <CreditCard className="w-4 h-4" />
+                    </span>
+                    <span className="text-[13px] font-semibold text-foreground">Cartão de crédito</span>
+                  </button>
+
+                  {isNetworkPartner && (
+                    <button
+                      type="button"
+                      role="radio"
+                      aria-checked={paymentMethod === 'pay_on_delivery'}
+                      onClick={() => { setPaymentMethod('pay_on_delivery'); setInstallments(1); }}
+                      className={`sm:col-span-2 ${choiceClass(paymentMethod === 'pay_on_delivery')}`}
+                    >
+                      <span className={choiceIconClass(paymentMethod === 'pay_on_delivery')}>
+                        <Truck className="w-4 h-4" />
+                      </span>
+                      <span className="flex-1 min-w-0">
+                        <span className="block text-[13px] font-semibold text-foreground">Pagar na entrega</span>
+                        <span className="block text-[12px] text-muted-foreground mt-0.5">Pagamento acertado no ato da entrega</span>
+                      </span>
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <div className={`${CARD} hidden sm:block`}>
+                <div className="flex items-baseline justify-between">
+                  <span className="text-[14px] font-semibold text-foreground">Total do pedido</span>
+                  <span className="font-title text-[24px] font-semibold text-foreground numeric leading-none">
+                    R$ {orderTotal.toFixed(2)}
                   </span>
                 </div>
               </div>
-            ))}
-          </div>
-        </div>
-      </div>
 
-      <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-8 max-w-xl">
-        {error && (
-          <div className="mb-6 p-4 rounded-lg bg-danger-subtle border border-danger-border text-danger text-sm">
-            {error}
-          </div>
-        )}
-
-        {/* ================================================================ */}
-        {/* STEP 1: ORDER SUMMARY */}
-        {/* ================================================================ */}
-        {step === 1 && (
-          <div className="space-y-6">
-            <div className="bg-card rounded-lg p-5 sm:p-6 shadow-card">
-              <div className="flex items-center gap-2 mb-5">
-                <ShoppingCart className="w-5 h-5 text-gold-text" />
-                <h2 className="text-lg font-bold text-foreground">Confirme seu Pedido</h2>
-              </div>
-
-              <div className="space-y-3 mb-6">
-                {cart.map(item => (
-                  <div key={item.id} className="flex items-center gap-3 py-2">
-                    {item.image && (
-                      <img src={item.image} alt="" className="w-12 h-12 rounded-lg object-cover flex-shrink-0" />
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-foreground truncate">{item.name}</p>
-                      <p className="text-xs text-muted-foreground">{item.quantity}x R$ {item.price.toFixed(2)}</p>
-                    </div>
-                    <p className="text-sm font-bold text-foreground whitespace-nowrap">
-                      R$ {(item.price * item.quantity).toFixed(2)}
-                    </p>
-                  </div>
-                ))}
-              </div>
-
-              <div className="border-t border-border pt-4 space-y-2">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Subtotal dos itens ({cartCount} itens)</span>
-                  <span className="font-medium text-foreground">R$ {cartTotal.toFixed(2)}</span>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Frete</span>
-                  <span className="text-muted-foreground italic text-xs">Calculado na próxima etapa</span>
-                </div>
-                {couponDiscount > 0 && couponType !== 'shipping_percent' && (
-                  <div className="flex items-center justify-between text-sm text-success font-bold">
-                    <span>Desconto (Cupom)</span>
-                    <span>- R$ {couponDiscount.toFixed(2)}</span>
-                  </div>
-                )}
-                {shippingDiscountAmount > 0 && (
-                  <div className="flex items-center justify-between text-sm text-success font-bold">
-                    <span>Desconto no Frete ({couponDiscount}%)</span>
-                    <span>- R$ {shippingDiscountAmount.toFixed(2)}</span>
-                  </div>
-                )}
-                <div className="flex items-center justify-between text-lg sm:text-xl font-semibold pt-3 border-t-2 border-border">
-                  <span className="uppercase tracking-tight text-foreground/80">Subtotal Geral</span>
-                  <span className="gradient-gold-text">R$ {(cartTotal - effectiveDiscount).toFixed(2)}</span>
-                </div>
-              </div>
-
-              {cartTotal < minOrderValue && (
-                <div className="mt-4 p-3 bg-muted border border-border rounded-lg">
-                  <p className="text-xs text-ink-600">
-                    Pedido minimo: R$ {minOrderValue}. Faltam: <strong>R$ {(minOrderValue - cartTotal).toFixed(2)}</strong>
-                  </p>
-                </div>
-              )}
-            </div>
-
-            {/* Cupom movido para o Passo 3 */}
-
-            <button
-              onClick={handleNext}
-              disabled={cartTotal < minOrderValue}
-              className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-semibold text-base btn-gold disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-            >
-              Continuar para Entrega
-              <ArrowRight className="w-4 h-4" />
-            </button>
-          </div>
-        )}
-
-        {/* ================================================================ */}
-        {/* STEP 2: DELIVERY & SUBMIT */}
-        {/* ================================================================ */}
-        {step === 2 && (
-          <div className="space-y-6">
-            {/* Pre-filled Client Info (read-only summary) */}
-            {/* Progressive Profiling: Only show inputs for missing fields or if editing */}
-            <div className="bg-card rounded-lg p-5 sm:p-6 shadow-sm border border-border">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
-                  <Check className="w-5 h-5 text-success" />
-                  Dados do Cliente
-                </h2>
-                {profileLoaded && (
-                  <button 
-                    type="button"
-                    onClick={() => setIsEditingProfile(!isEditingProfile)}
-                    className="text-xs font-semibold text-ink-500 hover:text-foreground underline"
-                  >
-                    {isEditingProfile ? 'Salvar visualização' : 'Editar dados'}
-                  </button>
-                )}
-              </div>
-
-              {/* Missing data banner */}
-              {!isEditingProfile && (!initialProfile.full_name || !initialProfile.document) && (
-                <div className="mb-6 p-3 bg-muted border border-border rounded-xl flex items-start gap-2.5 animate-in fade-in slide-in-from-top-2 duration-300">
-                  <Zap className="w-4 h-4 text-ink-500 mt-0.5" />
-                  <p className="text-[12px] text-ink-600 leading-relaxed font-medium">
-                    Precisamos de mais alguns dados para finalizar seu pedido com segurança.
-                  </p>
-                </div>
-              )}
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {(isEditingProfile || !initialProfile.full_name) && (
-                  <div>
-                    <label className="block text-xs font-medium text-muted-foreground mb-1">Nome Completo</label>
-                    <input
-                      type="text" name="customer_name" value={formData.customer_name} onChange={handleChange} required
-                      className="w-full px-3 py-2.5 rounded-lg border border-border bg-surface text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                      placeholder="Nome completo"
-                    />
-                  </div>
-                )}
-                
-                {(isEditingProfile || !initialProfile.phone) && (
-                  <div>
-                    <label className="block text-xs font-medium text-muted-foreground mb-1">WhatsApp</label>
-                    <input
-                      type="tel" name="customer_whatsapp" value={formData.customer_whatsapp} onChange={handleChange} required
-                      className="w-full px-3 py-2.5 rounded-lg border border-border bg-surface text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                      placeholder="11999999999"
-                    />
-                  </div>
-                )}
-
-                {(isEditingProfile || !user?.email) && (
-                  <div>
-                    <label className="block text-xs font-medium text-muted-foreground mb-1">E-mail</label>
-                    <input
-                      type="email" name="customer_email" value={formData.customer_email} onChange={handleChange} required
-                      className="w-full px-3 py-2.5 rounded-lg border border-border bg-surface text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                    />
-                  </div>
-                )}
-
-                {(isEditingProfile || !initialProfile.document) && (
-                  <div>
-                    <label className="block text-xs font-medium text-muted-foreground mb-1">CPF ou CNPJ</label>
-                    <input
-                      type="text" name="customer_document" value={formData.customer_document} onChange={handleChange} required
-                      className="w-full px-3 py-2.5 rounded-lg border border-border bg-surface text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                      placeholder="000.000.000-00"
-                      inputMode="numeric"
-                    />
-                  </div>
-                )}
-
-                {/* Summary View for pre-filled data */}
-                {!isEditingProfile && (
-                  <>
-                    {initialProfile.full_name && (
-                      <div className="p-3 bg-surface-alt rounded-lg border border-border/50">
-                        <span className="block text-[10px] uppercase tracking-wider text-muted-foreground font-bold mb-0.5">Nome</span>
-                        <span className="text-sm font-medium text-foreground">{formData.customer_name}</span>
-                      </div>
-                    )}
-                    {initialProfile.phone && (
-                      <div className="p-3 bg-surface-alt rounded-lg border border-border/50">
-                        <span className="block text-[10px] uppercase tracking-wider text-muted-foreground font-bold mb-0.5">WhatsApp</span>
-                        <span className="text-sm font-medium text-foreground">{formData.customer_whatsapp}</span>
-                      </div>
-                    )}
-                    {user?.email && (
-                      <div className="p-3 bg-surface-alt rounded-lg border border-border/50">
-                        <span className="block text-[10px] uppercase tracking-wider text-muted-foreground font-bold mb-0.5">E-mail</span>
-                        <span className="text-sm font-medium text-foreground">{formData.customer_email}</span>
-                      </div>
-                    )}
-                    {initialProfile.document && (
-                      <div className="p-3 bg-surface-alt rounded-lg border border-border/50">
-                        <span className="block text-[10px] uppercase tracking-wider text-muted-foreground font-bold mb-0.5">Documento</span>
-                        <span className="text-sm font-medium text-foreground">{formData.customer_document}</span>
-                      </div>
-                    )}
-                  </>
-                )}
-              </div>
-            </div>
-
-
-            {/* Delivery Method Selector */}
-            <div className="bg-card rounded-lg p-5 sm:p-6 shadow-sm border border-border">
-              <h2 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
-                <Store className="w-5 h-5 text-ink-400" />
-                Entrega
-              </h2>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
-                <button
-                  type="button"
-                  onClick={() => setDeliveryMethod('shipping')}
-                  className={`relative flex items-center p-4 rounded-xl border transition-all ${deliveryMethod === 'shipping' ? 'border-foreground bg-muted ring-1 ring-foreground shadow-sm' : 'border-border bg-surface hover:border-ink-300'}`}
-                >
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center mr-3 ${deliveryMethod === 'shipping' ? 'bg-muted text-foreground' : 'bg-surface-alt text-muted-foreground'}`}>
-                    <MapPin className="w-5 h-5" />
-                  </div>
-                  <div className="flex-1 text-left">
-                    <span className="block font-bold text-sm text-foreground">Receber em Casa</span>
-                    <span className="block text-xs text-muted-foreground mt-0.5">
-                      {isNetworkPartner ? 'Entregue via Transporte Próprio da Rede' : 'Entrega via transportadora'}
-                    </span>
-                  </div>
-                  {deliveryMethod === 'shipping' && (
-                    <div className="absolute top-4 right-4">
-                      <div className="w-5 h-5 rounded-full bg-primary text-primary-foreground flex items-center justify-center">
-                        <Check className="w-3 h-3" />
-                      </div>
-                    </div>
-                  )}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => { setDeliveryMethod('pickup'); setPickupUnitSlug('linhares'); }}
-                  className={`relative flex items-center p-4 rounded-xl border transition-all ${deliveryMethod === 'pickup' ? 'border-foreground bg-muted ring-1 ring-foreground shadow-sm' : 'border-border bg-surface hover:border-ink-300'}`}
-                >
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center mr-3 ${deliveryMethod === 'pickup' ? 'bg-muted text-foreground' : 'bg-surface-alt text-muted-foreground'}`}>
-                    <Store className="w-5 h-5" />
-                  </div>
-                  <div className="flex-1 text-left">
-                    <div className="flex items-center gap-2">
-                      <span className="block font-bold text-sm text-foreground">Retirar na Loja</span>
-                      <span className="text-[10px] uppercase font-bold tracking-wider text-success bg-success-subtle px-2 py-0.5 rounded-full">Grátis</span>
-                    </div>
-                    <span className="block text-xs text-muted-foreground mt-0.5">Unidades Rei dos Cachos</span>
-                  </div>
-                  {deliveryMethod === 'pickup' && (
-                    <div className="absolute top-4 right-4">
-                      <div className="w-5 h-5 rounded-full bg-primary text-primary-foreground flex items-center justify-center">
-                        <Check className="w-3 h-3" />
-                      </div>
-                    </div>
-                  )}
-                </button>
-              </div>
-
-              {/* Conditional Form: Address OR Store Selection */}
-              {deliveryMethod === 'shipping' ? (
-                <>
-                  <div className="flex items-center justify-between mb-3 mt-2 border-t border-border pt-4">
-                    <h3 className="text-sm font-bold text-foreground">Endereço de Entrega</h3>
-                  </div>
-
-                  {/* Smart Address Form */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {(isEditingProfile || !initialProfile.address_cep) && (
-                      <div>
-                        <label className="block text-xs font-medium text-muted-foreground mb-1">CEP *</label>
-                        <input type="text" name="cep" required value={formData.cep} onChange={handleChange} placeholder="00000-000"
-                          className="w-full px-3 py-2.5 rounded-lg border border-border bg-card text-sm focus:ring-2 focus:ring-ring" />
-                      </div>
-                    )}
-                    {(isEditingProfile || !initialProfile.address_street) && (
-                      <div>
-                        <label className="block text-xs font-medium text-muted-foreground mb-1">Rua *</label>
-                        <input type="text" name="street" required value={formData.street} onChange={handleChange} placeholder="Av. Principal"
-                          className="w-full px-3 py-2.5 rounded-lg border border-border bg-card text-sm focus:ring-2 focus:ring-ring" />
-                      </div>
-                    )}
-                    {(isEditingProfile || !initialProfile.address_number) && (
-                      <div>
-                        <label className="block text-xs font-medium text-muted-foreground mb-1">Numero *</label>
-                        <input type="text" name="number" required value={formData.number} onChange={handleChange} placeholder="123"
-                          className="w-full px-3 py-2.5 rounded-lg border border-border bg-card text-sm focus:ring-2 focus:ring-ring" />
-                      </div>
-                    )}
-                    {(isEditingProfile || initialProfile.address_complement === undefined) && (
-                      <div>
-                        <label className="block text-xs font-medium text-muted-foreground mb-1">Complemento</label>
-                        <input type="text" name="complement" value={formData.complement} onChange={handleChange} placeholder="Apto 101"
-                          className="w-full px-3 py-2.5 rounded-lg border border-border bg-card text-sm focus:ring-2 focus:ring-ring" />
-                      </div>
-                    )}
-                    {(isEditingProfile || !initialProfile.address_neighborhood) && (
-                      <div>
-                        <label className="block text-xs font-medium text-muted-foreground mb-1">Bairro *</label>
-                        <input type="text" name="neighborhood" required value={formData.neighborhood} onChange={handleChange} placeholder="Centro"
-                          className="w-full px-3 py-2.5 rounded-lg border border-border bg-card text-sm focus:ring-2 focus:ring-ring" />
-                      </div>
-                    )}
-                    {(isEditingProfile || !initialProfile.address_city || !initialProfile.address_state) && (
-                      <div className="flex gap-3">
-                        <div className="flex-1">
-                          <label className="block text-xs font-medium text-muted-foreground mb-1">Cidade *</label>
-                          <input type="text" name="city" required value={formData.city} onChange={handleChange} placeholder="Sao Paulo"
-                            className="w-full px-3 py-2.5 rounded-lg border border-border bg-card text-sm focus:ring-2 focus:ring-ring" />
-                        </div>
-                        <div className="w-20">
-                          <label className="block text-xs font-medium text-muted-foreground mb-1">UF *</label>
-                          <input type="text" name="state" required maxLength={2} value={formData.state} onChange={handleChange} placeholder="SP"
-                            className="w-full px-3 py-2.5 rounded-lg border border-border bg-card text-sm focus:ring-2 focus:ring-ring uppercase" />
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Summary for filled address */}
-                    {!isEditingProfile && (
-                      <div className="sm:col-span-2">
-                        <div className="p-4 bg-surface-alt rounded-xl border border-border/50 space-y-2">
-                          {initialProfile.address_cep && (
-                            <div className="flex items-center gap-2 overflow-hidden">
-                              <MapPin className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
-                              <span className="text-sm text-foreground truncate">
-                                {formData.street}, {formData.number} {formData.complement ? `(${formData.complement})` : ''} - {formData.neighborhood}, {formData.city}/{formData.state} (CEP: {formData.cep})
-                              </span>
-                            </div>
-                          )}
-                          {!initialProfile.address_cep && (
-                            <span className="text-xs text-muted-foreground italic">Endereço será coletado nos campos acima</span>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </>
-
-              ) : (
-                <div className="animate-in fade-in zoom-in-95 duration-200">
-                  <h3 className="text-sm font-bold text-foreground mb-4 mt-2 border-t border-border pt-6">Selecione a unidade</h3>
-                  <div className="space-y-3">
-                    {/* Linhares */}
-                    <label className={`relative block p-4 rounded-xl border cursor-pointer transition-all ${pickupUnitSlug === 'linhares' ? 'border-foreground bg-muted' : 'border-border bg-surface hover:border-ink-300'}`}>
-                      <input type="radio" name="pickup_unit" className="sr-only" checked={pickupUnitSlug === 'linhares'} onChange={() => setPickupUnitSlug('linhares')} />
-                      <div className="flex items-start gap-4">
-                        <div className={`mt-0.5 flex-shrink-0 w-5 h-5 rounded-full border flex items-center justify-center transition-colors ${pickupUnitSlug === 'linhares' ? 'border-foreground bg-muted0 text-white' : 'border-ink-300'}`}>
-                          {pickupUnitSlug === 'linhares' && <Check className="w-3 h-3" />}
-                        </div>
-                        <div className="flex-1">
-                          <p className="font-bold text-foreground text-sm">Rei dos Cachos (Linhares)</p>
-                          <p className="text-xs text-muted-foreground mt-1 leading-relaxed">Av. Gov. Carlos Lindemberg, 835<br/>Centro, Linhares - ES, 29900-203</p>
-                        </div>
-                      </div>
-                    </label>
-
-                    {/* Serra */}
-                    <label className={`relative block p-4 rounded-xl border cursor-pointer transition-all ${pickupUnitSlug === 'serra' ? 'border-foreground bg-muted' : 'border-border bg-surface hover:border-ink-300'}`}>
-                      <input type="radio" name="pickup_unit" className="sr-only" checked={pickupUnitSlug === 'serra'} onChange={() => setPickupUnitSlug('serra')} />
-                      <div className="flex items-start gap-4">
-                        <div className={`mt-0.5 flex-shrink-0 w-5 h-5 rounded-full border flex items-center justify-center transition-colors ${pickupUnitSlug === 'serra' ? 'border-foreground bg-muted0 text-white' : 'border-ink-300'}`}>
-                          {pickupUnitSlug === 'serra' && <Check className="w-3 h-3" />}
-                        </div>
-                        <div className="flex-1">
-                          <p className="font-bold text-foreground text-sm">Rei dos Cachos (Serra)</p>
-                          <p className="text-xs text-muted-foreground mt-1 leading-relaxed">Av. Central, 1197 - Parque Res. Laranjeiras<br/>Serra - ES, 29165-130</p>
-                        </div>
-                      </div>
-                    </label>
-
-                    {/* Teixeira */}
-                    <label className={`relative block p-4 rounded-xl border cursor-pointer transition-all ${pickupUnitSlug === 'teixeira' ? 'border-foreground bg-muted' : 'border-border bg-surface hover:border-ink-300'}`}>
-                      <input type="radio" name="pickup_unit" className="sr-only" checked={pickupUnitSlug === 'teixeira'} onChange={() => setPickupUnitSlug('teixeira')} />
-                      <div className="flex items-start gap-4">
-                        <div className={`mt-0.5 flex-shrink-0 w-5 h-5 rounded-full border flex items-center justify-center transition-colors ${pickupUnitSlug === 'teixeira' ? 'border-foreground bg-muted0 text-white' : 'border-ink-300'}`}>
-                          {pickupUnitSlug === 'teixeira' && <Check className="w-3 h-3" />}
-                        </div>
-                        <div className="flex-1">
-                          <p className="font-bold text-foreground text-sm">Rei dos Cachos (Teixeira de Freitas)</p>
-                          <p className="text-xs text-muted-foreground mt-1 leading-relaxed">Av. São Paulo, 151 - Bela Vista<br/>Teixeira de Freitas - BA, 45997-006</p>
-                        </div>
-                      </div>
-                    </label>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Notes */}
-            <div className="bg-card rounded-lg p-5 sm:p-6 shadow-card">
-              <label className="block text-xs font-medium text-muted-foreground mb-1">Observacoes</label>
-              <textarea
-                name="notes" value={formData.notes} onChange={handleChange} rows={3}
-                className="w-full px-3 py-2.5 rounded-lg border border-border bg-card text-sm focus:ring-2 focus:ring-ring"
-                placeholder="Alguma observacao para o pedido..."
-              />
-            </div>
-
-            {/* Cupom de Desconto — oculto para parceiro da rede */}
-            {!isNetworkPartner && <div className="bg-card rounded-lg p-5 sm:p-6 shadow-card">
-              <label className="block text-xs font-bold text-muted-foreground uppercase mb-2">Cupom de Desconto</label>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={couponCode}
-                  onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
-                  placeholder="Código do cupom"
-                  disabled={couponDiscount > 0 || isValidatingCoupon}
-                  className="flex-1 px-3 py-2 rounded-lg border border-border focus:ring-2 focus:ring-ring outline-none uppercase font-mono text-sm"
-                />
-                {couponDiscount > 0 ? (
-                  <button
-                    onClick={() => { setCouponDiscount(0); setCouponId(null); setCouponCode(''); setCouponType(null); }}
-                    className="px-4 py-2 rounded-lg border border-danger-border text-danger text-sm font-bold hover:bg-danger-subtle transition-colors"
-                  >
-                    Remover
-                  </button>
-                ) : (
-                  <button
-                    onClick={handleApplyCoupon}
-                    disabled={isValidatingCoupon || !couponCode.trim()}
-                    className="px-4 py-2 rounded-lg bg-foreground text-white text-sm font-bold hover:bg-foreground/90 transition-colors disabled:opacity-50"
-                  >
-                    {isValidatingCoupon ? '...' : 'Aplicar'}
-                  </button>
-                )}
-              </div>
-              {couponDiscount > 0 && (
-                <p className="mt-2 text-xs text-success font-bold flex items-center gap-1">
-                  <Check className="w-3 h-3" /> {couponType === 'free_shipping' ? 'Frete Grátis aplicado!' : couponType === 'shipping_percent' ? `${couponDiscount}% de desconto no frete aplicado!` : `Desconto de R$ ${couponDiscount.toFixed(2)} aplicado!`}
-                </p>
-              )}
-            </div>}
-
-            {/* Order Total Summary */}
-            <div className="bg-card rounded-lg p-5 sm:p-6 shadow-card space-y-3">
-              <div className="flex items-center justify-between text-sm text-muted-foreground">
-                <span>Subtotal ({cartCount} itens)</span>
-                <span>R$ {cartTotal.toFixed(2)}</span>
-              </div>
-
-              <div className="flex flex-col text-ink-600 bg-surface p-2 rounded">
-                <div className="flex items-center justify-between text-sm">
-                  <span>Frete</span>
-                  {isNetworkPartner ? (
-                    <div className="flex flex-col items-end">
-                      <span className="text-success font-bold">Transporte Próprio da Rede</span>
-                    </div>
-                  ) : deliveryMethod === 'pickup' ? (
-                    <div className="flex flex-col items-end">
-                      <span className="text-success font-bold">Retirada Grátis</span>
-                    </div>
-                  ) : !isAddressValid ? (
-                     <span className="text-muted-foreground italic text-xs">A calcular</span>
-                  ) : couponType === 'free_shipping' ? (
-                    <div className="flex flex-col items-end">
-                      <span className="text-muted-foreground line-through text-xs">R$ {shippingEstimate.toFixed(2)}</span>
-                      <span className="text-success font-bold">Grátis</span>
-                    </div>
-                  ) : couponType === 'shipping_percent' ? (
-                    <div className="flex flex-col items-end">
-                      <span className="text-muted-foreground line-through text-xs">R$ {shippingEstimate.toFixed(2)}</span>
-                      <span className="text-success font-bold">R$ {(shippingEstimate - shippingDiscountAmount).toFixed(2)}</span>
-                    </div>
+              <ActionBar total={orderTotal} totalLabel="Total do pedido">
+                <Button size="lg" className="w-full" onClick={handleSubmit} disabled={loading}>
+                  {loading ? (
+                    <>
+                      <Loader className="animate-spin" />
+                      Processando…
+                    </>
                   ) : (
-                    <span>+ R$ {shippingEstimate.toFixed(2)}</span>
+                    <>
+                      <Check />
+                      Finalizar compra
+                    </>
                   )}
-                </div>
-                {deliveryMethod === 'shipping' && isAddressValid && !isNetworkPartner && (
-                  <p className="text-[10px] text-muted-foreground mt-1 text-left">
-                    O valor é uma média de cotação com tranportadoras parceiras.
+                </Button>
+                {paymentMethod !== 'pay_on_delivery' && (
+                  <p className="text-[12px] text-center text-muted-foreground mt-2">
+                    Você será redirecionado para concluir o pagamento em seguida.
                   </p>
                 )}
-              </div>
-
-              {couponDiscount > 0 && couponType !== 'free_shipping' && couponType !== 'shipping_percent' && (
-                <div className="flex items-center justify-between text-sm text-success font-bold">
-                  <span>Desconto (Cupom)</span>
-                  <span>- R$ {couponDiscount.toFixed(2)}</span>
-                </div>
-              )}
-              {shippingDiscountAmount > 0 && (
-                <div className="flex items-center justify-between text-sm text-success font-bold">
-                  <span>Desconto no Frete ({couponDiscount}%)</span>
-                  <span>- R$ {shippingDiscountAmount.toFixed(2)}</span>
-                </div>
-              )}
-
-              <div className="flex items-center justify-between text-lg font-bold pt-3 border-t border-border">
-                <span className="text-foreground">Total do Pedido</span>
-                <span className="gradient-gold-text">
-                  R$ {orderTotal.toFixed(2)}
-                </span>
-              </div>
-            </div>
-
-            {/* Proceed to Payment Button (instead of submit) */}
-            <button
-              onClick={handleNext}
-              className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-semibold text-base btn-gold transition-all"
-            >
-              Continuar para Pagamento
-              <ArrowRight className="w-5 h-5" />
-            </button>
-          </div>
-        )}
-
-        {/* ================================================================ */}
-        {/* STEP 3: PAYMENT */}
-        {/* ================================================================ */}
-        {step === 3 && (
-          <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
-            <div className="bg-card rounded-lg p-5 sm:p-6 shadow-card">
-              <h2 className="text-lg font-bold text-foreground mb-6 flex items-center gap-2">
-                <Check className="w-5 h-5 text-success" />
-                Forma de Pagamento
-              </h2>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-                <button
-                  type="button"
-                  onClick={() => { setPaymentMethod('pix'); setInstallments(1); }}
-                  className={`flex flex-col items-center justify-center gap-2 p-4 rounded-lg border transition-all ${paymentMethod === 'pix' ? 'border-foreground bg-muted text-ink-600' : 'border-border text-foreground hover:bg-surface-alt'}`}
-                >
-                  <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
-                    <Zap className="w-4 h-4 text-foreground" />
-                  </div>
-                  <span className="font-bold text-sm">PIX</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setPaymentMethod('credit')}
-                  className={`flex flex-col items-center justify-center gap-2 p-4 rounded-lg border transition-all ${paymentMethod === 'credit' ? 'border-foreground bg-muted text-ink-600' : 'border-border text-foreground hover:bg-surface-alt'}`}
-                >
-                  <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
-                    <Check className="w-4 h-4 text-foreground" />
-                  </div>
-                  <span className="font-bold text-sm">Cartão de Crédito</span>
-                </button>
-
-                {isNetworkPartner && (
-                  <button
-                    type="button"
-                    onClick={() => { setPaymentMethod('pay_on_delivery'); setInstallments(1); }}
-                    className={`sm:col-span-2 flex items-center justify-center gap-3 p-4 rounded-lg border transition-all ${paymentMethod === 'pay_on_delivery' ? 'border-foreground bg-muted text-ink-600' : 'border-border text-foreground hover:bg-surface-alt'}`}
-                  >
-                    <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
-                      <Truck className="w-4 h-4 text-ink-500" />
-                    </div>
-                    <div className="text-left">
-                      <span className="block font-bold text-sm">Pagar na Entrega</span>
-                      <span className="block text-xs text-muted-foreground">Pagamento acertado no ato da entrega</span>
-                    </div>
-                  </button>
-                )}
-              </div>
-
-              {/* Installment selection removed as per user request */}
-            </div>
-
-            <button
-              onClick={handleSubmit}
-              disabled={loading}
-              className="w-full flex items-center justify-center gap-2 py-4 rounded-xl font-semibold text-lg btn-gold disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_4px_20px_rgba(245,158,11,0.3)] transition-all"
-            >
-              {loading ? (
-                <>
-                  <Loader className="w-5 h-5 animate-spin" />
-                  Processando Pagamento...
-                </>
-              ) : (
-                <>
-                  <Check className="w-6 h-6" />
-                  Finalizar Compra
-                </>
-              )}
-            </button>
-            {paymentMethod !== 'pay_on_delivery' && (
-              <p className="text-xs text-center text-muted-foreground">
-                Você será redirecionado para concluir o pagamento em seguida.
-              </p>
-            )}
-          </div>
-        )}
-      </div>
+              </ActionBar>
+            </>
+          )}
+        </PortalSection>
+      </PortalPage>
     </div>
   );
 };

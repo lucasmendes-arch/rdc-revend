@@ -6,6 +6,8 @@ import { toast } from 'sonner'
 import { Loader, Plus, Zap, Tag as TagIcon, MessageSquare, KeyRound, Pencil, Trash2, X, Variable } from 'lucide-react'
 import AdminLayout from '@/components/admin/AdminLayout'
 import StyledSelect from '@/components/ui/styled-select'
+import { Button } from '@/components/ui/button'
+import { AdminPage, PageTabs, Panel, EmptyState, PageLoading } from '@/components/admin/ui/AdminPage'
 import ColorSelect from '@/components/rh/ColorSelect'
 import AutomationsPanel, { PlaceholderHint, useAutomationVariables, useWhatsappInstances } from '@/components/automations/AutomationsPanel'
 import { CANDIDATE_AUTOMATION_CONFIG } from '@/components/automations/entities'
@@ -36,8 +38,9 @@ const TABS = [
 ] as const
 type TabKey = typeof TABS[number]['key']
 
-const inputClass = 'w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring'
-const labelClass = 'block text-xs font-semibold text-muted-foreground uppercase mb-1'
+const inputClass = 'flex h-9 w-full rounded-md border border-input bg-background px-3 text-base md:text-sm text-foreground placeholder:text-ink-400 hover:border-ink-300 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2'
+const textareaClass = 'flex w-full rounded-md border border-input bg-background px-3 py-2 text-base md:text-sm text-foreground placeholder:text-ink-400 hover:border-ink-300 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2'
+const labelClass = 'field-label'
 
 function slugify(text: string) {
   return text.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '')
@@ -52,33 +55,18 @@ export default function RhAutomacoes() {
 
   return (
     <AdminLayout>
-      <div className="bg-card border-b border-border sticky top-0 z-30">
-        <div className="px-4 sm:px-6 py-4">
-          <h1 className="text-xl sm:text-2xl font-bold text-foreground">Construtor de Automações</h1>
-          <p className="text-sm text-muted-foreground mt-1">Regras que rodam sozinhas quando um candidato muda de etapa, é criado ou tem um prazo vencido</p>
-        </div>
-        <div className="px-4 sm:px-6 flex gap-1 overflow-x-auto">
-          {TABS.map(({ key, label, icon: Icon }) => (
-            <button
-              key={key}
-              onClick={() => setTab(key)}
-              className={`flex items-center gap-1.5 px-3 py-2.5 text-sm font-medium border-b-2 whitespace-nowrap transition-colors ${
-                tab === key ? 'border-gold-text text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              <Icon className="w-4 h-4" /> {label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="px-4 sm:px-6 py-6 max-w-3xl mx-auto">
+      <AdminPage
+        title="Construtor de automações"
+        description="Regras que rodam sozinhas quando um candidato muda de etapa, é criado ou tem um prazo vencido"
+        width="narrow"
+        tabs={<PageTabs<TabKey> items={TABS.map((t) => ({ ...t }))} value={tab} onChange={setTab} />}
+      >
         {tab === 'automacoes' && <AutomationsPanel config={CANDIDATE_AUTOMATION_CONFIG} />}
         {tab === 'variaveis' && <VariablesTab />}
         {tab === 'tags' && <TagsTab />}
         {tab === 'templates' && <TemplatesTab />}
         {tab === 'credenciais' && <CredentialsTab />}
-      </div>
+      </AdminPage>
     </AdminLayout>
   )
 }
@@ -155,33 +143,33 @@ function VariablesTab() {
 
   return (
     <div>
-      <p className="text-sm text-muted-foreground mb-4">
-        Valores que mudam a cada rodada e entram nas mensagens como <code className="text-xs">{'{var.chave}'}</code>.
+      <p className="text-[13px] text-muted-foreground mb-4">
+        Valores que mudam a cada rodada e entram nas mensagens como <code className="text-[12px]">{'{var.chave}'}</code>.
         Os valores também podem ser trocados direto no kanban de Candidatos, antes de mover o lote.
       </p>
 
       <div className="flex justify-end mb-4">
-        <button onClick={() => setModalOpen(true)} className="flex items-center gap-2 px-3 py-2 rounded-lg btn-action text-sm font-medium">
+        <Button onClick={() => setModalOpen(true)}>
           <Plus className="w-4 h-4" /> Nova variável
-        </button>
+        </Button>
       </div>
 
       {isLoading ? (
-        <div className="text-center py-12"><Loader className="w-6 h-6 animate-spin text-gold-text mx-auto" /></div>
+        <PageLoading />
       ) : variables.length === 0 ? (
-        <p className="text-sm text-muted-foreground text-center py-12">Nenhuma variável cadastrada ainda.</p>
+        <Panel><EmptyState icon={Variable} title="Nenhuma variável cadastrada" description="Crie uma variável para usar nas mensagens como {var.chave}." /></Panel>
       ) : (
         <div className="space-y-2">
           {variables.map((v) => (
             <div key={v.id} className="px-3 py-2.5 rounded-lg border border-border bg-card">
               <div className="flex items-center gap-2 mb-1">
-                <span className="text-sm font-medium text-foreground">{v.label}</span>
-                <code className="text-[10px] font-mono px-1.5 py-0.5 rounded-md bg-surface-alt text-muted-foreground">{`{var.${v.key}}`}</code>
+                <span className="text-[13px] font-medium text-foreground">{v.label}</span>
+                <code className="text-[11px] font-mono px-1.5 py-0.5 rounded-sm bg-muted text-muted-foreground">{`{var.${v.key}}`}</code>
                 <span className="flex-1" />
-                <button onClick={() => openEdit(v)} className="p-1.5 rounded-lg hover:bg-surface-alt text-muted-foreground hover:text-foreground"><Pencil className="w-3.5 h-3.5" /></button>
-                <button onClick={() => setDeleteConfirm(v)} className="p-1.5 rounded-lg hover:bg-danger-subtle text-muted-foreground hover:text-danger"><Trash2 className="w-3.5 h-3.5" /></button>
+                <Button variant="ghost" size="icon-sm" className="shrink-0" onClick={() => openEdit(v)}><Pencil className="w-3.5 h-3.5" /></Button>
+                <Button variant="ghost" size="icon-sm" className="shrink-0 hover:bg-danger-subtle hover:text-danger" onClick={() => setDeleteConfirm(v)}><Trash2 className="w-3.5 h-3.5" /></Button>
               </div>
-              <p className={`text-xs ${v.value ? 'text-foreground' : 'text-muted-foreground italic'}`}>
+              <p className={`text-[12px] ${v.value ? 'text-foreground' : 'text-muted-foreground italic'}`}>
                 {v.value || 'Sem valor definido — sai vazio na mensagem'}
               </p>
             </div>
@@ -191,9 +179,9 @@ function VariablesTab() {
 
       {modalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-foreground/40 backdrop-blur-sm" onClick={closeModal} />
-          <div className="relative bg-card rounded-2xl shadow-2xl border border-border p-6 w-full max-w-sm">
-            <h2 className="text-lg font-bold text-foreground mb-4">{editingId ? 'Editar variável' : 'Nova variável'}</h2>
+          <div className="absolute inset-0 bg-ink-950/45 backdrop-blur-[2px]" onClick={closeModal} />
+          <div className="relative bg-popover rounded-xl shadow-xl border border-border p-5 w-full max-w-sm">
+            <h2 className="text-[16px] font-semibold text-foreground mb-4">{editingId ? 'Editar variável' : 'Nova variável'}</h2>
             <div className="space-y-3">
               <div>
                 <label className={labelClass}>Nome *</label>
@@ -213,19 +201,18 @@ function VariablesTab() {
                 <input type="text" value={form.help_text} onChange={(e) => setForm({ ...form, help_text: e.target.value })} className={inputClass} placeholder="Aparece abaixo do campo no kanban" />
               </div>
             </div>
-            <div className="flex gap-3 mt-5">
-              <button
+            <div className="flex flex-row-reverse justify-start gap-2 mt-5">
+              <Button
                 onClick={() => {
                   if (!form.label.trim()) { toast.error('Informe o nome da variável'); return }
                   if (!previewKey) { toast.error('Nome precisa ter ao menos uma letra'); return }
                   saveMutation.mutate()
                 }}
                 disabled={saveMutation.isPending}
-                className="flex-1 px-4 py-2.5 rounded-lg btn-action font-medium disabled:opacity-70"
               >
-                {saveMutation.isPending ? 'Salvando...' : 'Salvar'}
-              </button>
-              <button onClick={closeModal} className="flex-1 px-4 py-2.5 rounded-lg border border-border bg-card text-foreground font-medium hover:bg-accent">Cancelar</button>
+                {saveMutation.isPending ? 'Salvando…' : 'Salvar'}
+              </Button>
+              <Button variant="secondary" onClick={closeModal}>Cancelar</Button>
             </div>
           </div>
         </div>
@@ -233,17 +220,17 @@ function VariablesTab() {
 
       {deleteConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-foreground/40 backdrop-blur-sm" onClick={() => setDeleteConfirm(null)} />
-          <div className="relative bg-card border border-border rounded-2xl shadow-2xl p-6 w-full max-w-sm">
-            <h2 className="text-lg font-bold text-foreground mb-2">Excluir variável</h2>
-            <p className="text-sm text-muted-foreground mb-5">
-              Modelos que usam <code className="font-mono text-xs">{`{var.${deleteConfirm.key}}`}</code> passam a enviar o placeholder cru na mensagem.
+          <div className="absolute inset-0 bg-ink-950/45 backdrop-blur-[2px]" onClick={() => setDeleteConfirm(null)} />
+          <div className="relative bg-popover border border-border rounded-xl shadow-xl p-5 w-full max-w-sm">
+            <h2 className="text-[16px] font-semibold text-foreground mb-2">Excluir variável</h2>
+            <p className="text-[13px] text-muted-foreground mb-5">
+              Modelos que usam <code className="font-mono text-[12px]">{`{var.${deleteConfirm.key}}`}</code> passam a enviar o placeholder cru na mensagem.
             </p>
-            <div className="flex gap-3">
-              <button onClick={() => deleteMutation.mutate(deleteConfirm.id)} disabled={deleteMutation.isPending} className="flex-1 px-4 py-2.5 rounded-lg bg-danger-solid hover:bg-danger-solid/90 text-white font-medium disabled:opacity-70">
-                {deleteMutation.isPending ? 'Excluindo...' : 'Excluir'}
-              </button>
-              <button onClick={() => setDeleteConfirm(null)} className="flex-1 px-4 py-2.5 rounded-lg border border-border bg-card text-foreground font-medium hover:bg-accent">Cancelar</button>
+            <div className="flex flex-row-reverse justify-start gap-2">
+              <Button variant="destructive" onClick={() => deleteMutation.mutate(deleteConfirm.id)} disabled={deleteMutation.isPending}>
+                {deleteMutation.isPending ? 'Excluindo…' : 'Excluir'}
+              </Button>
+              <Button variant="secondary" onClick={() => setDeleteConfirm(null)}>Cancelar</Button>
             </div>
           </div>
         </div>
@@ -313,23 +300,23 @@ function TagsTab() {
   return (
     <div>
       <div className="flex justify-end mb-4">
-        <button onClick={() => setModalOpen(true)} className="flex items-center gap-2 px-3 py-2 rounded-lg btn-action text-sm font-medium">
+        <Button onClick={() => setModalOpen(true)}>
           <Plus className="w-4 h-4" /> Nova tag
-        </button>
+        </Button>
       </div>
 
       {isLoading ? (
-        <div className="text-center py-12"><Loader className="w-6 h-6 animate-spin text-gold-text mx-auto" /></div>
+        <PageLoading />
       ) : tags.length === 0 ? (
-        <p className="text-sm text-muted-foreground text-center py-12">Nenhuma tag cadastrada ainda.</p>
+        <Panel><EmptyState icon={TagIcon} title="Nenhuma tag cadastrada" description="Tags ajudam a filtrar candidatos no kanban." /></Panel>
       ) : (
         <div className="space-y-2">
           {tags.map((t) => (
             <div key={t.id} className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-border bg-card">
               <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: t.color }} />
-              <span className="flex-1 text-sm font-medium text-foreground">{t.name}</span>
-              <button onClick={() => openEdit(t)} className="p-1.5 rounded-lg hover:bg-surface-alt text-muted-foreground hover:text-foreground"><Pencil className="w-3.5 h-3.5" /></button>
-              <button onClick={() => setDeleteConfirm(t)} className="p-1.5 rounded-lg hover:bg-danger-subtle text-muted-foreground hover:text-danger"><Trash2 className="w-3.5 h-3.5" /></button>
+              <span className="flex-1 text-[13px] font-medium text-foreground">{t.name}</span>
+              <Button variant="ghost" size="icon-sm" className="shrink-0" onClick={() => openEdit(t)}><Pencil className="w-3.5 h-3.5" /></Button>
+              <Button variant="ghost" size="icon-sm" className="shrink-0 hover:bg-danger-subtle hover:text-danger" onClick={() => setDeleteConfirm(t)}><Trash2 className="w-3.5 h-3.5" /></Button>
             </div>
           ))}
         </div>
@@ -337,9 +324,9 @@ function TagsTab() {
 
       {modalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-foreground/40 backdrop-blur-sm" onClick={closeModal} />
-          <div className="relative bg-card rounded-2xl shadow-2xl border border-border p-6 w-full max-w-sm">
-            <h2 className="text-lg font-bold text-foreground mb-4">{editingId ? 'Editar tag' : 'Nova tag'}</h2>
+          <div className="absolute inset-0 bg-ink-950/45 backdrop-blur-[2px]" onClick={closeModal} />
+          <div className="relative bg-popover rounded-xl shadow-xl border border-border p-5 w-full max-w-sm">
+            <h2 className="text-[16px] font-semibold text-foreground mb-4">{editingId ? 'Editar tag' : 'Nova tag'}</h2>
             <div className="space-y-3">
               <div>
                 <label className={labelClass}>Nome *</label>
@@ -347,18 +334,17 @@ function TagsTab() {
               </div>
               <div>
                 <label className={labelClass}>Cor</label>
-                <input type="color" value={form.color} onChange={(e) => setForm({ ...form, color: e.target.value })} className="w-full h-10 rounded-lg border border-border cursor-pointer" />
+                <input type="color" value={form.color} onChange={(e) => setForm({ ...form, color: e.target.value })} className="w-full h-9 rounded-md border border-input bg-background p-1 cursor-pointer" />
               </div>
             </div>
-            <div className="flex gap-3 mt-5">
-              <button
+            <div className="flex flex-row-reverse justify-start gap-2 mt-5">
+              <Button
                 onClick={() => { if (!form.name.trim()) { toast.error('Informe o nome da tag'); return } saveMutation.mutate() }}
                 disabled={saveMutation.isPending}
-                className="flex-1 px-4 py-2.5 rounded-lg btn-action font-medium disabled:opacity-70"
               >
-                {saveMutation.isPending ? 'Salvando...' : 'Salvar'}
-              </button>
-              <button onClick={closeModal} className="flex-1 px-4 py-2.5 rounded-lg border border-border bg-card text-foreground font-medium hover:bg-accent">Cancelar</button>
+                {saveMutation.isPending ? 'Salvando…' : 'Salvar'}
+              </Button>
+              <Button variant="secondary" onClick={closeModal}>Cancelar</Button>
             </div>
           </div>
         </div>
@@ -366,15 +352,15 @@ function TagsTab() {
 
       {deleteConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-foreground/40 backdrop-blur-sm" onClick={() => setDeleteConfirm(null)} />
-          <div className="relative bg-card border border-border rounded-2xl shadow-2xl p-6 w-full max-w-sm">
-            <h2 className="text-lg font-bold text-foreground mb-2">Excluir tag</h2>
-            <p className="text-sm text-muted-foreground mb-5">"{deleteConfirm.name}" será removida de todos os candidatos que a têm.</p>
-            <div className="flex gap-3">
-              <button onClick={() => deleteMutation.mutate(deleteConfirm.id)} disabled={deleteMutation.isPending} className="flex-1 px-4 py-2.5 rounded-lg bg-danger-solid hover:bg-danger-solid/90 text-white font-medium disabled:opacity-70">
-                {deleteMutation.isPending ? 'Excluindo...' : 'Excluir'}
-              </button>
-              <button onClick={() => setDeleteConfirm(null)} className="flex-1 px-4 py-2.5 rounded-lg border border-border bg-card text-foreground font-medium hover:bg-accent">Cancelar</button>
+          <div className="absolute inset-0 bg-ink-950/45 backdrop-blur-[2px]" onClick={() => setDeleteConfirm(null)} />
+          <div className="relative bg-popover border border-border rounded-xl shadow-xl p-5 w-full max-w-sm">
+            <h2 className="text-[16px] font-semibold text-foreground mb-2">Excluir tag</h2>
+            <p className="text-[13px] text-muted-foreground mb-5">"{deleteConfirm.name}" será removida de todos os candidatos que a têm.</p>
+            <div className="flex flex-row-reverse justify-start gap-2">
+              <Button variant="destructive" onClick={() => deleteMutation.mutate(deleteConfirm.id)} disabled={deleteMutation.isPending}>
+                {deleteMutation.isPending ? 'Excluindo…' : 'Excluir'}
+              </Button>
+              <Button variant="secondary" onClick={() => setDeleteConfirm(null)}>Cancelar</Button>
             </div>
           </div>
         </div>
@@ -452,28 +438,28 @@ function TemplatesTab() {
   return (
     <div>
       <div className="flex justify-end mb-4">
-        <button onClick={() => setModalOpen(true)} className="flex items-center gap-2 px-3 py-2 rounded-lg btn-action text-sm font-medium">
+        <Button onClick={() => setModalOpen(true)}>
           <Plus className="w-4 h-4" /> Novo modelo
-        </button>
+        </Button>
       </div>
 
       {isLoading ? (
-        <div className="text-center py-12"><Loader className="w-6 h-6 animate-spin text-gold-text mx-auto" /></div>
+        <PageLoading />
       ) : templates.length === 0 ? (
-        <p className="text-sm text-muted-foreground text-center py-12">Nenhum modelo cadastrado ainda.</p>
+        <Panel><EmptyState icon={MessageSquare} title="Nenhum modelo cadastrado" description="Modelos são as mensagens que as automações enviam no WhatsApp." /></Panel>
       ) : (
         <div className="space-y-2">
           {templates.map((t) => (
             <div key={t.id} className="px-3 py-2.5 rounded-lg border border-border bg-card">
               <div className="flex items-center gap-2 mb-1">
-                <span className="flex-1 text-sm font-medium text-foreground">{t.name}</span>
-                <button onClick={() => toggleActive.mutate(t)} className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${t.is_active ? 'bg-success-subtle text-success' : 'bg-muted text-muted-foreground'}`}>
+                <span className="flex-1 text-[13px] font-medium text-foreground">{t.name}</span>
+                <button onClick={() => toggleActive.mutate(t)} className={`text-[11px] font-medium px-2 py-0.5 rounded-full border shrink-0 ${t.is_active ? 'border-success-border bg-success-subtle text-success' : 'border-border bg-muted text-ink-600'}`}>
                   {t.is_active ? 'Ativo' : 'Inativo'}
                 </button>
-                <button onClick={() => openEdit(t)} className="p-1.5 rounded-lg hover:bg-surface-alt text-muted-foreground hover:text-foreground"><Pencil className="w-3.5 h-3.5" /></button>
-                <button onClick={() => setDeleteConfirm(t)} className="p-1.5 rounded-lg hover:bg-danger-subtle text-muted-foreground hover:text-danger"><Trash2 className="w-3.5 h-3.5" /></button>
+                <Button variant="ghost" size="icon-sm" className="shrink-0" onClick={() => openEdit(t)}><Pencil className="w-3.5 h-3.5" /></Button>
+                <Button variant="ghost" size="icon-sm" className="shrink-0 hover:bg-danger-subtle hover:text-danger" onClick={() => setDeleteConfirm(t)}><Trash2 className="w-3.5 h-3.5" /></Button>
               </div>
-              <p className="text-xs text-muted-foreground whitespace-pre-line">{t.body}</p>
+              <p className="text-[12px] text-muted-foreground whitespace-pre-line">{t.body}</p>
             </div>
           ))}
         </div>
@@ -481,9 +467,9 @@ function TemplatesTab() {
 
       {modalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-foreground/40 backdrop-blur-sm" onClick={closeModal} />
-          <div className="relative bg-card rounded-2xl shadow-2xl border border-border p-6 w-full max-w-md">
-            <h2 className="text-lg font-bold text-foreground mb-4">{editingId ? 'Editar modelo' : 'Novo modelo'}</h2>
+          <div className="absolute inset-0 bg-ink-950/45 backdrop-blur-[2px]" onClick={closeModal} />
+          <div className="relative bg-popover rounded-xl shadow-xl border border-border p-5 w-full max-w-md">
+            <h2 className="text-[16px] font-semibold text-foreground mb-4">{editingId ? 'Editar modelo' : 'Novo modelo'}</h2>
             <div className="space-y-3">
               <div>
                 <label className={labelClass}>Nome *</label>
@@ -491,22 +477,21 @@ function TemplatesTab() {
               </div>
               <div>
                 <label className={labelClass}>Mensagem *</label>
-                <textarea value={form.body} onChange={(e) => setForm({ ...form, body: e.target.value })} rows={8} className={inputClass} placeholder="Oi {candidate_first_name}! Vimos seu interesse na vaga de {job_role_title}..." />
+                <textarea value={form.body} onChange={(e) => setForm({ ...form, body: e.target.value })} rows={8} className={textareaClass} placeholder="Oi {candidate_first_name}! Vimos seu interesse na vaga de {job_role_title}..." />
                 {/* Modelos são compartilhados com o DP, mas quem escreve a
                     mensagem aqui está pensando no funil de RH — a dica lista os
                     placeholders dessa entidade. */}
                 <PlaceholderHint fixedPlaceholders={CANDIDATE_AUTOMATION_CONFIG.fixedPlaceholders} />
               </div>
             </div>
-            <div className="flex gap-3 mt-5">
-              <button
+            <div className="flex flex-row-reverse justify-start gap-2 mt-5">
+              <Button
                 onClick={() => { if (!form.name.trim() || !form.body.trim()) { toast.error('Preencha nome e mensagem'); return } saveMutation.mutate() }}
                 disabled={saveMutation.isPending}
-                className="flex-1 px-4 py-2.5 rounded-lg btn-action font-medium disabled:opacity-70"
               >
-                {saveMutation.isPending ? 'Salvando...' : 'Salvar'}
-              </button>
-              <button onClick={closeModal} className="flex-1 px-4 py-2.5 rounded-lg border border-border bg-card text-foreground font-medium hover:bg-accent">Cancelar</button>
+                {saveMutation.isPending ? 'Salvando…' : 'Salvar'}
+              </Button>
+              <Button variant="secondary" onClick={closeModal}>Cancelar</Button>
             </div>
           </div>
         </div>
@@ -514,15 +499,15 @@ function TemplatesTab() {
 
       {deleteConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-foreground/40 backdrop-blur-sm" onClick={() => setDeleteConfirm(null)} />
-          <div className="relative bg-card border border-border rounded-2xl shadow-2xl p-6 w-full max-w-sm">
-            <h2 className="text-lg font-bold text-foreground mb-2">Excluir modelo</h2>
-            <p className="text-sm text-muted-foreground mb-5">"{deleteConfirm.name}" será removido. Automações que o usam vão parar de enviar até serem reconfiguradas.</p>
-            <div className="flex gap-3">
-              <button onClick={() => deleteMutation.mutate(deleteConfirm.id)} disabled={deleteMutation.isPending} className="flex-1 px-4 py-2.5 rounded-lg bg-danger-solid hover:bg-danger-solid/90 text-white font-medium disabled:opacity-70">
-                {deleteMutation.isPending ? 'Excluindo...' : 'Excluir'}
-              </button>
-              <button onClick={() => setDeleteConfirm(null)} className="flex-1 px-4 py-2.5 rounded-lg border border-border bg-card text-foreground font-medium hover:bg-accent">Cancelar</button>
+          <div className="absolute inset-0 bg-ink-950/45 backdrop-blur-[2px]" onClick={() => setDeleteConfirm(null)} />
+          <div className="relative bg-popover border border-border rounded-xl shadow-xl p-5 w-full max-w-sm">
+            <h2 className="text-[16px] font-semibold text-foreground mb-2">Excluir modelo</h2>
+            <p className="text-[13px] text-muted-foreground mb-5">"{deleteConfirm.name}" será removido. Automações que o usam vão parar de enviar até serem reconfiguradas.</p>
+            <div className="flex flex-row-reverse justify-start gap-2">
+              <Button variant="destructive" onClick={() => deleteMutation.mutate(deleteConfirm.id)} disabled={deleteMutation.isPending}>
+                {deleteMutation.isPending ? 'Excluindo…' : 'Excluir'}
+              </Button>
+              <Button variant="secondary" onClick={() => setDeleteConfirm(null)}>Cancelar</Button>
             </div>
           </div>
         </div>
@@ -558,10 +543,10 @@ function CredentialEditModal({ store, onClose }: { store: RhStore; onClose: () =
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-foreground/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-card rounded-2xl shadow-2xl border border-border p-6 w-full max-w-sm">
-        <h2 className="text-lg font-bold text-foreground mb-1">Credencial Uazapi</h2>
-        <p className="text-xs text-muted-foreground mb-4">{store.name}</p>
+      <div className="absolute inset-0 bg-ink-950/45 backdrop-blur-[2px]" onClick={onClose} />
+      <div className="relative bg-popover rounded-xl shadow-xl border border-border p-5 w-full max-w-sm">
+        <h2 className="text-[16px] font-semibold text-foreground mb-1">Credencial Uazapi</h2>
+        <p className="text-[12px] text-muted-foreground mb-4">{store.name}</p>
         <div className="space-y-3">
           <div>
             <label className={labelClass}>URL da instância</label>
@@ -572,15 +557,14 @@ function CredentialEditModal({ store, onClose }: { store: RhStore; onClose: () =
             <input type="password" value={token} onChange={(e) => setToken(e.target.value)} className={inputClass} placeholder="Token da instância" />
           </div>
         </div>
-        <div className="flex gap-3 mt-5">
-          <button
+        <div className="flex flex-row-reverse justify-start gap-2 mt-5">
+          <Button
             onClick={() => { if (!url.trim() || !token.trim()) { toast.error('Preencha URL e token'); return } saveMutation.mutate() }}
             disabled={saveMutation.isPending}
-            className="flex-1 px-4 py-2.5 rounded-lg btn-action font-medium disabled:opacity-70"
           >
-            {saveMutation.isPending ? 'Salvando...' : 'Salvar'}
-          </button>
-          <button onClick={onClose} className="flex-1 px-4 py-2.5 rounded-lg border border-border bg-card text-foreground font-medium hover:bg-accent">Cancelar</button>
+            {saveMutation.isPending ? 'Salvando…' : 'Salvar'}
+          </Button>
+          <Button variant="secondary" onClick={onClose}>Cancelar</Button>
         </div>
       </div>
     </div>
@@ -600,15 +584,15 @@ function CredentialStoreRow({ store }: { store: RhStore }) {
 
   return (
     <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-border bg-card">
-      <span className="flex-1 text-sm font-medium text-foreground">{store.name}</span>
+      <span className="flex-1 text-[13px] font-medium text-foreground">{store.name}</span>
       {isLoading ? (
         <Loader className="w-4 h-4 animate-spin text-muted-foreground" />
       ) : status?.configured ? (
-        <span className="text-xs text-muted-foreground font-mono">•••{status.token_last4}</span>
+        <span className="text-[12px] text-muted-foreground font-mono">•••{status.token_last4}</span>
       ) : (
-        <span className="text-xs text-muted-foreground">Usa a instância global (não configurada por loja)</span>
+        <span className="text-[12px] text-muted-foreground">Usa a instância global (não configurada por loja)</span>
       )}
-      <button onClick={() => setEditing(true)} className="p-1.5 rounded-lg hover:bg-surface-alt text-muted-foreground hover:text-foreground"><Pencil className="w-3.5 h-3.5" /></button>
+      <Button variant="ghost" size="icon-sm" className="shrink-0" onClick={() => setEditing(true)}><Pencil className="w-3.5 h-3.5" /></Button>
       {editing && <CredentialEditModal store={store} onClose={() => setEditing(false)} />}
     </div>
   )
@@ -644,9 +628,9 @@ function InstanceEditModal({ instance, onClose }: { instance: WhatsappInstance |
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-foreground/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-card rounded-2xl shadow-2xl border border-border p-6 w-full max-w-sm">
-        <h2 className="text-lg font-bold text-foreground mb-4">{isEdit ? 'Editar instância' : 'Nova instância'}</h2>
+      <div className="absolute inset-0 bg-ink-950/45 backdrop-blur-[2px]" onClick={onClose} />
+      <div className="relative bg-popover rounded-xl shadow-xl border border-border p-5 w-full max-w-sm">
+        <h2 className="text-[16px] font-semibold text-foreground mb-4">{isEdit ? 'Editar instância' : 'Nova instância'}</h2>
         <div className="space-y-3">
           <div>
             <label className={labelClass}>Nome *</label>
@@ -663,22 +647,21 @@ function InstanceEditModal({ instance, onClose }: { instance: WhatsappInstance |
           </div>
           <label className="flex items-center gap-2 cursor-pointer">
             <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} className="w-4 h-4 rounded border-border accent-ink-700" />
-            <span className="text-sm text-foreground">Ativa</span>
+            <span className="text-[13px] text-foreground">Ativa</span>
           </label>
         </div>
-        <div className="flex gap-3 mt-5">
-          <button
+        <div className="flex flex-row-reverse justify-start gap-2 mt-5">
+          <Button
             onClick={() => {
               if (!name.trim() || !url.trim()) { toast.error('Preencha nome e URL'); return }
               if (!isEdit && !token.trim()) { toast.error('Informe o token'); return }
               saveMutation.mutate()
             }}
             disabled={saveMutation.isPending}
-            className="flex-1 px-4 py-2.5 rounded-lg btn-action font-medium disabled:opacity-70"
           >
-            {saveMutation.isPending ? 'Salvando...' : 'Salvar'}
-          </button>
-          <button onClick={onClose} className="flex-1 px-4 py-2.5 rounded-lg border border-border bg-card text-foreground font-medium hover:bg-accent">Cancelar</button>
+            {saveMutation.isPending ? 'Salvando…' : 'Salvar'}
+          </Button>
+          <Button variant="secondary" onClick={onClose}>Cancelar</Button>
         </div>
       </div>
     </div>
@@ -718,9 +701,9 @@ function CredentialsTab() {
 
   return (
     <div className="space-y-8">
-      <div className="p-3 rounded-lg bg-surface-alt/60 border border-border">
-        <p className="text-xs font-semibold text-foreground mb-1">Ordem de resolução do envio</p>
-        <p className="text-xs text-muted-foreground">
+      <div className="p-3 rounded-lg bg-surface border border-border">
+        <p className="text-[13px] font-medium text-foreground mb-1">Ordem de resolução do envio</p>
+        <p className="text-[12px] text-muted-foreground">
           1. Instância escolhida na ação "Enviar WhatsApp" da automação · 2. Instância da loja do candidato · 3. Instância global do negócio.
         </p>
       </div>
@@ -728,31 +711,31 @@ function CredentialsTab() {
       <section>
         <div className="flex items-center justify-between mb-3">
           <div>
-            <h3 className="text-sm font-bold text-foreground">Instâncias</h3>
-            <p className="text-xs text-muted-foreground">Selecionáveis por automação.</p>
+            <h3 className="text-[14px] font-semibold text-foreground">Instâncias</h3>
+            <p className="text-[12px] text-muted-foreground">Selecionáveis por automação.</p>
           </div>
-          <button onClick={() => setEditingInstance('new')} className="flex items-center gap-2 px-3 py-2 rounded-lg btn-action text-sm font-medium shrink-0">
+          <Button className="shrink-0" onClick={() => setEditingInstance('new')}>
             <Plus className="w-4 h-4" /> Nova instância
-          </button>
+          </Button>
         </div>
         {loadingInstances ? (
-          <div className="text-center py-8"><Loader className="w-5 h-5 animate-spin text-gold-text mx-auto" /></div>
+          <PageLoading className="py-8" />
         ) : instances.length === 0 ? (
-          <p className="text-sm text-muted-foreground text-center py-8">Nenhuma instância cadastrada — as automações caem na instância da loja ou na global.</p>
+          <p className="text-[13px] text-muted-foreground text-center py-8 rounded-lg border border-dashed border-border">Nenhuma instância cadastrada — as automações caem na instância da loja ou na global.</p>
         ) : (
           <div className="space-y-2">
             {instances.map((i) => (
               <div key={i.id} className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-border bg-card">
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-foreground truncate">{i.name}</p>
-                  <p className="text-xs text-muted-foreground truncate">{i.uazapi_url}</p>
+                  <p className="text-[13px] font-medium text-foreground truncate">{i.name}</p>
+                  <p className="text-[12px] text-muted-foreground truncate">{i.uazapi_url}</p>
                 </div>
-                <span className="text-xs text-muted-foreground font-mono shrink-0">•••{i.token_last4}</span>
-                <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 ${i.is_active ? 'bg-success-subtle text-success' : 'bg-muted text-muted-foreground'}`}>
+                <span className="text-[12px] text-muted-foreground font-mono shrink-0">•••{i.token_last4}</span>
+                <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full border shrink-0 ${i.is_active ? 'border-success-border bg-success-subtle text-success' : 'border-border bg-muted text-ink-600'}`}>
                   {i.is_active ? 'Ativa' : 'Inativa'}
                 </span>
-                <button onClick={() => setEditingInstance(i)} className="p-1.5 rounded-lg hover:bg-surface-alt text-muted-foreground hover:text-foreground shrink-0"><Pencil className="w-3.5 h-3.5" /></button>
-                <button onClick={() => setDeleteConfirm(i)} className="p-1.5 rounded-lg hover:bg-danger-subtle text-muted-foreground hover:text-danger shrink-0"><Trash2 className="w-3.5 h-3.5" /></button>
+                <Button variant="ghost" size="icon-sm" className="shrink-0" onClick={() => setEditingInstance(i)}><Pencil className="w-3.5 h-3.5" /></Button>
+                <Button variant="ghost" size="icon-sm" className="shrink-0 hover:bg-danger-subtle hover:text-danger" onClick={() => setDeleteConfirm(i)}><Trash2 className="w-3.5 h-3.5" /></Button>
               </div>
             ))}
           </div>
@@ -760,12 +743,12 @@ function CredentialsTab() {
       </section>
 
       <section>
-        <h3 className="text-sm font-bold text-foreground mb-1">Instância por loja</h3>
-        <p className="text-xs text-muted-foreground mb-3">
+        <h3 className="text-[14px] font-semibold text-foreground mb-0.5">Instância por loja</h3>
+        <p className="text-[12px] text-muted-foreground mb-3">
           Fallback pra automação que não escolheu instância. Sem nada configurado aqui, cai na instância global do negócio.
         </p>
         {loadingStores ? (
-          <div className="text-center py-8"><Loader className="w-5 h-5 animate-spin text-gold-text mx-auto" /></div>
+          <PageLoading className="py-8" />
         ) : (
           <div className="space-y-2">
             {stores.map((s) => <CredentialStoreRow key={s.id} store={s} />)}
@@ -782,17 +765,17 @@ function CredentialsTab() {
 
       {deleteConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-foreground/40 backdrop-blur-sm" onClick={() => setDeleteConfirm(null)} />
-          <div className="relative bg-card border border-border rounded-2xl shadow-2xl p-6 w-full max-w-sm">
-            <h2 className="text-lg font-bold text-foreground mb-2">Excluir instância</h2>
-            <p className="text-sm text-muted-foreground mb-5">
+          <div className="absolute inset-0 bg-ink-950/45 backdrop-blur-[2px]" onClick={() => setDeleteConfirm(null)} />
+          <div className="relative bg-popover border border-border rounded-xl shadow-xl p-5 w-full max-w-sm">
+            <h2 className="text-[16px] font-semibold text-foreground mb-2">Excluir instância</h2>
+            <p className="text-[13px] text-muted-foreground mb-5">
               "{deleteConfirm.name}" será removida. Automações que a usavam voltam a enviar pela instância da loja.
             </p>
-            <div className="flex gap-3">
-              <button onClick={() => deleteMutation.mutate(deleteConfirm.id)} disabled={deleteMutation.isPending} className="flex-1 px-4 py-2.5 rounded-lg bg-danger-solid hover:bg-danger-solid/90 text-white font-medium disabled:opacity-70">
-                {deleteMutation.isPending ? 'Excluindo...' : 'Excluir'}
-              </button>
-              <button onClick={() => setDeleteConfirm(null)} className="flex-1 px-4 py-2.5 rounded-lg border border-border bg-card text-foreground font-medium hover:bg-accent">Cancelar</button>
+            <div className="flex flex-row-reverse justify-start gap-2">
+              <Button variant="destructive" onClick={() => deleteMutation.mutate(deleteConfirm.id)} disabled={deleteMutation.isPending}>
+                {deleteMutation.isPending ? 'Excluindo…' : 'Excluir'}
+              </Button>
+              <Button variant="secondary" onClick={() => setDeleteConfirm(null)}>Cancelar</Button>
             </div>
           </div>
         </div>

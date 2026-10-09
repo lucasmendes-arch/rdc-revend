@@ -289,6 +289,8 @@ type ViewFilter = EmploymentType | 'todos'
 
 const VIEW_OPTIONS: ViewFilter[] = ['todos', ...EMPLOYMENT_TYPE_OPTIONS]
 const VIEW_LABELS: Record<ViewFilter, string> = { ...EMPLOYMENT_TYPE_LABELS, todos: 'Todos' }
+// Sentinela da aba "Todas as unidades" (storeId vazio no estado).
+const ALL_STORES = '__all__'
 
 export default function DpContratacao() {
   const queryClient = useQueryClient()
@@ -519,190 +521,172 @@ export default function DpContratacao() {
     requestStageChange(processo, newStage)
   }
 
+  const storeTabs = [
+    { key: ALL_STORES, label: 'Todas as unidades' },
+    ...stores.map((s) => ({ key: s.id, label: s.name })),
+  ]
+
   return (
     <AdminLayout>
-      <div className="bg-card border-b border-border sticky top-0 z-30">
-        <div className="px-4 sm:px-6 py-4 flex items-center justify-between gap-4 flex-wrap">
-          <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-foreground">Contratação</h1>
-            <p className="text-sm text-muted-foreground mt-1">Admissão pós-contratação, por tipo de vínculo</p>
-          </div>
-          {/* Barra de ações em linha própria (w-full), igual à de Candidatos —
-              hoje ela já cai aqui por wrap, mas só porque são muitos botões;
-              explícito, a posição não depende mais da largura da tela. */}
-          <div className="w-full flex items-center gap-2 flex-wrap">
+      <AdminPage
+        title="Contratação"
+        description="Admissão pós-contratação, por tipo de vínculo"
+        flush
+        actions={
+          <>
             {/* Mesmo padrão do kanban de Candidatos: as automações do módulo
                 são acessadas pela tela que elas afetam, não pela sidebar. */}
-            <Link
-              to="/admin/dp/automacoes"
-              className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border text-sm font-medium hover:bg-surface-alt transition-colors"
-              title="Automações da contratação"
-            >
-              <Zap className="w-4 h-4" />
-              <span className="hidden sm:inline">Automações</span>
-            </Link>
-            <Tabs value={employmentType} onValueChange={(v) => setEmploymentType(v as ViewFilter)}>
-              <TabsList>
-                {VIEW_OPTIONS.map((tv) => (
-                  <TabsTrigger key={tv} value={tv}>{VIEW_LABELS[tv]}</TabsTrigger>
-                ))}
-              </TabsList>
-            </Tabs>
-            <button
-              onClick={() => setShowFinalizados((v) => !v)}
-              className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border text-sm font-medium hover:bg-surface-alt transition-colors"
-              title={showFinalizados ? 'Ocultar efetivados/encerrados' : 'Mostrar efetivados/encerrados'}
-            >
-              {showFinalizados ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              <span className="hidden sm:inline">{showFinalizados ? 'Ocultar finalizados' : 'Mostrar finalizados'}</span>
-            </button>
-            <Popover>
-              <PopoverTrigger asChild>
-                <button
-                  className="relative flex items-center gap-2 px-3 py-2 rounded-lg border border-border text-sm font-medium hover:bg-surface-alt transition-colors"
-                  title="Filtrar processos"
-                >
-                  <Filter className="w-4 h-4" />
-                  <span className="hidden sm:inline">Filtros</span>
-                  {activeFilterCount > 0 && (
-                    <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-gold text-[10px] font-bold text-white flex items-center justify-center">
-                      {activeFilterCount}
-                    </span>
-                  )}
-                </button>
-              </PopoverTrigger>
-              <PopoverContent className="w-72" align="end">
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-[11px] font-semibold text-muted-foreground uppercase">Filtrar por</p>
-                  {activeFilterCount > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => { setFilterRoleTitle(''); setFilterTagId(''); setFilterDueDate(''); setFilterAssigneeId('') }}
-                      className="text-[11px] font-medium text-accent hover:underline"
-                    >
-                      Limpar filtros
-                    </button>
-                  )}
-                </div>
-                <div className="space-y-3">
-                  <div>
-                    <label className="block text-[11px] text-muted-foreground mb-1">Cargo</label>
-                    <ColorSelect
-                      variant="pill"
-                      value={filterRoleTitle}
-                      onChange={setFilterRoleTitle}
-                      options={roleTitleOptions}
-                      emptyLabel="Todos os cargos"
-                      placeholder="Todos os cargos"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[11px] text-muted-foreground mb-1">Tag</label>
-                    <ColorSelect
-                      variant="pill"
-                      value={filterTagId}
-                      onChange={setFilterTagId}
-                      options={rhTags.map((t) => ({ value: t.id, label: t.name, color: t.color }))}
-                      emptyLabel="Todas as tags"
-                      placeholder="Todas as tags"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[11px] text-muted-foreground mb-1">Data fim</label>
-                    <StyledSelect
-                      value={filterDueDate}
-                      onChange={(v) => setFilterDueDate(v as typeof filterDueDate)}
-                      options={[
-                        { value: 'hoje', label: 'Hoje' },
-                        { value: 'atrasado', label: 'Atrasado' },
-                        { value: 'sem_prazo', label: 'Sem prazo' },
-                      ]}
-                      emptyLabel="Todos"
-                      placeholder="Todos"
-                      searchable={false}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[11px] text-muted-foreground mb-1">Responsável</label>
-                    <StyledSelect
-                      value={filterAssigneeId}
-                      onChange={setFilterAssigneeId}
-                      options={assignableUsers.map((u) => ({ value: u.id, label: u.full_name || 'Sem nome' }))}
-                      emptyLabel="Todos"
-                      placeholder="Todos"
-                    />
-                  </div>
-                </div>
-              </PopoverContent>
-            </Popover>
-            <Popover>
-              <PopoverTrigger asChild>
-                <button
-                  className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border text-sm font-medium hover:bg-surface-alt transition-colors"
-                  title="Personalizar campos exibidos no card"
-                >
-                  <SlidersHorizontal className="w-4 h-4" />
-                  <span className="hidden sm:inline">Personalizar cartão</span>
-                </button>
-              </PopoverTrigger>
-              <PopoverContent className="w-72" align="end">
-                <p className="text-[11px] font-semibold text-muted-foreground uppercase mb-2">Elementos do card</p>
-                <div className="space-y-2.5">
-                  {CARD_PREF_LABELS.map(([key, label]) => (
-                    <label key={key} className="flex items-center justify-between gap-3 cursor-pointer">
-                      <span className="text-sm text-foreground">{label}</span>
-                      <Switch checked={cardPrefs[key]} onCheckedChange={(v) => updateCardPref(key, v)} />
-                    </label>
-                  ))}
-                </div>
-              </PopoverContent>
-            </Popover>
+            <Button variant="secondary" asChild>
+              <Link to="/admin/dp/automacoes" title="Automações da contratação" aria-label="Automações">
+                <Zap />
+                <span className="hidden sm:inline">Automações</span>
+              </Link>
+            </Button>
             {/* Mesmas variáveis do RH — são globais (automation_variables) e
                 aparecem nas mensagens das automações dos dois módulos. */}
-            <button
+            <Button
+              variant="secondary"
               onClick={() => setVariablesOpen(true)}
-              className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border text-sm font-medium hover:bg-surface-alt transition-colors"
               title="Data e horários usados nas mensagens automáticas"
+              aria-label="Variáveis da mensagem"
             >
-              <Variable className="w-4 h-4" />
+              <Variable />
               <span className="hidden sm:inline">Variáveis da mensagem</span>
-            </button>
-          </div>
-        </div>
-        {/* Mesma aba de unidades de src/pages/rh/Candidatos.tsx — substitui o
-            dropdown que tinha antes, pelo mesmo padrão de linha de abas
-            sublinhadas usado lá. */}
-        <div className="px-4 sm:px-6 flex gap-1 border-t border-border overflow-x-auto scrollbar-none">
-          <button onClick={() => setStoreId('')}
-            className={`flex items-center gap-1.5 px-3 py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
-              storeId === ''
-                ? 'border-gold text-foreground'
-                : 'border-transparent text-muted-foreground hover:text-foreground'
-            }`}>
-            <StoreIcon className="w-4 h-4" />Todas as unidades
-          </button>
-          {stores.map((s) => (
-            <button key={s.id} onClick={() => setStoreId(s.id)}
-              className={`flex items-center gap-1.5 px-3 py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
-                storeId === s.id
-                  ? 'border-gold text-foreground'
-                  : 'border-transparent text-muted-foreground hover:text-foreground'
-              }`}>
-              {s.name}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="px-4 sm:px-6 py-6">
+            </Button>
+          </>
+        }
+        // Mesma aba de unidades de src/pages/rh/Candidatos.tsx.
+        tabs={
+          <PageTabs
+            items={storeTabs}
+            value={storeId || ALL_STORES}
+            onChange={(k) => setStoreId(k === ALL_STORES ? '' : k)}
+          />
+        }
+        toolbar={
+          <Toolbar>
+            <Segmented<ViewFilter>
+              items={VIEW_OPTIONS.map((tv) => ({ key: tv, label: VIEW_LABELS[tv] }))}
+              value={employmentType}
+              onChange={setEmploymentType}
+            />
+            <div className="flex items-center gap-2 sm:ml-auto">
+              <Button
+                variant="secondary"
+                onClick={() => setShowFinalizados((v) => !v)}
+                title={showFinalizados ? 'Ocultar efetivados/encerrados' : 'Mostrar efetivados/encerrados'}
+                aria-label={showFinalizados ? 'Ocultar finalizados' : 'Mostrar finalizados'}
+                aria-pressed={showFinalizados}
+              >
+                {showFinalizados ? <EyeOff /> : <Eye />}
+                <span className="hidden sm:inline">{showFinalizados ? 'Ocultar finalizados' : 'Mostrar finalizados'}</span>
+              </Button>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="secondary" title="Filtrar processos" aria-label="Filtros">
+                    <Filter />
+                    <span className="hidden sm:inline">Filtros</span>
+                    {activeFilterCount > 0 && (
+                      <span className="min-w-[18px] h-[18px] px-1 rounded-full bg-brand-subtle text-brand-strong text-[11px] font-medium tabular-nums inline-flex items-center justify-center">
+                        {activeFilterCount}
+                      </span>
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-72" align="end">
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="text-[13px] font-semibold text-foreground">Filtrar por</p>
+                    {activeFilterCount > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => { setFilterRoleTitle(''); setFilterTagId(''); setFilterDueDate(''); setFilterAssigneeId('') }}
+                        className="text-[12px] font-medium text-muted-foreground hover:text-foreground underline-offset-4 hover:underline"
+                      >
+                        Limpar filtros
+                      </button>
+                    )}
+                  </div>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-[12px] font-medium text-muted-foreground mb-1">Cargo</label>
+                      <ColorSelect
+                        variant="pill"
+                        value={filterRoleTitle}
+                        onChange={setFilterRoleTitle}
+                        options={roleTitleOptions}
+                        emptyLabel="Todos os cargos"
+                        placeholder="Todos os cargos"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[12px] font-medium text-muted-foreground mb-1">Tag</label>
+                      <ColorSelect
+                        variant="pill"
+                        value={filterTagId}
+                        onChange={setFilterTagId}
+                        options={rhTags.map((t) => ({ value: t.id, label: t.name, color: t.color }))}
+                        emptyLabel="Todas as tags"
+                        placeholder="Todas as tags"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[12px] font-medium text-muted-foreground mb-1">Data fim</label>
+                      <StyledSelect
+                        value={filterDueDate}
+                        onChange={(v) => setFilterDueDate(v as typeof filterDueDate)}
+                        options={[
+                          { value: 'hoje', label: 'Hoje' },
+                          { value: 'atrasado', label: 'Atrasado' },
+                          { value: 'sem_prazo', label: 'Sem prazo' },
+                        ]}
+                        emptyLabel="Todos"
+                        placeholder="Todos"
+                        searchable={false}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[12px] font-medium text-muted-foreground mb-1">Responsável</label>
+                      <StyledSelect
+                        value={filterAssigneeId}
+                        onChange={setFilterAssigneeId}
+                        options={assignableUsers.map((u) => ({ value: u.id, label: u.full_name || 'Sem nome' }))}
+                        emptyLabel="Todos"
+                        placeholder="Todos"
+                      />
+                    </div>
+                  </div>
+                </PopoverContent>
+              </Popover>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="secondary" title="Personalizar campos exibidos no card" aria-label="Personalizar cartão">
+                    <SlidersHorizontal />
+                    <span className="hidden sm:inline">Personalizar cartão</span>
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-72" align="end">
+                  <p className="text-[13px] font-semibold text-foreground mb-3">Elementos do card</p>
+                  <div className="space-y-2.5">
+                    {CARD_PREF_LABELS.map(([key, label]) => (
+                      <label key={key} className="flex items-center justify-between gap-3 cursor-pointer">
+                        <span className="text-[13px] text-foreground">{label}</span>
+                        <Switch checked={cardPrefs[key]} onCheckedChange={(v) => updateCardPref(key, v)} />
+                      </label>
+                    ))}
+                  </div>
+                </PopoverContent>
+              </Popover>
+            </div>
+          </Toolbar>
+        }
+      >
         {isLoading ? (
-          <div className="text-center py-16">
-            <Loader className="w-8 h-8 animate-spin text-gold-text mx-auto mb-4" />
-            <p className="text-muted-foreground">Carregando...</p>
-          </div>
+          <PageLoading />
         ) : (
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-            <div className="flex gap-3 overflow-x-auto scrollbar-thin pb-2">
+            {/* Rola de borda a borda (AdminPage `flush`); o PAGE_X alinha a
+                primeira coluna com o título e as abas. */}
+            <div className={cn(PAGE_X, 'flex gap-3 overflow-x-auto scrollbar-thin pb-3')}>
               {columns.map((col) => (
                 <StageColumnView
                   key={col.stage}
@@ -720,7 +704,7 @@ export default function DpContratacao() {
             <DragOverlay dropAnimation={null}>
               {activeProcesso ? (
                 <div
-                  className="bg-card rounded-lg border border-border/60 border-l-4 shadow-lg overflow-hidden w-56"
+                  className="bg-card rounded-lg border border-border border-l-[3px] shadow-lg overflow-hidden w-56"
                   style={{ borderLeftColor: getStageColumn(activeProcesso.employment_type, activeProcesso.current_stage)?.accent }}
                 >
                   <ProcessoPhoto name={activeProcesso.candidates?.name || ''} photoUrl={activeProcesso.candidates?.photo_url} />
@@ -732,7 +716,7 @@ export default function DpContratacao() {
             </DragOverlay>
           </DndContext>
         )}
-      </div>
+      </AdminPage>
 
       {detailProcesso && (
         <ProcessoDetailModal
@@ -764,23 +748,16 @@ export default function DpContratacao() {
 
       {/* Modal: confirmação de encerramento (decisão negativa) */}
       {confirmEncerrar && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-foreground/40 backdrop-blur-sm" onClick={() => setConfirmEncerrar(null)} />
-          <div className="relative bg-card rounded-2xl shadow-2xl border border-border p-6 w-full max-w-sm">
-            <h2 className="text-lg font-bold text-foreground mb-1">Encerrar processo?</h2>
-            <p className="text-sm text-muted-foreground mb-5">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="dp-encerrar-title">
+          <div className="absolute inset-0 bg-ink-950/45 backdrop-blur-[2px] animate-in fade-in-0" onClick={() => setConfirmEncerrar(null)} />
+          <div className="relative w-full max-w-sm rounded-xl border border-border bg-popover p-5 shadow-xl animate-in fade-in-0 zoom-in-[0.98] duration-150">
+            <h2 id="dp-encerrar-title" className="text-[16px] font-semibold leading-tight tracking-tight text-foreground">Encerrar processo?</h2>
+            <p className="mt-1.5 text-[13px] text-muted-foreground">
               {confirmEncerrar.candidates?.name} sai do fluxo ativo de admissão. O registro é mantido, não é apagado.
             </p>
-            <div className="flex gap-3">
-              <button
-                onClick={confirmEncerrarProcesso}
-                className="flex-1 px-4 py-2.5 rounded-lg bg-danger-solid text-white font-medium hover:bg-danger-solid/90 transition-colors"
-              >
-                Encerrar
-              </button>
-              <button onClick={() => setConfirmEncerrar(null)} className="flex-1 px-4 py-2.5 rounded-lg border border-border bg-card text-foreground font-medium hover:bg-accent">
-                Cancelar
-              </button>
+            <div className="mt-5 flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
+              <Button variant="secondary" onClick={() => setConfirmEncerrar(null)}>Cancelar</Button>
+              <Button variant="destructive" onClick={confirmEncerrarProcesso}>Encerrar processo</Button>
             </div>
           </div>
         </div>

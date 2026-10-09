@@ -1,12 +1,20 @@
 import { useState, useMemo, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Loader, Search, Plus, Minus, Trash2, ShoppingCart, UserCheck, LogOut, Clock, MapPin, Tag, Truck, Sun, Moon, LayoutGrid } from 'lucide-react';
+import { Loader, Search, Plus, Minus, Trash2, UserCheck, LogOut, Clock, MapPin, Tag, Truck, LayoutGrid, CheckCircle2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 
 import logo from '@/assets/logo-rei-dos-cachos.png';
 import StyledSelect from '@/components/ui/styled-select';
+import { AdminThemeProvider } from '@/contexts/AdminThemeContext';
+import { ThemeToggle } from '@/components/ui/ThemeToggle';
+import { Panel, PageLoading } from '@/components/admin/ui/AdminPage';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { DateField } from '@/components/ui/date-field';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -68,7 +76,7 @@ function useDebounce(value: string, delay: number) {
 
 // ─── Componente ───────────────────────────────────────────────────────────────
 
-export default function SalaoNovoPedido() {
+function SalaoNovoPedidoInner() {
   // ── Estado ──────────────────────────────────────────────────────────────────
   const [customerSearch, setCustomerSearch]       = useState('');
   const [selectedCustomer, setSelectedCustomer]   = useState<CustomerProfile | null>(null);
@@ -81,22 +89,6 @@ export default function SalaoNovoPedido() {
   const [selectedUnitSlug, setSelectedUnitSlug]   = useState('');
   const [isSaving, setIsSaving]                   = useState(false);
   const [lastOrderId, setLastOrderId]             = useState<string | null>(null);
-
-  // ── Tema ────────────────────────────────────────────────────────────────────
-  const THEME_KEY = 'rdc-admin-theme';
-  const [isDark, setIsDark] = useState(() => {
-    try { return localStorage.getItem(THEME_KEY) === 'dark' } catch { return false }
-  });
-
-  useEffect(() => {
-    const root = document.documentElement;
-    if (isDark) root.classList.add('dark');
-    else root.classList.remove('dark');
-    try { localStorage.setItem(THEME_KEY, isDark ? 'dark' : 'light') } catch {}
-    return () => { root.classList.remove('dark') };
-  }, [isDark]);
-
-  const toggleTheme = () => setIsDark(v => !v);
 
   // ── Price list overrides — product_id → resolved_price
   const [priceListOverrides, setPriceListOverrides] = useState<Record<string, number>>({});
@@ -458,285 +450,282 @@ export default function SalaoNovoPedido() {
     window.location.href = '/login';
   }
 
+  // Data da venda: DateField (dia) + hora. O estado continua sendo a string
+  // `YYYY-MM-DDTHH:mm` do antigo datetime-local; vazio = data atual.
+  const orderDay = orderDate ? orderDate.slice(0, 10) : null;
+  const orderTime = orderDate ? orderDate.slice(11, 16) : '';
+
   // ── Tela de sucesso ─────────────────────────────────────────────────────────
 
   if (lastOrderId) {
     return (
-      <div className="min-h-screen bg-surface-alt">
-        <SalaoHeader onLogout={handleLogout} isDark={isDark} onToggleTheme={toggleTheme} />
-        <div className="flex items-center justify-center px-4 py-16">
-          <div className="bg-card rounded-2xl border border-border shadow-card p-8 max-w-md w-full text-center">
-            <div className="w-16 h-16 rounded-full bg-success-subtle flex items-center justify-center mx-auto mb-4">
-              <ShoppingCart className="w-8 h-8 text-success" />
-            </div>
-            <h2 className="text-xl font-bold text-foreground mb-2">Pedido Criado!</h2>
-            <p className="text-muted-foreground text-sm mb-1">
-              Pedido registrado com sucesso.
-            </p>
-            <p className="text-xs text-muted-foreground mb-6 font-mono">
-              #{lastOrderId.slice(0, 8)}
-            </p>
-            <button
-              onClick={() => setLastOrderId(null)}
-              className="w-full py-3 rounded-xl font-semibold btn-gold"
-            >
-              Criar Novo Pedido
-            </button>
-          </div>
-        </div>
+      <div className="min-h-screen bg-background">
+        <SalaoHeader onLogout={handleLogout} />
+        <main className="px-4 sm:px-6 py-12 sm:py-16 max-w-md mx-auto">
+          <Panel className="text-center">
+            <CheckCircle2 className="w-10 h-10 text-success mx-auto mb-3" />
+            <h1 className="text-[22px] leading-[1.15] text-foreground">Pedido criado</h1>
+            <p className="mt-1 text-[13.5px] text-muted-foreground">Pedido registrado com sucesso.</p>
+            <p className="mt-1 text-[12px] text-muted-foreground font-mono">#{lastOrderId.slice(0, 8)}</p>
+            <Button size="lg" onClick={() => setLastOrderId(null)} className="w-full mt-6">
+              <Plus /> Criar novo pedido
+            </Button>
+          </Panel>
+        </main>
       </div>
     );
   }
 
   // ─── Render principal ──────────────────────────────────────────────────────
 
-  return (
-    <div className="min-h-screen bg-surface-alt">
-      <SalaoHeader onLogout={handleLogout} isDark={isDark} onToggleTheme={toggleTheme} />
+  const sectionTitle = 'text-[15px] font-semibold text-foreground tracking-tight';
 
-      <div className="px-4 sm:px-6 py-6 max-w-5xl mx-auto space-y-6">
+  return (
+    <div className="min-h-screen bg-background">
+      <SalaoHeader onLogout={handleLogout} />
+
+      <main className="px-4 sm:px-6 pt-6 sm:pt-7 max-w-5xl mx-auto">
+        <div className="pb-5">
+          <h1 className="text-[22px] sm:text-[26px] leading-[1.15] text-foreground">Novo pedido</h1>
+          <p className="mt-1 text-[13.5px] text-muted-foreground">Lançamento de venda feita no salão</p>
+        </div>
+
+        <div className="space-y-4">
 
         {/* ── 1. Seleção de Cliente ────────────────────────────────────────── */}
-        <section className="bg-card rounded-2xl border border-border shadow-card p-5 space-y-3">
-          <h2 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground">
-            1. Cliente
-          </h2>
+        <Panel>
+          <div className="space-y-3">
+          <h2 className={sectionTitle}>1. Cliente</h2>
 
           {selectedCustomer ? (
-            <div className="flex items-center justify-between p-3 rounded-xl bg-surface border border-border">
-              <div className="flex items-center gap-3">
+            <div className="flex items-center justify-between gap-3 p-3 rounded-md bg-surface border border-border">
+              <div className="flex items-center gap-3 min-w-0">
                 <UserCheck className="w-5 h-5 text-success shrink-0" />
-                <div>
-                  <p className="font-semibold text-foreground flex items-center flex-wrap gap-1">
+                <div className="min-w-0">
+                  <p className="text-[14px] font-semibold text-foreground flex items-center flex-wrap gap-1.5">
                     {selectedCustomer.full_name || 'Sem nome'}
-                    {selectedCustomer.is_partner && (
-                       <span className="text-[10px] bg-brand-subtle text-brand-strong px-1.5 py-0.5 rounded font-bold uppercase">Parceiro</span>
-                    )}
+                    {selectedCustomer.is_partner && <Badge variant="brand">Parceiro</Badge>}
                     {selectedCustomer.price_list_id && (
-                       <span className="text-[10px] bg-info-subtle text-info px-1.5 py-0.5 rounded font-bold uppercase flex items-center gap-0.5">
-                         <Tag className="w-2.5 h-2.5" /> Tabela Especial
-                       </span>
+                      <Badge variant="info"><Tag className="w-3 h-3" /> Tabela especial</Badge>
                     )}
                   </p>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-[12.5px] text-muted-foreground">
                     {selectedCustomer.phone || 'Sem telefone'}
                   </p>
                 </div>
               </div>
-              <button
+              <Button
+                variant="secondary"
+                size="sm"
                 onClick={() => { setSelectedCustomer(null); setCustomerSearch(''); }}
-                className="text-xs text-muted-foreground hover:text-foreground underline"
               >
                 Trocar
-              </button>
+              </Button>
             </div>
           ) : isCreatingClient ? (
-            <form onSubmit={handleCreateClient} className="space-y-4 pt-2 border border-border rounded-xl p-4 bg-surface-alt">
-              <div className="flex items-center justify-between mb-2">
-                 <h3 className="text-sm font-semibold text-foreground">Novo Cadastro Express</h3>
-                 <button type="button" onClick={() => setIsCreatingClient(false)} className="text-xs text-muted-foreground underline">Cancelar</button>
+            <form onSubmit={handleCreateClient} className="space-y-4 border border-border rounded-md p-4 bg-surface">
+              <div className="flex items-center justify-between">
+                 <h3 className="text-[14px] font-semibold text-foreground">Cadastro express</h3>
+                 <Button type="button" variant="ghost" size="sm" onClick={() => setIsCreatingClient(false)}>Cancelar</Button>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                 <div className="space-y-1">
-                    <label className="text-[11px] font-semibold text-muted-foreground uppercase">Nome do Cliente *</label>
-                    <input type="text" required value={newClientName} onChange={e => setNewClientName(e.target.value)} className="w-full px-3 py-2 rounded-lg border border-input text-sm bg-card text-foreground focus:ring-2 focus:ring-ring focus:outline-none" placeholder="Nome Completo" />
+                 <div>
+                    <label htmlFor="np-client-name" className="field-label">Nome do cliente *</label>
+                    <Input id="np-client-name" type="text" required value={newClientName} onChange={e => setNewClientName(e.target.value)} placeholder="Nome completo" />
                  </div>
-                 <div className="space-y-1">
-                    <label className="text-[11px] font-semibold text-muted-foreground uppercase">WhatsApp *</label>
-                     <input
+                 <div>
+                    <label htmlFor="np-client-phone" className="field-label">WhatsApp *</label>
+                     <Input
+                       id="np-client-phone"
                        type="tel"
                        required
                        inputMode="numeric"
                        maxLength={11}
                        value={newClientPhone}
                        onChange={e => setNewClientPhone(e.target.value.replace(/\D/g, '').slice(0, 11))}
-                       className="w-full px-3 py-2 rounded-lg border border-input text-sm bg-card text-foreground focus:ring-2 focus:ring-ring focus:outline-none"
                        placeholder="DDD + número (10 ou 11 dígitos)"
                      />
                  </div>
-                 <div className="space-y-1 sm:col-span-2">
-                    <label className="text-[11px] font-semibold text-muted-foreground uppercase">E-mail (opcional)</label>
-                    <input type="email" value={newClientEmail} onChange={e => setNewClientEmail(e.target.value)} className="w-full px-3 py-2 rounded-lg border border-input text-sm bg-card text-foreground focus:ring-2 focus:ring-ring focus:outline-none" placeholder="cliente@email.com" />
+                 <div className="sm:col-span-2">
+                    <label htmlFor="np-client-email" className="field-label">E-mail (opcional)</label>
+                    <Input id="np-client-email" type="email" value={newClientEmail} onChange={e => setNewClientEmail(e.target.value)} placeholder="cliente@email.com" />
                  </div>
               </div>
-              <button disabled={isSaving} type="submit" className="w-full py-2.5 rounded-lg font-semibold btn-gold text-sm mt-4">
-                 {isSaving ? 'Salvando...' : 'Cadastrar e Selecionar'}
-              </button>
+              <Button disabled={isSaving} type="submit" size="lg" className="w-full">
+                 {isSaving ? 'Salvando…' : 'Cadastrar e selecionar'}
+              </Button>
             </form>
           ) : (
             <div className="space-y-2">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <input
-                  type="text"
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-400 pointer-events-none" />
+                <Input
+                  type="search"
                   value={customerSearch}
                   onChange={e => setCustomerSearch(e.target.value)}
                   placeholder="Buscar cliente por nome ou telefone…"
-                  className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-input text-sm bg-card text-foreground focus:ring-2 focus:ring-ring focus:outline-none"
+                  aria-label="Buscar cliente"
+                  className="h-10 pl-9"
                 />
               </div>
 
               {customerSearch.trim().length === 0 ? (
                 <div className="py-2 text-center">
-                  <p className="text-xs text-muted-foreground mb-3">Digite ao menos 2 caracteres para buscar</p>
-                  <button onClick={() => setIsCreatingClient(true)} className="text-xs flex items-center gap-1 mx-auto text-foreground font-medium bg-card px-3 py-1.5 rounded-lg border border-border hover:bg-surface-alt transition-colors">
-                     <Plus className="w-3 h-3" /> Cadastrar Cliente Express
-                  </button>
+                  <p className="text-[12.5px] text-muted-foreground mb-3">Digite ao menos 2 caracteres para buscar</p>
+                  <Button variant="secondary" size="sm" onClick={() => setIsCreatingClient(true)}>
+                     <Plus /> Cadastrar cliente express
+                  </Button>
                 </div>
               ) : customerSearch.trim().length < 2 ? (
-                <p className="text-xs text-muted-foreground py-3 text-center">
+                <p className="text-[12.5px] text-muted-foreground py-3 text-center">
                   Digite ao menos 2 caracteres para buscar
                 </p>
               ) : loadingCustomers || fetchingCustomers ? (
-                <div className="flex items-center justify-center gap-2 py-3">
-                  <Loader className="w-4 h-4 animate-spin text-muted-foreground" />
-                  <p className="text-xs text-muted-foreground">Buscando clientes…</p>
-                </div>
+                <PageLoading label="Buscando clientes…" className="py-4" />
               ) : (
-                <div className="divide-y divide-border border border-border rounded-xl overflow-hidden max-h-52 overflow-y-auto">
+                <div className="divide-y divide-border border border-border rounded-md overflow-hidden max-h-52 overflow-y-auto">
                   {searchedCustomers.length === 0 && (
                     <div className="py-4 text-center">
-                       <p className="text-xs text-muted-foreground mb-3">Nenhum cliente encontrado</p>
-                       <button onClick={() => setIsCreatingClient(true)} className="text-xs flex items-center gap-1 mx-auto text-foreground font-medium bg-card px-3 py-1.5 rounded-lg border border-border hover:bg-surface-alt transition-colors">
-                         <Plus className="w-3 h-3" /> Cadastrar Novo
-                       </button>
+                       <p className="text-[12.5px] text-muted-foreground mb-3">Nenhum cliente encontrado</p>
+                       <Button variant="secondary" size="sm" onClick={() => setIsCreatingClient(true)}>
+                         <Plus /> Cadastrar novo
+                       </Button>
                     </div>
                   )}
                   {searchedCustomers.map(profile => (
                     <button
                       key={profile.id}
+                      type="button"
                       onClick={() => { setSelectedCustomer(profile); setCustomerSearch(''); }}
-                      className="w-full text-left px-4 py-3 hover:bg-surface-alt transition-colors"
+                      className="w-full text-left px-4 py-3 hover:bg-muted/60 transition-colors"
                     >
-                      <p className="text-sm font-medium text-foreground">
+                      <p className="text-[13.5px] font-medium text-foreground flex items-center flex-wrap gap-1.5">
                         {profile.full_name || 'Sem nome'}
-                        {profile.is_partner && (
-                           <span className="ml-2 text-[10px] bg-brand-subtle text-brand-strong px-1.5 py-0.5 rounded font-bold uppercase">Parceiro</span>
-                        )}
+                        {profile.is_partner && <Badge variant="brand">Parceiro</Badge>}
                       </p>
-                      <p className="text-xs text-muted-foreground">
+                      <p className="text-[12.5px] text-muted-foreground">
                         {profile.phone || 'Sem telefone'}
                       </p>
                     </button>
                   ))}
                   {searchedCustomers.length > 0 && (
-                     <div className="p-2 bg-surface-alt text-center">
-                        <button onClick={() => setIsCreatingClient(true)} className="text-xs text-foreground font-medium hover:underline">
-                           + Ou cadastre um cliente novo
-                        </button>
+                     <div className="p-2 bg-surface text-center">
+                        <Button variant="link" size="sm" onClick={() => setIsCreatingClient(true)}>
+                           Ou cadastre um cliente novo
+                        </Button>
                      </div>
                   )}
                 </div>
               )}
             </div>
           )}
-        </section>
+          </div>
+        </Panel>
 
 
         {/* ── 3. Itens Individuais ────────────────────────────────────────── */}
-        <section className="bg-card rounded-2xl border border-border shadow-card p-5 space-y-3">
-          <h2 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground">
-            3. Itens Individuais
-          </h2>
+        <Panel>
+          <div className="space-y-3">
+          <h2 className={sectionTitle}>2. Itens</h2>
 
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <input
-              type="text"
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-400 pointer-events-none" />
+            <Input
+              type="search"
               value={productSearch}
               onChange={e => setProductSearch(e.target.value)}
               placeholder="Buscar produto por nome…"
-              className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-input text-sm bg-card text-foreground focus:ring-2 focus:ring-ring focus:outline-none"
+              aria-label="Buscar produto"
+              className="h-10 pl-9"
             />
           </div>
 
           {/* Contagem de produtos + indicador de tabela de preço ativa */}
-          <div className="flex items-center justify-between">
-            <p className="text-[10px] text-muted-foreground font-medium">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-[12px] text-muted-foreground tabular-nums">
               {filteredProducts.length} produto{filteredProducts.length !== 1 ? 's' : ''} encontrado{filteredProducts.length !== 1 ? 's' : ''}
             </p>
             {loadingPriceList && (
-              <span className="flex items-center gap-1 text-[10px] text-info">
+              <span className="flex items-center gap-1 text-[12px] text-info">
                 <Loader className="w-3 h-3 animate-spin" /> Carregando preços…
               </span>
             )}
             {!loadingPriceList && Object.keys(priceListOverrides).length > 0 && (
-              <span className="flex items-center gap-1 text-[10px] text-info font-medium">
+              <span className="flex items-center gap-1 text-[12px] text-info font-medium">
                 <Tag className="w-3 h-3" /> Tabela de preço aplicada
               </span>
             )}
           </div>
 
           {loadingProducts ? (
-            <p className="text-xs text-muted-foreground py-2 text-center">Carregando produtos…</p>
+            <PageLoading label="Carregando produtos…" className="py-6" />
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 max-h-[420px] overflow-y-auto scrollbar-thin scrollbar-track-surface-alt scrollbar-thumb-border pr-1">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 max-h-[420px] overflow-y-auto pr-1">
               {filteredProducts.map(product => {
                 const inCart        = cartItems.find(i => i.product_id === product.id);
                 const displayPrice  = getDisplayPrice(product);
                 const hasPriceOverride = displayPrice !== product.price;
 
                 return (
-                  <div
+                  <button
                     key={product.id}
+                    type="button"
                     onClick={() => toggleProductSelection(product.id)}
-                    className={`flex items-center gap-3 p-3 rounded-xl border text-left cursor-pointer transition-all ${
+                    aria-pressed={!!inCart}
+                    className={`flex items-center gap-3 p-2.5 rounded-md border text-left transition-colors ${
                       inCart
                         ? 'border-success-border bg-success-subtle'
-                        : 'border-border hover:border-ink-300 hover:bg-surface-alt'
+                        : 'border-border hover:border-ink-300 hover:bg-muted/50'
                     }`}
                   >
-                    <div className="relative w-10 h-10 rounded-lg overflow-hidden shrink-0 bg-surface-alt border border-border">
+                    <div className="relative w-10 h-10 rounded-md overflow-hidden shrink-0 bg-muted border border-border">
                       {product.main_image ? (
                         <img src={product.main_image} alt="" className="w-full h-full object-cover" />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center text-muted-foreground text-[10px] font-bold">
+                        <div className="w-full h-full flex items-center justify-center text-ink-400 text-[12px] font-semibold">
                           {product.name.charAt(0).toUpperCase()}
                         </div>
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-[11px] font-bold text-foreground truncate">{product.name}</p>
+                      <p className="text-[13px] font-medium text-foreground truncate">{product.name}</p>
                       {hasPriceOverride ? (
-                        <div className="flex items-center gap-1.5 mt-0.5">
-                          <span className="text-[10px] line-through text-muted-foreground/50">R$ {product.price.toFixed(2)}</span>
-                          <span className="text-[10px] font-bold text-foreground">R$ {displayPrice.toFixed(2)}</span>
+                        <div className="flex items-center gap-1.5 mt-0.5 tabular-nums">
+                          <span className="text-[12px] line-through text-ink-400">R$ {product.price.toFixed(2)}</span>
+                          <span className="text-[12px] font-semibold text-foreground">R$ {displayPrice.toFixed(2)}</span>
                         </div>
                       ) : (
-                        <p className="text-[10px] text-muted-foreground">R$ {displayPrice.toFixed(2)}</p>
+                        <p className="text-[12px] text-muted-foreground tabular-nums">R$ {displayPrice.toFixed(2)}</p>
                       )}
                     </div>
                     {inCart && (
-                      <span className="text-[10px] font-bold text-success shrink-0">
+                      <span className="text-[12px] font-semibold text-success tabular-nums shrink-0">
                         {inCart.quantity}x
                       </span>
                     )}
-                  </div>
+                  </button>
                 );
               })}
             </div>
           )}
-        </section>
+          </div>
+        </Panel>
 
         {/* ── 4. Resumo do Pedido (Carrinho) — espelha NewOrder.tsx L638-810 ──── */}
         {cartItems.length > 0 && (
-          <section className="bg-card rounded-2xl border border-border shadow-card p-5 space-y-3">
-            <div className="flex items-center gap-2">
-              <ShoppingCart className="w-4 h-4 text-muted-foreground" />
-              <h2 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground">
-                4. Resumo do Pedido
-              </h2>
-            </div>
+          <Panel>
+            <div className="space-y-3">
+            <h2 className={sectionTitle}>3. Resumo do pedido</h2>
 
             <div className="divide-y divide-border">
               {cartItems.map(item => (
-                <div key={item.product_id} className="py-3 flex items-center gap-3">
+                <div key={item.product_id} className="py-3 flex flex-wrap sm:flex-nowrap items-center gap-3">
                   {/* Thumb */}
-                  <div className="w-10 h-10 rounded-lg overflow-hidden shrink-0 bg-surface-alt border border-border">
+                  <div className="w-10 h-10 rounded-md overflow-hidden shrink-0 bg-muted border border-border">
                     {item.main_image ? (
                       <img src={item.main_image} alt="" className="w-full h-full object-cover" />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center text-xs font-bold text-muted-foreground">
+                      <div className="w-full h-full flex items-center justify-center text-[12px] font-semibold text-ink-400">
                         {item.product_name.charAt(0).toUpperCase()}
                       </div>
                     )}
@@ -744,122 +733,110 @@ export default function SalaoNovoPedido() {
 
                   {/* Nome + preço editável — espelha NewOrder.tsx L662-678 */}
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-foreground truncate">{item.product_name}</p>
+                    <p className="text-[13.5px] font-medium text-foreground truncate">{item.product_name}</p>
                     <div className="flex items-center gap-1 mt-1">
-                      <span className="text-xs text-muted-foreground">R$</span>
+                      <span className="text-[12px] text-muted-foreground">R$</span>
                       <input
                         type="number"
                         min="0"
                         step="0.01"
+                        aria-label={`Preço de ${item.product_name}`}
                         value={item.price}
                         onChange={e => updatePrice(item.product_id, e.target.value)}
-                        className="w-20 text-xs border border-input rounded-lg px-2 py-1 bg-card text-foreground focus:ring-2 focus:ring-ring focus:outline-none"
+                        className="w-24 h-8 text-[13px] tabular-nums border border-input rounded-md px-2 bg-card text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       />
                     </div>
                   </div>
 
                   {/* Controle de qty */}
                   <div className="flex items-center gap-1 shrink-0">
-                    <button
-                      onClick={() => updateQty(item.product_id, -1)}
-                      className="w-7 h-7 rounded-lg border border-border flex items-center justify-center hover:bg-surface-alt transition-colors"
-                    >
-                      <Minus className="w-3 h-3" />
-                    </button>
-                    <span className="w-7 text-center text-sm font-semibold">{item.quantity}</span>
-                    <button
-                      onClick={() => updateQty(item.product_id, 1)}
-                      className="w-7 h-7 rounded-lg border border-border flex items-center justify-center hover:bg-surface-alt transition-colors"
-                    >
-                      <Plus className="w-3 h-3" />
-                    </button>
+                    <Button variant="secondary" size="icon" onClick={() => updateQty(item.product_id, -1)} aria-label="Diminuir quantidade">
+                      <Minus />
+                    </Button>
+                    <span className="w-8 text-center text-[14px] font-semibold tabular-nums">{item.quantity}</span>
+                    <Button variant="secondary" size="icon" onClick={() => updateQty(item.product_id, 1)} aria-label="Aumentar quantidade">
+                      <Plus />
+                    </Button>
                   </div>
 
                   {/* Subtotal do item */}
-                  <p className="w-20 text-right text-sm font-semibold text-foreground shrink-0">
+                  <p className="w-24 ml-auto text-right text-[13.5px] font-semibold text-foreground tabular-nums shrink-0">
                     R$ {(item.quantity * item.price).toFixed(2)}
                   </p>
 
                   {/* Remover */}
-                  <button
+                  <Button
+                    variant="ghost"
+                    size="icon"
                     onClick={() => removeFromCart(item.product_id)}
-                    className="p-1.5 rounded-lg text-muted-foreground hover:text-danger hover:bg-danger-subtle transition-colors"
+                    className="hover:text-danger hover:bg-danger-subtle"
+                    aria-label={`Remover ${item.product_name}`}
                   >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                    <Trash2 />
+                  </Button>
                 </div>
               ))}
             </div>
 
             {/* Totais — espelha NewOrder.tsx L750-772 (sem desconto/cupom nesta fase) */}
-            <div className="pt-3 border-t border-border space-y-1.5">
-              <div className="flex justify-between items-center text-sm text-muted-foreground">
+            <div className="pt-3 border-t border-border space-y-1.5 tabular-nums">
+              <div className="flex justify-between items-center text-[13px] text-muted-foreground">
                 <span>Subtotal ({cartItems.reduce((sum, i) => sum + i.quantity, 0)} itens)</span>
                 <span>R$ {subtotal.toFixed(2)}</span>
               </div>
-              <div className="flex justify-between items-center pt-1 border-t border-border">
-                <span className="font-semibold text-foreground">Total</span>
-                <span className="text-xl font-black text-foreground">R$ {total.toFixed(2)}</span>
+              <div className="flex justify-between items-center pt-1.5 border-t border-border">
+                <span className="text-[14px] font-semibold text-foreground">Total</span>
+                <span className="font-title text-[22px] font-semibold text-foreground">R$ {total.toFixed(2)}</span>
               </div>
             </div>
-          </section>
+            </div>
+          </Panel>
         )}
 
         {/* ── 5. Detalhes do Pedido ────────────────────────────────────────── */}
-        <section className="bg-card rounded-2xl border border-border shadow-card p-5 space-y-4">
-          <div className="flex items-center gap-2 mb-2">
-            <Tag className="w-4 h-4 text-muted-foreground" />
-            <h2 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground">
-              5. Detalhes do Pedido
-            </h2>
-          </div>
+        <Panel>
+          <div className="space-y-4">
+          <h2 className={sectionTitle}>{cartItems.length > 0 ? '4' : '3'}. Detalhes do pedido</h2>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Status */}
             <div>
-              <label className="block text-xs font-semibold text-foreground mb-1.5">Status do Pagamento</label>
-              <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl border border-border bg-surface-alt">
-                <Tag className="w-3.5 h-3.5 text-muted-foreground" />
-                <span className="text-sm font-medium text-muted-foreground">Recebido</span>
-                <span className="ml-auto text-[10px] text-muted-foreground bg-surface-alt px-1.5 py-0.5 rounded-full font-bold">fixo</span>
+              <p className="field-label">Status do pagamento</p>
+              <div className="flex items-center gap-2 h-9 px-3 rounded-md border border-border bg-muted">
+                <span className="text-[13px] font-medium text-muted-foreground">Recebido</span>
+                <Badge variant="neutral" className="ml-auto">Fixo</Badge>
               </div>
             </div>
 
             {/* Origem */}
             <div>
-              <label className="block text-xs font-semibold text-foreground mb-1.5">Origem do Pedido</label>
-              <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl border border-border bg-surface-alt">
-                <Tag className="w-3.5 h-3.5 text-muted-foreground" />
-                <span className="text-sm font-medium text-muted-foreground">Salão</span>
-                <span className="ml-auto text-[10px] text-muted-foreground bg-surface-alt px-1.5 py-0.5 rounded-full font-bold">fixo</span>
+              <p className="field-label">Origem do pedido</p>
+              <div className="flex items-center gap-2 h-9 px-3 rounded-md border border-border bg-muted">
+                <span className="text-[13px] font-medium text-muted-foreground">Salão</span>
+                <Badge variant="neutral" className="ml-auto">Fixo</Badge>
               </div>
             </div>
 
             {/* Vendedor */}
             <div>
-              <label className="text-xs font-semibold text-foreground mb-1.5 flex items-center gap-1.5">
-                <UserCheck className="w-3.5 h-3.5 text-muted-foreground" />
-                Vendedor
-              </label>
+              <p className="field-label">Vendedor</p>
               <StyledSelect
                 value={selectedSellerId}
                 onChange={setSelectedSellerId}
                 disabled={loadingSellers}
+                icon={<UserCheck className="w-3.5 h-3.5 text-ink-400 shrink-0" />}
                 options={sellers.map((s) => ({ value: s.id, label: `${s.name}${s.code ? ` (${s.code})` : ''}` }))}
-                placeholder="Selecione um vendedor..."
-                className="h-[42px] rounded-xl bg-card font-medium"
+                placeholder="Selecione um vendedor…"
               />
             </div>
 
             {/* Unidade */}
             <div>
-              <label className="text-xs font-semibold text-foreground mb-1.5 flex items-center gap-1.5">
-                <MapPin className="w-3.5 h-3.5 text-muted-foreground" />
-                Unidade do Salão *
-              </label>
+              <p className="field-label">Unidade do salão *</p>
               <StyledSelect
                 value={selectedUnitSlug}
                 onChange={setSelectedUnitSlug}
+                icon={<MapPin className="w-3.5 h-3.5 text-ink-400 shrink-0" />}
                 options={[
                   { value: 'linhares', label: 'Linhares' },
                   { value: 'teixeira', label: 'Teixeira de Freitas' },
@@ -867,53 +844,51 @@ export default function SalaoNovoPedido() {
                   { value: 'colatina', label: 'Colatina' },
                   { value: 'sao-gabriel', label: 'São Gabriel da Palha' },
                 ]}
-                placeholder="Selecione a unidade..."
+                placeholder="Selecione a unidade…"
                 searchable={false}
-                className="h-[42px] rounded-xl bg-card font-medium"
               />
             </div>
 
             {/* Data */}
             <div>
-              <label className="block text-xs font-semibold text-foreground mb-1.5">Data da Venda</label>
-              <div
-                className="relative cursor-pointer"
-                onClick={() => {
-                  const input = document.getElementById('orderDateInput') as HTMLInputElement;
-                  if (input && typeof input.showPicker === 'function') {
-                    input.showPicker();
-                  }
-                }}
-              >
-                <input
-                  id="orderDateInput"
-                  type="datetime-local"
-                  value={orderDate}
-                  onChange={e => setOrderDate(e.target.value)}
-                  className="w-full px-3 py-2.5 rounded-xl border border-input text-sm focus:ring-2 focus:ring-ring focus:outline-none bg-card cursor-pointer"
+              <p className="field-label">Data da venda</p>
+              <div className="flex items-center gap-2">
+                <div className="flex-1 min-w-0">
+                  <DateField
+                    value={orderDay}
+                    onChange={(day) => setOrderDate(day ? `${day}T${orderTime || '12:00'}` : '')}
+                    placeholder="Hoje"
+                    className="w-full h-9 flex items-center gap-2 px-3 rounded-md border border-input bg-background text-foreground text-sm hover:border-ink-300 transition-colors"
+                  />
+                </div>
+                <Input
+                  type="time"
+                  aria-label="Hora da venda"
+                  value={orderTime}
+                  disabled={!orderDay}
+                  onChange={(e) => { if (orderDay) setOrderDate(`${orderDay}T${e.target.value || '12:00'}`) }}
+                  className="w-28 tabular-nums"
                 />
               </div>
-              <p className="text-[10px] text-muted-foreground mt-1">Deixe em branco para usar a data atual</p>
+              <p className="text-[12px] text-muted-foreground mt-1">Deixe em branco para usar a data atual</p>
             </div>
 
             {/* Pagamento */}
             <div className="sm:col-span-2">
               <div className="flex items-center justify-between mb-2">
-                <label className="block text-xs font-semibold text-foreground">Método de Pagamento</label>
-                <button
+                <p className="field-label !mb-0">Método de pagamento</p>
+                <Button
                   type="button"
+                  variant="secondary"
+                  size="sm"
+                  aria-pressed={splitMode}
                   onClick={() => {
                     setSplitMode(v => !v);
                     if (splitMode) setPaymentSplits([{ method: 'PIX', amount: '' }, { method: 'Dinheiro', amount: '' }]);
                   }}
-                  className={`text-[10px] font-bold px-2.5 py-1 rounded-lg border transition-colors ${
-                    splitMode
-                      ? 'border-foreground bg-surface text-foreground'
-                      : 'border-border bg-card text-muted-foreground hover:bg-surface-alt'
-                  }`}
                 >
                   {splitMode ? 'Pagamento único' : 'Dividir pagamento'}
-                </button>
+                </Button>
               </div>
 
               {!splitMode ? (
@@ -922,11 +897,12 @@ export default function SalaoNovoPedido() {
                     <button
                       key={pm.value}
                       type="button"
+                      aria-pressed={paymentMethod === pm.value}
                       onClick={() => setPaymentMethod(pm.value)}
-                      className={`px-4 py-2 rounded-xl text-xs font-semibold transition-colors border ${
+                      className={`h-10 px-4 rounded-md border text-[13px] font-medium transition-colors ${
                         paymentMethod === pm.value
-                          ? 'border-foreground bg-surface text-foreground'
-                          : 'border-border bg-card text-muted-foreground hover:bg-surface-alt'
+                          ? 'bg-brand-subtle border-brand-border text-brand-strong'
+                          : 'border-border bg-card text-ink-600 hover:border-ink-300 hover:text-foreground'
                       }`}
                     >
                       {pm.label}
@@ -937,46 +913,52 @@ export default function SalaoNovoPedido() {
                 <div className="space-y-2">
                   {paymentSplits.map((split, idx) => (
                     <div key={idx} className="flex items-center gap-2">
-                      <StyledSelect
-                        value={split.method}
-                        onChange={(v) => setPaymentSplits(prev => prev.map((s, i) => i === idx ? { ...s, method: v } : s))}
-                        options={PAYMENT_METHODS}
-                        searchable={false}
-                        className="flex-1 w-auto h-10 rounded-xl bg-card font-medium"
-                      />
+                      <div className="flex-1 min-w-0">
+                        <StyledSelect
+                          value={split.method}
+                          onChange={(v) => setPaymentSplits(prev => prev.map((s, i) => i === idx ? { ...s, method: v } : s))}
+                          options={PAYMENT_METHODS}
+                          searchable={false}
+                        />
+                      </div>
                       <div className="relative">
-                        <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground font-medium">R$</span>
-                        <input
+                        <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[12px] text-muted-foreground font-medium pointer-events-none">R$</span>
+                        <Input
                           type="number"
                           min="0"
                           step="0.01"
                           placeholder="0,00"
+                          aria-label="Valor"
                           value={split.amount}
                           onChange={e => setPaymentSplits(prev => prev.map((s, i) => i === idx ? { ...s, amount: e.target.value } : s))}
-                          className="w-28 pl-8 pr-2 py-2 rounded-xl border border-input text-sm bg-card text-foreground focus:ring-2 focus:ring-ring focus:outline-none"
+                          className="w-28 pl-8 tabular-nums"
                         />
                       </div>
                       {paymentSplits.length > 2 && (
-                        <button
+                        <Button
                           type="button"
+                          variant="ghost"
+                          size="icon"
                           onClick={() => setPaymentSplits(prev => prev.filter((_, i) => i !== idx))}
-                          className="p-1.5 rounded-lg text-muted-foreground hover:text-danger hover:bg-danger-subtle transition-colors"
+                          className="hover:text-danger hover:bg-danger-subtle"
+                          aria-label="Remover forma de pagamento"
                         >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                          <Trash2 />
+                        </Button>
                       )}
                     </div>
                   ))}
 
-                  <button
+                  <Button
                     type="button"
+                    variant="ghost"
+                    size="sm"
                     onClick={() => setPaymentSplits(prev => [...prev, { method: 'PIX', amount: '' }])}
-                    className="flex items-center gap-1.5 text-xs text-foreground font-semibold hover:underline mt-1"
                   >
-                    <Plus className="w-3.5 h-3.5" /> Adicionar forma
-                  </button>
+                    <Plus /> Adicionar forma
+                  </Button>
 
-                  <div className={`flex items-center justify-between text-xs font-semibold px-3 py-2 rounded-lg border ${
+                  <div className={`flex items-center justify-between text-[12.5px] font-medium px-3 py-2 rounded-md border tabular-nums ${
                     Math.abs(splitsDiff) < 0.01
                       ? 'border-success-border bg-success-subtle text-success'
                       : 'border-warning-border bg-warning-subtle text-warning'
@@ -995,78 +977,82 @@ export default function SalaoNovoPedido() {
             </div>
 
             {/* Observações */}
-            <div className="sm:col-span-2 mt-2">
-              <label className="block text-xs font-semibold text-foreground mb-1.5">Observações (opcional)</label>
-              <textarea
+            <div className="sm:col-span-2">
+              <label htmlFor="np-notes" className="field-label">Observações (opcional)</label>
+              <Textarea
+                id="np-notes"
                 value={notes}
                 onChange={e => setNotes(e.target.value)}
                 rows={3}
                 placeholder="Ex: cliente pediu embalagem especial, entregar no endereço comercial…"
-                className="w-full px-3 py-2.5 rounded-xl border border-input text-sm bg-card text-foreground focus:ring-2 focus:ring-ring focus:outline-none resize-none"
+                className="resize-none"
               />
             </div>
           </div>
-        </section>
+          </div>
+        </Panel>
 
-        {/* ── Ação ─────────────────────────────────────────────────────────── */}
-        <div className="pb-8">
-          <button
+        {/* ── Ação (sticky no rodapé) ─────────────────────────────────────── */}
+        <div className="sticky bottom-0 z-20 -mx-4 sm:-mx-6 px-4 sm:px-6 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] bg-background/95 backdrop-blur-sm border-t border-border">
+          <Button
+            size="lg"
             onClick={handleSubmit}
             disabled={isSaving || !selectedCustomer || cartItems.length === 0}
-            className="w-full px-6 py-3.5 rounded-xl btn-gold text-sm font-bold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            className="w-full h-12"
           >
             {isSaving ? (
-              <><Loader className="w-4 h-4 animate-spin" /> Criando pedido…</>
+              <><Loader className="animate-spin" /> Criando pedido…</>
             ) : (
-              <>Criar Pedido · R$ {total.toFixed(2)}</>
+              <span className="tabular-nums">Criar pedido · R$ {total.toFixed(2)}</span>
             )}
-          </button>
+          </Button>
         </div>
 
-      </div>
+        </div>
+      </main>
     </div>
   );
 }
 
 // ─── Header do Salão ──────────────────────────────────────────────────────────
 
-function SalaoHeader({ onLogout, isDark, onToggleTheme }: { onLogout: () => void; isDark: boolean; onToggleTheme: () => void }) {
+const HEADER_ACTION =
+  'h-10 min-w-[2.5rem] px-2.5 inline-flex items-center justify-center gap-1.5 rounded-md text-[13px] font-medium text-ink-500 hover:bg-muted hover:text-foreground transition-colors';
+
+function SalaoHeader({ onLogout }: { onLogout: () => void }) {
   return (
-    <header className="bg-background/90 backdrop-blur border-b border-border px-4 sm:px-6 h-14 flex items-center sticky top-0 z-40">
-      <div className="w-full max-w-5xl mx-auto flex items-center justify-between">
-        <div className="flex items-center gap-2.5">
+    <header className="sticky top-0 z-40 bg-background/90 backdrop-blur-md border-b border-border">
+      <div className="h-14 px-4 sm:px-6 max-w-5xl mx-auto flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2.5 min-w-0">
           <img src={logo} alt="Rei dos Cachos" className="h-8 w-auto shrink-0" />
-          <div className="flex flex-col">
-            <span className="text-foreground font-semibold text-[13px] tracking-tight leading-tight">Novo Pedido</span>
-            <span className="text-muted-foreground text-[10px] leading-tight">Área do Salão</span>
+          <span className="w-px h-5 bg-border shrink-0" aria-hidden />
+          <div className="min-w-0 leading-tight">
+            <p className="text-[13px] font-semibold text-foreground tracking-tight">Novo pedido</p>
+            <p className="text-[12px] text-muted-foreground truncate">Área do salão</p>
           </div>
         </div>
-        <div className="flex items-center gap-1">
-          <Link
-            to="/salao"
-            className="p-2 hover:bg-muted hover:text-foreground rounded-lg transition-colors text-ink-500 flex items-center gap-1.5 text-sm"
-            title="Trocar de módulo"
-          >
+        <div className="flex items-center gap-0.5 shrink-0">
+          <Link to="/salao" className={HEADER_ACTION} title="Trocar de módulo" aria-label="Trocar de módulo">
             <LayoutGrid className="w-4 h-4" />
             <span className="hidden sm:inline">Módulos</span>
           </Link>
-          <button
-            onClick={onToggleTheme}
-            className="p-2 hover:bg-muted hover:text-foreground rounded-lg transition-colors text-ink-500"
-            title={isDark ? 'Modo claro' : 'Modo escuro'}
-          >
-            {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-          </button>
-          <button
-            onClick={onLogout}
-            className="p-2 hover:bg-muted hover:text-foreground rounded-lg transition-colors text-ink-500 flex items-center gap-1.5 text-sm"
-            title="Sair"
-          >
+          <ThemeToggle className={HEADER_ACTION} />
+          <button type="button" onClick={onLogout} className={HEADER_ACTION} title="Sair" aria-label="Sair">
             <LogOut className="w-4 h-4" />
             <span className="hidden sm:inline">Sair</span>
           </button>
         </div>
       </div>
     </header>
+  );
+}
+
+// Tema claro/escuro compartilhado (chave `rdc-admin-theme`) via
+// AdminThemeProvider — substitui o efeito de tema duplicado desta página.
+export default function SalaoNovoPedido() {
+  return (
+    <AdminThemeProvider>
+      <SalaoNovoPedidoInner />
+    </AdminThemeProvider>
   );
 }

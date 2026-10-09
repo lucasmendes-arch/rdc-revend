@@ -10,6 +10,8 @@ import FormFieldRenderer, { CHECKBOX_DELIM, FormFieldConfig, PublicJobOpening } 
 import { contractTypeLabel, compensationTypeLabel } from '@/components/rh/JobRoleFieldsForm'
 import { useTrackConversion } from '@/lib/hooks/useFacebookConversion'
 import logo from '@/assets/logo-rei-dos-cachos.png'
+import { Button } from '@/components/ui/button'
+import { EmptyState, PageLoading } from '@/components/admin/ui/AdminPage'
 
 declare global {
   interface Window {
@@ -203,75 +205,94 @@ export default function CandidaturaPublica() {
     return `https://wa.me/${ADMIN_WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`
   }, [appliedJob, data?.store?.name])
 
+  const JobFact = ({ label, children }: { label: string; children: React.ReactNode }) => (
+    <div className="min-w-0">
+      <dt className="text-[12px] font-medium text-muted-foreground">{label}</dt>
+      <dd className="text-[13px] text-foreground mt-0.5">{children}</dd>
+    </div>
+  )
+
   return (
-    <div className="min-h-screen bg-surface-alt flex items-center justify-center p-4">
+    <div className="min-h-screen bg-background bg-ambient flex items-center justify-center p-3 sm:p-6">
       {/* Altura fixa (com teto pra tela pequena): o "popup" mantém sempre o
           mesmo formato entre as etapas — só o miolo rola, cabeçalho e rodapé
           de navegação ficam parados no lugar. */}
-      <div className="w-full max-w-lg bg-card rounded-2xl border border-border shadow-card flex flex-col h-[640px] max-h-[85vh]">
-        <div className="flex flex-col items-center text-center px-6 sm:px-8 pt-6 sm:pt-8 pb-4 shrink-0">
-          <img src={logo} alt="Rei dos Cachos" className="h-10 w-auto mb-3" />
-          <h1 className="text-xl font-bold text-foreground">Faça parte do nosso time!</h1>
-          {data?.store && <p className="text-sm text-muted-foreground mt-1">{data.store.name}</p>}
+      <div className="w-full max-w-lg bg-card rounded-xl border border-border shadow-md flex flex-col h-[680px] max-h-[calc(100dvh-1.5rem)] sm:max-h-[88vh] overflow-hidden">
+        <div className="flex flex-col items-center text-center px-5 sm:px-8 pt-6 sm:pt-8 pb-4 shrink-0">
+          <img src={logo} alt="Rei dos Cachos" className="h-10 w-auto mb-4" />
+          <h1 className="text-[24px] sm:text-[26px] leading-tight text-foreground">Faça parte do nosso time</h1>
+          {data?.store && <p className="text-[14px] text-muted-foreground mt-1">{data.store.name}</p>}
         </div>
 
-        <div className="flex-1 overflow-y-auto px-6 sm:px-8 pb-6 sm:pb-8">
+        <div className="flex-1 overflow-y-auto px-5 sm:px-8 pb-6 sm:pb-8">
           {isLoading ? (
-            <div className="h-full flex flex-col items-center justify-center text-center">
-              <Loader className="w-7 h-7 animate-spin text-gold-text mx-auto mb-3" />
-              <p className="text-sm text-muted-foreground">Carregando formulário...</p>
-            </div>
+            <PageLoading label="Carregando formulário…" className="h-full py-0" />
           ) : error || !data ? (
-            <div className="h-full flex flex-col items-center justify-center text-center">
-              <Briefcase className="w-10 h-10 text-muted-foreground/30 mx-auto mb-3" />
-              <p className="text-foreground font-medium">Unidade não encontrada</p>
-              <p className="text-sm text-muted-foreground mt-1">Confira o link recebido e tente novamente.</p>
-            </div>
+            <EmptyState
+              icon={Briefcase}
+              title="Unidade não encontrada"
+              description="Este link de candidatura não está ativo. Confira o endereço recebido ou peça um novo link à unidade."
+              className="h-full py-0"
+            />
           ) : submitted ? (
             <div className="h-full flex flex-col items-center justify-center text-center">
-              <CheckCircle2 className="w-12 h-12 text-success mx-auto mb-4" />
-              <p className="text-foreground font-semibold text-lg">Candidatura enviada!</p>
-              <p className="text-sm text-muted-foreground mt-2">
+              <div className="w-12 h-12 rounded-full bg-success-subtle border border-success-border flex items-center justify-center mb-4">
+                <CheckCircle2 className="w-6 h-6 text-success" />
+              </div>
+              <h2 className="text-[18px] font-semibold text-foreground tracking-tight">Candidatura enviada</h2>
+              <p className="text-[14px] text-muted-foreground mt-2">
                 Recebemos suas informações e vamos analisar seu perfil. Se avançarmos, entraremos em contato
                 pelo WhatsApp informado.
               </p>
-              <div className="flex items-start gap-2 rounded-lg bg-info-subtle border border-info-border px-3 py-2.5 mt-4 text-left">
+              <div className="flex items-start gap-2 rounded-md bg-info-subtle border border-info-border px-3 py-2.5 mt-5 text-left">
                 <Info className="w-4 h-4 text-info shrink-0 mt-0.5" />
-                <p className="text-xs text-info leading-relaxed">
+                <p className="text-[12px] text-info leading-relaxed">
                   Aguarde até 72h para que a equipe de recrutamento analise as candidaturas. Devido ao volume de
                   inscrições, <strong className="font-semibold">apenas os candidatos selecionados para entrevista serão contatados</strong>.
                 </p>
               </div>
-              <a
-                href={whatsappUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={() => {
-                  const jobTitle = appliedJob?.role_title
-                  trackConversion({ eventName: 'Contact', contentName: jobTitle ?? data?.store?.name })
-                  window.gtag?.('event', 'contact', {
-                    content_name: jobTitle ?? data?.store?.name,
-                    store: data?.store?.name,
-                    method: 'whatsapp',
-                  })
-                }}
-                className="w-full mt-4 px-4 py-3 rounded-lg bg-[#25D366] hover:bg-[#20BE5A] text-white font-semibold shadow-md hover:shadow-lg transition-all text-sm flex items-center justify-center gap-2"
+              {/* Verde do WhatsApp: exceção de marca documentada (design-tokens §8). */}
+              <Button
+                asChild
+                size="lg"
+                className="w-full mt-5 bg-[#25D366] hover:bg-[#20BE5A] text-white border-transparent"
               >
-                <MessageCircle className="w-4 h-4" /> Falar com recrutador
-              </a>
+                <a
+                  href={whatsappUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => {
+                    const jobTitle = appliedJob?.role_title
+                    trackConversion({ eventName: 'Contact', contentName: jobTitle ?? data?.store?.name })
+                    window.gtag?.('event', 'contact', {
+                      content_name: jobTitle ?? data?.store?.name,
+                      store: data?.store?.name,
+                      method: 'whatsapp',
+                    })
+                  }}
+                >
+                  <MessageCircle /> Falar com recrutador
+                </a>
+              </Button>
             </div>
           ) : (
             <div className="space-y-6">
               {isMultiStep && (
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
-                    <span className="text-xs font-semibold text-muted-foreground">
+                    <span className="text-[12px] font-medium text-muted-foreground numeric">
                       Etapa {safeStepIdx + 1} de {steps.length}
                     </span>
                   </div>
-                  <div className="h-1.5 rounded-full bg-surface-alt overflow-hidden">
+                  <div
+                    className="h-1.5 rounded-full bg-muted overflow-hidden"
+                    role="progressbar"
+                    aria-valuemin={1}
+                    aria-valuemax={steps.length}
+                    aria-valuenow={safeStepIdx + 1}
+                  >
                     <div
-                      className="h-full bg-gold rounded-full transition-all duration-300"
+                      className="h-full bg-primary rounded-full transition-all duration-300"
                       style={{ width: `${((safeStepIdx + 1) / steps.length) * 100}%` }}
                     />
                   </div>
@@ -297,55 +318,50 @@ export default function CandidaturaPublica() {
         </div>
 
         {showNav && (
-          <div className="shrink-0 border-t border-border/60 px-6 sm:px-8 py-4 flex items-center gap-3">
+          <div className="shrink-0 border-t border-border px-5 sm:px-8 py-4 flex items-center gap-2">
             {isMultiStep && safeStepIdx > 0 && (
-              <button
-                onClick={handleBack}
-                disabled={submit.isPending}
-                className="flex items-center gap-1.5 px-4 py-2.5 rounded-lg border border-border text-foreground font-medium hover:bg-accent transition-colors disabled:opacity-60"
-              >
-                <ArrowLeft className="w-4 h-4" /> Voltar
-              </button>
+              <Button variant="secondary" size="lg" onClick={handleBack} disabled={submit.isPending}>
+                <ArrowLeft /> Voltar
+              </Button>
             )}
-            <button
+            <Button
+              size="lg"
+              className="flex-1"
               onClick={handleNext}
               disabled={submit.isPending || uploadingKey !== null}
-              className="flex-1 px-4 py-2.5 rounded-lg btn-action font-medium disabled:opacity-70 transition-colors"
             >
-              {submit.isPending ? 'Enviando...' : isLastStep ? 'Enviar candidatura' : 'Próximo'}
-            </button>
+              {submit.isPending ? (
+                <><Loader className="animate-spin" /> Enviando…</>
+              ) : isLastStep ? 'Enviar candidatura' : 'Próximo'}
+            </Button>
           </div>
         )}
       </div>
 
       {viewingJob && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-foreground/40 backdrop-blur-sm" onClick={() => setViewingJobId(null)} />
-          <div className="relative bg-card rounded-2xl shadow-2xl border border-border p-6 w-full max-w-md max-h-[85vh] overflow-y-auto">
-            <div className="flex items-start justify-between mb-4">
-              <div>
-                <h2 className="text-lg font-bold text-foreground">{viewingJob.role_title}</h2>
-                {data?.store && <p className="text-xs text-muted-foreground mt-0.5">{data.store.name}</p>}
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4" role="dialog" aria-modal="true" aria-labelledby="job-details-title">
+          <div className="absolute inset-0 bg-ink-950/45 backdrop-blur-[2px]" onClick={() => setViewingJobId(null)} />
+          <div className="relative bg-popover rounded-t-xl sm:rounded-xl shadow-xl border border-border p-5 sm:p-6 w-full sm:max-w-md max-h-[85vh] overflow-y-auto animate-in fade-in zoom-in-[0.98] duration-150">
+            <div className="flex items-start justify-between gap-3 mb-4">
+              <div className="min-w-0">
+                <h2 id="job-details-title" className="text-[16px] font-semibold text-foreground tracking-tight">{viewingJob.role_title}</h2>
+                {data?.store && <p className="text-[12px] text-muted-foreground mt-0.5">{data.store.name}</p>}
               </div>
-              <button onClick={() => setViewingJobId(null)} className="p-1.5 rounded-lg hover:bg-surface-alt text-muted-foreground shrink-0">
-                <X className="w-4 h-4" />
-              </button>
+              <Button variant="ghost" size="icon-sm" onClick={() => setViewingJobId(null)} aria-label="Fechar" className="shrink-0 -mr-1.5 -mt-1">
+                <X />
+              </Button>
             </div>
 
-            <div className="space-y-4 text-sm">
+            <dl className="space-y-4">
               {(viewingJob.contract_type || viewingJob.compensation_type) && (
                 <div className="grid grid-cols-2 gap-3">
                   {viewingJob.contract_type && (
-                    <div>
-                      <p className="text-[11px] font-semibold text-muted-foreground uppercase">Contrato</p>
-                      <p className="text-foreground">{contractTypeLabel(viewingJob.contract_type)}</p>
-                    </div>
+                    <JobFact label="Contrato">{contractTypeLabel(viewingJob.contract_type)}</JobFact>
                   )}
                   {viewingJob.compensation_type && (
-                    <div>
-                      <p className="text-[11px] font-semibold text-muted-foreground uppercase">Remuneração</p>
-                      <p className="text-foreground flex items-center gap-1"><Wallet className="w-3.5 h-3.5" /> {compensationTypeLabel(viewingJob.compensation_type)}</p>
-                    </div>
+                    <JobFact label="Remuneração">
+                      <span className="flex items-center gap-1"><Wallet className="w-3.5 h-3.5 text-ink-400" /> {compensationTypeLabel(viewingJob.compensation_type)}</span>
+                    </JobFact>
                   )}
                 </div>
               )}
@@ -353,16 +369,14 @@ export default function CandidaturaPublica() {
               {(viewingJob.fixed_amount != null || viewingJob.variable_percentage != null) && (
                 <div className="grid grid-cols-2 gap-3">
                   {viewingJob.fixed_amount != null && (
-                    <div>
-                      <p className="text-[11px] font-semibold text-muted-foreground uppercase">Valor fixo</p>
-                      <p className="text-foreground">R$ {viewingJob.fixed_amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
-                    </div>
+                    <JobFact label="Valor fixo">
+                      <span className="numeric">R$ {viewingJob.fixed_amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                    </JobFact>
                   )}
                   {viewingJob.variable_percentage != null && (
-                    <div>
-                      <p className="text-[11px] font-semibold text-muted-foreground uppercase">Variável</p>
-                      <p className="text-foreground">Até {viewingJob.variable_percentage}%{viewingJob.variable_basis ? ` — ${viewingJob.variable_basis}` : ''}</p>
-                    </div>
+                    <JobFact label="Variável">
+                      Até {viewingJob.variable_percentage}%{viewingJob.variable_basis ? ` — ${viewingJob.variable_basis}` : ''}
+                    </JobFact>
                   )}
                 </div>
               )}
@@ -370,43 +384,34 @@ export default function CandidaturaPublica() {
               {(viewingJob.work_schedule || viewingJob.workload_hours != null) && (
                 <div className="grid grid-cols-2 gap-3">
                   {viewingJob.work_schedule && (
-                    <div>
-                      <p className="text-[11px] font-semibold text-muted-foreground uppercase">Horário</p>
-                      <p className="text-foreground flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> {viewingJob.work_schedule}</p>
-                    </div>
+                    <JobFact label="Horário">
+                      <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5 text-ink-400" /> {viewingJob.work_schedule}</span>
+                    </JobFact>
                   )}
                   {viewingJob.workload_hours != null && (
-                    <div>
-                      <p className="text-[11px] font-semibold text-muted-foreground uppercase">Carga horária</p>
-                      <p className="text-foreground">{viewingJob.workload_hours}h/semana</p>
-                    </div>
+                    <JobFact label="Carga horária">{viewingJob.workload_hours}h/semana</JobFact>
                   )}
                 </div>
               )}
 
               {viewingJob.benefits && (
-                <div>
-                  <p className="text-[11px] font-semibold text-muted-foreground uppercase mb-1">Benefícios</p>
-                  <p className="text-foreground whitespace-pre-line">{viewingJob.benefits}</p>
-                </div>
+                <JobFact label="Benefícios"><span className="whitespace-pre-line">{viewingJob.benefits}</span></JobFact>
               )}
               {viewingJob.requirements && (
-                <div>
-                  <p className="text-[11px] font-semibold text-muted-foreground uppercase mb-1">Requisitos</p>
-                  <p className="text-foreground whitespace-pre-line">{viewingJob.requirements}</p>
-                </div>
+                <JobFact label="Requisitos"><span className="whitespace-pre-line">{viewingJob.requirements}</span></JobFact>
               )}
               {viewingJob.description && (
-                <div>
-                  <p className="text-[11px] font-semibold text-muted-foreground uppercase mb-1">Descrição</p>
-                  <p className="text-foreground whitespace-pre-line">{viewingJob.description}</p>
-                </div>
+                <JobFact label="Descrição"><span className="whitespace-pre-line">{viewingJob.description}</span></JobFact>
               )}
+            </dl>
 
-              {!viewingJob.description && !viewingJob.contract_type && !viewingJob.compensation_type && !viewingJob.work_schedule && !viewingJob.requirements && !viewingJob.benefits && (
-                <p className="text-muted-foreground text-center py-4">Sem detalhes adicionais cadastrados pra essa vaga.</p>
-              )}
-            </div>
+            {!viewingJob.description && !viewingJob.contract_type && !viewingJob.compensation_type && !viewingJob.work_schedule && !viewingJob.requirements && !viewingJob.benefits && (
+              <p className="text-[13px] text-muted-foreground text-center py-4">Sem detalhes adicionais cadastrados para esta vaga.</p>
+            )}
+
+            <Button variant="secondary" className="w-full mt-5" onClick={() => setViewingJobId(null)}>
+              Fechar
+            </Button>
           </div>
         </div>
       )}

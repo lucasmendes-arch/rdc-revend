@@ -1,11 +1,15 @@
 import { useState, useMemo } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Loader, AlertTriangle, CheckCircle2, ArrowLeft, PackageCheck, TrendingUp, TrendingDown, Pencil, Minus, Plus, X } from 'lucide-react'
+import { Loader, AlertTriangle, CheckCircle2, ArrowLeft, PackageCheck, TrendingUp, TrendingDown, Pencil, Minus, Plus, ClipboardList } from 'lucide-react'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import EstoqueLayout from '@/components/estoque/EstoqueLayout'
+import { AdminPage, Panel, EmptyState, PageLoading, StatCard, StatGrid } from '@/components/admin/ui/AdminPage'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 import { naturalCompare } from '@/lib/naturalSort'
 import { getCategoryColor } from '@/lib/stockCategoryColors'
 
@@ -54,18 +58,19 @@ const SKIP_REASON_LABEL: Record<string, string> = {
   no_target_defined: 'Meta de estoque não cadastrada para esta loja',
 }
 
-// ─── Correção de admin — mesmo padrão de stepper da tela de contagem ────────
+/// ─── Correção de admin — mesmo padrão de stepper da tela de contagem ────────
 
 function NumberField({ label, value, onChange }: { label: string; value: number; onChange: (value: number) => void }) {
   return (
     <div className="flex items-center justify-between gap-2">
-      <p className="text-xs font-semibold text-muted-foreground">{label}</p>
+      <p className="text-[13px] font-medium text-muted-foreground">{label}</p>
       <div className="flex items-center gap-1.5">
         <button
           type="button"
+          aria-label={`Diminuir ${label.toLowerCase()}`}
           onClick={() => onChange(Math.max(0, value - 1))}
           disabled={value === 0}
-          className="w-9 h-9 rounded-xl border border-border bg-surface-alt flex items-center justify-center active:scale-95 transition-transform disabled:opacity-30"
+          className="w-11 h-11 rounded-md border border-border bg-card text-foreground flex items-center justify-center hover:bg-muted transition-colors disabled:opacity-30"
         >
           <Minus className="w-4 h-4" />
         </button>
@@ -73,14 +78,16 @@ function NumberField({ label, value, onChange }: { label: string; value: number;
           type="number"
           inputMode="numeric"
           min={0}
+          aria-label={label}
           value={value}
           onChange={(e) => onChange(Math.max(0, parseInt(e.target.value) || 0))}
-          className="w-14 h-9 rounded-xl border border-input text-center text-base font-bold bg-card focus:outline-none focus:ring-2 focus:ring-ring"
+          className="w-14 h-11 rounded-md border border-input text-center text-lg font-semibold tabular-nums bg-card text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         />
         <button
           type="button"
+          aria-label={`Aumentar ${label.toLowerCase()}`}
           onClick={() => onChange(value + 1)}
-          className="w-9 h-9 rounded-xl border border-border bg-surface-alt flex items-center justify-center active:scale-95 transition-transform"
+          className="w-11 h-11 rounded-md border border-border bg-card text-foreground flex items-center justify-center hover:bg-muted transition-colors"
         >
           <Plus className="w-4 h-4" />
         </button>
@@ -107,48 +114,34 @@ function EditCountModal({
   const previewTotal = unitsPerBox != null ? closedBoxes * unitsPerBox + looseUnits : looseUnits
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/40 flex items-end sm:items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-card rounded-2xl w-full max-w-sm p-5 space-y-4" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-start justify-between gap-2">
-          <div>
-            <p className="eyebrow">Corrigir contagem (admin)</p>
-            <h2 className="text-base font-bold text-foreground">{item.catalog_products?.name || 'Produto'}</h2>
-          </div>
-          <button type="button" onClick={onClose} className="text-muted-foreground hover:text-foreground shrink-0">
-            <X className="w-5 h-5" />
-          </button>
-        </div>
+    <Dialog open onOpenChange={(open) => { if (!open && !saving) onClose() }}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle>{item.catalog_products?.name || 'Produto'}</DialogTitle>
+          <DialogDescription>Corrigir contagem (admin)</DialogDescription>
+        </DialogHeader>
 
         <div className="space-y-2">
           {showBoxes && <NumberField label="Caixas fechadas" value={closedBoxes} onChange={setClosedBoxes} />}
           <NumberField label="Unidades avulsas" value={looseUnits} onChange={setLooseUnits} />
         </div>
 
-        <div className="bg-surface-alt rounded-xl p-3 text-center">
-          <p className="text-2xl font-black text-foreground">{previewTotal}</p>
-          <p className="text-[10px] uppercase text-muted-foreground tracking-wide">novo total</p>
+        <div className="rounded-lg border border-border bg-surface p-3 text-center">
+          <p className="font-title text-[28px] font-semibold text-foreground leading-none tabular-nums">{previewTotal}</p>
+          <p className="text-[12px] text-muted-foreground mt-1">Novo total</p>
         </div>
 
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={saving}
-            className="flex-1 px-4 py-2.5 rounded-xl border border-border text-sm font-semibold disabled:opacity-50"
-          >
+        <DialogFooter className="gap-2 sm:gap-0">
+          <Button variant="secondary" size="lg" onClick={onClose} disabled={saving}>
             Cancelar
-          </button>
-          <button
-            type="button"
-            onClick={() => onSave(closedBoxes, looseUnits)}
-            disabled={saving}
-            className="flex-1 px-4 py-2.5 rounded-xl btn-gold text-sm font-bold disabled:opacity-50"
-          >
+          </Button>
+          <Button size="lg" onClick={() => onSave(closedBoxes, looseUnits)} disabled={saving}>
+            {saving && <Loader className="animate-spin" />}
             {saving ? 'Salvando…' : 'Salvar'}
-          </button>
-        </div>
-      </div>
-    </div>
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }
 
@@ -396,10 +389,9 @@ export default function EstoqueConfirmacao() {
   if (countLoading) {
     return (
       <EstoqueLayout>
-        <div className="text-center py-16">
-          <Loader className="w-8 h-8 animate-spin text-gold-text mx-auto mb-4" />
-          <p className="text-muted-foreground">Carregando…</p>
-        </div>
+        <AdminPage title="Revisar contagem" back={{ to: '/estoque/contagem', label: 'Histórico' }}>
+          <PageLoading />
+        </AdminPage>
       </EstoqueLayout>
     )
   }
@@ -407,12 +399,16 @@ export default function EstoqueConfirmacao() {
   if (!stockCount) {
     return (
       <EstoqueLayout>
-        <div className="text-center py-16">
-          <p className="text-muted-foreground mb-4">Contagem não encontrada.</p>
-          <Link to="/estoque/contagem" className="text-sm text-foreground font-semibold hover:underline">
-            Voltar ao histórico
-          </Link>
-        </div>
+        <AdminPage title="Revisar contagem" back={{ to: '/estoque/contagem', label: 'Histórico' }}>
+          <Panel flush>
+            <EmptyState
+              icon={ClipboardList}
+              title="Contagem não encontrada"
+              description="Ela pode ter sido apagada ou o link está errado."
+              action={<Button variant="secondary" asChild><Link to="/estoque/contagem">Voltar ao histórico</Link></Button>}
+            />
+          </Panel>
+        </AdminPage>
       </EstoqueLayout>
     )
   }
@@ -422,182 +418,166 @@ export default function EstoqueConfirmacao() {
     const summary = result
     return (
       <EstoqueLayout>
-        <div className="bg-card rounded-2xl border border-border shadow-card p-6 text-center space-y-4">
-          <div className="w-16 h-16 rounded-full bg-success-subtle flex items-center justify-center mx-auto">
-            <CheckCircle2 className="w-8 h-8 text-success" />
-          </div>
-          <div>
-            <h1 className="text-lg font-bold text-foreground">Contagem confirmada</h1>
-            <p className="text-sm text-muted-foreground">
-              {stockCount.confirmed_at
-                ? `Confirmada em ${new Date(stockCount.confirmed_at).toLocaleString('pt-BR')}`
-                : 'Confirmada agora'}
-            </p>
-          </div>
+        <AdminPage
+          title="Contagem confirmada"
+          badge={<Badge variant="success" dot>Confirmada</Badge>}
+          description={stockCount.confirmed_at
+            ? `Confirmada em ${new Date(stockCount.confirmed_at).toLocaleString('pt-BR')}`
+            : 'Confirmada agora'}
+          back={{ to: '/estoque/contagem', label: 'Histórico' }}
+          actions={<Button variant="secondary" onClick={() => navigate('/estoque/contagem')}>Voltar ao histórico</Button>}
+        >
+          <div className="space-y-6">
+            {summary && (
+              <StatGrid className="grid-cols-1 min-[420px]:grid-cols-3 lg:grid-cols-3">
+                <StatCard label="Itens contados" value={summary.items_total} icon={ClipboardList} />
+                <StatCard label={isCentral ? 'Abaixo da meta' : 'Geraram reposição'} value={summary.items_replenished} icon={AlertTriangle} tone="warning" />
+                <StatCard label="Estoque suficiente" value={summary.items_sufficient} icon={CheckCircle2} tone="success" />
+              </StatGrid>
+            )}
 
-          {summary && (
-            <div className="grid grid-cols-3 gap-3 pt-2">
-              <div className="bg-surface-alt rounded-xl p-3">
-                <p className="text-xl font-bold text-foreground">{summary.items_total}</p>
-                <p className="text-[11px] text-muted-foreground">Itens contados</p>
-              </div>
-              <div className="bg-warning-subtle rounded-xl p-3">
-                <p className="text-xl font-bold text-warning">{summary.items_replenished}</p>
-                <p className="text-[11px] text-warning">{isCentral ? 'Abaixo da meta' : 'Geraram reposição'}</p>
-              </div>
-              <div className="bg-success-subtle rounded-xl p-3">
-                <p className="text-xl font-bold text-success">{summary.items_sufficient}</p>
-                <p className="text-[11px] text-success">Estoque suficiente</p>
-              </div>
-            </div>
-          )}
-
-          {summary && summary.items_skipped.length > 0 && (
-            <div className="text-left bg-warning-subtle border border-warning-border rounded-xl p-3 space-y-1.5">
-              <p className="text-xs font-semibold text-warning flex items-center gap-1.5">
-                <AlertTriangle className="w-3.5 h-3.5" /> Itens não conciliados ({summary.items_skipped.length})
-              </p>
-              {summary.items_skipped.map((skip) => (
-                <p key={skip.product_id} className="text-xs text-warning">
-                  {productNameById.get(skip.product_id) || skip.product_id} — {SKIP_REASON_LABEL[skip.reason] || skip.reason}
+            {summary && summary.items_skipped.length > 0 && (
+              <div className="bg-warning-subtle border border-warning-border rounded-lg p-3 sm:p-4 space-y-1.5">
+                <p className="text-[13px] font-semibold text-warning flex items-center gap-1.5">
+                  <AlertTriangle className="w-4 h-4" /> Itens não conciliados ({summary.items_skipped.length})
                 </p>
-              ))}
-            </div>
-          )}
+                {summary.items_skipped.map((skip) => (
+                  <p key={skip.product_id} className="text-[12.5px] text-warning">
+                    {productNameById.get(skip.product_id) || skip.product_id} — {SKIP_REASON_LABEL[skip.reason] || skip.reason}
+                  </p>
+                ))}
+              </div>
+            )}
 
-          <button
-            onClick={() => navigate('/estoque/contagem')}
-            className="w-full sm:w-auto px-6 py-2.5 rounded-xl btn-gold text-sm font-bold"
-          >
-            Voltar ao histórico
-          </button>
-        </div>
-
-        {/* Detalhe por produto, agrupado por categoria (mesma ordem da tela de
-            contagem) — cruza com meta e com a contagem confirmada anterior da
-            loja, pra dar visibilidade real do que foi contado, não só os 3
-            números do resumo. */}
-        {itemsLoading ? (
-          <div className="text-center py-8">
-            <Loader className="w-6 h-6 animate-spin text-gold-text mx-auto" />
-          </div>
-        ) : (
-          <div className="space-y-4 pb-8">
-            {groupedByCategory.map(([category, categoryItems]) => {
-              const color = category === 'Sem categoria' ? { bg: '#F3F4F6', text: '#6B7280' } : getCategoryColor(categoryColorByName.get(category))
-              return (
-                <section key={category} className="space-y-2">
-                  <span
-                    className="inline-block px-2.5 py-1 rounded-lg text-sm font-semibold uppercase tracking-wide"
-                    style={{ backgroundColor: color.bg, color: color.text }}
-                  >
-                    {category}
-                  </span>
-                  <div className="bg-card rounded-2xl border border-border shadow-card overflow-hidden">
-                    <div className="overflow-x-auto">
-                      <table className="w-full table-fixed min-w-[640px]">
-                        <colgroup>
-                          <col className="w-[30%]" />
-                          <col className="w-[12%]" />
-                          <col className="w-[10%]" />
-                          <col className="w-[12%]" />
-                          <col className="w-[12%]" />
-                          <col className="w-[24%]" />
-                        </colgroup>
-                        <thead>
-                          <tr className="border-b border-border bg-surface-alt">
-                            <th className="px-4 py-2.5 text-left text-xs font-semibold text-foreground">Produto</th>
-                            <th className="px-4 py-2.5 text-center text-xs font-semibold text-foreground">Contado</th>
-                            <th className="px-4 py-2.5 text-center text-xs font-semibold text-foreground">Meta</th>
-                            <th className="px-4 py-2.5 text-center text-xs font-semibold text-foreground">Anterior</th>
-                            <th className="px-4 py-2.5 text-center text-xs font-semibold text-foreground">Saldo</th>
-                            <th className="px-4 py-2.5 text-center text-xs font-semibold text-foreground">Status</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {categoryItems.map((item, index) => {
-                            const target = targetByProduct.get(item.product_id)
-                            const previous = previousTotalByProduct.get(item.product_id)
-                            const unclassified = item.catalog_products?.units_per_box == null
-                            const hasTarget = !unclassified && target !== undefined
-                            const saldo = hasTarget ? (item.total_units ?? 0) - (target as number) : null
-                            const isLow = hasTarget && (item.total_units ?? 0) < (target as number)
-                            return (
-                              <tr key={item.id} className={index % 2 === 0 ? '' : 'bg-surface-alt/50'}>
-                                <td className="px-4 py-2.5 text-sm font-medium text-foreground truncate" title={item.catalog_products?.name || 'Produto'}>
-                                  {item.catalog_products?.name || 'Produto'}
-                                </td>
-                                <td className="px-4 py-2.5 text-sm text-center font-bold">
-                                  <div className="inline-flex items-center gap-1.5">
-                                    <span>{item.total_units ?? <span className="text-warning text-xs font-semibold">não classif.</span>}</span>
-                                    {isAdmin && (
-                                      <button
-                                        type="button"
-                                        onClick={() => setEditingItem(item)}
-                                        title="Corrigir quantidade (admin)"
-                                        className="text-muted-foreground hover:text-foreground transition-colors"
-                                      >
-                                        <Pencil className="w-3.5 h-3.5" />
-                                      </button>
-                                    )}
-                                  </div>
-                                </td>
-                                <td className="px-4 py-2.5 text-sm text-center text-muted-foreground">{target ?? '—'}</td>
-                                <td className="px-4 py-2.5 text-sm text-center">
-                                  {previous === undefined ? (
-                                    <span className="text-muted-foreground">—</span>
-                                  ) : previous === null ? (
-                                    <span className="text-muted-foreground">—</span>
-                                  ) : item.total_units == null ? (
-                                    <span className="text-muted-foreground">{previous}</span>
-                                  ) : item.total_units > previous ? (
-                                    <span className="inline-flex items-center gap-0.5 text-success font-semibold">
-                                      <TrendingUp className="w-3 h-3" /> {previous}
-                                    </span>
-                                  ) : item.total_units < previous ? (
-                                    <span className="inline-flex items-center gap-0.5 text-danger font-semibold">
-                                      <TrendingDown className="w-3 h-3" /> {previous}
-                                    </span>
-                                  ) : (
-                                    <span className="text-muted-foreground">{previous}</span>
-                                  )}
-                                </td>
-                                <td className="px-4 py-2.5 text-sm text-center font-semibold">
-                                  {saldo === null ? (
-                                    <span className="text-muted-foreground font-normal">—</span>
-                                  ) : saldo > 0 ? (
-                                    <span className="text-success">+{saldo}</span>
-                                  ) : saldo < 0 ? (
-                                    <span className="text-danger">{saldo}</span>
-                                  ) : (
-                                    <span className="text-muted-foreground font-normal">0</span>
-                                  )}
-                                </td>
-                                <td className="px-4 py-2.5 text-center">
-                                  {unclassified ? (
-                                    <span className="text-[10px] font-semibold text-muted-foreground">não classificado</span>
-                                  ) : !hasTarget ? (
-                                    <span className="text-[10px] text-muted-foreground">sem meta</span>
-                                  ) : isLow ? (
-                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-danger-subtle text-danger">
-                                      <AlertTriangle className="w-3 h-3" /> {isCentral ? 'Comprar do fornecedor' : 'Abaixo da meta'}
-                                    </span>
-                                  ) : (
-                                    <span className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold bg-success-subtle text-success">OK</span>
-                                  )}
-                                </td>
+            {/* Detalhe por produto, agrupado por categoria (mesma ordem da tela de
+                contagem) — cruza com meta e com a contagem confirmada anterior da
+                loja, pra dar visibilidade real do que foi contado, não só os 3
+                números do resumo. */}
+            {itemsLoading ? (
+              <PageLoading className="py-8" />
+            ) : (
+              <div className="space-y-6">
+                {groupedByCategory.map(([category, categoryItems]) => {
+                  const isUncategorized = category === 'Sem categoria'
+                  const color = isUncategorized ? null : getCategoryColor(categoryColorByName.get(category))
+                  return (
+                    <section key={category} className="space-y-2">
+                      {/* Cor da categoria é escolhida pelo usuário (exceção categórica) */}
+                      <span
+                        className={`inline-flex items-center h-6 px-2 rounded-md text-[12.5px] font-medium ${isUncategorized ? 'bg-muted text-ink-600' : ''}`}
+                        style={color ? { backgroundColor: color.bg, color: color.text } : undefined}
+                      >
+                        {category}
+                      </span>
+                      <div className="rounded-lg border border-border bg-card shadow-xs overflow-hidden">
+                        <div className="overflow-x-auto">
+                          <table className="data-table table-fixed min-w-[640px]">
+                            <colgroup>
+                              <col className="w-[30%]" />
+                              <col className="w-[12%]" />
+                              <col className="w-[10%]" />
+                              <col className="w-[12%]" />
+                              <col className="w-[12%]" />
+                              <col className="w-[24%]" />
+                            </colgroup>
+                            <thead>
+                              <tr>
+                                <th>Produto</th>
+                                <th className="!text-center">Contado</th>
+                                <th className="!text-center">Meta</th>
+                                <th className="!text-center">Anterior</th>
+                                <th className="!text-center">Saldo</th>
+                                <th className="!text-center">Status</th>
                               </tr>
-                            )
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                </section>
-              )
-            })}
+                            </thead>
+                            <tbody>
+                              {categoryItems.map((item) => {
+                                const target = targetByProduct.get(item.product_id)
+                                const previous = previousTotalByProduct.get(item.product_id)
+                                const unclassified = item.catalog_products?.units_per_box == null
+                                const hasTarget = !unclassified && target !== undefined
+                                const saldo = hasTarget ? (item.total_units ?? 0) - (target as number) : null
+                                const isLow = hasTarget && (item.total_units ?? 0) < (target as number)
+                                return (
+                                  <tr key={item.id}>
+                                    <td className="font-medium text-foreground truncate" title={item.catalog_products?.name || 'Produto'}>
+                                      {item.catalog_products?.name || 'Produto'}
+                                    </td>
+                                    <td className="text-center font-semibold">
+                                      <div className="inline-flex items-center gap-1">
+                                        <span>{item.total_units ?? <span className="text-warning text-[12px] font-medium">não classif.</span>}</span>
+                                        {isAdmin && (
+                                          <Button
+                                            variant="ghost"
+                                            size="icon-sm"
+                                            onClick={() => setEditingItem(item)}
+                                            title="Corrigir quantidade (admin)"
+                                            aria-label="Corrigir quantidade"
+                                            className="h-7 w-7"
+                                          >
+                                            <Pencil className="!size-3.5" />
+                                          </Button>
+                                        )}
+                                      </div>
+                                    </td>
+                                    <td className="text-center text-muted-foreground">{target ?? '—'}</td>
+                                    <td className="text-center">
+                                      {previous === undefined ? (
+                                        <span className="text-muted-foreground">—</span>
+                                      ) : previous === null ? (
+                                        <span className="text-muted-foreground">—</span>
+                                      ) : item.total_units == null ? (
+                                        <span className="text-muted-foreground">{previous}</span>
+                                      ) : item.total_units > previous ? (
+                                        <span className="inline-flex items-center gap-0.5 text-success font-medium">
+                                          <TrendingUp className="w-3 h-3" /> {previous}
+                                        </span>
+                                      ) : item.total_units < previous ? (
+                                        <span className="inline-flex items-center gap-0.5 text-danger font-medium">
+                                          <TrendingDown className="w-3 h-3" /> {previous}
+                                        </span>
+                                      ) : (
+                                        <span className="text-muted-foreground">{previous}</span>
+                                      )}
+                                    </td>
+                                    <td className="text-center font-semibold">
+                                      {saldo === null ? (
+                                        <span className="text-muted-foreground font-normal">—</span>
+                                      ) : saldo > 0 ? (
+                                        <span className="text-success">+{saldo}</span>
+                                      ) : saldo < 0 ? (
+                                        <span className="text-danger">{saldo}</span>
+                                      ) : (
+                                        <span className="text-muted-foreground font-normal">0</span>
+                                      )}
+                                    </td>
+                                    <td className="text-center">
+                                      {unclassified ? (
+                                        <span className="text-[12px] text-muted-foreground">Não classificado</span>
+                                      ) : !hasTarget ? (
+                                        <span className="text-[12px] text-muted-foreground">Sem meta</span>
+                                      ) : isLow ? (
+                                        <Badge variant="danger">
+                                          <AlertTriangle className="w-3 h-3" /> {isCentral ? 'Comprar do fornecedor' : 'Abaixo da meta'}
+                                        </Badge>
+                                      ) : (
+                                        <Badge variant="success">OK</Badge>
+                                      )}
+                                    </td>
+                                  </tr>
+                                )
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    </section>
+                  )
+                })}
+              </div>
+            )}
           </div>
-        )}
+        </AdminPage>
 
         {editingItem && (
           <EditCountModal
@@ -623,100 +603,100 @@ export default function EstoqueConfirmacao() {
 
   return (
     <EstoqueLayout>
-      <div className="bg-card rounded-2xl border border-border shadow-card p-5 space-y-3">
-        <div className="flex items-center justify-between flex-wrap gap-2">
-          <div>
-            <h1 className="text-lg font-bold text-foreground">Revisar contagem</h1>
-            <p className="text-xs text-muted-foreground">
-              {countedItems.length} produto{countedItems.length !== 1 ? 's' : ''} contado{countedItems.length !== 1 ? 's' : ''}
-            </p>
-          </div>
-          <button
-            onClick={() => navigate(`/estoque/contagem/${id}`)}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-border text-sm font-semibold hover:bg-surface-alt transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4" /> Voltar e editar
-          </button>
-        </div>
-
-        {itemsUnclassified.length > 0 && (
-          <div className="flex items-start gap-2 bg-warning-subtle border border-warning-border rounded-xl p-3">
-            <AlertTriangle className="w-4 h-4 text-warning shrink-0 mt-0.5" />
-            <p className="text-xs text-warning">
-              {itemsUnclassified.length} produto{itemsUnclassified.length !== 1 ? 's' : ''} sem itens/caixa cadastrado — não vão gerar total nem conciliação até serem classificados pelo admin.
-            </p>
-          </div>
-        )}
-
-        {missingCount > 0 && (
-          <div className="flex items-start gap-2 bg-danger-subtle border border-danger-border rounded-xl p-3">
-            <AlertTriangle className="w-4 h-4 text-danger shrink-0 mt-0.5" />
-            <p className="text-xs text-danger">
-              Faltam {missingCount} produto{missingCount !== 1 ? 's' : ''} contar. Volte e preencha todos os itens antes de confirmar.
-            </p>
-          </div>
-        )}
-      </div>
-
-      {itemsLoading ? (
-        <div className="text-center py-8">
-          <Loader className="w-6 h-6 animate-spin text-gold-text mx-auto" />
-        </div>
-      ) : countedItems.length === 0 ? (
-        <div className="bg-card rounded-2xl border border-border shadow-card p-8 text-center">
-          <p className="text-muted-foreground">Nenhum item preenchido ainda. Volte para a tela de contagem.</p>
-        </div>
-      ) : (
-        <div className="bg-card rounded-2xl border border-border shadow-card overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-border bg-surface-alt">
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-foreground">Produto</th>
-                  <th className="px-4 py-3 text-center text-sm font-semibold text-foreground">Caixas</th>
-                  <th className="px-4 py-3 text-center text-sm font-semibold text-foreground">Avulsas</th>
-                  <th className="px-4 py-3 text-center text-sm font-semibold text-foreground">Total</th>
-                </tr>
-              </thead>
-              <tbody>
-                {countedItems.map((item, index) => (
-                  <tr key={item.id} className={index % 2 === 0 ? '' : 'bg-surface-alt/50'}>
-                    <td className="px-4 py-3 text-sm font-medium text-foreground">
-                      {item.catalog_products?.name || 'Produto'}
-                      {item.closed_boxes === 0 && item.loose_units === 0 && (
-                        <span className="ml-2 text-[9px] font-bold px-1.5 py-0.5 rounded bg-danger-subtle text-danger uppercase align-middle">Zerado</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-center">{item.closed_boxes}</td>
-                    <td className="px-4 py-3 text-sm text-center">{item.loose_units}</td>
-                    <td className="px-4 py-3 text-sm text-center font-bold">
-                      {item.total_units ?? <span className="text-warning text-xs font-semibold">não classificado</span>}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      <div className="pb-8">
-        <button
-          onClick={() => confirmMutation.mutate()}
-          disabled={confirmMutation.isPending || countedItems.length === 0 || !assortmentReady || missingCount > 0}
-          className="w-full px-6 py-3.5 rounded-xl btn-gold text-sm font-bold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-        >
-          {confirmMutation.isPending ? (
-            <><Loader className="w-4 h-4 animate-spin" /> Confirmando…</>
-          ) : !assortmentReady ? (
-            <><Loader className="w-4 h-4 animate-spin" /> Verificando…</>
-          ) : missingCount > 0 ? (
-            <><AlertTriangle className="w-4 h-4" /> Faltam {missingCount} itens</>
-          ) : (
-            <><PackageCheck className="w-4 h-4" /> Confirmar e enviar</>
+      <AdminPage
+        title="Revisar contagem"
+        description={`${countedItems.length} produto${countedItems.length !== 1 ? 's' : ''} contado${countedItems.length !== 1 ? 's' : ''}`}
+        back={{ to: `/estoque/contagem/${id}`, label: 'Contagem' }}
+        actions={
+          <Button variant="secondary" onClick={() => navigate(`/estoque/contagem/${id}`)}>
+            <ArrowLeft /> Voltar e editar
+          </Button>
+        }
+      >
+        <div className="space-y-4">
+          {itemsUnclassified.length > 0 && (
+            <div className="flex items-start gap-2 bg-warning-subtle border border-warning-border rounded-lg p-3">
+              <AlertTriangle className="w-4 h-4 text-warning shrink-0 mt-0.5" />
+              <p className="text-[13px] text-warning">
+                {itemsUnclassified.length} produto{itemsUnclassified.length !== 1 ? 's' : ''} sem itens/caixa cadastrado — não vão gerar total nem conciliação até serem classificados pelo admin.
+              </p>
+            </div>
           )}
-        </button>
-      </div>
+
+          {missingCount > 0 && (
+            <div className="flex items-start gap-2 bg-danger-subtle border border-danger-border rounded-lg p-3">
+              <AlertTriangle className="w-4 h-4 text-danger shrink-0 mt-0.5" />
+              <p className="text-[13px] text-danger">
+                Faltam {missingCount} produto{missingCount !== 1 ? 's' : ''} contar. Volte e preencha todos os itens antes de confirmar.
+              </p>
+            </div>
+          )}
+
+          {itemsLoading ? (
+            <PageLoading className="py-8" />
+          ) : countedItems.length === 0 ? (
+            <Panel flush>
+              <EmptyState
+                icon={ClipboardList}
+                title="Nenhum item preenchido ainda"
+                description="Volte para a tela de contagem e preencha os produtos."
+              />
+            </Panel>
+          ) : (
+            <div className="rounded-lg border border-border bg-card shadow-xs overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Produto</th>
+                      <th className="!text-right">Caixas</th>
+                      <th className="!text-right">Avulsas</th>
+                      <th className="!text-right">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {countedItems.map((item) => (
+                      <tr key={item.id}>
+                        <td className="font-medium text-foreground">
+                          {item.catalog_products?.name || 'Produto'}
+                          {item.closed_boxes === 0 && item.loose_units === 0 && (
+                            <Badge variant="danger" className="ml-2 align-middle">Zerado</Badge>
+                          )}
+                        </td>
+                        <td className="text-right">{item.closed_boxes}</td>
+                        <td className="text-right">{item.loose_units}</td>
+                        <td className="text-right font-semibold text-[14px]">
+                          {item.total_units ?? <span className="text-warning text-[12px] font-medium">não classificado</span>}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Barra de confirmação sticky no rodapé */}
+          <div className="sticky bottom-0 z-20 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] bg-background/95 backdrop-blur-sm border-t border-border">
+            <Button
+              size="lg"
+              onClick={() => confirmMutation.mutate()}
+              disabled={confirmMutation.isPending || countedItems.length === 0 || !assortmentReady || missingCount > 0}
+              className="w-full h-12"
+            >
+              {confirmMutation.isPending ? (
+                <><Loader className="animate-spin" /> Confirmando…</>
+              ) : !assortmentReady ? (
+                <><Loader className="animate-spin" /> Verificando…</>
+              ) : missingCount > 0 ? (
+                <><AlertTriangle /> Faltam {missingCount} itens</>
+              ) : (
+                <><PackageCheck /> Confirmar e enviar</>
+              )}
+            </Button>
+          </div>
+        </div>
+      </AdminPage>
     </EstoqueLayout>
   )
 }

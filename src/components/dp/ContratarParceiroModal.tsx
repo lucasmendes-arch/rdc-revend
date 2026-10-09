@@ -7,6 +7,8 @@ import { useEscapeToClose } from '@/hooks/useEscapeToClose'
 import { DateField } from '@/components/ui/date-field'
 import StyledSelect from '@/components/ui/styled-select'
 import NacionalidadeField from '@/components/dp/NacionalidadeField'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import {
   REQUIRED_CONTRACT_DATA_FIELDS, CONTRACT_DATA_FIELD_LABELS, MARITAL_STATUS_OPTIONS,
   toSelectOptions, meiLegalName, partnerTermEndISO, PARCERIA_TERM_MONTHS,
@@ -175,34 +177,34 @@ export default function ContratarParceiroModal({ processo, onConfirmStage, onClo
 
   function label(field: ContractDataField, optional?: boolean) {
     return (
-      <label className="block text-[11px] text-muted-foreground mb-1">
+      <label className="field-label">
         {CONTRACT_DATA_FIELD_LABELS[field]}
         {optional ? null : <span className="text-danger"> *</span>}
       </label>
     )
   }
 
-  const inputClass = 'w-full px-2.5 py-1.5 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring'
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-foreground/40 backdrop-blur-sm" onClick={() => !busy && onClose()} />
-      <div className="relative bg-card rounded-2xl shadow-2xl border border-border p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
-        <div className="flex items-start justify-between mb-1">
-          <h2 className="text-lg font-bold text-foreground">Contratar {processo.candidates?.name}</h2>
-          <button onClick={onClose} disabled={busy} className="p-1.5 rounded-lg hover:bg-surface-alt text-muted-foreground shrink-0 disabled:opacity-50">
-            <X className="w-4 h-4" />
-          </button>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="dp-contratar-title">
+      <div className="absolute inset-0 bg-ink-950/45 backdrop-blur-[2px] animate-in fade-in-0" onClick={() => !busy && onClose()} />
+      <div className="relative w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-xl border border-border bg-popover p-5 shadow-xl animate-in fade-in-0 zoom-in-[0.98] duration-150">
+        <div className="pr-8">
+          <h2 id="dp-contratar-title" className="text-[16px] font-semibold leading-tight tracking-tight text-foreground">
+            Contratar {processo.candidates?.name}
+          </h2>
+          <p className="mt-1.5 text-[13px] text-muted-foreground">
+            Confirme os dados e o modelo base. O contrato de profissional parceiro é gerado ao confirmar, e o processo vai para Contratação.
+          </p>
         </div>
-        <p className="text-xs text-muted-foreground mb-4">
-          Confirme os dados e o modelo base — o Contrato de Profissional Parceiro é gerado ao confirmar, e o processo vai para Contratação.
-        </p>
+        <Button variant="ghost" size="icon-sm" onClick={onClose} disabled={busy} aria-label="Fechar" className="absolute right-3 top-3">
+          <X />
+        </Button>
 
-        <div className="rounded-xl border border-border bg-surface-alt p-3 space-y-3 mb-4">
+        <div className="mt-5 rounded-lg border border-border bg-surface p-4 space-y-4">
           <div>
-            <label className="block text-[11px] text-muted-foreground mb-1">Modelo base do contrato</label>
+            <label className="field-label">Modelo base do contrato</label>
             {templatesError ? (
-              <p className="text-[11px] text-danger">
+              <p className="text-[12px] text-danger">
                 Não foi possível carregar os modelos: {templatesError instanceof Error ? templatesError.message : 'erro desconhecido'}
               </p>
             ) : (
@@ -210,24 +212,24 @@ export default function ContratarParceiroModal({ processo, onConfirmStage, onClo
                 value={templateId}
                 onChange={setTemplateId}
                 options={(templates?.templates ?? []).map((t) => ({ value: t.id, label: t.name }))}
-                placeholder={loadingTemplates ? 'Carregando modelos...' : 'Selecionar'}
+                placeholder={loadingTemplates ? 'Carregando modelos…' : 'Selecionar'}
                 disabled={loadingTemplates || busy}
               />
             )}
-            <p className="text-[10px] text-muted-foreground mt-1">
-              Os modelos são os documentos da pasta de contratos no Drive — para adicionar outro, basta colocá-lo lá.
+            <p className="text-[12px] text-muted-foreground mt-1.5">
+              Os modelos são os documentos da pasta de contratos no Drive. Para adicionar outro, basta colocá-lo lá.
             </p>
           </div>
 
           <div>
-            <label className="block text-[11px] text-muted-foreground mb-1">
+            <label className="field-label">
               Data de assinatura <span className="text-danger">*</span>
             </label>
             <DateField value={termStart || null} onChange={(v) => setTermStart(v ?? '')} placeholder="Selecionar" />
-            <p className="text-[10px] text-muted-foreground mt-1">
+            <p className="text-[12px] text-muted-foreground mt-1.5">
               {termStart ? (
                 <>
-                  Vigência até <span className="font-medium text-foreground">{formatDateBR(partnerTermEndISO(termStart))}</span>
+                  Vigência até <span className="font-medium text-foreground tabular-nums">{formatDateBR(partnerTermEndISO(termStart))}</span>
                   {' '}({PARCERIA_TERM_MONTHS} meses, cláusula 4.1 do contrato).
                 </>
               ) : (
@@ -236,41 +238,41 @@ export default function ContratarParceiroModal({ processo, onConfirmStage, onClo
             </p>
           </div>
 
-          <div className="flex items-center justify-between gap-2 text-[11px]">
-            <span className="text-muted-foreground">Retenção do salão / comissão de produtos</span>
-            {missingPercentages ? (
-              <span className="text-warning font-medium text-right">
-                não definidos no cargo
-              </span>
-            ) : (
-              <span className="font-medium text-foreground">
-                {percentuais!.retention}% / {percentuais!.product}%
-              </span>
+          <div>
+            <div className="flex items-center justify-between gap-2 text-[13px]">
+              <span className="text-muted-foreground">Retenção do salão / comissão de produtos</span>
+              {missingPercentages ? (
+                <span className="text-warning font-medium text-right shrink-0">Não definidos no cargo</span>
+              ) : (
+                <span className="font-medium text-foreground tabular-nums shrink-0">
+                  {percentuais!.retention}% / {percentuais!.product}%
+                </span>
+              )}
+            </div>
+            {missingPercentages && (
+              <p className="text-[12px] text-warning mt-1">
+                Preencha em /admin/rh/cargos (ou na vaga) antes de gerar — eles vão impressos no contrato.
+              </p>
             )}
           </div>
-          {missingPercentages && (
-            <p className="text-[10px] text-warning -mt-2">
-              Preencha em /admin/rh/cargos (ou na vaga) antes de gerar — eles vão impressos no contrato.
-            </p>
-          )}
         </div>
 
-        <p className="text-xs font-semibold text-muted-foreground uppercase mb-2">Dados do parceiro</p>
-        <div className="grid grid-cols-2 gap-3 mb-4">
+        <h3 className="mt-5 mb-3 text-[14px] font-semibold text-foreground">Dados do parceiro</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             {label('cpf')}
-            <input value={form.cpf} onChange={(e) => setForm({ ...form, cpf: e.target.value.replace(/\D/g, '').slice(0, 11) })}
-              inputMode="numeric" placeholder="Somente números" className={inputClass} />
+            <Input value={form.cpf} onChange={(e) => setForm({ ...form, cpf: e.target.value.replace(/\D/g, '').slice(0, 11) })}
+              inputMode="numeric" placeholder="Somente números" />
           </div>
           <div>
             {label('cnpj')}
-            <input value={form.cnpj} onChange={(e) => setForm({ ...form, cnpj: e.target.value.replace(/\D/g, '').slice(0, 14) })}
-              inputMode="numeric" placeholder="Somente números" className={inputClass} />
+            <Input value={form.cnpj} onChange={(e) => setForm({ ...form, cnpj: e.target.value.replace(/\D/g, '').slice(0, 14) })}
+              inputMode="numeric" placeholder="Somente números" />
           </div>
-          <div className="col-span-2">
+          <div className="sm:col-span-2">
             {label('legal_name', true)}
-            <input value={form.legal_name} onChange={(e) => setForm({ ...form, legal_name: e.target.value })}
-              placeholder={meiLegalName(form.cnpj, processo.candidates?.name ?? '')} className={inputClass} />
+            <Input value={form.legal_name} onChange={(e) => setForm({ ...form, legal_name: e.target.value })}
+              placeholder={meiLegalName(form.cnpj, processo.candidates?.name ?? '')} />
           </div>
           <div>
             {label('nationality')}
@@ -285,40 +287,40 @@ export default function ContratarParceiroModal({ processo, onConfirmStage, onClo
               placeholder="Selecionar"
             />
           </div>
-          <div className="col-span-2">
+          <div className="sm:col-span-2">
             {label('address')}
-            <input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })}
-              placeholder="Rua, número, bairro, cidade" className={inputClass} />
+            <Input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })}
+              placeholder="Rua, número, bairro, cidade" />
           </div>
-          <div className="col-span-2">
+          <div className="sm:col-span-2">
             {label('email')}
-            <input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className={inputClass} />
+            <Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
           </div>
         </div>
 
         {missingFields.length > 0 && (
-          <p className="text-[11px] text-warning mb-3">
+          <p className="mt-3 text-[12px] text-warning">
             Faltam: {missingFields.map((f) => CONTRACT_DATA_FIELD_LABELS[f]).join(', ')}.
           </p>
         )}
 
-        <div className="flex gap-3">
-          <button
+        <div className="mt-6 flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
+          <Button
+            variant="secondary"
+            onClick={() => moverSemGerar.mutate()}
+            disabled={busy}
+            title="Move para Contratação sem gerar o contrato"
+          >
+            Só mover
+          </Button>
+          <Button
             onClick={() => confirmar.mutate()}
             disabled={busy || missingFields.length > 0 || missingPercentages || !termStart || !templateId}
             title={missingFields.length > 0 ? 'Preencha os dados obrigatórios' : undefined}
-            className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg btn-action font-medium disabled:opacity-50 transition-colors"
           >
-            <FileSignature className="w-4 h-4" />
-            {confirmar.isPending ? 'Gerando contrato...' : 'Contratar e gerar contrato'}
-          </button>
-          <button
-            onClick={() => moverSemGerar.mutate()}
-            disabled={busy}
-            className="px-4 py-2.5 rounded-lg border border-border bg-card text-foreground text-sm font-medium hover:bg-accent disabled:opacity-50"
-          >
-            Só mover
-          </button>
+            <FileSignature />
+            {confirmar.isPending ? 'Gerando contrato…' : 'Contratar e gerar contrato'}
+          </Button>
         </div>
       </div>
     </div>

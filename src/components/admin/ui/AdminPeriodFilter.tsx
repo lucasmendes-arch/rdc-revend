@@ -30,7 +30,7 @@ export function AdminPeriodFilter({
 }: AdminPeriodFilterProps) {
   return (
     <div
-      className={`flex items-center gap-1.5 flex-nowrap overflow-x-auto sm:flex-wrap ${className}`}
+      className={`flex items-center gap-1.5 flex-nowrap overflow-x-auto scrollbar-none sm:flex-wrap min-w-0 w-full sm:w-auto ${className}`}
       style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' } as React.CSSProperties}
     >
       {presets.map(p => (

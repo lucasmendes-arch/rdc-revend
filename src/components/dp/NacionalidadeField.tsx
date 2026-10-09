@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import StyledSelect from '@/components/ui/styled-select'
+import { Input } from '@/components/ui/input'
 import { NATIONALITY_DEFAULT } from '@/lib/dpConstants'
 
 const CUSTOM = '__custom__'
@@ -59,14 +60,13 @@ export default function NacionalidadeField({ value, onChange, onCommit }: Nacion
         searchable={false}
       />
       {isCustom && (
-        <input
+        <Input
           type="text"
           value={value}
           onChange={(e) => onChange(e.target.value)}
           onBlur={() => onCommit?.(value)}
           autoFocus
           placeholder="Ex: venezuelana"
-          className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
         />
       )}
     </div>

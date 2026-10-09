@@ -71,6 +71,9 @@ const statusConfig: Record<string, { label: string; bg: string; text: string; ri
     }),
   );
 
+const brl = (v: number, digits = 2) =>
+  (v ?? 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: digits, maximumFractionDigits: digits });
+
 const statusOptions = ['recebido', 'aguardando_pagamento', 'pago', 'separacao', 'enviado', 'entregue', 'concluido', 'cancelado', 'expirado'] as const;
 
 const AdminPedidos = () => {
@@ -289,7 +292,7 @@ const AdminPedidos = () => {
         description={`Visão gerencial e operacional das vendas do período · ${kpis.count} ativos`}
         badge={
           <Badge variant="neutral" className="tabular-nums">
-            R$ {kpis.revenue.toFixed(2)}
+            {brl(kpis.revenue)}
           </Badge>
         }
         actions={
@@ -344,7 +347,7 @@ const AdminPedidos = () => {
                 <AdminSummaryCard
                   key={`summary-${status}`}
                   label={style.label}
-                  value={`R$ ${summary.total.toFixed(0)}`}
+                  value={brl(summary.total, 0)}
                   indicatorColor={style.indicator}
                   subtitle={
                     <span className="tabular-nums">
@@ -532,7 +535,7 @@ const AdminPedidos = () => {
                                 <span className={`${chip} flex-wrap bg-muted text-ink-600 border border-border tabular-nums`}>
                                   {order.payment_splits.map((s, i) => (
                                     <span key={i}>
-                                      {s.method} R${s.amount.toFixed(2)}{i < order.payment_splits!.length - 1 ? ' +' : ''}
+                                      {s.method} {brl(s.amount)}{i < order.payment_splits!.length - 1 ? ' +' : ''}
                                     </span>
                                   ))}
                                 </span>
@@ -573,11 +576,11 @@ const AdminPedidos = () => {
                             <div className="pt-2.5 border-t border-border flex items-center justify-between gap-3">
                               <div className="flex flex-col min-w-0">
                                 <span className="text-[14px] font-semibold text-foreground tabular-nums leading-none">
-                                  R$ {order.total.toFixed(2)}
+                                  {brl(order.total)}
                                 </span>
                                 {order.discount_amount > 0 && (
                                   <span className="text-[12px] text-success font-medium flex items-center gap-1 mt-1 whitespace-nowrap tabular-nums">
-                                    <Tag className="w-3 h-3" /> -R$ {order.discount_amount.toFixed(2)}
+                                    <Tag className="w-3 h-3" /> −{brl(order.discount_amount)}
                                   </span>
                                 )}
                               </div>
