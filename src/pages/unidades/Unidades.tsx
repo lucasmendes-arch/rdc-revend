@@ -82,6 +82,7 @@ interface ProfessionalRow {
   business_date: string
   professional_name: string
   services_count: number
+  visits_count: number
   revenue: number
   commission: number
 }
@@ -225,7 +226,7 @@ export default function Unidades() {
     queryKey: ['trinks-professionals', bounds.from, bounds.to],
     queryFn: () => fetchAll<ProfessionalRow>((from, to) => supabase
       .from('trinks_professional_sales')
-      .select('store_id, business_date, professional_name, services_count, revenue, commission')
+      .select('store_id, business_date, professional_name, services_count, visits_count, revenue, commission')
       .gte('business_date', bounds.from)
       .lte('business_date', bounds.to)
       .order('id')
@@ -310,11 +311,14 @@ export default function Unidades() {
   const topProducts = useMemo(() => rank(products).slice(0, 8), [products, storeFilter])
 
   const profRanking = useMemo(() => {
-    const byName = new Map<string, { name: string; count: number; revenue: number; commission: number }>()
+    // Mesma régua do "Ranking de Profissionais" do Trinks: atendimentos =
+    // cliente distinto por dia; ticket = faturamento líquido ÷ atendimentos.
+    const byName = new Map<string, { name: string; count: number; services: number; revenue: number; commission: number }>()
     for (const p of inStore(professionals)) {
       const e = byName.get(p.professional_name)
-        ?? { name: p.professional_name, count: 0, revenue: 0, commission: 0 }
-      e.count += Number(p.services_count)
+        ?? { name: p.professional_name, count: 0, services: 0, revenue: 0, commission: 0 }
+      e.count += Number(p.visits_count)
+      e.services += Number(p.services_count)
       e.revenue += Number(p.revenue)
       e.commission += Number(p.commission)
       byName.set(p.professional_name, e)
@@ -559,6 +563,7 @@ export default function Unidades() {
                       <tr className="text-muted-foreground border-b border-border">
                         <th className="text-left font-medium px-4 py-2">Profissional</th>
                         <th className="text-right font-medium px-4 py-2">Atendimentos</th>
+                        <th className="text-right font-medium px-4 py-2">Serviços</th>
                         <th className="text-right font-medium px-4 py-2">Faturamento</th>
                         <th className="text-right font-medium px-4 py-2">Ticket médio</th>
                         <th className="text-right font-medium px-4 py-2">Comissão</th>
@@ -570,6 +575,7 @@ export default function Unidades() {
                           {/* O Trinks prefixa a ordem da agenda no nome ("2 Yasmin"). */}
                           <td className="px-4 py-2 text-foreground font-medium">{p.name.replace(/^\d+\s+/, '')}</td>
                           <td className="px-4 py-2 text-right text-muted-foreground">{p.count}</td>
+                          <td className="px-4 py-2 text-right text-muted-foreground">{p.services}</td>
                           <td className="px-4 py-2 text-right text-foreground font-semibold">{fmtBRLCents(p.revenue)}</td>
                           <td className="px-4 py-2 text-right text-muted-foreground">
                             {p.count ? fmtBRLCents(p.revenue / p.count) : '—'}

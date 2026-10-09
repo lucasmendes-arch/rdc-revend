@@ -129,6 +129,16 @@ serve(async (req: Request) => {
   }
 
   const duplicate = !data?.length
+
+  // Processa na hora para o dashboard refletir o evento em segundos. Falha
+  // aqui NÃO devolve erro ao SNS: o evento bruto já está salvo, o erro fica em
+  // process_error e o cron trinks-process-webhooks tenta de novo.
+  let processed: string | null = null
+  if (!duplicate) {
+    const { data: res, error: procErr } = await db.rpc('trinks_process_webhook_event', { p_event_id: data![0].id })
+    processed = procErr ? `erro rpc: ${procErr.message}` : String(res)
+  }
+
   log(duplicate ? 'duplicate' : 'stored', {
     message_id: env.MessageId,
     sns_type: env.Type,
@@ -136,6 +146,7 @@ serve(async (req: Request) => {
     action: fields.action,
     establishment_id: fields.establishment_id,
     mapped_store: store_id !== null,
+    processed,
   })
 
   // Confirmação de inscrição: gravada para auditoria, mas NÃO confirmada
