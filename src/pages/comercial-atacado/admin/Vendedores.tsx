@@ -2,9 +2,9 @@ import { useState } from 'react'
 import { formatBRL } from '@/lib/format'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase, callEdgeFunction } from '@/lib/supabase'
-import { Loader, Plus, UserCheck, Pencil, Trash2, Star, Link2, FileText, Send, CheckCircle2, AlertCircle } from 'lucide-react'
+import { Loader, Plus, UserCheck, Pencil, Trash2, Star, Link2, FileText, Send, CheckCircle2, AlertCircle, Archive, ArchiveRestore } from 'lucide-react'
 import AdminLayout from '@/components/admin/AdminLayout'
-import { AdminPage, Panel, EmptyState, PageLoading } from '@/components/admin/ui/AdminPage'
+import { AdminPage, Panel, EmptyState, PageLoading, PageTabs } from '@/components/admin/ui/AdminPage'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
@@ -29,6 +29,8 @@ interface Seller {
   active: boolean
   created_at: string
   user_id: string | null
+  /** NULL = em uso. Arquivado é sempre inativo e nunca padrão (CHECK no banco). */
+  archived_at: string | null
 }
 
 interface SystemUser {
@@ -104,6 +106,8 @@ export default function AdminVendedores() {
       setReportLoading(false)
     }
   }
+
+  const [view, setView] = useState<'ativos' | 'arquivados'>('ativos')
 
   const { data: sellers = [], isLoading } = useQuery({
     queryKey: ['admin-sellers'],
@@ -188,6 +192,32 @@ export default function AdminVendedores() {
     },
   })
 
+  // Arquivar tira o vendedor de uso sem perder o histórico de pedidos (excluir
+  // zera orders.seller_id). Restaurar devolve como ativo.
+  const archiveMutation = useMutation({
+    mutationFn: async ({ id, archive }: { id: string; archive: boolean }) => {
+      const update = archive
+        ? { archived_at: new Date().toISOString(), active: false }
+        : { archived_at: null, active: true }
+      const { error } = await supabase.from('sellers').update(update).eq('id', id)
+      if (error) throw error
+    },
+    onSuccess: (_data, { id, archive }) => {
+      queryClient.invalidateQueries({ queryKey: ['admin-sellers'] })
+      if (archive) {
+        toast.success('Vendedor arquivado', {
+          description: 'Ele saiu das listas de seleção. Os pedidos dele continuam no histórico.',
+          action: { label: 'Desfazer', onClick: () => archiveMutation.mutate({ id, archive: false }) },
+        })
+      } else {
+        toast.success('Vendedor restaurado e ativo')
+      }
+    },
+    onError: (err) => {
+      toast.error(`Não foi possível arquivar o vendedor: ${err instanceof Error ? err.message : 'erro desconhecido'}`)
+    },
+  })
+
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase.from('sellers').delete().eq('id', id)
@@ -248,6 +278,11 @@ export default function AdminVendedores() {
     saveMutation.mutate({ id: editingId, payload: { ...form, commission_pct: pct, monthly_goal: goal } })
   }
 
+  const activeSellers = sellers.filter((s) => !s.archived_at)
+  const archivedSellers = sellers.filter((s) => !!s.archived_at)
+  const visibleSellers = view === 'ativos' ? activeSellers : archivedSellers
+  const isArchivedView = view === 'arquivados'
+
   const linkedUserLabel = (userId: string) => {
     const u = systemUsers.find(x => x.id === userId)
     return u?.full_name || u?.email || 'Vinculado'
@@ -258,6 +293,16 @@ export default function AdminVendedores() {
       <AdminPage
         title="Vendedores"
         description="Gerencie a equipe de vendas e comissões"
+        tabs={
+          <PageTabs
+            items={[
+              { key: 'ativos', label: 'Em uso', count: activeSellers.length },
+              { key: 'arquivados', label: 'Arquivados', count: archivedSellers.length },
+            ]}
+            value={view}
+            onChange={(k) => setView(k as 'ativos' | 'arquivados')}
+          />
+        }
         actions={
           <Button onClick={openCreate} aria-label="Novo vendedor">
             <Plus />
@@ -267,7 +312,15 @@ export default function AdminVendedores() {
       >
         {isLoading ? (
           <PageLoading label="Carregando vendedores…" />
-        ) : sellers.length === 0 ? (
+        ) : isArchivedView && visibleSellers.length === 0 ? (
+          <Panel>
+            <EmptyState
+              icon={Archive}
+              title="Nenhum vendedor arquivado"
+              description="Arquive quem saiu da equipe: some das listas de seleção, mas os pedidos dele continuam no histórico."
+            />
+          </Panel>
+        ) : visibleSellers.length === 0 ? (
           <Panel>
             <EmptyState
               icon={UserCheck}
@@ -298,7 +351,7 @@ export default function AdminVendedores() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {sellers.map((seller) => (
+                {visibleSellers.map((seller) => (
                   <TableRow key={seller.id}>
                     <TableCell className="font-medium text-foreground whitespace-nowrap">{seller.name}</TableCell>
                     <TableCell>
@@ -324,6 +377,11 @@ export default function AdminVendedores() {
                       )}
                     </TableCell>
                     <TableCell className="text-center">
+                      {seller.archived_at ? (
+                        <span className="text-[12px] text-muted-foreground whitespace-nowrap">
+                          Arquivado em {new Date(seller.archived_at).toLocaleDateString('pt-BR')}
+                        </span>
+                      ) : (
                       <Switch
                         checked={seller.active}
                         onCheckedChange={(checked) => toggleActiveMutation.mutate({ id: seller.id, active: checked })}
@@ -331,9 +389,12 @@ export default function AdminVendedores() {
                         aria-label={seller.active ? `Desativar ${seller.name}` : `Ativar ${seller.name}`}
                         className="align-middle"
                       />
+                      )}
                     </TableCell>
                     <TableCell className="text-center whitespace-nowrap">
-                      {seller.is_default ? (
+                      {seller.archived_at ? (
+                        <span className="text-ink-400">—</span>
+                      ) : seller.is_default ? (
                         <Badge variant="brand">
                           <Star className="w-3 h-3 fill-current" />
                           Padrão
@@ -362,12 +423,38 @@ export default function AdminVendedores() {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-0.5">
-                        <Button variant="ghost" size="icon-sm" onClick={() => openEdit(seller)} title="Editar" aria-label="Editar vendedor">
-                          <Pencil />
-                        </Button>
+                        {!seller.archived_at && (
+                          <Button variant="ghost" size="icon-sm" onClick={() => openEdit(seller)} title="Editar" aria-label="Editar vendedor">
+                            <Pencil />
+                          </Button>
+                        )}
                         <Button variant="ghost" size="icon-sm" onClick={() => openReport(seller)} title="Relatório de comissão" aria-label="Relatório de comissão">
                           <FileText />
                         </Button>
+                        {seller.archived_at ? (
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            onClick={() => archiveMutation.mutate({ id: seller.id, archive: false })}
+                            disabled={archiveMutation.isPending}
+                            title="Restaurar"
+                            aria-label={`Restaurar ${seller.name}`}
+                          >
+                            <ArchiveRestore />
+                          </Button>
+                        ) : (
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            onClick={() => archiveMutation.mutate({ id: seller.id, archive: true })}
+                            // O padrão é o fallback de pedido sem vendedor; o banco também bloqueia.
+                            disabled={seller.is_default || archiveMutation.isPending}
+                            title={seller.is_default ? 'Defina outro vendedor como padrão antes de arquivar' : 'Arquivar'}
+                            aria-label={`Arquivar ${seller.name}`}
+                          >
+                            <Archive />
+                          </Button>
+                        )}
                         <Button
                           variant="ghost"
                           size="icon-sm"
@@ -541,7 +628,7 @@ export default function AdminVendedores() {
           <DialogHeader className="text-left">
             <DialogTitle className="text-[16px]">Excluir vendedor?</DialogTitle>
             <DialogDescription>
-              O vendedor será removido. Pedidos já associados a ele ficam sem vendedor (não são apagados).
+              O vendedor será removido e os pedidos dele ficam sem vendedor. Para tirar de uso mantendo o histórico, prefira arquivar.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2 sm:gap-0">

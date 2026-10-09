@@ -386,6 +386,7 @@ Sessões de navegação/funil do cliente (uma por usuário — UNIQUE user_id).
 | id | uuid | NO | `gen_random_uuid()` | — |
 | session_id | text | NO | — | — |
 | user_id | uuid | YES | NULL | auth.users.id |
+| archived_at | timestamptz | YES | NULL | — |
 | email | text | YES | NULL | — |
 | status | text | NO | `'visitou'` | — |
 | last_page | text | YES | NULL | — |
@@ -647,6 +648,7 @@ Vendedores vinculáveis a pedidos.
 | user_id | uuid | YES | NULL | auth.users.id |
 
 > RLS: admin-only para escrita. Leitura via RPC `get_active_sellers_for_dropdown` (admin + salao).
+> `archived_at` (2026-10-09, `20261009000008`): vendedor arquivado sai de uso sem perder o histórico (excluir zera `orders.seller_id`). CHECK `sellers_archived_is_inactive`: arquivado ⇒ `active = false` e `is_default = false` — o padrão não pode ser arquivado. Restaurar = `archived_at = NULL, active = true`.
 > `user_id` (CRM P3): FK para `auth.users(id) ON DELETE SET NULL`. Nullable. UNIQUE WHERE NOT NULL — um usuário Supabase pode estar vinculado a no máximo um seller. Usado para resolução automática de "Minhas contas" no CRM via `admin_get_my_seller_id()`. Gerenciado na página admin/Vendedores.
 
 ---
