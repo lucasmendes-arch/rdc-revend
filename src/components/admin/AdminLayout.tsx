@@ -33,12 +33,12 @@ const vendasHub: Hub = {
   label: 'Vendas Atacado',
   icon: ShoppingBag,
   items: [
-    { label: 'Pedidos', path: '/admin/pedidos' },
-    { label: 'Clientes', path: '/admin/clientes' },
-    { label: 'Vendedores', path: '/admin/vendedores' },
-    { label: 'Tabelas de preço', path: '/admin/tabelas-preco' },
     // Financeiro é do atacado (pedidos B2B), não das unidades.
     { label: 'Financeiro', path: '/admin/financeiro' },
+    { label: 'Pedidos', path: '/admin/pedidos' },
+    { label: 'Clientes', path: '/admin/clientes' },
+    { label: 'Tabelas de preço', path: '/admin/tabelas-preco' },
+    { label: 'Vendedores', path: '/admin/vendedores' },
   ],
 }
 

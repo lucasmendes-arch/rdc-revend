@@ -120,7 +120,7 @@ tema, e o **bloco do usuário** (e-mail, papel, botão sair).
 |---|---|
 | Resultados | Unidades · Marketing |
 | Catálogo | Produtos · Categorias · Disponibilidade · Estoque (módulo inteiro em /estoque/*, com sub-abas próprias) |
-| Vendas Atacado | Pedidos · Clientes · Vendedores · Tabelas de preço · Financeiro (só do atacado) |
+| Vendas Atacado | Financeiro (só do atacado) · Pedidos · Clientes · Tabelas de preço · Vendedores |
 | CRM | Clientes · Segmentos · Campanhas (clientes dos salões, dados do Trinks) |
 | Pessoas | Vagas · Candidatos · Contratação · Parceiros · Contratos · Cargos · Formulário |
 
