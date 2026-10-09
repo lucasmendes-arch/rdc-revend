@@ -64,6 +64,60 @@ const json = (status: number, body: unknown) =>
 const log = (evt: string, data: Record<string, unknown>) =>
   console.log(JSON.stringify({ fn: 'trinks-webhook', evt, ...data }))
 
+// ─── Aviso no WhatsApp do responsável ───────────────────────────────────────
+// Para acompanhar a ativação das unidades: inscrição confirmada, primeiro
+// evento de cada unidade e evento de estabelecimento não cadastrado.
+// Destino: secret TRINKS_ALERT_WHATSAPP (só dígitos, com DDI). Envio pela
+// mesma instância UAZAPI das outras notificações (UAZAPI_URL / UAZAPI_TOKEN).
+// Nunca lança: falha no aviso não pode fazer o SNS reentregar o evento.
+async function notify(text: string): Promise<void> {
+  const url = Deno.env.get('UAZAPI_URL')
+  const token = Deno.env.get('UAZAPI_TOKEN')
+  const number = Deno.env.get('TRINKS_ALERT_WHATSAPP')
+  if (!url || !token || !number) {
+    log('notify_skipped', { reason: 'sem TRINKS_ALERT_WHATSAPP/UAZAPI' })
+    return
+  }
+  try {
+    const res = await fetch(`${url}/send/text?token=${encodeURIComponent(token)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ number, text }),
+      signal: AbortSignal.timeout(8000),
+    })
+    log(res.ok ? 'notify_sent' : 'notify_failed', { status: res.status })
+  } catch (err) {
+    log('notify_failed', { error: String(err) })
+  }
+}
+
+/** Avisa no PRIMEIRO evento de uma unidade (ou de um estabelecimento sem cadastro). */
+async function notifyFirstEvent(
+  db: any, eventId: string, storeId: string | null, establishmentId: number | null,
+): Promise<void> {
+  if (storeId === null && establishmentId === null) return
+  const q = db.from('trinks_webhook_events').select('id').neq('id', eventId).limit(1)
+  const { data: earlier } = storeId
+    ? await q.eq('store_id', storeId)
+    : await q.is('store_id', null).eq('establishment_id', establishmentId)
+  if (earlier?.length) return
+
+  if (storeId) {
+    const { data: store } = await db.from('stores').select('name').eq('id', storeId).maybeSingle()
+    await notify(
+      `✅ Trinks: *${store?.name ?? 'unidade'}* começou a enviar eventos.\n\n` +
+      'O dashboard de Unidades já recebe os dados dessa loja em tempo real. ' +
+      'Lembre de salvar uma vez o cadastro de cada profissional no Trinks para os nomes aparecerem.',
+    )
+  } else {
+    await notify(
+      `⚠️ Trinks: chegou evento do estabelecimento *${establishmentId}*, que não está cadastrado.\n\n` +
+      'Os dados dele estão sendo guardados, mas não aparecem em nenhuma unidade. ' +
+      'Cadastre o código em trinks_units para atribuir.',
+    )
+  }
+}
+
 serve(async (req: Request) => {
   if (req.method !== 'POST') return json(405, { error: 'method not allowed' })
 
@@ -149,6 +203,10 @@ serve(async (req: Request) => {
     processed,
   })
 
+  if (!duplicate && env.Type === 'Notification') {
+    await notifyFirstEvent(db, data![0].id, store_id, fields.establishment_id)
+  }
+
   // Confirmação de inscrição (o Trinks inscrevendo uma unidade nova ou
   // recriando a inscrição): já está gravada para auditoria. Confirma sozinho
   // só se for do tópico da conta AWS do Trinks — ver isTrustedSubscription.
@@ -163,6 +221,15 @@ serve(async (req: Request) => {
       log('subscription_confirmed', { message_id: env.MessageId, topic: env.TopicArn, status: res.status })
       // Falhou? 500 faz o SNS reentregar a confirmação.
       if (!res.ok) return json(500, { error: 'falha ao confirmar inscricao' })
+      // Reentrega da mesma confirmação não avisa de novo.
+      if (!duplicate) {
+        await notify(
+          '✅ Trinks: inscrição do webhook *confirmada*.\n\n' +
+          `Tópico: ${env.TopicArn?.split(':').pop()}\n` +
+          'Os eventos dessa inscrição já podem chegar. Você vai receber outro aviso ' +
+          'quando cada unidade enviar o primeiro evento.',
+        )
+      }
       return json(200, { ok: true, confirmed: true })
     } catch (err) {
       log('subscription_error', { message_id: env.MessageId, error: String(err) })
