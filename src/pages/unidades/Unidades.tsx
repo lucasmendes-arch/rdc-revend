@@ -605,7 +605,7 @@ export default function Unidades() {
             </div>
 
             {/* Fechamentos: pagamento, descontos, recorrência */}
-            {breakdown && breakdown.coverage.transactions > 0 && (
+            {breakdown?.coverage && breakdown.coverage.transactions > 0 && (
               <div className="space-y-1.5">
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
                   <PaymentsCard payments={breakdown.payments} />

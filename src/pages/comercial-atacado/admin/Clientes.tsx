@@ -1838,22 +1838,22 @@ export default function AdminClientes() {
         {view === 'list' && (
           <div className="space-y-4">
             <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3">
-              <StatCard label="Todos" hint="no segmento" value={quickCounts.all}
+              <StatCard wrapHint label="Todos" hint="no segmento" value={quickCounts.all}
                 active={quickFilter === 'all'} onClick={() => setQuickFilter('all')} />
-              <StatCard label="Contatar hoje" hint="follow-up vencido ou de hoje" value={quickCounts.contatar}
+              <StatCard wrapHint label="Contatar hoje" hint="follow-up vencido ou de hoje" value={quickCounts.contatar}
                 icon={AlertTriangle} tone="danger"
                 active={quickFilter === 'contatar'} onClick={() => setQuickFilter('contatar')} />
-              <StatCard label="Compraram no mês" hint="pedido nos últimos 30 dias" value={quickCounts.ativos}
+              <StatCard wrapHint label="Compraram no mês" hint="pedido nos últimos 30 dias" value={quickCounts.ativos}
                 icon={CheckCircle} tone="success"
                 active={quickFilter === 'ativos'} onClick={() => setQuickFilter('ativos')} />
-              <StatCard label="Parados" hint="sem pedido há mais de 30 dias" value={quickCounts.parados}
+              <StatCard wrapHint label="Parados" hint="sem pedido há mais de 30 dias" value={quickCounts.parados}
                 icon={Clock} tone="warning"
                 active={quickFilter === 'parados'} onClick={() => setQuickFilter('parados')} />
-              <StatCard label="Novos sem pedido" hint="cadastro nos últimos 7 dias" value={quickCounts.novos}
+              <StatCard wrapHint label="Novos sem pedido" hint="cadastro nos últimos 7 dias" value={quickCounts.novos}
                 icon={Sparkles} tone="info"
                 active={quickFilter === 'novos'} onClick={() => setQuickFilter('novos')} />
               {mySellerId && (
-                <StatCard label="Minhas contas" hint="vinculadas a você" value={quickCounts.minhas}
+                <StatCard wrapHint label="Minhas contas" hint="vinculadas a você" value={quickCounts.minhas}
                   icon={User}
                   active={quickFilter === 'minhas'} onClick={() => setQuickFilter('minhas')} />
               )}
