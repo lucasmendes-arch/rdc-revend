@@ -118,9 +118,9 @@ tema, e o **bloco do usuário** (e-mail, papel, botão sair).
 
 | Área | Abas |
 |---|---|
-| Vendas | Pedidos · Clientes · Vendedores · Tabelas de preço |
+| Resultados | Unidades · Marketing |
 | Catálogo | Produtos · Categorias · Disponibilidade · Estoque (módulo inteiro em /estoque/*, com sub-abas próprias) |
-| Resultados | Financeiro · Unidades · Marketing |
+| Vendas Atacado | Pedidos · Clientes · Vendedores · Tabelas de preço · Financeiro (só do atacado) |
 | CRM | Clientes · Segmentos · Campanhas (clientes dos salões, dados do Trinks) |
 | Pessoas | Vagas · Candidatos · Contratação · Parceiros · Contratos · Cargos · Formulário |
 

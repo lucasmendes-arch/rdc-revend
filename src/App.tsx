@@ -134,7 +134,7 @@ const App = () => (
                   <Route path="/pedido/sucesso/:id" element={<PedidoSucesso />} />
                   <Route path="/meus-pedidos" element={<MeusPedidos />} />
                   <Route element={<AdminRoute />}>
-                    <Route path="/admin" element={<Navigate to="/admin/catalogo" replace />} />
+                    <Route path="/admin" element={<Navigate to="/admin/unidades" replace />} />
                     <Route path="/admin/catalogo" element={<AdminCatalogo />} />
                     <Route path="/admin/pedidos" element={<AdminPedidos />} />
                     <Route path="/admin/pedidos/novo" element={<AdminNewOrder />} />

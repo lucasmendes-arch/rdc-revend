@@ -30,13 +30,15 @@ type Hub = { key: string; label: string; icon: LucideIcon; items: NavItem[] }
 
 const vendasHub: Hub = {
   key: 'vendas',
-  label: 'Vendas',
+  label: 'Vendas Atacado',
   icon: ShoppingBag,
   items: [
     { label: 'Pedidos', path: '/admin/pedidos' },
     { label: 'Clientes', path: '/admin/clientes' },
     { label: 'Vendedores', path: '/admin/vendedores' },
     { label: 'Tabelas de preço', path: '/admin/tabelas-preco' },
+    // Financeiro é do atacado (pedidos B2B), não das unidades.
+    { label: 'Financeiro', path: '/admin/financeiro' },
   ],
 }
 
@@ -57,7 +59,6 @@ const resultadosHub: Hub = {
   label: 'Resultados',
   icon: LineChart,
   items: [
-    { label: 'Financeiro', path: '/admin/financeiro' },
     { label: 'Unidades', path: '/admin/unidades' },
     { label: 'Marketing', path: '/admin/marketing' },
   ],
@@ -122,12 +123,12 @@ function useHubs() {
   const { role, hasPermission } = useAuth()
   const canManageRh = role === 'admin' || role === 'administrativo' || hasPermission('can_manage_rh')
   const hubs: Hub[] = role === 'admin'
-    ? [vendasHub, catalogoHub, resultadosHub, crmHub, pessoasHub]
+    ? [resultadosHub, catalogoHub, vendasHub, crmHub, pessoasHub]
     : [
         ...(role === 'administrativo' ? [estoqueHub] : []),
         ...(canManageRh ? [pessoasHub] : []),
       ]
-  const homePath = role === 'admin' ? '/admin/pedidos' : '/admin/rh/candidatos'
+  const homePath = role === 'admin' ? '/admin/unidades' : '/admin/rh/candidatos'
   return { hubs, homePath, isAdmin: role === 'admin' }
 }
 
