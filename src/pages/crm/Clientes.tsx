@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useQuery, keepPreviousData } from '@tanstack/react-query'
 import { useLocation } from 'react-router-dom'
 import {
-  SlidersHorizontal, Download, Loader, Users, ChevronRight, ChevronLeft, X,
+  SlidersHorizontal, Download, Loader, Users, ChevronRight, ChevronLeft, X, Repeat, HeartHandshake,
 } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -17,8 +17,8 @@ import { cn } from '@/lib/utils'
 import { supabase } from '@/lib/supabase'
 import {
   STATUS_META, STATUS_ORDER, TONE_DOT, StatusBadge, FilterForm, brl, cleanFilters, daysLabel,
-  describeFilters, fmtDate, fmtPhone, initials, searchClients, statusCounts, useCrmUnits,
-  type ClientStatus, type CrmFilters, type SalonClient,
+  describeFilters, fmtDate, fmtPhone, initials, searchClients, crmOverview, useCrmUnits,
+  type ClientStatus, type CrmFilters, type CrmKpis, type SalonClient,
 } from './crmShared'
 import ClientDrawer from './ClientDrawer'
 
@@ -58,6 +58,32 @@ function StatusCard({ status, count, active, onClick }: {
       value={count.toLocaleString('pt-BR')}
       hint={meta.hint}
     />
+  )
+}
+
+const pct = (n: number, base: number) =>
+  base ? `${((n / base) * 100).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%` : '—'
+
+/** Retorno e fidelização da seleção (unidade, busca e filtros; ignora a situação). */
+function KpiCards({ kpis }: { kpis: CrmKpis | null }) {
+  const k = kpis ?? { with_purchase: 0, returned: 0, recent: 0, active: 0 }
+  return (
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <StatCard
+        icon={Repeat}
+        label="Taxa de retorno"
+        value={kpis ? pct(k.returned, k.with_purchase) : '—'}
+        hint={`${k.returned.toLocaleString('pt-BR')} de ${k.with_purchase.toLocaleString('pt-BR')} voltaram (2+ visitas)`}
+        wrapHint
+      />
+      <StatCard
+        icon={HeartHandshake}
+        label="Taxa de fidelização"
+        value={kpis ? pct(k.active, k.recent) : '—'}
+        hint={`${k.active.toLocaleString('pt-BR')} ativas de ${k.recent.toLocaleString('pt-BR')} que compraram no último ano`}
+        wrapHint
+      />
+    </div>
   )
 }
 
@@ -114,10 +140,13 @@ export default function CrmClientes() {
 
   useEffect(() => setPage(0), [filters, sort])
 
-  const { data: counts = {} } = useQuery({
-    queryKey: ['crm-status-counts', baseFilters],
-    queryFn: () => statusCounts(baseFilters),
+  const { data: overview } = useQuery({
+    queryKey: ['crm-overview', baseFilters],
+    queryFn: () => crmOverview(baseFilters),
+    placeholderData: keepPreviousData,
   })
+  const counts = overview?.statuses ?? {}
+  const kpis = overview?.kpis ?? null
   const total = Object.values(counts).reduce((a, b) => a + (b ?? 0), 0)
 
   const { data, isLoading, isFetching } = useQuery({
@@ -238,6 +267,8 @@ export default function CrmClientes() {
               </div>
             </Panel>
           )}
+
+          <KpiCards kpis={kpis} />
 
           {/* Situação: rola na horizontal no celular, grade a partir do sm. */}
           <div className="-mx-4 px-4 sm:mx-0 sm:px-0 flex gap-3 overflow-x-auto scrollbar-none sm:grid sm:grid-cols-4 sm:overflow-visible">

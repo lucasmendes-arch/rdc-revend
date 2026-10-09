@@ -182,10 +182,23 @@ export async function searchClients(filters: CrmFilters, sort: string, limit: nu
   return data as { total: number; with_whatsapp: number; rows: SalonClient[] }
 }
 
-export async function statusCounts(filters: CrmFilters) {
-  const { data, error } = await supabase.rpc('salon_crm_status_counts', { p_filters: cleanFilters(filters) })
+export interface CrmKpis {
+  /** Com pelo menos 1 visita. */
+  with_purchase: number
+  /** Com 2+ visitas. */
+  returned: number
+  /** Com compra e não "perdida" (comprou no último ano). */
+  recent: number
+  /** Situação "ativa". */
+  active: number
+}
+
+/** Contagem por situação + indicadores, com os filtros da lista (sem o de situação). */
+export async function crmOverview(filters: CrmFilters) {
+  const { data, error } = await supabase.rpc('salon_crm_overview', { p_filters: cleanFilters(filters) })
   if (error) throw error
-  return (data ?? {}) as Partial<Record<ClientStatus, number>>
+  const d = (data ?? {}) as { statuses?: Partial<Record<ClientStatus, number>>; kpis?: CrmKpis }
+  return { statuses: d.statuses ?? {}, kpis: d.kpis ?? null }
 }
 
 // ── Formulário de filtros (Clientes e Segmentos) ─────────────────────────────
