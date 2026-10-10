@@ -219,6 +219,33 @@ BEGIN
   IF v_n <> 0 THEN RAISE EXCEPTION 'reacao orfa criou contato'; END IF;
   v_log := v_log || 'reacao orfa ok; ';
 
+  -- 7c. Texto automático cadastrado não conta como resposta humana --------
+  INSERT INTO whatsapp_auto_reply_texts (instance_id, label, body)
+  VALUES (v_inst, 'teste', 'Estamos   FORA do horário. Já retornamos!');
+  INSERT INTO whatsapp_raw_events (instance_id, event_type, provider_message_id, parsed, payload) VALUES
+    (v_inst, 'messages', 'SMOKE-A-1', jsonb_build_object('direction', 'inbound',
+       'phoneRaw', '5599966554433', 'messageType', 'text', 'body', 'oi', 'sentAt', v_t0), '{}'),
+    (v_inst, 'messages', 'SMOKE-A-2', jsonb_build_object('direction', 'outbound', 'wasSentByApi', false,
+       'phoneRaw', '5599966554433', 'messageType', 'text', 'body', 'estamos fora do horário. já retornamos!',
+       'sentAt', v_t0 + interval '2 seconds'), '{}'),
+    (v_inst, 'messages', 'SMOKE-A-3', jsonb_build_object('direction', 'outbound', 'wasSentByApi', false,
+       'phoneRaw', '5599966554433', 'messageType', 'text', 'body', 'Bom dia! Como posso ajudar?',
+       'sentAt', v_t0 + interval '40 minutes'), '{}');
+  PERFORM whatsapp_process_raw_event(id) FROM whatsapp_raw_events
+   WHERE instance_id = v_inst AND provider_message_id LIKE 'SMOKE-A-%' ORDER BY provider_message_id;
+  SELECT * INTO v_conv FROM whatsapp_conversations WHERE instance_id = v_inst AND party_key = '9966554433';
+  IF v_conv.first_outbound_at <> v_t0 + interval '2 seconds'
+     OR v_conv.first_human_reply_at <> v_t0 + interval '40 minutes' THEN
+    RAISE EXCEPTION 'auto-reply: outbound % humana %', v_conv.first_outbound_at, v_conv.first_human_reply_at;
+  END IF;
+  -- Removendo o texto, o envio automático volta a contar (recalculo pelo trigger).
+  DELETE FROM whatsapp_auto_reply_texts WHERE instance_id = v_inst;
+  SELECT * INTO v_conv FROM whatsapp_conversations WHERE instance_id = v_inst AND party_key = '9966554433';
+  IF v_conv.first_human_reply_at <> v_t0 + interval '2 seconds' THEN
+    RAISE EXCEPTION 'auto-reply: recálculo após remover texto deu %', v_conv.first_human_reply_at;
+  END IF;
+  v_log := v_log || 'texto automatico ok; ';
+
   -- 8. Job de fechamento e estatística ---------------------------------
   UPDATE whatsapp_listen_settings SET conversation_gap_hours = 1 WHERE id = 1;
   PERFORM whatsapp_close_stale_conversations();

@@ -174,6 +174,24 @@ SELECT phone_key, clients_count, names, phones, trinks_client_ids, registered_on
 Sem o filtro `same_first_name`, a view lista todos os telefones usados por mais
 de uma cliente (mãe e filha etc.).
 
+## Mensagens automáticas (ausência/saudação)
+
+A mensagem automática do WhatsApp Business sai do próprio aparelho e chega
+igual a uma resposta digitada (`wasSentByApi = false`, nenhum campo a
+distingue). Para ela não virar "tempo de resposta de 2 segundos", cadastre o
+texto em `whatsapp_auto_reply_texts`. O envio igual (sem diferença de
+maiúsculas e espaços) continua no log e em `first_outbound_at`, mas não conta
+em `first_human_reply_at`. Cadastrar ou remover um texto recalcula as conversas
+da instância (trigger).
+
+```sql
+-- Copiando de um envio real (mais seguro que digitar o texto):
+INSERT INTO whatsapp_auto_reply_texts (instance_id, label, body)
+SELECT instance_id, 'Fora do horário', body FROM whatsapp_messages WHERE id = '<id da mensagem>';
+```
+
+Cadastrado: Colatina, "Fora do horário" (2026-10-10).
+
 ## Jobs (pg_cron)
 
 | Job | Quando | O quê |
