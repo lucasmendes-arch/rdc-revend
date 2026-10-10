@@ -1009,6 +1009,9 @@ Log passivo de conversas de WhatsApp de todas as instâncias em escuta (atendime
 #### `whatsapp_auto_reply_texts` (`20261010000011`)
 `instance_id` (CASCADE), `label`, `body`, `body_norm` (gerada, `whatsapp_norm_text`: minúsculas + espaços colapsados), `UNIQUE (instance_id, body_norm)`. Envio igual a um texto cadastrado não conta como `first_human_reply_at` (mensagem automática do WhatsApp Business é indistinguível no payload). Trigger recalcula as conversas da instância via `whatsapp_recompute_human_reply(instance_id)`. RLS admin.
 
+#### `whatsapp_message_enrichments` (`20261010000012`)
+Transcrição de áudio / descrição de imagem, 1:1 com `whatsapp_messages` (`message_id` UNIQUE). `kind` `transcription`|`image_description`; `status` `pending`|`processing`|`done`|`failed`|`skipped`; `text`, `model`, `cost_usd`, `attempts`, `last_error`, `claimed_at`, `processed_at`. Enfileirada por trigger no INSERT de mensagem `audio`/`image`; drenada pela edge function `whatsapp-enrich-media` via `whatsapp_claim_enrichments(limit)` (service_role, até 3 tentativas). Só o texto é guardado — o arquivo é descartado. Config em `whatsapp_listen_settings` (`enrichment_enabled`, `enrichment_model`, `enrichment_max_audio_seconds`). RLS admin.
+
 #### Funções e views
 - `whatsapp_match_client(phone_key, store_id)` → `(match_status, client_id, tied_client_ids)`: rede toda, `phone_key`/`phone_2_key`; mais de uma → a da mesma unidade, se única; senão `shared`.
 - `whatsapp_process_raw_event(id)`, `whatsapp_process_pending(limit)`, `whatsapp_close_stale_conversations()`, `whatsapp_reconcile_contacts()`, `whatsapp_purge_raw_events()` — só service_role/cron.

@@ -4,9 +4,11 @@ Fundação para acompanhar as conversas das unidades: tempo até a primeira
 resposta, conversas sem atendimento e, no futuro, pós-atendimento e resumo por
 LLM. **Nesta etapa só existe a escuta e o log.**
 
-> **100% passivo.** Nenhum código daqui chama endpoint da Uazapi: não envia,
-> não marca como lido, não simula "digitando". A única chamada à Uazapi é a
-> configuração do webhook (abaixo), feita à mão.
+> **100% passivo.** Nada aqui envia mensagem, marca como lido ou simula
+> "digitando". A única chamada à Uazapi feita pelo código é
+> `POST /message/download` (baixar áudio/imagem para transcrever), que é leitura:
+> equivale ao WhatsApp Web carregando a mídia ao abrir a conversa. A configuração
+> do webhook (abaixo) é feita à mão.
 
 ## Como funciona
 
@@ -192,6 +194,28 @@ SELECT instance_id, 'Fora do horário', body FROM whatsapp_messages WHERE id = '
 
 Cadastrado: Colatina, "Fora do horário" (2026-10-10).
 
+## Transcrição de áudio e descrição de imagem
+
+Toda mensagem de áudio/imagem entra na fila `whatsapp_message_enrichments`
+(trigger). O cron `whatsapp-enrich-media` (1 min, só quando há fila) chama a
+edge function de mesmo nome, que baixa a mídia pela Uazapi, manda ao modelo via
+OpenRouter e grava **só o texto** — o arquivo é descartado. O painel da conversa
+mostra a transcrição/descrição no balão.
+
+- Modelo: `whatsapp_listen_settings.enrichment_model` (padrão
+  `google/gemini-2.5-flash-lite`, ~US$ 0,0006 por minuto de áudio). Trocar é
+  um UPDATE, sem deploy.
+- Liga/desliga: `enrichment_enabled`. Áudio acima de
+  `enrichment_max_audio_seconds` (600) e arquivo acima de 15 MB ficam `skipped`.
+- Falha volta para a fila; na 3ª tentativa vira `failed` (`last_error` diz o porquê).
+- Custo real por item em `cost_usd`:
+  `SELECT kind, count(*), sum(cost_usd) FROM whatsapp_message_enrichments GROUP BY 1;`
+- Secrets: `OPENROUTER_API_KEY` e `WHATSAPP_ENRICH_CRON_SECRET` (edge
+  functions); o mesmo valor do segundo fica no Vault como
+  `whatsapp_enrich_cron_secret`, lido pelo cron. Sem ele a função recusa (401).
+- LGPD: o áudio passa pelo OpenRouter/Google para ser transcrito. Vale manter
+  desligado o registro de prompts no painel do OpenRouter.
+
 ## Jobs (pg_cron)
 
 | Job | Quando | O quê |
@@ -199,6 +223,7 @@ Cadastrado: Colatina, "Fora do horário" (2026-10-10).
 | `whatsapp-process-pending` | todo minuto | reprocessa bruto pendente há mais de 30s ou com erro (até 5 tentativas) |
 | `whatsapp-close-stale` | a cada 15 min | fecha conversas abertas que passaram do limite de silêncio |
 | `whatsapp-reconcile` | minuto 12 de cada hora | reconcilia contatos com o CRM + limpa o bruto (se `raw_retention_days`) |
+| `whatsapp-enrich-media` | todo minuto, só com fila | transcreve áudio / descreve imagem |
 
 ## Testes
 
@@ -210,7 +235,7 @@ npm run test:whatsapp   # fumaça ponta a ponta no banco (desfeito no final, nã
 
 ## Fora do escopo desta etapa
 
-Classificação/resumo por LLM (os campos `intent`, `sentiment`, `summary`,
+Resumo/classificação da conversa por LLM (os campos `intent`, `sentiment`, `summary`,
 `summary_model`, `summarized_at` de `whatsapp_conversations` estão vazios de
 propósito), pós-atendimento, conversa → agendamento, número de massa e
 qualquer envio.

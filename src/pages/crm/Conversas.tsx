@@ -143,18 +143,43 @@ function ConversationSheet({ conversation: c, onClose }: { conversation: Convers
         sharedNames = (clients ?? []).map(x => x.name as string)
       }
 
-      const messages: ConversationMessage[] = (msgs.data ?? []).map(m => ({
-        id: m.id,
-        direction: m.direction,
-        body: m.body,
-        message_type: m.message_type,
-        sent_at: m.sent_at,
-        tag: m.was_sent_by_api
-          ? 'via API'
-          : m.direction === 'outbound' && autoSet.has(normText(m.body))
-            ? 'automática'
-            : TYPE_TAG[m.message_type] ?? null,
-      }))
+      // Transcrição de áudio / descrição de imagem (whatsapp-enrich-media).
+      const mediaIds = (msgs.data ?? []).filter(m => m.message_type === 'audio' || m.message_type === 'image').map(m => m.id)
+      const enrich = new Map<string, { status: string; text: string | null }>()
+      if (mediaIds.length) {
+        const { data: rows } = await supabase
+          .from('whatsapp_message_enrichments').select('message_id, status, text').in('message_id', mediaIds)
+        for (const r of rows ?? []) enrich.set(r.message_id, { status: r.status, text: r.text })
+      }
+
+      const messages: ConversationMessage[] = (msgs.data ?? []).map(m => {
+        const e = enrich.get(m.id)
+        let body: string | null = m.body
+        let mediaTag: string | null = null
+        if (e?.status === 'done' && e.text) {
+          body = m.message_type === 'audio'
+            ? `🎤 ${e.text}`
+            : [m.body, `🖼️ ${e.text}`].filter(Boolean).join('\n\n')
+          mediaTag = m.message_type === 'audio' ? 'transcrição' : 'descrição da imagem'
+        } else if (e && (e.status === 'pending' || e.status === 'processing')) {
+          mediaTag = m.message_type === 'audio' ? 'transcrevendo…' : 'descrevendo…'
+        }
+        return {
+          id: m.id,
+          direction: m.direction,
+          body,
+          message_type: m.message_type,
+          sent_at: m.sent_at,
+          tag: [
+            m.was_sent_by_api
+              ? 'via API'
+              : m.direction === 'outbound' && autoSet.has(normText(m.body))
+                ? 'automática'
+                : TYPE_TAG[m.message_type] ?? null,
+            mediaTag,
+          ].filter(Boolean).join(' · ') || null,
+        }
+      })
       return { messages, sharedNames }
     },
     refetchInterval: 30_000,
@@ -200,7 +225,7 @@ function ConversationSheet({ conversation: c, onClose }: { conversation: Convers
         </div>
 
         <p className="px-5 py-2.5 border-t border-border text-[11px] text-muted-foreground">
-          Somente leitura — mensagens capturadas pela escuta. Áudio e imagem aparecem só como tipo (o arquivo não é baixado).
+          Somente leitura — mensagens capturadas pela escuta. Áudio e imagem aparecem transcritos/descritos por IA; o arquivo não é guardado.
         </p>
       </SheetContent>
     </Sheet>
