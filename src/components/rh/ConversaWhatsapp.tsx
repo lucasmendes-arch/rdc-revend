@@ -3,12 +3,14 @@ import { useQuery } from '@tanstack/react-query'
 import { Loader, MessageSquare, Image as ImageIcon, Mic, FileText, Video } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 
-interface ConversationMessage {
+export interface ConversationMessage {
   id: string
   direction: 'inbound' | 'outbound'
   body: string | null
   message_type: string
   sent_at: string
+  /** Selo opcional no rodapé (ex.: "via API", "automática"). Usado na escuta do CRM. */
+  tag?: string | null
 }
 
 // Mensagem sem texto (áudio, imagem sem legenda, figurinha) chega com body
@@ -32,7 +34,7 @@ function formatTime(iso: string) {
     : d.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
 }
 
-function MessageBubble({ message }: { message: ConversationMessage }) {
+export function MessageBubble({ message }: { message: ConversationMessage }) {
   const isInbound = message.direction === 'inbound'
   const typeInfo = message.body ? null : TYPE_LABELS[message.message_type]
   const TypeIcon = typeInfo?.icon
@@ -58,6 +60,7 @@ function MessageBubble({ message }: { message: ConversationMessage }) {
         )}
         <p className={`text-[11px] mt-0.5 tabular-nums ${isInbound ? 'text-muted-foreground' : 'text-emerald-800/70 dark:text-emerald-100/60'}`}>
           {formatTime(message.sent_at)}
+          {message.tag && <span> · {message.tag}</span>}
         </p>
       </div>
     </div>

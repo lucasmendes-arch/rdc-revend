@@ -1,10 +1,12 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { ArrowDownLeft, ArrowUpRight, MessageCircle } from 'lucide-react'
+import { ArrowDownLeft, ArrowUpRight, ChevronRight, Loader, MessageCircle } from 'lucide-react'
 
 import AdminLayout from '@/components/admin/AdminLayout'
 import { AdminPage, EmptyState, PageLoading, Panel, StatCard, StatGrid, Toolbar } from '@/components/admin/ui/AdminPage'
 import StyledSelect from '@/components/ui/styled-select'
+import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/components/ui/sheet'
+import { MessageBubble, type ConversationMessage } from '@/components/rh/ConversaWhatsapp'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { supabase } from '@/lib/supabase'
 import { cn } from '@/lib/utils'
@@ -18,6 +20,7 @@ type MatchStatus = 'matched' | 'unmatched' | 'shared' | 'unresolved_lid'
 
 interface ConversationRow {
   id: string
+  instance_id: string
   instance_name: string
   store_name: string | null
   party_key: string
@@ -107,9 +110,107 @@ function StatusPill({ status }: { status: ConversationRow['status'] }) {
   )
 }
 
+// Mesma normalização de whatsapp_norm_text (minúsculas, espaços colapsados).
+const normText = (s: string | null) => (s ?? '').toLowerCase().replace(/\s+/g, ' ').trim()
+
+const TYPE_TAG: Record<string, string> = { reaction: 'reação' }
+
+// Conversa completa, só leitura. Fonte: whatsapp_messages (admin).
+function ConversationSheet({ conversation: c, onClose }: { conversation: ConversationRow; onClose: () => void }) {
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const who = whoLabel(c)
+
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['wa-conversation-messages', c.id],
+    queryFn: async () => {
+      const [msgs, autos, conv] = await Promise.all([
+        supabase
+          .from('whatsapp_messages')
+          .select('id, direction, body, message_type, sent_at, was_sent_by_api')
+          .eq('conversation_id', c.id)
+          .order('sent_at'),
+        supabase.from('whatsapp_auto_reply_texts').select('body').eq('instance_id', c.instance_id),
+        supabase.from('whatsapp_conversations').select('ambiguous_client_ids').eq('id', c.id).maybeSingle(),
+      ])
+      if (msgs.error) throw msgs.error
+      const autoSet = new Set((autos.data ?? []).map(a => normText(a.body)))
+
+      // Telefone compartilhado: nomes das clientes empatadas.
+      let sharedNames: string[] = []
+      const ids = (conv.data?.ambiguous_client_ids as string[] | null) ?? []
+      if (ids.length) {
+        const { data: clients } = await supabase.from('trinks_clients').select('name').in('id', ids)
+        sharedNames = (clients ?? []).map(x => x.name as string)
+      }
+
+      const messages: ConversationMessage[] = (msgs.data ?? []).map(m => ({
+        id: m.id,
+        direction: m.direction,
+        body: m.body,
+        message_type: m.message_type,
+        sent_at: m.sent_at,
+        tag: m.was_sent_by_api
+          ? 'via API'
+          : m.direction === 'outbound' && autoSet.has(normText(m.body))
+            ? 'automática'
+            : TYPE_TAG[m.message_type] ?? null,
+      }))
+      return { messages, sharedNames }
+    },
+    refetchInterval: 30_000,
+  })
+
+  const messages = data?.messages ?? []
+  useEffect(() => {
+    if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight
+  }, [messages.length])
+
+  const reply = fmtDuration(c.first_reply_seconds)
+
+  return (
+    <Sheet open onOpenChange={o => { if (!o) onClose() }}>
+      <SheetContent side="right" className="w-full sm:max-w-lg p-0 gap-0 flex flex-col">
+        <div className="px-5 pt-5 pb-4 border-b border-border pr-12">
+          <SheetTitle className="text-[16px] truncate">{who.title}</SheetTitle>
+          <SheetDescription asChild>
+            <div className="mt-1 space-y-1 text-[12px]">
+              {who.hint && <p className="truncate">{who.hint}</p>}
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                <StatusPill status={c.status} />
+                <span>· {c.store_name ?? '—'} ({c.instance_name})</span>
+                <span>· 1ª resposta: {c.first_inbound_at ? (reply ?? 'sem resposta') : 'iniciada pela unidade'}</span>
+              </div>
+              {data?.sharedNames.length ? (
+                <p className="truncate">Clientes com este telefone: {data.sharedNames.join(', ')}</p>
+              ) : null}
+            </div>
+          </SheetDescription>
+        </div>
+
+        <div ref={scrollRef} className="flex-1 overflow-y-auto bg-surface px-4 py-4 space-y-2">
+          {isLoading ? (
+            <div className="flex justify-center py-10"><Loader className="w-5 h-5 animate-spin text-ink-300" /></div>
+          ) : error ? (
+            <p className="text-[13px] text-danger">Erro ao carregar: {(error as Error).message}</p>
+          ) : messages.length === 0 ? (
+            <p className="text-[13px] text-muted-foreground text-center py-10">Nenhuma mensagem.</p>
+          ) : (
+            messages.map(m => <MessageBubble key={m.id} message={m} />)
+          )}
+        </div>
+
+        <p className="px-5 py-2.5 border-t border-border text-[11px] text-muted-foreground">
+          Somente leitura — mensagens capturadas pela escuta. Áudio e imagem aparecem só como tipo (o arquivo não é baixado).
+        </p>
+      </SheetContent>
+    </Sheet>
+  )
+}
+
 export default function Conversas() {
   const { data: units = [] } = useCrmUnits()
   const [storeId, setStoreId] = useState('all')
+  const [selected, setSelected] = useState<ConversationRow | null>(null)
   const store = storeId === 'all' ? null : storeId
 
   const stats = useQuery({
@@ -126,7 +227,7 @@ export default function Conversas() {
     queryFn: async () => {
       let q = supabase
         .from('whatsapp_conversations_v')
-        .select('id, instance_name, store_name, party_key, phone, match_status, client_name, contact_name, shared_count, status, opened_at, last_message_at, first_inbound_at, first_human_reply_at, first_reply_seconds, inbound_count, outbound_count, last_direction')
+        .select('id, instance_id, instance_name, store_name, party_key, phone, match_status, client_name, contact_name, shared_count, status, opened_at, last_message_at, first_inbound_at, first_human_reply_at, first_reply_seconds, inbound_count, outbound_count, last_direction')
         .order('last_message_at', { ascending: false })
         .limit(PAGE_SIZE)
       if (store) q = q.eq('store_id', store)
@@ -203,7 +304,7 @@ export default function Conversas() {
                     {rows.map(c => {
                       const who = whoLabel(c)
                       return (
-                        <TableRow key={c.id}>
+                        <TableRow key={c.id} onClick={() => setSelected(c)} className="group cursor-pointer hover:bg-muted/60">
                           <TableCell className="pl-5">
                             <p className={cn('text-[13px] font-medium truncate', c.match_status === 'matched' ? 'text-foreground' : 'text-muted-foreground')}>
                               {who.title}
@@ -220,7 +321,12 @@ export default function Conversas() {
                           </TableCell>
                           <TableCell className="text-[13px]"><DirectionCell dir={c.last_direction} /></TableCell>
                           <TableCell className="text-[13px]"><ReplyCell c={c} /></TableCell>
-                          <TableCell><StatusPill status={c.status} /></TableCell>
+                          <TableCell>
+                            <div className="flex items-center justify-between gap-2">
+                              <StatusPill status={c.status} />
+                              <ChevronRight className="w-4 h-4 text-ink-300 group-hover:text-ink-500 shrink-0" />
+                            </div>
+                          </TableCell>
                         </TableRow>
                       )
                     })}
@@ -233,7 +339,7 @@ export default function Conversas() {
                 {rows.map(c => {
                   const who = whoLabel(c)
                   return (
-                    <div key={c.id} className="px-4 py-3 space-y-1">
+                    <button key={c.id} type="button" onClick={() => setSelected(c)} className="w-full text-left px-4 py-3 space-y-1 hover:bg-muted/60">
                       <div className="flex items-start justify-between gap-3">
                         <p className={cn('text-[13px] font-medium min-w-0 truncate', c.match_status === 'matched' ? 'text-foreground' : 'text-muted-foreground')}>
                           {who.title}
@@ -246,7 +352,7 @@ export default function Conversas() {
                         <DirectionCell dir={c.last_direction} />
                         <span>1ª resposta: <ReplyCell c={c} /></span>
                       </div>
-                    </div>
+                    </button>
                   )
                 })}
               </Panel>
@@ -256,6 +362,7 @@ export default function Conversas() {
             </>
           )}
         </div>
+        {selected && <ConversationSheet conversation={selected} onClose={() => setSelected(null)} />}
       </AdminPage>
     </AdminLayout>
   )
