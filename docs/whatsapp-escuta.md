@@ -211,6 +211,10 @@ mostra a transcrição/descrição no balão.
   qualquer instância) e todo envio de instância `role = 'massa'` entram como
   `skipped`, com o motivo em `last_error`. Mídia da cliente e mídia enviada pelo
   celular da unidade são processadas.
+- **Cache por arquivo:** a função calcula o SHA-256 do arquivo baixado; se o mesmo
+  arquivo já tem texto pronto, copia (`cost_usd = 0`, `model = 'cache:…'`,
+  `cached_from`). Mensagem rápida com a mesma mídia para várias clientes chama a
+  IA uma vez só.
 - Falha volta para a fila; na 3ª tentativa vira `failed` (`last_error` diz o porquê).
 - Custo real por item em `cost_usd`:
   `SELECT kind, count(*), sum(cost_usd) FROM whatsapp_message_enrichments GROUP BY 1;`

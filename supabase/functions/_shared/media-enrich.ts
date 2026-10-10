@@ -16,6 +16,15 @@ const IMAGE_PROMPT =
   'Se houver texto relevante na imagem (valores, datas, horários, nomes de produto), transcreva. ' +
   'Responda somente com a descrição.'
 
+/** SHA-256 (hex) do arquivo em base64 — chave do cache: mesmo arquivo, mesmo texto. */
+export async function sha256OfBase64(base64: string): Promise<string> {
+  const bin = atob(base64)
+  const bytes = new Uint8Array(bin.length)
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i)
+  const digest = await crypto.subtle.digest('SHA-256', bytes)
+  return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, '0')).join('')
+}
+
 /** Formato de áudio aceito pelo OpenRouter (input_audio.format). */
 export function audioFormat(mimetype: string | null | undefined): string {
   const m = (mimetype ?? '').toLowerCase()

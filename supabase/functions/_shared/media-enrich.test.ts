@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { audioFormat, buildOpenRouterBody, parseOpenRouterResponse } from './media-enrich'
+import { audioFormat, buildOpenRouterBody, parseOpenRouterResponse, sha256OfBase64 } from './media-enrich'
+
+describe('sha256OfBase64', () => {
+  it('hash do conteúdo decodificado (base64 de "abc")', async () => {
+    expect(await sha256OfBase64('YWJj')).toBe('ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad')
+  })
+})
 
 describe('audioFormat', () => {
   it.each([

@@ -1,7 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { timingSafeEqual } from '../_shared/timingSafe.ts'
-import { buildOpenRouterBody, parseOpenRouterResponse, type EnrichmentKind } from '../_shared/media-enrich.ts'
+import { buildOpenRouterBody, parseOpenRouterResponse, sha256OfBase64, type EnrichmentKind } from '../_shared/media-enrich.ts'
 
 // Transcreve áudio e descreve imagem das mensagens da escuta de WhatsApp.
 // Chamada a cada minuto pelo pg_cron (job 'whatsapp-enrich-media') só quando há
@@ -114,6 +114,25 @@ serve(async (req) => {
         .filter((x): x is string => !!x)
       const media = await downloadMedia(inst.uazapi_url, inst.uazapi_token, ids)
 
+      // Cache por arquivo: mensagem rápida com a mesma mídia para várias
+      // clientes chama a IA uma vez só.
+      const sha = await sha256OfBase64(media.base64)
+      const { data: hit } = await db.from('whatsapp_message_enrichments')
+        .select('id, text, model')
+        .eq('kind', it.kind).eq('status', 'done').eq('media_sha256', sha)
+        .not('text', 'is', null)
+        .order('processed_at', { ascending: true })
+        .limit(1).maybeSingle()
+      if (hit) {
+        const origin = (hit.model as string | null)?.replace(/^cache:/, '') ?? it.model
+        await finish({
+          status: 'done', text: hit.text, model: `cache:${origin}`, cost_usd: 0,
+          media_sha256: sha, cached_from: hit.id, last_error: null,
+        })
+        results[it.enrichment_id] = 'cache'
+        continue
+      }
+
       const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',
         headers: { Authorization: `Bearer ${openrouterKey}`, 'Content-Type': 'application/json' },
@@ -124,7 +143,7 @@ serve(async (req) => {
       })
       const { text, costUsd } = parseOpenRouterResponse(await res.json())
 
-      await finish({ status: 'done', text, model: it.model, cost_usd: costUsd, last_error: null })
+      await finish({ status: 'done', text, model: it.model, cost_usd: costUsd, media_sha256: sha, last_error: null })
       results[it.enrichment_id] = 'done'
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err)
