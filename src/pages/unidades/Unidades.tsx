@@ -93,6 +93,8 @@ interface ProfessionalRow {
   services_count: number
   visits_count: number
   revenue: number
+  services_revenue: number
+  products_revenue: number
   commission: number
 }
 
@@ -293,7 +295,7 @@ export default function Unidades() {
     queryKey: ['trinks-professionals', bounds.from, bounds.to],
     queryFn: () => fetchAll<ProfessionalRow>((from, to) => supabase
       .from('trinks_professional_sales')
-      .select('store_id, business_date, professional_name, services_count, visits_count, revenue, commission')
+      .select('store_id, business_date, professional_name, services_count, visits_count, revenue, services_revenue, products_revenue, commission')
       .gte('business_date', bounds.from)
       .lte('business_date', bounds.to)
       .order('id')
@@ -404,13 +406,19 @@ export default function Unidades() {
   const profRanking = useMemo(() => {
     // Mesma régua do "Ranking de Profissionais" do Trinks: atendimentos =
     // cliente distinto por dia; ticket = faturamento líquido ÷ atendimentos.
-    const byName = new Map<string, { name: string; count: number; services: number; revenue: number; commission: number }>()
+    // Faturamento = serviços (inclui pacotes) + venda de produtos.
+    const byName = new Map<string, {
+      name: string; count: number; services: number
+      revenue: number; servicesRevenue: number; productsRevenue: number; commission: number
+    }>()
     for (const p of inStore(professionals)) {
       const e = byName.get(p.professional_name)
-        ?? { name: p.professional_name, count: 0, services: 0, revenue: 0, commission: 0 }
+        ?? { name: p.professional_name, count: 0, services: 0, revenue: 0, servicesRevenue: 0, productsRevenue: 0, commission: 0 }
       e.count += Number(p.visits_count)
       e.services += Number(p.services_count)
       e.revenue += Number(p.revenue)
+      e.servicesRevenue += Number(p.services_revenue)
+      e.productsRevenue += Number(p.products_revenue)
       e.commission += Number(p.commission)
       byName.set(p.professional_name, e)
     }
@@ -650,12 +658,14 @@ export default function Unidades() {
                 </p>
               ) : (
                 <div className="overflow-x-auto">
-                  <table className="data-table min-w-[600px]">
+                  <table className="data-table min-w-[820px]">
                     <thead>
                       <tr>
                         <th>Profissional</th>
                         <th className="text-right">Atendimentos</th>
                         <th className="text-right">Serviços</th>
+                        <th className="text-right">Fat. serviços</th>
+                        <th className="text-right">Venda produtos</th>
                         <th className="text-right">Faturamento</th>
                         <th className="text-right">Ticket médio</th>
                         <th className="text-right">Comissão{estimatedRange ? '*' : ''}</th>
@@ -668,6 +678,10 @@ export default function Unidades() {
                           <td className="text-foreground font-medium">{p.name.replace(/^\d+\s+/, '')}</td>
                           <td className="text-right text-muted-foreground">{p.count}</td>
                           <td className="text-right text-muted-foreground">{p.services}</td>
+                          <td className="text-right text-foreground">{fmtBRLCents(p.servicesRevenue)}</td>
+                          <td className="text-right text-foreground">
+                            {p.productsRevenue ? fmtBRLCents(p.productsRevenue) : '—'}
+                          </td>
                           <td className="text-right text-foreground font-semibold">{fmtBRLCents(p.revenue)}</td>
                           <td className="text-right text-muted-foreground">
                             {p.count ? fmtBRLCents(p.revenue / p.count) : '—'}

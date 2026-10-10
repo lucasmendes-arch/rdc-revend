@@ -1386,7 +1386,7 @@ Dados de faturamento dos salões coletados do Trinks pela edge function `sync-tr
 | `trinks_daily_revenue` | `(store_id, business_date)` |
 | `trinks_service_sales` | `(store_id, business_date, item_key)` |
 | `trinks_product_sales` | `(store_id, business_date, item_key)` |
-| `trinks_professional_sales` | `(store_id, business_date, professional_key)` |
+| `trinks_professional_sales` | `(store_id, business_date, professional_key)` — `revenue` = `services_revenue` (servico+pacote) + `products_revenue` (produto), colunas desde `20261010000010` |
 | `trinks_sync_runs` | 1 linha por execução |
 | `trinks_professionals` | `(store_id, trinks_professional_id)` — nome/apelido dos IDs, vindo dos webhooks 5/6; `role` (Funcao) e `contract_end` desde `20261009000020` |
 
