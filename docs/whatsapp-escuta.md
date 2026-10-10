@@ -207,6 +207,10 @@ mostra a transcrição/descrição no balão.
   um UPDATE, sem deploy.
 - Liga/desliga: `enrichment_enabled`. Áudio acima de
   `enrichment_max_audio_seconds` (600) e arquivo acima de 15 MB ficam `skipped`.
+- **Disparo não passa pela IA:** mídia enviada por API (disparos/automações, de
+  qualquer instância) e todo envio de instância `role = 'massa'` entram como
+  `skipped`, com o motivo em `last_error`. Mídia da cliente e mídia enviada pelo
+  celular da unidade são processadas.
 - Falha volta para a fila; na 3ª tentativa vira `failed` (`last_error` diz o porquê).
 - Custo real por item em `cost_usd`:
   `SELECT kind, count(*), sum(cost_usd) FROM whatsapp_message_enrichments GROUP BY 1;`

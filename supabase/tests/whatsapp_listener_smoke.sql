@@ -246,6 +246,24 @@ BEGIN
   END IF;
   v_log := v_log || 'texto automatico ok; ';
 
+  -- 7d. Fila de transcrição: cliente e celular entram, disparo por API não ----
+  INSERT INTO whatsapp_raw_events (instance_id, event_type, provider_message_id, parsed, payload) VALUES
+    (v_inst, 'messages', 'SMOKE-M-1', jsonb_build_object('direction', 'inbound',
+       'phoneRaw', '5599955443322', 'messageType', 'audio', 'media', jsonb_build_object('seconds', 5), 'sentAt', v_t0), '{}'),
+    (v_inst, 'messages', 'SMOKE-M-2', jsonb_build_object('direction', 'outbound', 'wasSentByApi', false,
+       'phoneRaw', '5599955443322', 'messageType', 'audio', 'sentAt', v_t0 + interval '1 minute'), '{}'),
+    (v_inst, 'messages', 'SMOKE-M-3', jsonb_build_object('direction', 'outbound', 'wasSentByApi', true,
+       'phoneRaw', '5599955443322', 'messageType', 'image', 'body', 'Promo!', 'sentAt', v_t0 + interval '2 minutes'), '{}');
+  PERFORM whatsapp_process_raw_event(id) FROM whatsapp_raw_events
+   WHERE instance_id = v_inst AND provider_message_id LIKE 'SMOKE-M-%' ORDER BY provider_message_id;
+  SELECT string_agg(m.provider_message_id || '=' || e.status, ',' ORDER BY m.provider_message_id) INTO v_res
+    FROM whatsapp_message_enrichments e JOIN whatsapp_messages m ON m.id = e.message_id
+   WHERE m.instance_id = v_inst AND m.provider_message_id LIKE 'SMOKE-M-%';
+  IF v_res IS DISTINCT FROM 'SMOKE-M-1=pending,SMOKE-M-2=pending,SMOKE-M-3=skipped' THEN
+    RAISE EXCEPTION 'fila de midia: %', v_res;
+  END IF;
+  v_log := v_log || 'fila de midia ok; ';
+
   -- 8. Job de fechamento e estatística ---------------------------------
   UPDATE whatsapp_listen_settings SET conversation_gap_hours = 1 WHERE id = 1;
   PERFORM whatsapp_close_stale_conversations();
