@@ -57,6 +57,7 @@ const AdminAgenda = lazy(() => import("./pages/agenda/Agenda"));
 const CrmClientes = lazy(() => import("./pages/crm/Clientes"));
 const CrmSegmentos = lazy(() => import("./pages/crm/Segmentos"));
 const CrmCampanhas = lazy(() => import("./pages/crm/Campanhas"));
+const CrmConversas = lazy(() => import("./pages/crm/Conversas"));
 
 // módulo marketing (lazy)
 const AdminMarketing = lazy(() => import("./pages/marketing/Marketing"));
@@ -151,6 +152,7 @@ const App = () => (
                     <Route path="/admin/crm/clientes" element={<CrmClientes />} />
                     <Route path="/admin/crm/segmentos" element={<CrmSegmentos />} />
                     <Route path="/admin/crm/campanhas" element={<CrmCampanhas />} />
+                    <Route path="/admin/crm/conversas" element={<CrmConversas />} />
                     <Route path="/admin/marketing" element={<AdminMarketing />} />
                     <Route path="/admin/vendedores" element={<AdminVendedores />} />
                     <Route path="/admin/tabelas-preco" element={<AdminTabelasPreco />} />

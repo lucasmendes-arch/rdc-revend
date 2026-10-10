@@ -1,62 +1,28 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { timingSafeEqual } from '../_shared/timingSafe.ts'
+import { parseUazapiEvent, redactPayload } from '../_shared/uazapi-message.ts'
 
-// Recebe eventos de mensagem da Uazapi e grava a conversa (Fase 1 da triagem
-// de entrevistas). Este endpoint NÃO responde, NÃO classifica e NÃO move card
-// — só captura. Toda decisão continua com o RH na tela.
+// Escuta passiva de WhatsApp: recebe os eventos de mensagem da Uazapi
+// (recebidas E enviadas) de todas as instâncias marcadas com
+// whatsapp_instances.listen_enabled e grava o log de conversas.
 //
-// Autenticação: a Uazapi não assina o payload com HMAC (diferente do
-// MercadoPago), então o que dá pra fazer é segredo compartilhado. Aceita no
-// header `x-webhook-secret` ou no parâmetro "secret" da query — a query existe porque
-// nem toda instância da Uazapi deixa configurar header customizado. Falha
-// fechado: sem UAZAPI_WEBHOOK_SECRET no ambiente, rejeita tudo (mesma regra
-// aplicada no webhook-mercadopago no checkup de 2026-07-23).
+// 100% PASSIVO. Este código não chama NENHUM endpoint da Uazapi: não envia,
+// não marca como lido, não simula digitação. Só recebe e grava.
 //
-// O formato do payload da Uazapi não é estável entre versões, então a
-// extração abaixo tenta vários caminhos e o payload cru vai inteiro pra
-// `whatsapp_messages.raw`. É de propósito: dá pra ajustar o parser depois
-// olhando o que realmente chegou, sem ter perdido mensagem nenhuma.
+// Fluxo:
+//   1. segredo compartilhado (a Uazapi não assina com HMAC) — header
+//      `x-webhook-secret` ou parâmetro "secret" na query; fail-closed;
+//   2. parse (_shared/uazapi-message.ts): grupo, status, canal e eventos que
+//      não são mensagem são descartados aqui, sem gravar;
+//   3. o `token` do payload tem que ser de uma instância em escuta (a doc da
+//      Uazapi recomenda amarrar o token à instância autorizada);
+//   4. grava o bruto (ON CONFLICT DO NOTHING = idempotente) e responde 200;
+//   5. processa em segundo plano (whatsapp_process_raw_event). Se falhar, o
+//      cron whatsapp-process-pending tenta de novo.
 
 declare const Deno: { env: { get(k: string): string | undefined } }
-
-// deno-lint-ignore no-explicit-any
-type Json = any
-
-function pick(obj: Json, paths: string[]): string | null {
-  for (const path of paths) {
-    let cur: Json = obj
-    for (const part of path.split('.')) {
-      if (cur == null || typeof cur !== 'object') { cur = null; break }
-      cur = cur[part]
-    }
-    if (typeof cur === 'string' && cur.trim()) return cur
-    if (typeof cur === 'number') return String(cur)
-  }
-  return null
-}
-
-function pickBool(obj: Json, paths: string[]): boolean {
-  for (const path of paths) {
-    let cur: Json = obj
-    for (const part of path.split('.')) {
-      if (cur == null || typeof cur !== 'object') { cur = null; break }
-      cur = cur[part]
-    }
-    if (typeof cur === 'boolean') return cur
-  }
-  return false
-}
-
-// Timestamp da Uazapi vem em segundos ou milissegundos dependendo do evento.
-function parseTimestamp(raw: string | null): string | null {
-  if (!raw) return null
-  const n = Number(raw)
-  if (!Number.isFinite(n) || n <= 0) return null
-  const ms = n > 1e11 ? n : n * 1000
-  const d = new Date(ms)
-  return Number.isNaN(d.getTime()) ? null : d.toISOString()
-}
+declare const EdgeRuntime: { waitUntil(p: Promise<unknown>): void } | undefined
 
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -93,66 +59,93 @@ serve(async (req) => {
     return jsonResponse({ error: 'Not configured' }, 500)
   }
 
-  let payload: Json
+  let payload: unknown
   try {
     payload = await req.json()
   } catch {
     return jsonResponse({ error: 'Invalid JSON' }, 400)
   }
 
-  // A Uazapi manda ora o objeto de mensagem na raiz, ora sob `message`/`data`.
-  const msg = payload?.message ?? payload?.data?.message ?? payload?.data ?? payload
-
-  const jid = pick(msg, [
-    'sender', 'chatid', 'chatId', 'from', 'key.remoteJid', 'remoteJid',
-  ])
-
-  if (!jid) {
-    // Evento sem destinatário: presença, status de conexão, ack de entrega.
-    // 200 de propósito — devolver erro faria a Uazapi reentregar pra sempre.
-    return jsonResponse({ ok: true, ignored: 'sem jid' })
+  const parsed = parseUazapiEvent(payload)
+  if (parsed.kind === 'skip') {
+    // 200 de propósito: erro faria a Uazapi reentregar pra sempre.
+    return jsonResponse({ ok: true, ignored: parsed.reason })
   }
 
-  // Grupo e status broadcast não são conversa com candidato.
-  if (jid.includes('@g.us') || jid.startsWith('status@')) {
-    return jsonResponse({ ok: true, ignored: 'grupo ou status' })
+  const token = parsed.kind === 'message' ? parsed.message.instanceToken : parsed.instanceToken
+  if (!token) {
+    console.warn('Evento sem token de instância — ignorado')
+    return jsonResponse({ ok: true, ignored: 'sem token' })
   }
 
-  const fromMe = pickBool(msg, ['fromMe', 'key.fromMe', 'FromMe'])
-
-  const body = pick(msg, [
-    'text', 'body', 'content', 'caption',
-    'message.conversation',
-    'message.extendedTextMessage.text',
-    'message.imageMessage.caption',
-  ])
-
-  const messageType = pick(msg, ['messageType', 'type', 'msgType']) ?? 'text'
-  const externalId = pick(msg, ['id', 'messageid', 'messageId', 'key.id'])
-  const sentAt = parseTimestamp(pick(msg, ['messageTimestamp', 'timestamp', 'moment', 't']))
-
-  // Mensagem sem texto (áudio, imagem sem legenda, figurinha) é gravada com
-  // body nulo — o card mostra o tipo. Perder o evento seria pior: some da
-  // conversa e o RH não entende o buraco.
   const client = createClient(supabaseUrl, serviceKey)
 
-  const { data, error } = await client.rpc('record_whatsapp_message', {
-    p_direction: fromMe ? 'outbound' : 'inbound',
-    p_phone_raw: jid,
-    p_body: body,
-    p_message_type: messageType,
-    p_external_id: externalId,
-    p_sent_at: sentAt,
-    p_raw: payload,
-  })
+  const { data: instance, error: instErr } = await client
+    .from('whatsapp_instances')
+    .select('id, listen_enabled')
+    .eq('uazapi_token', token)
+    .maybeSingle()
 
-  if (error) {
-    console.error('Falha ao gravar mensagem:', error.message)
-    // 500 aqui é intencional: erro nosso, queremos a reentrega da Uazapi.
+  if (instErr) {
+    console.error('Falha ao buscar instância:', instErr.message)
+    return jsonResponse({ error: 'Falha interna' }, 500)
+  }
+  if (!instance) {
+    console.warn('Token de instância desconhecido — ignorado')
+    return jsonResponse({ ok: true, ignored: 'instancia desconhecida' })
+  }
+  if (!instance.listen_enabled) {
+    return jsonResponse({ ok: true, ignored: 'escuta desligada' })
+  }
+
+  const row =
+    parsed.kind === 'message'
+      ? {
+          instance_id: instance.id,
+          event_type: parsed.message.eventType,
+          provider_message_id: parsed.message.providerMessageId,
+          parsed: { ...parsed.message, instanceToken: undefined },
+          payload: redactPayload(payload),
+        }
+      : {
+          // Parece mensagem mas falta o essencial: guarda pra análise do parser.
+          instance_id: instance.id,
+          event_type: parsed.eventType,
+          provider_message_id: null,
+          parsed: null,
+          payload: redactPayload(payload),
+          status: 'ignored',
+          status_reason: parsed.reason,
+          processed_at: new Date().toISOString(),
+        }
+
+  const { data: inserted, error: insErr } = await client
+    .from('whatsapp_raw_events')
+    .upsert(row, { onConflict: 'instance_id,provider_message_id', ignoreDuplicates: true })
+    .select('id')
+
+  if (insErr) {
+    console.error('Falha ao gravar evento bruto:', insErr.message)
+    // 500 intencional: erro nosso, queremos a reentrega da Uazapi.
     return jsonResponse({ error: 'Falha ao gravar' }, 500)
   }
 
-  // data === null: número irreconhecível, ou reentrega já gravada. Nos dois
-  // casos o webhook cumpriu seu papel.
-  return jsonResponse({ ok: true, recorded: data !== null })
+  const rawId = inserted?.[0]?.id as string | undefined
+  if (!rawId) return jsonResponse({ ok: true, duplicate: true })
+  if (parsed.kind !== 'message') return jsonResponse({ ok: true, ignored: parsed.reason })
+
+  const work = client
+    .rpc('whatsapp_process_raw_event', { p_id: rawId })
+    .then(({ data, error }) => {
+      if (error) console.error('Processamento falhou (cron reprocessa):', error.message)
+      else if (typeof data === 'string' && data.startsWith('erro')) console.error('Processamento:', data)
+    })
+
+  if (typeof EdgeRuntime !== 'undefined') {
+    EdgeRuntime.waitUntil(work)
+  } else {
+    await work
+  }
+
+  return jsonResponse({ ok: true, received: rawId })
 })

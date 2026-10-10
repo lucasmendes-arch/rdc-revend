@@ -412,3 +412,6 @@ verify_jwt = false
 # da assinatura da AWS, verificada na função.
 [functions.trinks-webhook]
 verify_jwt = false
+
+[functions.whatsapp-enrich-media]
+verify_jwt = false

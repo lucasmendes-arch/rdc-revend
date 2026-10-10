@@ -11,7 +11,9 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:facebook-conversion": "tsx scripts/test-facebook-conversion.ts",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:phone": "tsx scripts/test-phone-br.ts",
+    "test:whatsapp": "tsx scripts/test-whatsapp-listener.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

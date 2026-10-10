@@ -953,37 +953,82 @@ Variáveis livres de mensagem (Fase 4, `20260727000001`) — substituem o nó "S
 
 ---
 
-### `whatsapp_messages`
-Conversa de WhatsApp com candidatos, nos dois sentidos (Fase 1 da triagem de entrevistas, `20260727000002`). Até então o sistema só falava — as 6 edge functions de WhatsApp eram todas de saída, sem webhook de entrada nem vínculo telefone→candidato.
+### Escuta de WhatsApp (`20261010000001`)
+Log passivo de conversas de WhatsApp de todas as instâncias em escuta (atendimento das unidades + conversa com candidatos do RH). Substituiu a `whatsapp_messages` da triagem do RH (`20260727000002`, recriada vazia no formato novo). Guia operacional: `docs/whatsapp-escuta.md`.
 
-| Coluna | Tipo | Nullable | Default | FK |
-|--------|------|----------|---------|-----|
-| id | uuid | NO | `gen_random_uuid()` | — |
-| candidate_id | uuid | YES | NULL | candidates.id (ON DELETE SET NULL) |
-| direction | text | NO | — | CHECK `'inbound'\|'outbound'` |
-| phone_key | text | NO | — | chave normalizada |
-| phone_raw | text | NO | — | como veio da Uazapi |
-| body | text | YES | NULL | — |
-| message_type | text | NO | `'text'` | — |
-| external_id | text | YES | NULL | **UNIQUE** — idempotência |
-| instance_id | uuid | YES | NULL | whatsapp_instances.id (ON DELETE SET NULL) |
-| sent_at | timestamptz | NO | `now()` | — |
-| raw | jsonb | NO | `'{}'` | payload cru |
-| created_at | timestamptz | NO | `now()` | — |
+**Escritor único**: a edge function `webhook-uazapi` grava o bruto em `whatsapp_raw_events`; `whatsapp_process_raw_event(id)` (service_role, chamada na hora via `EdgeRuntime.waitUntil` e reprocessada pelo cron `whatsapp-process-pending`) deriva contatos, conversas e mensagens. A Uazapi devolve os próprios envios como evento `fromMe`, então o envio NÃO grava aqui — senão duplicaria. **Nada neste fluxo chama a Uazapi.**
 
-> **Escritor único**: só a edge function `webhook-uazapi` (via `service_role`) grava, sempre por `record_whatsapp_message()`. A alternativa — gravar a saída em `send-automation-whatsapp` e a entrada no webhook — duplicaria toda mensagem enviada, porque a Uazapi devolve os próprios envios como evento `fromMe`. `UNIQUE(external_id)` + `ON CONFLICT DO NOTHING` absorvem reentrega.
-> **`candidate_id` nulo é deliberado**: mensagem de número que não casou com nenhum candidato fica gravada (índice parcial `idx_whatsapp_messages_unmatched`). É o material pra diagnosticar telefone cadastrado errado ou normalização furada — descartar esconderia o problema.
-> RLS: `SELECT` via `has_rh_access()`; escrita só `service_role`. A tela lê por `get_candidate_conversation(candidate_id)`.
+#### `whatsapp_listen_settings` (linha única, `id = 1`)
+| Coluna | Tipo | Default | Nota |
+|---|---|---|---|
+| conversation_gap_hours | int | `12` | silêncio máximo dentro de uma conversa (1–168) |
+| raw_retention_days | int | NULL | NULL = guarda o bruto pra sempre |
+| updated_at | timestamptz | `now()` | |
+
+#### `whatsapp_raw_events`
+| Coluna | Tipo | Nullable | Nota |
+|---|---|---|---|
+| id | uuid | NO | PK |
+| instance_id | uuid | YES | whatsapp_instances.id (SET NULL) |
+| event_type | text | YES | `messages` |
+| provider_message_id | text | YES | `message.messageid` |
+| parsed | jsonb | YES | saída de `_shared/uazapi-message.ts` |
+| payload | jsonb | NO | como chegou, **sem o token** |
+| received_at | timestamptz | NO | |
+| status | text | NO | `pending`\|`processed`\|`ignored`\|`error` |
+| status_reason / attempts / processed_at | | | |
+
+> `UNIQUE (instance_id, provider_message_id)` — reentrega não duplica. Pode ser limpa (`whatsapp_purge_raw_events`).
+
+#### `whatsapp_contacts` — números sem cliente única no CRM
+`party_key` (UNIQUE; `phone_key`, `tel:<dígitos>` ou `lid:<jid>`), `phone` (canônico), `phone_key`, `jid`, `lid`, `push_name`, `match_status`, `ambiguous_client_ids uuid[]`, `client_id` → trinks_clients (preenchido na conciliação posterior), `reconciled_at`, `first_seen_at`, `last_seen_at`.
+
+#### `whatsapp_conversations` — telefone × instância
+| Coluna | Nota |
+|---|---|
+| instance_id, store_id | store_id = da instância na abertura |
+| party_key, phone | a conversa pertence ao telefone, não a uma cliente |
+| client_id, contact_id, match_status, ambiguous_client_ids | identificação mais recente |
+| status | `aberta`\|`fechada` — no máximo uma aberta por (instance_id, party_key) |
+| opened_at, last_message_at, closed_at | closed_at = last_message_at + limite |
+| first_inbound_at, first_outbound_at | primeiro recebido / primeiro enviado (qualquer, inclusive API) |
+| first_human_reply_at | 1º envio **não-API** depois da 1ª recebida |
+| inbound_count, outbound_count, last_direction | reações não contam |
+| intent, sentiment, summary, summary_model, summarized_at | etapa futura (LLM) — vazios |
+
+#### `whatsapp_messages` — append-only
+`instance_id`, `conversation_id`, `raw_event_id`, `provider_message_id` (`UNIQUE (instance_id, provider_message_id)`), `party_key`, `phone_key`, `phone_raw`, `client_id`/`contact_id`/`candidate_id` (snapshot), `match_status`, `direction` (`inbound`\|`outbound`), `was_sent_by_api`, `message_type` (`text`\|`audio`\|`image`\|`video`\|`document`\|`sticker`\|`location`\|`contact`\|`reaction`\|`other`), `provider_type` (cru), `body`, `media` (só metadados), `sent_at`.
+
+> Trigger `trg_whatsapp_messages_append_only` bloqueia UPDATE/DELETE; só aceita FK virando NULL (`ON DELETE SET NULL` — ex.: `purge_archived_candidates`).
+> RLS: `is_admin() OR (candidate_id IS NOT NULL AND has_rh_access())`. O RH lê por `get_candidate_conversation(candidate_id)` (mesma assinatura de antes).
+
+`match_status` (contatos, conversas, mensagens): `matched` | `unmatched` | `shared` (telefone compartilhado, empate) | `unresolved_lid`.
+
+> **Reações** (`20261010000002`): reação sem conversa em andamento fica só no log (`conversation_id` NULL, sem contato); dentro de conversa é anexada mas não estende a janela nem conta. `conversation_id` é nulável, `ON DELETE SET NULL`.
+
+#### `whatsapp_auto_reply_texts` (`20261010000011`)
+`instance_id` (CASCADE), `label`, `body`, `body_norm` (gerada, `whatsapp_norm_text`: minúsculas + espaços colapsados), `UNIQUE (instance_id, body_norm)`. Envio igual a um texto cadastrado não conta como `first_human_reply_at` (mensagem automática do WhatsApp Business é indistinguível no payload). Trigger recalcula as conversas da instância via `whatsapp_recompute_human_reply(instance_id)`. RLS admin.
+
+#### `whatsapp_message_enrichments` (`20261010000012`)
+Transcrição de áudio / descrição de imagem, 1:1 com `whatsapp_messages` (`message_id` UNIQUE). `kind` `transcription`|`image_description`; `status` `pending`|`processing`|`done`|`failed`|`skipped`; `text`, `model`, `cost_usd`, `attempts`, `last_error`, `claimed_at`, `processed_at`. Enfileirada por trigger no INSERT de mensagem `audio`/`image`; drenada pela edge function `whatsapp-enrich-media` via `whatsapp_claim_enrichments(limit)` (service_role, até 3 tentativas). Só o texto é guardado — o arquivo é descartado. Config em `whatsapp_listen_settings` (`enrichment_enabled`, `enrichment_model`, `enrichment_max_audio_seconds`). RLS admin.
+
+#### Funções e views
+- `whatsapp_match_client(phone_key, store_id)` → `(match_status, client_id, tied_client_ids)`: rede toda, `phone_key`/`phone_2_key`; mais de uma → a da mesma unidade, se única; senão `shared`.
+- `whatsapp_process_raw_event(id)`, `whatsapp_process_pending(limit)`, `whatsapp_close_stale_conversations()`, `whatsapp_reconcile_contacts()`, `whatsapp_purge_raw_events()` — só service_role/cron.
+- `whatsapp_reconciliation_stats(store_id?)` → jsonb `{total, matched, unmatched, shared, unresolved_lid, match_rate}` por número único.
+- `whatsapp_conversations_v` (security_invoker) — lista da tela `/admin/crm/conversas`, com `first_reply_seconds`.
+- `crm_shared_phone_groups_v` (security_invoker) — telefones usados por mais de uma cliente; `same_first_name` = provável cadastro duplicado.
+- Crons: `whatsapp-process-pending` (1 min), `whatsapp-close-stale` (15 min), `whatsapp-reconcile` (hora, min 12).
 
 ---
 
-### `normalize_phone_br(text)` — chave canônica de telefone
-Função `IMMUTABLE` (`20260727000002`, endurecida em `20260727000003`). Devolve **DDD + 8 últimos dígitos** (10 caracteres), ou `NULL` quando não reconhece.
+### `phone_br_canonical(text)` / `phone_br_key(text)` — regra única de telefone
+`IMMUTABLE` (`20261010000001`). `phone_br_canonical` → `55 + DDD + número` (não inventa o nono dígito) ou `NULL`; `phone_br_key` → **DDD + 8 últimos dígitos** (casa com/sem nono dígito e com/sem DDI). Casos testados: `supabase/tests/phone_br_cases.json` (`npm run test:phone`).
 
-Existe porque os telefones convivem em três formatos no banco: `5527999243617` (13, com país), `27998883912` (11, DDD+9+8) e a Uazapi manda `5527999243617@s.whatsapp.net`. Casar string crua não funciona em nenhuma combinação.
+Dá `NULL` para: JID `@lid`; DDD fora da lista da Anatel; 11 dígitos sem `9` na 3ª posição (DDD digitado duas vezes, número truncado — ex. `55279998052`); 10 dígitos começando com 0/1; placeholder (8 últimos dígitos iguais: `0000-0000`, `11111-1111`); internacional. `55` na frente só sai quando o tamanho prova que é DDI (12/13 dígitos) — `(55) 9…` com 11 dígitos é DDD 55.
 
-> **Regra do nono dígito**: num número de 11 dígitos o terceiro tem que ser `9`. Foram encontrados 2 cadastros truncados (`55279998052`, `55779918346` — 13 dígitos que perderam 2) que a versão inicial convertia numa chave *bem formada porém de outro telefone*, o que faria mensagem de terceiro casar com o candidato errado. Agora devolvem `NULL`: falhar em casar é aceitável, casar errado não é.
-> Índice de expressão `idx_candidates_phone_key ON candidates (normalize_phone_br(whatsapp))` — expressão em vez de coluna gerada pra que correção na função valha na hora, sem backfill.
+> `normalize_phone_br(p_phone)` (RH, `20260727000002`) virou **apelido** de `phone_br_key` — uma regra só. Índice de expressão `idx_candidates_phone_key ON candidates (normalize_phone_br(whatsapp))`; reindexar se a regra mudar.
+> `trinks_clients.phone_key` / `phone_2_key` são colunas **geradas** (`phone_br_key(phone_1/phone_2)`), indexadas. Se a regra mudar: `UPDATE trinks_clients SET phone_1 = phone_1`.
 > `resolve_candidate_by_phone(phone_key)` desempata quando o mesmo número aparece em duas candidaturas: 1) candidato com envio nosso `sent` mais recente (30 dias); 2) senão, candidato criado mais recentemente.
 
 ---
@@ -1000,7 +1045,12 @@ Instâncias Uazapi nomeadas (Fase 4, `20260727000001`), selecionáveis por autom
 | is_active | boolean | NO | `true` | — |
 | updated_by | uuid | YES | NULL | auth.users.id (ON DELETE SET NULL) |
 | updated_at / created_at | timestamptz | NO | `now()` | — |
+| store_id | uuid | YES | NULL | stores.id (ON DELETE SET NULL) — `20261010000001` |
+| role | text | YES | NULL | CHECK `atendimento`|`massa` |
+| phone_number | text | YES | NULL | número da instância |
+| listen_enabled | boolean | NO | `false` | escuta passiva ligada (webhook-uazapi só grava com `true`) |
 
+> **Escuta** (`20261010000001`): o webhook identifica a instância pelo `token` do payload = `uazapi_token`. Admin lê só as colunas sem segredo (grant por coluna + policy `is_admin()`), usadas por `whatsapp_conversations_v`.
 > **Ordem de resolução no envio** (`send-automation-whatsapp`): instância da ação (`automation_whatsapp_queue.whatsapp_instance_id`) → credencial da loja do candidato (`store_whatsapp_credentials`) → instância global (env `UAZAPI_URL`/`UAZAPI_TOKEN`).
 > **Segurança**: mesmo regime de `store_whatsapp_credentials` — sem policy pra `authenticated`, `REVOKE ALL ... FROM authenticated, PUBLIC`, invisível via PostgREST. `GRANT SELECT ... TO service_role` **explícito** (este projeto não veio com grants padrão pro `service_role`). Frontend lê por `list_whatsapp_instances()` (devolve `token_last4`, nunca o token) e escreve por `admin_upsert_whatsapp_instance(id, name, url, token, is_active)` / `admin_delete_whatsapp_instance(id)`, ambas `is_admin()`. Token vazio no update **mantém** o atual, pra editar só o nome sem redigitar o segredo.
 
