@@ -75,6 +75,7 @@ const crmHub: Hub = {
     { label: 'Clientes', path: '/admin/crm/clientes' },
     { label: 'Segmentos', path: '/admin/crm/segmentos' },
     { label: 'Campanhas', path: '/admin/crm/campanhas' },
+    { label: 'Conversas', path: '/admin/crm/conversas' },
   ],
 }
 
