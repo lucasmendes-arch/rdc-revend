@@ -83,7 +83,12 @@ const TONE_BAR: Record<Tone, string> = {
 }
 
 const TZ = 'America/Sao_Paulo'
-const HOUR_PX = 64
+const MIN_HOUR_PX = 40
+
+/** Expediente das unidades: seg–sex 8h–19h, sábado 8h–15h. */
+function businessHours(iso: string): [number, number] {
+  return new Date(`${iso}T12:00:00Z`).getUTCDay() === 6 ? [8, 15] : [8, 19]
+}
 const COL_MIN_W = 168
 const GUTTER_W = 52
 
@@ -228,17 +233,39 @@ export default function Agenda() {
     return m
   }, [visible])
 
-  // Janela de horas: 7h–21h, esticando se houver agendamento fora dela.
+  // Janela de horas = expediente do dia, esticando se houver agendamento fora dele.
   const [startHour, endHour] = useMemo(() => {
-    let lo = 7 * 60, hi = 21 * 60
+    const [open, close] = businessHours(date)
+    let lo = open * 60, hi = close * 60
     for (const a of data?.appointments ?? []) {
       lo = Math.min(lo, minutesSP(a.starts_at))
       hi = Math.max(hi, minutesSP(a.ends_at))
     }
     return [Math.floor(lo / 60), Math.ceil(hi / 60)]
-  }, [data])
+  }, [data, date])
   const hours = Array.from({ length: endHour - startHour }, (_, i) => startHour + i)
-  const top = (iso: string) => ((minutesSP(iso) - startHour * 60) / 60) * HOUR_PX
+
+  // A grade vai do topo dela até o fim da janela e a altura da hora é a que
+  // faz o dia inteiro caber sem scroll. Abaixo de MIN_HOUR_PX os cards ficam
+  // ilegíveis, então em tela baixa volta a ter scroll.
+  const [gridEl, setGridEl] = useState<HTMLDivElement | null>(null)
+  const [gridH, setGridH] = useState<number | null>(null)
+  const [hourPx, setHourPx] = useState(64)
+  const hasProRow = (data?.professionals.length ?? 0) > 1
+  useEffect(() => {
+    if (!gridEl) return
+    const fit = () => {
+      const h = Math.max(360, window.innerHeight - gridEl.getBoundingClientRect().top - 16)
+      const head = gridEl.querySelector<HTMLElement>('[data-agenda-head]')?.offsetHeight ?? 52
+      setGridH(h)
+      setHourPx(Math.max(MIN_HOUR_PX, Math.floor((h - head - 2) / hours.length)))
+    }
+    fit()
+    window.addEventListener('resize', fit)
+    return () => window.removeEventListener('resize', fit)
+  }, [gridEl, hasProRow, hours.length])
+
+  const top = (iso: string) => ((minutesSP(iso) - startHour * 60) / 60) * hourPx
   const nowTop = isToday ? top(new Date(now).toISOString()) : null
 
   const counts = useMemo(() => {
@@ -321,7 +348,7 @@ export default function Agenda() {
             })}
           </div>
 
-          {(data?.professionals.length ?? 0) > 1 && (
+          {hasProRow && (
             <div className="flex flex-wrap gap-1.5">
               <button
                 type="button"
@@ -362,10 +389,10 @@ export default function Agenda() {
               description="Os nomes chegam quando o cadastro de cada profissional é salvo no Trinks."
             />
           ) : (
-            <div className="rounded-lg border border-border bg-card shadow-xs overflow-auto max-h-[calc(100dvh-260px)] min-h-[420px]">
+            <div ref={setGridEl} className="rounded-lg border border-border bg-card shadow-xs overflow-auto" style={{ height: gridH ?? undefined }}>
               <div className="relative" style={{ minWidth: GUTTER_W + columns.length * COL_MIN_W }}>
                 {/* Cabeçalho: profissionais */}
-                <div className="sticky top-0 z-20 flex border-b border-border bg-card">
+                <div data-agenda-head className="sticky top-0 z-20 flex border-b border-border bg-card">
                   <div className="sticky left-0 z-10 shrink-0 bg-card border-r border-border" style={{ width: GUTTER_W }} />
                   {columns.map(p => (
                     <div key={p.key} className="flex-1 px-3 py-2 border-r border-border last:border-r-0 min-w-0" style={{ minWidth: COL_MIN_W }}>
@@ -376,10 +403,10 @@ export default function Agenda() {
                 </div>
 
                 {/* Corpo */}
-                <div className="relative flex" style={{ height: hours.length * HOUR_PX }}>
+                <div className="relative flex" style={{ height: hours.length * hourPx }}>
                   <div className="sticky left-0 z-10 shrink-0 bg-card border-r border-border" style={{ width: GUTTER_W }}>
                     {hours.map(h => (
-                      <div key={h} className="relative text-[11px] text-muted-foreground tabular-nums text-right pr-2" style={{ height: HOUR_PX }}>
+                      <div key={h} className="relative text-[11px] text-muted-foreground tabular-nums text-right pr-2" style={{ height: hourPx }}>
                         <span className="relative -top-[7px]">{h > startHour ? `${h}h` : ''}</span>
                       </div>
                     ))}
@@ -391,7 +418,7 @@ export default function Agenda() {
                     return (
                       <div key={p.key} className="relative flex-1 border-r border-border last:border-r-0" style={{ minWidth: COL_MIN_W }}>
                         {hours.map(h => (
-                          <div key={h} className="border-b border-border/70" style={{ height: HOUR_PX }}>
+                          <div key={h} className="border-b border-border/70" style={{ height: hourPx }}>
                             <div className="h-1/2 border-b border-dashed border-border/40" />
                           </div>
                         ))}
@@ -417,7 +444,7 @@ export default function Agenda() {
                     )
                   })}
 
-                  {nowTop !== null && nowTop >= 0 && nowTop <= hours.length * HOUR_PX && (
+                  {nowTop !== null && nowTop >= 0 && nowTop <= hours.length * hourPx && (
                     <div className="pointer-events-none absolute right-0 z-[5] flex items-center" style={{ top: nowTop, left: GUTTER_W - 4 }}>
                       <span className="w-2 h-2 rounded-full bg-danger-solid" />
                       <span className="flex-1 h-px bg-danger-solid" />
