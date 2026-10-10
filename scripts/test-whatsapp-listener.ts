@@ -32,7 +32,13 @@ async function main() {
     body: JSON.stringify({ query }),
   })
   const text = await res.text()
-  const m = text.match(/SMOKE OK: ([^"\\]*)/)
+  let message = text
+  try {
+    message = String(JSON.parse(text).message ?? text)
+  } catch {
+    // corpo não-JSON: usa o texto cru
+  }
+  const m = message.match(/SMOKE OK: (.*)/)
   if (m) {
     for (const part of m[1].split('; ')) console.log(`✓ ${part}`)
     return

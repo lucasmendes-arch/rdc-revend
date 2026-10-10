@@ -100,8 +100,9 @@ BEGIN
   IF v_conv.last_direction <> 'outbound' THEN
     RAISE EXCEPTION 'last_direction %', v_conv.last_direction;
   END IF;
-  -- Expirada na criação; closed_at acompanha a última mensagem (reação incluída).
-  IF v_conv.status <> 'fechada' OR v_conv.closed_at <> v_t0 + interval '26 minutes' + interval '12 hours' THEN
+  -- Expirada na criação; closed_at acompanha a última mensagem que não é
+  -- reação (a reação de +26min fica anexada mas não estende a janela).
+  IF v_conv.status <> 'fechada' OR v_conv.closed_at <> v_t0 + interval '25 minutes' + interval '12 hours' THEN
     RAISE EXCEPTION 'status % closed_at %', v_conv.status, v_conv.closed_at;
   END IF;
   SELECT count(*) INTO v_n FROM whatsapp_contacts WHERE party_key = v_cli.phone_key;
@@ -201,6 +202,22 @@ BEGIN
   SELECT count(*) INTO v_n FROM whatsapp_messages WHERE instance_id = v_inst AND message_type = 'audio' AND media ->> 'seconds' = '7';
   IF v_n <> 1 THEN RAISE EXCEPTION 'midia: metadados não gravados'; END IF;
   v_log := v_log || 'unmatched + lid ok; ';
+
+  -- 7b. Reação sem conversa em andamento: só log, sem conversa nem contato --
+  INSERT INTO whatsapp_raw_events (instance_id, event_type, provider_message_id, parsed, payload)
+  VALUES (v_inst, 'messages', 'SMOKE-R-1', jsonb_build_object('direction', 'outbound',
+          'phoneRaw', '5599977665544@s.whatsapp.net', 'messageType', 'reaction', 'body', '❤️',
+          'sentAt', v_t0), '{}')
+  RETURNING id INTO v_raw;
+  v_res := whatsapp_process_raw_event(v_raw);
+  IF v_res <> 'ok' THEN RAISE EXCEPTION 'reacao orfa: %', v_res; END IF;
+  SELECT count(*) INTO v_n FROM whatsapp_messages WHERE raw_event_id = v_raw AND conversation_id IS NULL;
+  IF v_n <> 1 THEN RAISE EXCEPTION 'reacao orfa: mensagem não gravada sem conversa'; END IF;
+  SELECT count(*) INTO v_n FROM whatsapp_conversations WHERE instance_id = v_inst AND party_key = '9977665544';
+  IF v_n <> 0 THEN RAISE EXCEPTION 'reacao orfa abriu conversa'; END IF;
+  SELECT count(*) INTO v_n FROM whatsapp_contacts WHERE party_key = '9977665544';
+  IF v_n <> 0 THEN RAISE EXCEPTION 'reacao orfa criou contato'; END IF;
+  v_log := v_log || 'reacao orfa ok; ';
 
   -- 8. Job de fechamento e estatística ---------------------------------
   UPDATE whatsapp_listen_settings SET conversation_gap_hours = 1 WHERE id = 1;

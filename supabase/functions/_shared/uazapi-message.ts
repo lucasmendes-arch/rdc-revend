@@ -127,7 +127,10 @@ function mediaMetadata(content: Json | null, type: MessageType): Record<string, 
 // mensagem nossa, são o NOSSO número).
 function resolveParty(partyJid: string, msg: Json, chat: Json, fromMe: boolean) {
   if (!isLid(partyJid)) {
-    return { phoneRaw: partyJid, lid: str(chat.wa_chatlid) ?? (fromMe ? null : str(msg.sender_lid)) }
+    return {
+      phoneRaw: partyJid,
+      lid: str(msg.chatlid) ?? str(chat.wa_chatlid) ?? (fromMe ? null : str(msg.sender_lid)),
+    }
   }
   const candidates = [
     str(chat.phone),

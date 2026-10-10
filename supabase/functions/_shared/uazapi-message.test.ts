@@ -117,6 +117,18 @@ describe('parseUazapiEvent', () => {
     expect(m.phoneRaw).toBe('+55 27 99958-0961')
   })
 
+  it('chatid com telefone: guarda o LID de message.chatlid (formato real de Linhares)', () => {
+    const m = asMessage(event({ chatlid: '204871234567890@lid', sender_lid: '' }))
+    expect(m.phoneRaw).toBe('5527999580961@s.whatsapp.net')
+    expect(m.lid).toBe('204871234567890@lid')
+  })
+
+  it('reação enviada pela unidade', () => {
+    const m = asMessage(event({ fromMe: true, messageType: 'ReactionMessage', text: '❤️', reaction: 'MSG0' }))
+    expect(m.messageType).toBe('reaction')
+    expect(m.direction).toBe('outbound')
+  })
+
   it('LID sem telefone: não descarta, phoneRaw nulo', () => {
     const m = asMessage(event({ chatid: '204871234567890@lid', sender: '204871234567890@lid' }))
     expect(m.lid).toBe('204871234567890@lid')
